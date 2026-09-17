@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 from worker.simrun import run_sim
 
-from app import bnet
+from app import bnet, wcl
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -354,6 +354,13 @@ def characters_page(request: Request):
     return FileResponse(STATIC_DIR / "characters.html")
 
 
+@app.api_route("/raids", methods=["GET", "HEAD"])
+def raids_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "raids.html")
+
+
 # ---------------------------------------------------------------------------
 # Auth API
 # ---------------------------------------------------------------------------
@@ -638,6 +645,36 @@ def api_char_summary(realm: str, name: str, request: Request, refresh: int = 0):
 def api_char_equipment(realm: str, name: str, request: Request, refresh: int = 0):
     _require_user(request)
     return _bnet_call(bnet.equipment, realm, name, refresh)
+
+
+# ---------------------------------------------------------------------------
+# WCL API — rapports de raid (cache serveur)
+# ---------------------------------------------------------------------------
+_WCL_CODE_RE = re.compile(r"^[A-Za-z0-9]{12,24}$")
+
+
+@app.get("/api/wcl/reports")
+def api_wcl_reports(request: Request, refresh: int = 0, limit: int = 30):
+    _require_user(request)
+    try:
+        data, ts = wcl.reports(limit=min(max(limit, 5), 50), force=bool(refresh))
+    except wcl.WclError as exc:
+        raise HTTPException(exc.status if exc.status in (400, 404) else 502, str(exc))
+    return {"reports": data, "fetched_at": ts}
+
+
+@app.get("/api/wcl/report/{code}")
+def api_wcl_report(code: str, request: Request, refresh: int = 0):
+    _require_user(request)
+    if not _WCL_CODE_RE.match(code):
+        raise HTTPException(400, "Code de rapport invalide.")
+    try:
+        data, ts = wcl.report_full(code, force=bool(refresh))
+    except wcl.WclError as exc:
+        raise HTTPException(exc.status if exc.status in (400, 404) else 502, str(exc))
+    data = dict(data)
+    data["fetched_at"] = ts
+    return data
 
 
 # ---------------------------------------------------------------------------

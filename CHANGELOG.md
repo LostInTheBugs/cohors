@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.006] — 2026-09-17
+
+### Added
+
+- « Rapports de raid » page: recent guild reports from the Warcraft Logs v2 API,
+  per-report boss pulls (kill/wipe progress, difficulty, average item level,
+  duration, raid size) and per-fight parses (tanks/healers/DPS tables with
+  class colors and percentile scores).
+- Warcraft Logs integration (GraphQL, client credentials) with server cache
+  (report list 15 min, reports + parses 30 min).
+- Configuration: `WCL_CLIENT_ID` / `WCL_CLIENT_SECRET` (plus optional
+  `WCL_GUILD_NAME`, `WCL_GUILD_REALM`, `WCL_GUILD_REGION`).
+
 ## [2026.09.005] — 2026-09-17
 
 ### Added

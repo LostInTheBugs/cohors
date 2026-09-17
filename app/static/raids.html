@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Rapports de raid</title>
+<link rel="icon" type="image/png" href="/static/crest.png">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 28px 18px 40px; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: .3px; }
+  h1 span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; align-self: center; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 13px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  .sub { color: var(--mut); font-size: 14px; margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+           padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+                 padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
+  button.ghost:hover { border-color: var(--acc2); color: var(--acc2); }
+  .meta { color: var(--mut); font-size: 13px; }
+  .rrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line);
+          background: var(--card2); border-radius: 11px; padding: 10px 14px; margin-bottom: 8px; cursor: pointer; }
+  .rrow:hover { border-color: var(--acc2); }
+  .rrow .rdate { color: var(--mut); font-size: 13px; min-width: 150px; }
+  .rrow .rtitle { font-weight: 600; }
+  .rrow .rz { color: var(--acc2); font-size: 12.5px; border: 1px solid #6b4a17; border-radius: 999px; padding: 1px 10px; }
+  .badge { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
+  .b-kill { color: var(--ok); border-color: #1d4a3a; }
+  .b-wipe { color: var(--err); border-color: #5a2626; }
+  .frow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line);
+          background: var(--card2); border-radius: 11px; padding: 9px 14px; margin-bottom: 7px; }
+  .frow .fidx { color: var(--mut); font-size: 12.5px; min-width: 26px; }
+  .frow .fname { font-weight: 600; min-width: 180px; }
+  .frow .fmeta { color: var(--mut); font-size: 12.5px; }
+  .det { width: 100%; margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .roleh { color: var(--acc2); font-size: 13px; font-weight: 700; margin: 8px 0 4px; }
+  .prow { display: flex; gap: 10px; align-items: baseline; font-size: 13.5px; padding: 2px 4px; }
+  .prow .pname { font-weight: 600; min-width: 130px; }
+  .prow .pspec { color: var(--mut); font-size: 12.5px; min-width: 120px; }
+  .prow .pamt { font-variant-numeric: tabular-nums; }
+  .prow .pchip { font-weight: 700; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+  .reph { display: flex; gap: 14px; flex-wrap: wrap; align-items: baseline; margin-bottom: 10px; }
+  .reph a { color: var(--acc2); text-decoration: none; font-weight: 600; }
+  .reph a:hover { text-decoration: underline; }
+  .empty { color: var(--mut); font-size: 14px; padding: 8px 2px; }
+  .err { color: var(--err); font-size: 13px; }
+  .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 24px; padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+    <h1>LOTP <span>Rapports de raid</span></h1>
+    <span class="tagline">Warcraft Logs — parses de la guilde</span>
+    <span class="spacer"></span>
+    <span class="who" id="who"></span>
+    <a class="hlink hidden" id="admin-link" href="/admin">Administration</a>
+    <a class="hlink" href="/">← Simulateur</a>
+    <a class="hlink" href="/characters">Personnages</a>
+    <a class="hlink" href="#" id="logout">Déconnexion</a>
+  </header>
+  <p class="sub">Derniers rapports de guilde sur Warcraft Logs. Clique sur un rapport pour voir les boss, les wipes/kills et les parses de chaque joueur.</p>
+
+  <div class="card">
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+      <h2 style="margin:0;">Rapports récents</h2>
+      <span class="spacer"></span>
+      <span class="meta" id="rmeta">Chargement…</span>
+      <button class="ghost" id="refresh" title="Recharger (max 1×/min)">⟳ Actualiser</button>
+    </div>
+    <div id="rlist"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card hidden" id="dcard">
+    <div class="reph" id="dhead"></div>
+    <div id="dfights"></div>
+  </div>
+
+  <footer>
+    Données : <b>Warcraft Logs</b> (API v2, cache 30 min) · Données de jeu fournies par
+    <b>Blizzard Entertainment</b> · Outil non affilié à Blizzard Entertainment ·
+    <span id="ver">…</span>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const dtFmt = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const durFmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`; };
+
+const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+  Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+  Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
+const CLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur de démons", Druid: "Druide",
+  Evoker: "Évocateur", Hunter: "Chasseur", Mage: "Mage", Monk: "Moine", Paladin: "Paladin",
+  Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
+const DIFF = { 1: "LFR", 2: "Flex", 3: "Normal", 4: "Héroïque", 5: "Mythique", 10: "Défi (M+)" };
+const ROLES = [["tanks", "Tanks"], ["healers", "Soigneurs"], ["dps", "DPS"]];
+const parseColor = (p) => p >= 100 ? "#e5cc80" : p >= 95 ? "#ff8000" : p >= 75 ? "#a335ee" : p >= 50 ? "#0070dd" : p >= 25 ? "#1eff00" : "#6b6b6b";
+
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+
+let DETAIL = null;      // { report, rankings }
+let OPEN_FIGHTS = new Set();
+
+async function loadList(refresh = 0) {
+  try {
+    const d = await jget("/api/wcl/reports" + (refresh ? "?refresh=1" : ""));
+    $("#rmeta").textContent = `${d.reports.total ?? "?"} rapports au total · actualisé à l'instant`;
+    const el = $("#rlist");
+    if (!d.reports.data.length) { el.innerHTML = `<div class="empty">Aucun rapport.</div>`; return; }
+    el.innerHTML = d.reports.data.map(r => `
+      <div class="rrow" data-code="${esc(r.code)}">
+        <span class="rdate">${dtFmt(r.startTime)}</span>
+        <span class="rtitle">${esc(r.title || "(sans titre)")}</span>
+        <span class="rz">${esc((r.zone || {}).name || "Zone inconnue")}</span>
+        <span class="spacer"></span>
+        <button class="ghost">Ouvrir</button>
+      </div>`).join("");
+    el.querySelectorAll(".rrow").forEach(row =>
+      row.addEventListener("click", () => openReport(row.dataset.code, row)));
+  } catch (e) {
+    $("#rlist").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
+  }
+}
+
+async function openReport(code, row) {
+  const card = $("#dcard");
+  card.classList.remove("hidden");
+  $("#dhead").innerHTML = `<span class="spin">⏳</span> <span class="meta">Chargement du rapport…</span>`;
+  $("#dfights").innerHTML = "";
+  OPEN_FIGHTS = new Set();
+  try {
+    DETAIL = await jget(`/api/wcl/report/${encodeURIComponent(code)}`);
+    renderDetail();
+    card.scrollIntoView({ block: "start", behavior: "smooth" });
+  } catch (e) {
+    $("#dhead").innerHTML = `<span class="err">Erreur : ${esc(e.message)}</span>`;
+  }
+}
+
+function renderDetail() {
+  const rep = DETAIL.report;
+  const fights = rep.fights || [];
+  const kills = fights.filter(f => f.kill).length;
+  $("#dhead").innerHTML = `
+    <h2 style="margin:0;">${esc(rep.title || "(sans titre)")}</h2>
+    <span class="meta">${esc((rep.zone || {}).name || "")} · ${dtFmt(rep.startTime)}</span>
+    <span class="meta">${fights.length} pulls · <b style="color:var(--ok)">${kills} tué(s)</b></span>
+    <span class="spacer"></span>
+    <a href="https://www.warcraftlogs.com/reports/${esc(rep.code)}" target="_blank" rel="noopener">Ouvrir sur Warcraft Logs ↗</a>`;
+  $("#dfights").innerHTML = fights.map((f, i) => {
+    const pct = Math.round(f.fightPercentage ?? 0);
+    const badge = f.kill
+      ? `<span class="badge b-kill">✅ Tué</span>`
+      : `<span class="badge b-wipe">❌ ${pct} %</span>`;
+    const det = DETAIL.rankings[String(f.id)];
+    return `<div class="frow" data-fid="${f.id}">
+      <span class="fidx">#${i + 1}</span>
+      <span class="fname">${esc(f.name)}</span>
+      ${badge}
+      <span class="fmeta">${DIFF[f.difficulty] || "?"} · ilvl ${f.averageItemLevel ? Math.round(f.averageItemLevel) : "—"} · ${durFmt(f.endTime - f.startTime)} · ${f.size || "?"} joueurs</span>
+      <span class="spacer"></span>
+      ${det ? `<button class="ghost" data-parses>Parses</button>` : ""}
+    </div>`;
+  }).join("");
+  $("#dfights").querySelectorAll("button[data-parses]").forEach(btn =>
+    btn.addEventListener("click", () => toggleParses(btn.closest(".frow"))));
+}
+
+function toggleParses(frow) {
+  const fid = frow.dataset.fid;
+  const existing = frow.querySelector(".det");
+  if (existing) { existing.remove(); OPEN_FIGHTS.delete(fid); return; }
+  const det = DETAIL.rankings[fid];
+  if (!det) return;
+  OPEN_FIGHTS.add(fid);
+  const parts = [];
+  for (const [key, label] of ROLES) {
+    const role = (det.roles || {})[key];
+    if (!role || !role.characters || !role.characters.length) continue;
+    const chars = [...role.characters].sort((a, b) => b.amount - a.amount);
+    parts.push(`<div class="roleh">${label}</div>` + chars.map(c => {
+      const col = CLASS_COLORS[c.class] || "var(--fg)";
+      return `<div class="prow">
+        <span class="pname" style="color:${col}">${esc(c.name)}</span>
+        <span class="pspec">${esc(CLASS_FR[c.class] || c.class || "")} ${esc(c.spec || "")}</span>
+        <span class="spacer"></span>
+        <span class="pamt">${fmt(c.amount)}</span>
+        <span class="pchip" style="color:${parseColor(c.rankPercent)}" title="parse — bracket ${c.bracketPercent} %">${c.rankPercent ?? "?"}</span>
+      </div>`;
+    }).join(""));
+  }
+  const box = document.createElement("div");
+  box.className = "det";
+  box.innerHTML = parts.length ? parts.join("") : `<span class="meta">Pas de parses pour ce pull.</span>`;
+  frow.appendChild(box);
+}
+
+$("#refresh").addEventListener("click", async (ev) => {
+  ev.target.disabled = true;
+  await loadList(1);
+  ev.target.disabled = false;
+});
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin) $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  loadList(0);
+})();
+</script>
+</body>
+</html>

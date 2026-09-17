@@ -2,7 +2,7 @@
 
 Self-hosted companion for World of Warcraft: guild-friendly simulation reports built on
 the official SimulationCraft Docker image, plus a guild roster and character pages fed
-by the Battle.net API (Warcraft Logs integration planned).
+by the Battle.net API and raid reports (parses) from Warcraft Logs.
 
 > Early development. Not affiliated with Blizzard Entertainment, Inc. Game data is
 > provided by Blizzard Entertainment and Warcraft Logs (see attribution requirements).
@@ -18,7 +18,9 @@ by the Battle.net API (Warcraft Logs integration planned).
 - [x] Stat-weights mode ("optimiseur", Mr Robot-style) — scale factors from the same engine.
 - [x] Guild roster & characters (« Personnages ») — Battle.net API: ranks, levels, item
       level, last seen, per-character equipped items (Wowhead links), 30-min server cache.
-- [ ] Warcraft Logs integration
+- [x] Raid reports (« Rapports ») — Warcraft Logs v2 API: guild report list, per-report
+      boss pulls (kill/wipe, difficulty, item level) and per-fight parses (role tables,
+      percentile scores), 15–30 min server cache.
 
 ## Requirements
 
@@ -77,6 +79,11 @@ reverse proxy and small until the simulation worker is split out.
 | `BNET_REGION` | `eu` | Battle.net region |
 | `BNET_GUILD_REALM` | `hyjal` | Guild realm slug |
 | `BNET_GUILD_SLUG` | `lords-of-the-pit` | Guild slug |
+| `WCL_CLIENT_ID` | — | Warcraft Logs API client ID (https://www.warcraftlogs.com/api/clients) |
+| `WCL_CLIENT_SECRET` | — | Warcraft Logs API client secret |
+| `WCL_GUILD_NAME` | `Lords Of The Pit` | Guild name on Warcraft Logs |
+| `WCL_GUILD_REALM` | `hyjal` | Guild realm slug |
+| `WCL_GUILD_REGION` | `EU` | Region |
 
 ## API
 
@@ -98,6 +105,8 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/roster` | GET | Guild roster — `?refresh=1` forces a refetch (1×/min max) |
 | `/api/char/{realm}/{name}/summary` | GET | Character summary (Battle.net) |
 | `/api/char/{realm}/{name}/equipment` | GET | Equipped items (Battle.net) |
+| `/api/wcl/reports` | GET | Recent guild reports (Warcraft Logs) — `?refresh=1` forces |
+| `/api/wcl/report/{code}` | GET | One report: boss pulls + parses (Warcraft Logs) |
 | `/api/admin/invites` | GET / POST | List / create invitations |
 | `/api/admin/invites/{token}` | DELETE | Revoke an invitation |
 | `/api/admin/users` | GET | List accounts |
@@ -118,6 +127,8 @@ app/static/register.html Invitation registration page
 app/static/admin.html   Admin panel (invitations + accounts)
 app/static/characters.html Guild roster & character pages (French)
 app/bnet.py             Battle.net API client (roster, characters, 30-min cache)
+app/wcl.py              Warcraft Logs v2 client (raid reports, parses)
+app/static/raids.html   Raid reports page (French)
 worker/simrun.py        SimulationCraft engine wrapper (official Docker image)
 Dockerfile              App image (Python + Docker CLI)
 docker-compose.yml      App deployment (Docker socket + data dir, both required)
@@ -127,7 +138,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.005` (see `CHANGELOG.md`).
+Current version: `2026.09.006` (see `CHANGELOG.md`).
 
 ## License
 
