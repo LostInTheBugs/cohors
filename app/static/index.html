@@ -260,7 +260,7 @@ setInterval(load, 5000); load();
     if (r.status === 401) { location.href = "/login"; return; }
     const d = await r.json();
     $("#who").textContent = d.name || d.email;
-    if (d.is_admin) $("#admin-link").classList.remove("hidden");
+    if (d.is_admin || d.role === "officer") $("#admin-link").classList.remove("hidden");
   } catch (e) { /* ignoré */ }
 })();
 $("#logout").addEventListener("click", async (e) => {

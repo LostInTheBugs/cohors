@@ -36,6 +36,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       raid reports (Warcraft Logs) and guild roster changes.
 - [x] Account ↔ character links — link your account to your guild characters
       (⭐ main + alts) from the Personnages page; stars show up in the roster.
+- [x] Roles: membre / officier / administrateur — officers manage invitations,
+      admins handle accounts, roles and the Discord bot.
 
 ## Requirements
 
@@ -118,6 +120,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me` | GET | Current account |
 | `/api/register` | POST | Register (or reset a password) from an invitation `{token, name, email?, password}` |
 | `/api/invite/{token}` | GET | Invitation info (public) |
+| `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
 | `/api/me/chars` | GET / POST | Linked characters — POST links one (`{name, main?}`) |
 | `/api/me/chars/{id}` | DELETE | Unlink one of your characters |
 | `/api/me/chars/{id}/main` | POST | Set a linked character as your main |
@@ -174,7 +177,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.014` (see `CHANGELOG.md`).
+Current version: `2026.09.015` (see `CHANGELOG.md`).
 
 ## License
 

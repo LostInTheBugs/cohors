@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.015] — 2026-09-17
+
+### Added
+
+- Account roles: **membre** (default), **officier**, **administrateur**.
+  Officers can manage invitations (create / send / revoke); administrators keep
+  accounts, roles and the Discord bot. Roles are changed from the Comptes tab
+  (dropdown per account — never your own). API: `POST /api/admin/users/{id}/role`.
+
 ## [2026.09.014] — 2026-09-17
 
 ### Fixed

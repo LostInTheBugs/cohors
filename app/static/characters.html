@@ -399,7 +399,7 @@ $("#myadd").addEventListener("click", async () => {
   try {
     const me = await jget("/api/me");
     $("#who").textContent = me.name || me.email;
-    if (me.is_admin) $("#admin-link").classList.remove("hidden");
+    if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
   } catch (e) { location.href = "/login"; return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   load(0); loadMyChars();

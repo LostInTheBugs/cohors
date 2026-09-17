@@ -114,6 +114,7 @@ def _init_db() -> None:
                 name       TEXT NOT NULL DEFAULT '',
                 pwd        TEXT NOT NULL,
                 is_admin   INTEGER NOT NULL DEFAULT 0,
+                role       TEXT NOT NULL DEFAULT 'member',
                 active     INTEGER NOT NULL DEFAULT 1,
                 created    REAL NOT NULL,
                 last_login REAL
@@ -192,6 +193,11 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_char_links_uniq ON char_links(user_email, realm, name)")
+        # v2026.09.015 — rôles (membre / officier / administrateur).
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "role" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'")
+        conn.execute("UPDATE users SET role='admin' WHERE is_admin=1 AND role != 'admin'")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_status ON sims(status)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
         # migrations (idempotent)
@@ -230,7 +236,7 @@ def _bootstrap_admin() -> None:
         pwd = os.environ.get("ADMIN_PASSWORD", "")
         if email and pwd:
             conn.execute(
-                "INSERT INTO users (email, name, pwd, is_admin, active, created) VALUES (?,?,?,1,1,?)",
+                "INSERT INTO users (email, name, pwd, is_admin, role, active, created) VALUES (?,?,?,1,'admin',1,?)",
                 (email, "Admin", _hash_password(pwd), time.time()),
             )
             print(f"[bootstrap] compte admin créé : {email}")
@@ -280,10 +286,29 @@ def _require_user(request: Request) -> sqlite3.Row:
     return user
 
 
+def _user_role(user: sqlite3.Row) -> str:
+    """Rôle effectif du compte (tolérant aux bases sans colonne role)."""
+    try:
+        role = (user["role"] or "").strip()
+    except (IndexError, KeyError):
+        role = ""
+    if role in ("member", "officer", "admin"):
+        return role
+    return "admin" if user["is_admin"] else "member"
+
+
 def _require_admin(request: Request) -> sqlite3.Row:
     user = _require_user(request)
-    if not user["is_admin"]:
+    if _user_role(user) != "admin":
         raise HTTPException(403, "Réservé à l'administrateur")
+    return user
+
+
+def _require_officer(request: Request) -> sqlite3.Row:
+    """Officier ou administrateur."""
+    user = _require_user(request)
+    if _user_role(user) not in ("officer", "admin"):
+        raise HTTPException(403, "Réservé aux officiers et administrateurs")
     return user
 
 
@@ -393,7 +418,7 @@ def admin_page(request: Request):
     user = _get_session_user(request)
     if user is None:
         return RedirectResponse("/login", status_code=302)
-    if not user["is_admin"]:
+    if _user_role(user) == "member":
         return RedirectResponse("/", status_code=302)
     return FileResponse(STATIC_DIR / "admin.html")
 
@@ -460,7 +485,7 @@ def login(payload: LoginRequest, request: Request, response: Response):
         conn.execute("UPDATE users SET last_login=? WHERE id=?", (now, user["id"]))
     _login_attempts.pop(ip, None)
     _set_session_cookie(response, token)
-    return {"ok": True, "name": user["name"], "is_admin": bool(user["is_admin"])}
+    return {"ok": True, "name": user["name"], "is_admin": bool(user["is_admin"]), "role": _user_role(user)}
 
 
 @app.post("/api/logout")
@@ -478,7 +503,7 @@ def me(request: Request):
     user = _get_session_user(request)
     if user is None:
         raise HTTPException(401, "Non connecté")
-    return {"email": user["email"], "name": user["name"], "is_admin": bool(user["is_admin"])}
+    return {"email": user["email"], "name": user["name"], "is_admin": bool(user["is_admin"]), "role": _user_role(user)}
 
 
 @app.get("/api/invite/{token}")
@@ -511,7 +536,7 @@ def register(payload: RegisterRequest, request: Request, response: Response):
         else:
             name = payload.name.strip()[:60] or email.split("@")[0]
             cur = conn.execute(
-                "INSERT INTO users (email, name, pwd, is_admin, active, created) VALUES (?,?,?,0,1,?)",
+                "INSERT INTO users (email, name, pwd, is_admin, role, active, created) VALUES (?,?,?,0,'member',1,?)",
                 (email, name, _hash_password(payload.password), now),
             )
             user_id = int(cur.lastrowid or 0)
@@ -978,7 +1003,7 @@ def admin_users(request: Request):
     _require_admin(request)
     with _db_lock, _db() as conn:
         rows = conn.execute(
-            """SELECT u.id, u.email, u.name, u.is_admin, u.active, u.created, u.last_login,
+            """SELECT u.id, u.email, u.name, u.is_admin, u.role, u.active, u.created, u.last_login,
                       (SELECT COUNT(*) FROM sims s WHERE s.user_email = u.email) AS sims_count,
                       (SELECT c.display FROM char_links c WHERE c.user_email = u.email AND c.is_main = 1 LIMIT 1) AS main_char,
                       (SELECT COUNT(*) FROM char_links c WHERE c.user_email = u.email) AS chars_count
@@ -1032,9 +1057,32 @@ def admin_reset_link(uid: int, request: Request):
     return {"link": _invite_link(token), "expires_in_days": INVITE_TTL_DAYS}
 
 
+class RoleRequest(BaseModel):
+    role: str = Field(..., max_length=20)
+
+
+@app.post("/api/admin/users/{uid}/role")
+def admin_set_role(uid: int, payload: RoleRequest, request: Request):
+    """Change le rôle d'un compte (réservé aux administrateurs)."""
+    me_row = _require_admin(request)
+    role = payload.role.strip().lower()
+    if role not in ("member", "officer", "admin"):
+        raise HTTPException(400, "Rôle inconnu (membre, officier ou administrateur).")
+    if uid == me_row["id"]:
+        raise HTTPException(400, "Impossible de modifier ton propre rôle.")
+    with _db_lock, _db() as conn:
+        if conn.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone() is None:
+            raise HTTPException(404, "Compte inconnu")
+        conn.execute(
+            "UPDATE users SET role=?, is_admin=? WHERE id=?",
+            (role, 1 if role == "admin" else 0, uid),
+        )
+    return {"ok": True, "role": role}
+
+
 @app.get("/api/admin/invites")
 def admin_invites(request: Request):
-    _require_admin(request)
+    _require_officer(request)
     now = time.time()
     with _db_lock, _db() as conn:
         rows = conn.execute("SELECT * FROM invites ORDER BY created DESC LIMIT 50").fetchall()
@@ -1056,7 +1104,7 @@ def admin_invites(request: Request):
 
 @app.post("/api/admin/invites")
 def admin_create_invite(payload: InviteRequest, request: Request):
-    _require_admin(request)
+    _require_officer(request)
     now = time.time()
     token = secrets.token_urlsafe(24)
     email = payload.email.strip().lower() or None
@@ -1078,7 +1126,7 @@ def admin_create_invite(payload: InviteRequest, request: Request):
 
 @app.post("/api/admin/invites/{token}/send")
 def admin_send_invite(token: str, request: Request):
-    _require_admin(request)
+    _require_officer(request)
     with _db_lock, _db() as conn:
         r = conn.execute("SELECT * FROM invites WHERE token=?", (token,)).fetchone()
     if r is None:
@@ -1097,7 +1145,7 @@ def admin_send_invite(token: str, request: Request):
 
 @app.delete("/api/admin/invites/{token}")
 def admin_revoke_invite(token: str, request: Request):
-    _require_admin(request)
+    _require_officer(request)
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM invites WHERE token=? AND used IS NULL", (token,))
     return {"ok": True}

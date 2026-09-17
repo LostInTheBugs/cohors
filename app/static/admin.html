@@ -54,6 +54,8 @@
   .b-used { color:var(--ok); border-color:#1d4a3a; }
   .b-expired { color:var(--mut); }
   .b-admin { color:var(--acc2); border-color:#6b4a17; }
+  .b-officer { color:#9db8e8; border-color:#33415e; }
+  .rolesel { min-width:130px; padding:5px 10px; font-size:12.5px; border-radius:8px; }
   .b-off { color:var(--err); border-color:#5a2626; }
   .linkbox { margin-top:14px; background:var(--card2); border:1px dashed var(--acc); border-radius:10px; padding:12px 14px; }
   .linkbox code { user-select:all; word-break:break-all; font-size:13px; color:var(--acc2); }
@@ -226,6 +228,8 @@ async function loadInvites() {
   }));
 }
 
+let ME = null, IM_ADMIN = false;
+
 function charInfo(u) {
   if (!u.main_char) return "";
   const alts = (u.chars_count || 0) - 1;
@@ -236,15 +240,24 @@ async function loadUsers() {
   const d = await api("GET", "/api/admin/users");
   const box = $("#users");
   box.innerHTML = d.users.map(u => {
-    const badges = (u.is_admin ? '<span class="badge b-admin">Admin</span> ' : '') +
-                   (u.active ? '' : '<span class="badge b-off">Désactivé</span>');
+    const roleBadge = u.role === "admin" ? '<span class="badge b-admin">Administrateur</span> '
+                    : u.role === "officer" ? '<span class="badge b-officer">Officier</span> '
+                    : '<span class="badge">Membre</span> ';
+    const badges = roleBadge + (u.active ? '' : '<span class="badge b-off">Désactivé</span>');
     const btnActive = `<button class="small ghost" data-active="${u.id}" data-val="${u.active ? 0 : 1}">${u.active ? "Désactiver" : "Réactiver"}</button>`;
     const btnReset = `<button class="small ghost" data-reset="${u.id}">Lien de réinitialisation</button>`;
     const btnDel = `<button class="small danger" data-del="${u.id}" data-name="${esc(u.name)}">Supprimer</button>`;
+    const roleSel = (IM_ADMIN && (!ME || u.email !== ME.email))
+      ? `<select class="rolesel" data-role="${u.id}" title="Rôle du compte">
+           <option value="member"${u.role === "member" ? " selected" : ""}>Membre</option>
+           <option value="officer"${u.role === "officer" ? " selected" : ""}>Officier</option>
+           <option value="admin"${u.role === "admin" ? " selected" : ""}>Administrateur</option>
+         </select>`
+      : "";
     return `<div class="item">
       <div class="main"><span class="name">${esc(u.name || u.email)} ${badges}</span>
       <span class="meta">${esc(u.email)} · créé le ${onDate(u.created)} · dernière connexion ${ago(u.last_login)} · ${u.sims_count} sim(s)${charInfo(u)}</span></div>
-      <span class="spacer"></span>${btnActive} ${btnReset} ${btnDel}</div>`;
+      <span class="spacer"></span>${roleSel}${btnActive} ${btnReset} ${btnDel}</div>`;
   }).join("");
   box.querySelectorAll("[data-active]").forEach(b => b.addEventListener("click", async () => {
     await api("POST", `/api/admin/users/${b.dataset.active}/active`, { active: b.dataset.val === "1" });
@@ -257,6 +270,13 @@ async function loadUsers() {
   box.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", async () => {
     if (!confirm(`Supprimer définitivement le compte « ${b.dataset.name} » ?`)) return;
     await api("DELETE", "/api/admin/users/" + b.dataset.del); toast("Compte supprimé"); loadUsers();
+  }));
+  box.querySelectorAll("[data-role]").forEach(s => s.addEventListener("change", async () => {
+    try {
+      await api("POST", `/api/admin/users/${s.dataset.role}/role`, { role: s.value });
+      toast("Rôle mis à jour ✓");
+    } catch (e) {}
+    loadUsers();
   }));
 }
 
@@ -292,8 +312,14 @@ $("#inv-create").addEventListener("click", async () => {
 (async () => {
   try {
     const me = await api("GET", "/api/me");
-    if (!me.is_admin) { location.href = "/"; return; }
-    document.title = `LOTP — Admin (${me.name})`;
+    if (!me.is_admin && me.role !== "officer") { location.href = "/"; return; }
+    ME = me;
+    IM_ADMIN = !!me.is_admin;
+    document.title = `LOTP — ${me.is_admin ? "Admin" : "Officiers"} (${me.name})`;
+    if (!IM_ADMIN) {
+      $("#tab-comptes").classList.add("hidden");
+      $("#tab-bot").classList.add("hidden");
+    }
   } catch (e) { return; }
   const h = await api("GET", "/api/health").catch(() => null);
   if (h) $("#ver").textContent = "v" + h.version;
@@ -382,7 +408,8 @@ $("#bot-test").addEventListener("click", async () => {
   catch (e) {}
 });
 
-  loadInvites(); loadUsers(); loadBot();
+  loadInvites();
+  if (IM_ADMIN) { loadUsers(); loadBot(); }
 })();
 </script>
 </body>
