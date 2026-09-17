@@ -104,6 +104,7 @@
       <button class="ghost" id="refresh" title="Recharger les données" style="background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:500;padding:6px 12px;font-size:12.5px;border-radius:8px;">⟳ Actualiser</button>
     </div>
     <div class="row" id="chips" style="margin-top:10px;"></div>
+    <div class="meta" id="hint" style="margin-top:6px;"></div>
   </div>
 
   <div id="results"><div class="empty">Ajoute des personnages pour lancer la comparaison.</div></div>
@@ -144,6 +145,11 @@ function renderChips() {
   $("#chips").querySelectorAll("[data-del]").forEach(b =>
     b.addEventListener("click", () => { sel = sel.filter(c => c.name !== b.dataset.del); save(); renderChips(); load(); }));
   $("#count").textContent = `${sel.length}/${MAX}`;
+  const unknown = rosterNames.length ? sel.filter(c => !rosterNames.some(n => n.toLowerCase() === c.name.toLowerCase())) : [];
+  const hint = document.getElementById("hint");
+  if (hint) hint.textContent = unknown.length
+    ? `⚠ Pas dans le roster de guilde : ${unknown.map(c => c.name).join(", ")} — vérifie l'orthographe (la comparaison reste possible).`
+    : "";
 }
 
 function save() { localStorage.setItem("lotp_compare", JSON.stringify(sel.map(c => c.name))); }
@@ -152,10 +158,6 @@ function addName(raw) {
   const name = String(raw || "").trim();
   if (!name || sel.length >= MAX) return;
   if (sel.some(c => c.name.toLowerCase() === name.toLowerCase())) return;
-  if (rosterNames.length && !rosterNames.some(n => n.toLowerCase() === name.toLowerCase())) {
-    $("#results").innerHTML = `<div class="card"><div class="err">« ${esc(name)} » n'est pas dans le roster de la guilde (royaume Hyjal).</div></div>`;
-    return;
-  }
   sel.push({ name });
   save(); renderChips(); load();
   $("#newname").value = "";
