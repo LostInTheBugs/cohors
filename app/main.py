@@ -286,6 +286,8 @@ def _init_db() -> None:
         conn.execute("UPDATE users SET role='admin' WHERE is_admin=1 AND role != 'admin'")
         if "lang" not in cols:
             conn.execute("ALTER TABLE users ADD COLUMN lang TEXT NOT NULL DEFAULT ''")
+        if "voice_nick" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN voice_nick TEXT NOT NULL DEFAULT ''")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_status ON sims(status)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
         # migrations (idempotent)
@@ -643,8 +645,21 @@ def me(request: Request):
     user = _get_session_user(request)
     if user is None:
         raise HTTPException(401, "Non connecté")
+    with _db_lock, _db() as conn:
+        main = conn.execute(
+            "SELECT display, name FROM char_links WHERE user_email=? AND is_main=1 LIMIT 1",
+            (user["email"],),
+        ).fetchone()
+    voice_default = ""
+    if main is not None:
+        voice_default = (main["display"] or main["name"] or "").strip()
+    if not voice_default:
+        voice_default = (user["name"] or user["email"].split("@")[0]).strip()
+    voice_raw = (user["voice_nick"] or "").strip()
     return {"email": user["email"], "name": user["name"], "is_admin": bool(user["is_admin"]),
-            "role": _user_role(user), "lang": _user_lang(user)}
+            "role": _user_role(user), "lang": _user_lang(user),
+            "voice_nick": voice_raw or voice_default, "voice_nick_raw": voice_raw,
+            "voice_default": voice_default}
 
 
 @app.get("/api/invite/{token}")
@@ -2267,6 +2282,7 @@ def settings_page(request: Request):
 class SettingsRequest(BaseModel):
     lang: str | None = Field(None, max_length=5)
     name: str | None = Field(None, max_length=60)
+    voice_nick: str | None = Field(None, max_length=60)
 
 
 @app.post("/api/me/settings")
@@ -2283,11 +2299,14 @@ def save_my_settings(payload: SettingsRequest, request: Request):
         if not name:
             raise HTTPException(400, "Le nom ne peut pas être vide.")
         updates["name"] = name
+    if payload.voice_nick is not None:
+        updates["voice_nick"] = " ".join(payload.voice_nick.split())[:60]
     if updates:
         sets = ", ".join(f"{k}=?" for k in updates)
         with _db_lock, _db() as conn:
             conn.execute(f"UPDATE users SET {sets} WHERE id=?", (*updates.values(), user["id"]))
-    return {"ok": True, "lang": updates.get("lang", _user_lang(user)), "name": updates.get("name", user["name"])}
+    return {"ok": True, "lang": updates.get("lang", _user_lang(user)), "name": updates.get("name", user["name"]),
+            "voice_nick": updates.get("voice_nick", user["voice_nick"])}
 
 
 class PasswordChangeRequest(BaseModel):
@@ -2330,6 +2349,37 @@ VOICE_PUBLIC_HOST = os.environ.get("VOICE_PUBLIC_HOST", "ts.gensbien.fr")
 VOICE_CLIENT_ZIP = DATA_DIR / "voice" / "LOTP-TeamSpeak.zip"
 _VOICE_APP_BASE = PUBLIC_BASE_URL or "https://lotp.gensbien.fr"
 
+# Script injecté dans le client web : pré-remplit le pseudo (fragment #nickname=...).
+_VOICE_EXTRAS_JS = """
+(function () {
+  try {
+    var m = String(location.hash || "").match(/[#&]nickname=([^&]+)/);
+    if (!m) return;
+    var nick = "";
+    try { nick = decodeURIComponent(m[1]); } catch (e) { nick = m[1]; }
+    nick = (nick || "").trim();
+    if (!nick) return;
+    try { localStorage.setItem("webspeak:nickname", nick); } catch (e) {}
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries += 1;
+      var input = document.querySelector("#nickname");
+      if (input) {
+        try {
+          var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+          setter.call(input, nick);
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        } catch (e) {}
+        clearInterval(timer);
+        return;
+      }
+      if (tries > 80) clearInterval(timer);
+    }, 400);
+  } catch (e) {}
+})();
+"""
+
 
 class VoiceGateMiddleware:
     """Réécrit les requêtes du vhost vocal (en-tête X-LOTP-Voice) vers /__voice*."""
@@ -2368,6 +2418,9 @@ async def voice_portal(request: Request, rest: str):
         if request.url.query:
             nxt += "?" + request.url.query
         return RedirectResponse(f"{_VOICE_APP_BASE}/login?next={quote(nxt, safe='')}", status_code=302)
+    if rest == "/__lotp_extras.js":
+        return Response(content=_VOICE_EXTRAS_JS, media_type="application/javascript; charset=utf-8",
+                        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
     url = VOICE_BACKEND + rest
     if request.url.query:
         url += "?" + request.url.query
@@ -2380,7 +2433,19 @@ async def voice_portal(request: Request, rest: str):
             upstream = await client.request(request.method, url, headers=headers, content=body)
     except httpx.HTTPError as exc:
         return PlainTextResponse(f"Vocal indisponible ({exc.__class__.__name__})", status_code=502)
-    out = Response(content=upstream.content, status_code=upstream.status_code)
+    content = upstream.content
+    if "text/html" in (upstream.headers.get("content-type") or ""):
+        html = content.decode("utf-8", "replace")
+        if "__lotp_extras.js" not in html:
+            tag = '<script src="/__lotp_extras.js"></script>'
+            if "</head>" in html:
+                html = html.replace("</head>", tag + "</head>", 1)
+            elif "</body>" in html:
+                html = html.replace("</body>", tag + "</body>", 1)
+            else:
+                html = html + tag
+        content = html.encode("utf-8")
+    out = Response(content=content, status_code=upstream.status_code)
     for key, value in upstream.headers.multi_items():
         lk = key.lower()
         if lk in _VOICE_HOP_RESP:

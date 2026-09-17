@@ -13,111 +13,80 @@
 <meta name="apple-mobile-web-app-title" content="LOTP">
 <style>
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
+          --acc:#b1002e; --acc2:#dfa55a; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-  .topbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
-  .brand { display:flex; gap:12px; align-items:center; }
-  .crest { width:44px; height:44px; border-radius:9px; }
-  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
-  .brandname span { color:var(--acc2); }
-  .tagline { color:var(--mut); font-size:12.5px; }
-  .userbox { margin-left:auto; display:flex; gap:14px; align-items:center; }
-  .who { color:var(--acc2); font-weight:600; font-size:14px; }
-  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
-  .hlink:hover { text-decoration:underline; }
-  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
-  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
-         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
-         border:1px solid var(--line); background:transparent; }
-  .tab:hover { color:var(--fg); border-color:#3a4763; }
-  .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
-  h2 { font-size:17px; margin:0 0 10px; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .spacer { flex:1; }
-  .btn { background:linear-gradient(135deg,var(--acc),#7d0020); border:0; color:#fff; border-radius:10px;
-         padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
-  .gbtn { background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:10px;
-          padding:8px 14px; font-size:13.5px; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
-  .gbtn:hover { border-color:#3a4763; }
-  .meta { color:var(--mut); font-size:12.5px; margin:8px 0 0; }
-  #frame { width:100%; height:calc(100vh - 260px); min-height:560px; border:1px solid var(--line); border-radius:12px; background:#0b0f17; }
-  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
-  .hidden { display:none !important; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  #shell { display:flex; height:100vh; }
+  #side { display:flex; flex-direction:column; width:432px; min-width:320px; max-width:48vw;
+          background:var(--card); border-right:1px solid var(--line); }
+  #sidehead { display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid var(--line); }
+  .sidetitle { font-weight:700; font-size:13.5px; letter-spacing:.3px; }
+  .sidebtn { margin-left:auto; color:var(--acc2); text-decoration:none; font-size:14px; font-weight:700;
+             border:1px solid var(--line); border-radius:8px; padding:3px 10px; }
+  .sidebtn:hover { border-color:var(--acc2); }
+  #vframe { flex:1; width:100%; border:0; background:#0b0f17; }
+  #sidefoot { display:flex; align-items:center; gap:8px; padding:6px 10px; border-top:1px solid var(--line);
+              font-size:12px; color:var(--mut); white-space:nowrap; }
+  #sidefoot a { color:var(--acc2); text-decoration:none; font-weight:600; }
+  #sidefoot a:hover { text-decoration:underline; }
+  #mainwrap { flex:1; min-width:0; display:flex; background:var(--bg); }
+  #mainframe { flex:1; width:100%; border:0; }
+  body.side-hidden #side { display:none; }
+  #reopen { position:fixed; right:16px; bottom:16px; z-index:220; width:46px; height:46px; border-radius:50%;
+            border:1px solid var(--line); background:var(--card2); color:var(--fg); font-size:20px; cursor:pointer;
+            box-shadow:0 8px 24px rgba(0,0,0,.5); }
+  #reopen:hover { border-color:var(--acc2); }
+  @media (max-width: 940px) {
+    #side { position:fixed; top:0; bottom:0; left:0; z-index:210; width:min(92vw, 400px); max-width:none;
+            border-right:0; box-shadow:0 0 44px rgba(0,0,0,.65); }
+  }
 </style>
 <link rel="stylesheet" href="/static/theme.css">
 </head>
 <body>
-<div class="wrap">
-  <header class="topbar">
-    <div class="brand">
-      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
-      <div>
-        <div class="brandname">LOTP <span>Vocal</span></div>
-        <div class="tagline">Le TeamSpeak de la guilde dans ton navigateur — aucun logiciel à installer.</div>
-      </div>
+<div id="shell">
+  <aside id="side">
+    <div id="sidehead">
+      <span class="sidetitle">🎧 Vocal</span>
+      <a class="sidebtn" href="/dashboard" id="exit" title="Quitter le mode panneau vocal">⇱</a>
     </div>
-    <div class="userbox">
-      <span class="who" id="who"></span>
-      <a class="hlink" href="/settings">⚙️ Paramètres</a>
-      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    <iframe id="vframe" src="about:blank" allow="microphone; autoplay" title="WebSpeak — client web TeamSpeak"></iframe>
+    <div id="sidefoot">
+      <a href="/api/voice/client" id="dlclient">📦 Client portable</a>
+      <span>·</span>
+      <a href="/guild">🛡️ Infos &amp; liens</a>
     </div>
-  </header>
-  <nav class="tabs" id="navmain"></nav>
-
-  <div class="card">
-    <div class="row">
-      <button class="btn" id="pop">🎧 Ouvrir en fenêtre</button>
-      <a class="gbtn" href="https://ts.gensbien.fr" target="_blank" rel="noopener">↗️ Ouvrir dans un onglet</a>
-      <span class="spacer"></span>
-      <a class="gbtn" href="/guild">🛡️ Infos &amp; liens</a>
-    </div>
-    <p class="meta">Astuce : « Ouvrir en fenêtre » garde le vocal pendant que tu navigues dans l'app.</p>
-    <p class="meta">🔒 Accès réservé aux membres connectés. Choisis ton pseudo et entre dans le vocal — le micro peut être refusé par le navigateur : autorise-le pour parler.</p>
-  </div>
-
-  <div class="card">
-    <div class="row">
-      <a class="btn" href="/api/voice/client" id="dlclient">📦 Client portable (Windows)</a>
-      <span class="spacer"></span>
-      <span class="meta" style="margin:0">Meilleure qualité audio, aucun installateur requis.</span>
-    </div>
-    <p class="meta">Le client web ci-dessous fonctionne partout, sans rien installer. Pour encore mieux (micro, qualité), télécharge le client portable préconfiguré — réservé aux membres connectés.</p>
-  </div>
-
-  <iframe id="frame" src="https://ts.gensbien.fr" allow="microphone; autoplay" title="WebSpeak — client web TeamSpeak"></iframe>
-  <p class="meta">Si le client ne s'affiche pas ici, ouvre-le en fenêtre ou dans un onglet.</p>
-
-  <footer><span id="ver"></span> · Client web : WebSpeak · Outil non affilié à Blizzard Entertainment</footer>
+  </aside>
+  <main id="mainwrap">
+    <iframe id="mainframe" name="lotp-main" src="/dashboard" title="LOTP — application"></iframe>
+  </main>
+  <button id="reopen" hidden title="Afficher le panneau vocal">🎧</button>
 </div>
-<script src="/static/nav.js"></script>
 <script src="/static/i18n.js"></script>
 <script>
-const $ = (s) => document.querySelector(s);
-const jget = async (u) => { const r = await fetch(u);
-  const j = await r.json().catch(() => ({}));
-  if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
-  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
-
-$("#pop").addEventListener("click", () => {
-  const w = window.open("https://ts.gensbien.fr", "lotp_voice", "width=460,height=800");
-  if (w) { w.opener = null; w.focus(); }
-});
-
-$("#logout").addEventListener("click", async (ev) => {
-  ev.preventDefault();
-  await fetch("/api/logout", { method: "POST" });
-  location.href = "/login";
-});
-
-(async () => {
-  try {
-    const me = await jget("/api/me");
-    $("#who").textContent = me.name || me.email;
-  } catch (e) { return; }
-  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+(function () {
+  if (window.self !== window.top) { location.replace("/dashboard"); return; }
+  var $ = function (s) { return document.querySelector(s); };
+  var narrow = function () { return window.matchMedia("(max-width: 940px)").matches; };
+  function setPanel(open) {
+    document.body.classList.toggle("side-hidden", !open);
+    $("#reopen").hidden = open;
+  }
+  setPanel(!narrow());
+  $("#reopen").addEventListener("click", function () { setPanel(true); });
+  window.addEventListener("message", function (ev) {
+    if (ev.origin !== location.origin) return;
+    if (ev.data && ev.data.type === "lotp-voice-toggle") {
+      setPanel(document.body.classList.contains("side-hidden"));
+    }
+  });
+  fetch("/api/me").then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+    var nick = me && (me.voice_nick || "").trim();
+    $("#vframe").src = "https://ts.gensbien.fr/" + (nick ? "#nickname=" + encodeURIComponent(nick) : "");
+  }).catch(function () {
+    $("#vframe").src = "https://ts.gensbien.fr/";
+  });
 })();
 </script>
 </body>

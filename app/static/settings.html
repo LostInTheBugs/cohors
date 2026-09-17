@@ -61,7 +61,7 @@
       <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
       <div>
         <div class="brandname">LOTP <span>Paramètres</span></div>
-        <div class="tagline">Langue, nom et mot de passe — liés à ton compte.</div>
+        <div class="tagline">Langue, nom, vocal et mot de passe — liés à ton compte.</div>
       </div>
     </div>
     <div class="userbox">
@@ -86,6 +86,16 @@
       <span id="name-msg"></span>
     </div>
     <p class="note">Langue et nom sont liés à ton compte (ils te suivent sur tous tes appareils).</p>
+  </div>
+
+  <div class="card">
+    <h2>🎧 Vocal (TeamSpeak)</h2>
+    <div class="row">
+      <input type="text" id="voice-nick" maxlength="60" placeholder="Pseudo dans le vocal">
+      <button id="voice-save">💾 Enregistrer</button>
+      <span id="voice-msg"></span>
+    </div>
+    <p class="note">Par défaut : le nom de ton personnage principal (fiche 👥 Personnages). Ce pseudo est pré-rempli quand tu rejoins le vocal depuis l'app.</p>
   </div>
 
   <div class="card">
@@ -135,6 +145,15 @@ $("#name-save").addEventListener("click", async () => {
   $("#name-save").disabled = false;
 });
 
+$("#voice-save").addEventListener("click", async () => {
+  $("#voice-save").disabled = true;
+  try {
+    await jpost("/api/me/settings", { voice_nick: $("#voice-nick").value });
+    setMsg("#voice-msg", "Pseudo vocal mis à jour ✓", true);
+  } catch (e) { setMsg("#voice-msg", e.message, false); }
+  $("#voice-save").disabled = false;
+});
+
 $("#pw-save").addEventListener("click", async () => {
   const cur = $("#pw-cur").value, nw = $("#pw-new").value, nw2 = $("#pw-new2").value;
   if (!cur || !nw || !nw2) { setMsg("#pw-msg", "Remplis tous les champs.", false); return; }
@@ -154,6 +173,8 @@ $("#pw-save").addEventListener("click", async () => {
     const me = await jget("/api/me");
     $("#who").textContent = me.name || me.email;
     $("#name").value = me.name || "";
+    $("#voice-nick").value = me.voice_nick_raw || "";
+    $("#voice-nick").placeholder = "Par défaut : " + (me.voice_default || "…");
     let lang = "";
     try { lang = localStorage.getItem("lotp_lang") || ""; } catch (e) {}
     if (!lang) lang = document.documentElement.lang === "en" ? "en" : "fr";

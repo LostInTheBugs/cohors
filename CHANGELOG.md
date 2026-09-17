@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.032] — 2026-09-17
+
+### Added
+
+- 🎧 **Persistent voice panel**: the Voice page is now a shell — the TeamSpeak
+  web client sits in a left panel while the app keeps working on the right, and
+  navigating never reloads the voice client. The 🎧 « Vocal » menu item
+  toggles the panel; a floating 🎧 button reopens it when hidden.
+- Settings: « 🎧 Vocal (TeamSpeak) » — voice nickname, defaulting to the
+  linked main character's name. The app pre-fills it in the web client
+  (`#nickname=` fragment + a small injected script → `webspeak:nickname`).
+
+### Removed
+
+- Voice popup / « open in a window » buttons (superseded by the panel).
+
 ## [2026.09.031] — 2026-09-17
 
 ### Changed

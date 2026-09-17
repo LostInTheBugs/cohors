@@ -42,12 +42,16 @@
     }
   });
   html += '<a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>';
-  html += '<button class="tab" id="voicepop" type="button" title="Ouvrir le vocal dans une fenêtre">🎧</button>';
   nav.innerHTML = html;
-  var vp = document.getElementById("voicepop");
-  if (vp) vp.addEventListener("click", function () {
-    var w = window.open("https://ts.gensbien.fr", "lotp_voice", "width=460,height=800");
-    if (w) { w.opener = null; w.focus(); }
+  // Vocal : dans le panneau vocal (page encadrée) → bascule le panneau ; sinon → page /voice.
+  var voicelink = nav.querySelector('a.tab[href="/voice"]');
+  if (voicelink) voicelink.addEventListener("click", function (ev) {
+    try {
+      if (window.self !== window.top) {
+        ev.preventDefault();
+        window.top.postMessage({ type: "lotp-voice-toggle" }, "*");
+      }
+    } catch (e) {}
   });
 
   var css = document.createElement("style");
