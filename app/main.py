@@ -280,7 +280,7 @@ def report_json(sim_id: str):
     return FileResponse(r["report_json"], media_type="application/json")
 
 
-@app.get("/api/health")
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health():
     with _db_lock, _db() as conn:
         queued = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status='queued'").fetchone()["c"]
@@ -288,6 +288,6 @@ def health():
     return {"ok": True, "version": VERSION, "queued": queued, "running": bool(running), "simc_image": SIMC_IMAGE}
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def index():
     return FileResponse(STATIC_DIR / "index.html")
