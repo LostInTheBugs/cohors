@@ -565,6 +565,14 @@ def characters_page(request: Request):
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "characters.html")
 
+@app.api_route("/mains", methods=["GET", "HEAD"])
+def mains_page(request: Request):
+    """Page ⭐ Mains & alts — tous les personnages liés, groupés sous leur main."""
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "mains.html")
+
+
 
 @app.api_route("/raids", methods=["GET", "HEAD"])
 def raids_page(request: Request):
@@ -1990,6 +1998,28 @@ def my_chars(request: Request):
             (user["email"],),
         ).fetchall()
     return {"chars": [dict(r) for r in rows]}
+
+
+@app.get("/api/mains")
+def api_mains(request: Request):
+    """Tous les personnages liés de la guilde, regroupés par compte/main (sans e-mails)."""
+    _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT c.user_email, c.realm, c.name, c.display, c.is_main, COALESCE(u.name, '') AS user_name "
+            "FROM char_links c LEFT JOIN users u ON u.email = c.user_email "
+            "ORDER BY c.is_main DESC, c.name COLLATE NOCASE"
+        ).fetchall()]
+    groups: dict = {}
+    for r in rows:
+        g = groups.setdefault(r["user_email"], {"user": r["user_name"] or "(compte)", "chars": []})
+        g["chars"].append({"realm": r["realm"], "name": r["name"],
+                           "display": r["display"] or r["name"], "main": bool(r["is_main"])})
+    out = list(groups.values())
+    for g in out:
+        g["chars"].sort(key=lambda c: (not c["main"], (c["display"] or "").lower()))
+    out.sort(key=lambda g: ((not any(c["main"] for c in g["chars"])), g["user"].lower()))
+    return {"ok": True, "accounts": out, "total_accounts": len(out), "total_chars": len(rows)}
 
 
 @app.post("/api/me/chars")

@@ -570,7 +570,11 @@
  "connecté(s) sur TeamSpeak (hors bot)": "connected on TeamSpeak (bot excluded)",
  "⏸ En pause": "⏸ Paused",
  "⏹ Arrêté": "⏹ Stopped",
- "🚪 Déconnexion": "🚪 Sign out"
+ "🚪 Déconnexion": "🚪 Sign out",
+ "Tous les personnages de la guilde, regroupés sous leur main.": "All guild characters, grouped under their main.",
+ "Rechercher un personnage ou un joueur…": "Search a character or player…",
+ "Aucun personnage lié pour le moment.": "No characters linked yet.",
+ "aucun main défini": "no main set"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

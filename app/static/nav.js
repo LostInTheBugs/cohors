@@ -12,6 +12,7 @@
     ] },
     { label: "👥 Guilde", items: [
       { href: "/characters", label: "👥 Personnages" },
+      { href: "/mains", label: "⭐ Mains & alts" },
       { href: "/raids", label: "📊 Rapports" },
       { href: "/rankings", label: "🏆 Classements" },
       { href: "/fun", label: "🎉 Succès fun" },

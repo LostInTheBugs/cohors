@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.052 - 2026-09-17
+- New page "⭐ Mains & alts" (Guild menu): all linked characters grouped per account under their main, with search.
+
 ## 2026.09.051 - 2026-09-17
 - Cache: static assets (js/css) now served with Cache-Control no-cache + versioned URLs in pages (?v=) so phones/PWA always pick up new versions; service worker cache bumped.
 
