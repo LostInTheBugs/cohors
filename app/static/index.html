@@ -84,6 +84,7 @@
   .b-failed { color: var(--err); border-color: #5a2626; }
   .b-cache { color: #6cc7f6; border-color: #1d3f52; }
   .b-weights { color: #e8c07d; border-color: #5e4a1e; }
+  .b-gear { color: #c9a6ff; border-color: #46306b; }
   .wbox { width: 100%; margin-top: 4px; display: grid; gap: 5px; }
   .wrow { display: flex; align-items: center; gap: 10px; font-size: 13px; }
   .wrow .wstat { width: 150px; color: var(--mut); }
@@ -121,6 +122,7 @@
     <a class="tab" href="/characters">👥 Personnages</a>
     <a class="tab" href="/raids">📊 Rapports</a>
     <a class="tab" href="/compare">⚖️ Comparateur</a>
+    <a class="tab" href="/gear">🧰 Top Stuff</a>
     <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
   </nav>
   <p class="sub">Colle ton export <b>/simc</b> (en jeu : tape <b>/simc</b> puis copie tout le texte) et lance la simulation.</p>
@@ -222,6 +224,8 @@ function render(sims) {
     if (s.status === "done") {
       if (s.kind === "weights") {
         right = `<span class="badge b-weights">⚖️ Poids de stats</span>`;
+      } else if (s.kind === "gear") {
+        right = `<span class="badge b-gear">🧰 Top Stuff</span>`;
       } else {
         right = `<span class="dps">${fmt(s.dps)} DPS <small>± ${s.dps_error_pct != null ? s.dps_error_pct.toFixed(2) : "?"} %</small></span>`;
       }

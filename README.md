@@ -28,8 +28,9 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       optionally share it with the guild (max 20 per account).
 - [x] Invitation e-mails — send (and re-send) invite links by e-mail from
       `noreply@ruban-adhesif.com` (SMTP), with a French HTML template.
-- [x] Invitation e-mails — send (and re-send) invite links by e-mail from
-      `noreply@ruban-adhesif.com` (SMTP), with a French HTML template.
+- [x] « Top Stuff » — paste Wowhead item links or IDs (max 15): each item is
+      simulated on your character (SimulationCraft profilesets) and ranked by DPS;
+      rings and trinkets are tested on both slots (item data from the Blizzard API).
 
 ## Requirements
 
@@ -98,10 +99,6 @@ reverse proxy and small until the simulation worker is split out.
 | `SMTP_PORT` | `587` | SMTP submission port (STARTTLS) |
 | `SMTP_USER` / `SMTP_PASSWORD` | — | SMTP credentials (mailbox used to send) |
 | `SMTP_FROM` | — | From header (e.g. `LOTP Simulateur <noreply@ruban-adhesif.com>`) |
-| `SMTP_HOST` | — | SMTP server for outgoing e-mails (e.g. `mail.ruban-adhesif.com`) |
-| `SMTP_PORT` | `587` | SMTP submission port (STARTTLS) |
-| `SMTP_USER` / `SMTP_PASSWORD` | — | SMTP credentials (mailbox used to send) |
-| `SMTP_FROM` | — | From header (e.g. `LOTP Simulateur <noreply@ruban-adhesif.com>`) |
 
 ## API
 
@@ -115,7 +112,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me` | GET | Current account |
 | `/api/register` | POST | Register (or reset a password) from an invitation `{token, name, email?, password}` |
 | `/api/invite/{token}` | GET | Invitation info (public) |
-| `/api/sim` | POST | Submit `{input, iterations, label?, kind?}` (`kind`: `dps` or `weights`) — returns `{id, status, position?, cached}` |
+| `/api/sim` | POST | Submit `{input, iterations, label?, kind?, items?}` (`kind`: `dps`, `weights` or `gear` — `items` = item refs for gear) — returns `{id, status, position?, cached, warnings}` |
 | `/api/sims` | GET | Last 50 simulations (summary) |
 | `/api/sims/{id}` | GET | One simulation (full record) |
 | `/reports/{id}/report.html` | GET | SimulationCraft HTML report (public) |
@@ -153,7 +150,7 @@ app/wcl.py              Warcraft Logs v2 client (raid reports, parses)
 app/static/raids.html   Raid reports page (French)
 app/static/compare.html Member comparison page (French)
 app/mailer.py           Outgoing e-mail (invitations) via SMTP
-app/mailer.py           Outgoing e-mail (invitations) via SMTP
+app/static/gear.html    « Top Stuff » gear comparison page (French)
 worker/simrun.py        SimulationCraft engine wrapper (official Docker image)
 Dockerfile              App image (Python + Docker CLI)
 docker-compose.yml      App deployment (Docker socket + data dir, both required)
@@ -163,7 +160,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.010` (see `CHANGELOG.md`).
+Current version: `2026.09.011` (see `CHANGELOG.md`).
 
 ## License
 

@@ -161,7 +161,7 @@ def _init_db() -> None:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
         # migrations (idempotent)
         for table, col in (("sims", "user_email"), ("sims", "user_name"),
-                           ("sims", "kind"), ("sims", "weights")):
+                           ("sims", "kind"), ("sims", "weights"), ("sims", "gear")):
             cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
             if col not in cols:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
@@ -288,16 +288,17 @@ def _run_one(sim_id: str) -> None:
         res = run_sim(profile_path=input_file, iterations=iterations, outdir=input_file.parent, timeout=SIM_TIMEOUT, extra=extra)
         ok = bool(res.get("ok"))
         weights = json.dumps(res.get("scale_factors")) if res.get("scale_factors") else None
+        gear = json.dumps(res.get("gear")) if res.get("gear") else None
         with _db_lock, _db() as conn:
             conn.execute(
                 """UPDATE sims SET status=?, dps=?, dps_error_pct=?, wall_s=?, report_html=?, report_json=?,
-                                    error=?, finished=?, weights=? WHERE id=?""",
+                                    error=?, finished=?, weights=?, gear=? WHERE id=?""",
                 (
                     "done" if ok else "failed",
                     res.get("dps"), res.get("dps_error_pct"), res.get("wall_s"),
                     res.get("html"), res.get("json"),
                     None if ok else (res.get("log_tail") or "échec de la simulation")[-2000:],
-                    time.time(), weights, sim_id,
+                    time.time(), weights, gear, sim_id,
                 ),
             )
     except Exception as exc:  # noqa: BLE001
@@ -397,6 +398,13 @@ class RegisterRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=200)
 
 
+@app.api_route("/gear", methods=["GET", "HEAD"])
+def gear_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "gear.html")
+
+
 @app.post("/api/login")
 def login(payload: LoginRequest, request: Request, response: Response):
     ip = _client_ip(request)
@@ -480,11 +488,50 @@ def register(payload: RegisterRequest, request: Request, response: Response):
 # ---------------------------------------------------------------------------
 # Sim API
 # ---------------------------------------------------------------------------
+GEAR_MAX_ITEMS = 15
+ITEM_REF_RE = re.compile(r"(?<!\d)(\d{4,7})(?!\d)")
+
+
+def _build_gear_input(profile_text: str, items_text: str) -> tuple[str, list[str]]:
+    """Ajoute les profilesets « Top Stuff » au profil — renvoie (input, avertissements)."""
+    refs: list[int] = []
+    seen: set[int] = set()
+    for m in ITEM_REF_RE.finditer(items_text or ""):
+        iid = int(m.group(1))
+        if iid not in seen:
+            seen.add(iid)
+            refs.append(iid)
+    if not refs:
+        raise HTTPException(400, "Indique au moins une pièce (lien Wowhead ou identifiant).")
+    warnings: list[str] = []
+    if len(refs) > GEAR_MAX_ITEMS:
+        warnings.append(f"{len(refs) - GEAR_MAX_ITEMS} pièce(s) ignorée(s) — maximum {GEAR_MAX_ITEMS} par comparaison.")
+        refs = refs[:GEAR_MAX_ITEMS]
+    lines: list[str] = []
+    for iid in refs:
+        try:
+            it = bnet.item(iid)
+        except bnet.BnetError as exc:
+            warnings.append(f"{iid} : pièce ignorée ({exc}).")
+            continue
+        slots = bnet.INV_TO_SLOTS.get(it["inv_type"])
+        if not slots:
+            warnings.append(f"{it['name']} : emplacement non géré ({it['inv_type_fr'] or it['inv_type'] or '?'}).")
+            continue
+        clean = it["name"].replace('"', "'")[:48]
+        for slot in slots:
+            lines.append(f'profileset."{clean} · {bnet.SLOT_FR[slot]} [{slot}:{iid}]"={slot}=,id={iid}')
+    if not lines:
+        raise HTTPException(400, "Aucune pièce exploitable parmi celles fournies.")
+    return profile_text + "\n\n" + "\n".join(lines) + "\n", warnings
+
+
 class SimRequest(BaseModel):
     input: str = Field(..., min_length=30, max_length=MAX_INPUT_CHARS)
     iterations: int = DEFAULT_ITERATIONS
     label: str = ""
     kind: str = "dps"
+    items: str = Field("", max_length=2000)
 
 
 @app.post("/api/sim")
@@ -492,11 +539,14 @@ def submit_sim(payload: SimRequest, request: Request):
     user = _require_user(request)
     if payload.iterations not in ITER_CHOICES:
         raise HTTPException(400, f"Valeurs d'itérations acceptées : {', '.join(map(str, ITER_CHOICES))}")
-    kind = payload.kind if payload.kind in ("dps", "weights") else None
+    kind = payload.kind if payload.kind in ("dps", "weights", "gear") else None
     if kind is None:
         raise HTTPException(400, "Type de simulation invalide.")
     text = payload.input.replace("\r\n", "\n").strip()
     label = payload.label.strip()[:60]
+    warnings: list[str] = []
+    if kind == "gear":
+        text, warnings = _build_gear_input(text, payload.items)
     ip = _client_ip(request)
     now = time.time()
 
@@ -540,14 +590,14 @@ def submit_sim(payload: SimRequest, request: Request):
                  cached["dps"], cached["dps_error_pct"], cached["wall_s"], cached["report_html"], cached["report_json"],
                  now, now, user["email"], user["name"], kind, cached["weights"]),
             )
-            return {"id": sim_id, "status": "done", "cached": True}
+            return {"id": sim_id, "status": "done", "cached": True, "warnings": warnings}
 
         conn.execute(
             """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, user_email, user_name, kind)
                VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, ?)""",
             (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"], kind),
         )
-        return {"id": sim_id, "status": "queued", "cached": False, "position": queue_len + 1}
+        return {"id": sim_id, "status": "queued", "cached": False, "position": queue_len + 1, "warnings": warnings}
 
 
 def _parse_weights_json(raw: str | None) -> list | None:
@@ -575,6 +625,7 @@ def _public_row(r: sqlite3.Row) -> dict:
         "error": (r["error"] or "")[:300] if r["status"] == "failed" else None,
         "kind": (r["kind"] or "dps"),
         "weights": _parse_weights_json(r["weights"]) if r["kind"] == "weights" else None,
+        "gear": _parse_weights_json(r["gear"]) if r["kind"] == "gear" else None,
     }
 
 
@@ -595,6 +646,36 @@ def get_sim(sim_id: str, request: Request):
         raise HTTPException(404, "Simulation inconnue")
     d = _public_row(r)
     d["cached_from"] = r["cached_from"]
+    if r["kind"] == "gear" and d.get("gear"):
+        base = r["dps"] or 0.0
+        enriched = []
+        for g in d["gear"]:
+            m = re.search(r"\[(\w+):(\d+)\]$", g.get("name") or "")
+            slot, item_id = (m.group(1), int(m.group(2))) if m else (None, None)
+            label = re.sub(r"\s*\[[^\]]*\]\s*$", "", g.get("name") or "")
+            info = {}
+            if item_id:
+                try:
+                    info = bnet.item(item_id)
+                except bnet.BnetError:
+                    info = {}
+            dps = float(g.get("dps") or 0.0)
+            enriched.append({
+                "label": label,
+                "slot": slot,
+                "slot_fr": bnet.SLOT_FR.get(slot, slot or ""),
+                "item_id": item_id,
+                "name": info.get("name") or label,
+                "icon": info.get("icon"),
+                "quality": info.get("quality") or "COMMON",
+                "dps": dps,
+                "err_pct": round(100 * (float(g.get("err") or 0.0)) / dps, 2) if dps else None,
+                "delta": (dps - base) if base else None,
+                "delta_pct": round(100 * (dps - base) / base, 2) if base else None,
+            })
+        enriched.sort(key=lambda e: e["dps"], reverse=True)
+        d["gear"] = enriched
+        d["gear_base_dps"] = base
     return d
 
 
@@ -845,7 +926,6 @@ class InviteRequest(BaseModel):
     email: str = Field("", max_length=200)
     note: str = Field("", max_length=120)
     send_email: bool = False
-    send_email: bool = False
 
 
 class ActiveRequest(BaseModel):
@@ -954,25 +1034,6 @@ def admin_create_invite(payload: InviteRequest, request: Request):
         except mailer.MailError as exc:
             mail_result = {"sent": False, "error": str(exc)}
     return {"token": token, "link": _invite_link(token), "expires_in_days": INVITE_TTL_DAYS, "mail": mail_result}
-
-
-@app.post("/api/admin/invites/{token}/send")
-def admin_send_invite(token: str, request: Request):
-    _require_admin(request)
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT * FROM invites WHERE token=?", (token,)).fetchone()
-    if r is None:
-        raise HTTPException(404, "Invitation inconnue.")
-    if r["used"] is not None or r["expires"] < time.time():
-        raise HTTPException(400, "Invitation déjà utilisée ou expirée.")
-    if not r["email"]:
-        raise HTTPException(400, "Cette invitation est un lien libre (sans e-mail).")
-    try:
-        text, html = mailer.invite_mail(_invite_link(token), INVITE_TTL_DAYS)
-        mailer.send_mail(r["email"], "Invitation — LOTP Simulateur", text, html)
-    except mailer.MailError as exc:
-        raise HTTPException(502, str(exc))
-    return {"ok": True, "sent_to": r["email"]}
 
 
 @app.post("/api/admin/invites/{token}/send")

@@ -69,6 +69,28 @@ def parse_scale_factors(log: str, json_path: Path | None = None) -> list[dict] |
     return factors
 
 
+def parse_gear_results(json_path: Path | None) -> list[dict] | None:
+    """Comparaison de pièces (profilesets) : nom, DPS, marge absolue."""
+    if json_path is None or not Path(json_path).exists():
+        return None
+    try:
+        data = json.loads(Path(json_path).read_text())
+        results = ((data.get("sim") or {}).get("profilesets") or {}).get("results") or []
+    except Exception:  # noqa: BLE001
+        return None
+    out: list[dict] = []
+    for r in results:
+        mean = r.get("mean")
+        if mean is None:
+            continue
+        out.append({
+            "name": r.get("name") or "?",
+            "dps": float(mean),
+            "err": float(r["mean_error"]) if r.get("mean_error") else None,
+        })
+    return out or None
+
+
 def run_sim(
     profile_path: Path | None = None,
     container_profile: str | None = None,
@@ -123,6 +145,7 @@ def run_sim(
         "json": str(js) if js.exists() else None,
         "log_tail": "\n".join(log.splitlines()[-30:]),
         "scale_factors": parse_scale_factors(log, js),
+        "gear": parse_gear_results(js),
     }
 
 

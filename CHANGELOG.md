@@ -2,18 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
-## [2026.09.010] — 2026-09-17
+## [2026.09.011] — 2026-09-17
 
 ### Added
 
-- Invitation e-mails: when creating an invitation with an address, the link can
-  be sent automatically by e-mail (from `noreply@ruban-adhesif.com`, styled
-  French template). Pending invitations with an address get a « ✉️ Renvoyer »
-  action, and the admin panel shows the SMTP status.
-- `POST /api/admin/invites` accepts `send_email`; new
-  `POST /api/admin/invites/{token}/send` endpoint.
-- Configuration: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
-  `SMTP_FROM`.
+- « Top Stuff » — gear comparison: paste Wowhead item links or IDs (max 15);
+  each item is simulated on the character (SimulationCraft profilesets) and
+  ranked by DPS. Rings and trinkets are tested on both slots. Item names,
+  quality and icons come from the Blizzard item API.
+- New page `/gear` (🧰 Top Stuff); `POST /api/sim` accepts `kind=gear` with an
+  `items` field (item references) and returns `warnings` when pieces are
+  skipped.
 
 ## [2026.09.010] — 2026-09-17
 

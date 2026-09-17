@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Top Stuff</title>
+<link rel="icon" type="image/png" href="/static/crest.png">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 18px 40px; }
+  header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brandname span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 12.5px; }
+  .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+         color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+         border: 1px solid var(--line); background: transparent;
+         transition: border-color .15s, color .15s, background .15s; }
+  .tab:hover { color: var(--fg); border-color: #3a4763; }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+  .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+  .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+  .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
+  .sub { color: var(--mut); font-size: 14px; margin: 0 0 22px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+  label { display: block; font-size: 13px; color: var(--mut); margin: 0 0 6px; }
+  textarea { width: 100%; min-height: 150px; resize: vertical; background: var(--bg); color: var(--fg);
+             border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: 13px/1.5 ui-monospace, Consolas, monospace; }
+  textarea#items { min-height: 84px; }
+  textarea:focus, input:focus, select:focus { outline: 2px solid var(--acc); outline-offset: 0; border-color: var(--acc); }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
+  .field { display: flex; flex-direction: column; }
+  input[type=text], select { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+            border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 170px; }
+  input[type=text] { width: 100%; }
+  button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+           padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  .profbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+             border-top: 1px dashed var(--line); margin-top: 14px; padding-top: 12px; }
+  .profbar .plab { color: var(--mut); font-size: 13px; font-weight: 600; }
+  .profbar select { min-width: 210px; }
+  .profbar input[type=text] { min-width: 190px; width: auto; }
+  .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
+  .chkline input { accent-color: var(--acc); }
+  .pbtn { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+          padding: 6px 12px; font-size: 12.5px; border-radius: 8px; cursor: pointer; }
+  .pbtn:hover:not(:disabled) { border-color: var(--acc2); color: var(--acc2); }
+  .pbtn:disabled { opacity: .45; cursor: default; }
+  .msg-ok { color: var(--ok); } .msg-err { color: var(--err); } .msg-warn { color: var(--warn); }
+  #submit-msg, #status { margin-top: 12px; font-size: 14px; min-height: 20px; }
+  #items-count { color: var(--mut); font-size: 12.5px; margin-top: 4px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .gwrap { overflow-x: auto; }
+  table.gtable { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .gtable th { text-align: left; color: var(--mut); font-weight: 600; font-size: 12.5px;
+               padding: 4px 10px 8px; border-bottom: 1px solid var(--line); }
+  .gtable td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .gtable td.gv { text-align: right; font-variant-numeric: tabular-nums; }
+  .gicon { width: 30px; height: 30px; border-radius: 6px; display: inline-block; vertical-align: middle;
+           border: 1px solid var(--line); background: var(--bg); }
+  .gname { font-weight: 600; }
+  .gname small { color: var(--mut); font-weight: 400; }
+  .q-common { color: #dcdcdc; } .q-uncommon { color: #37e05d; } .q-rare { color: #3d9bff; }
+  .q-epic { color: #b565ff; } .q-legendary { color: #ff8c1a; } .q-artifact { color: #e6cc80; }
+  .q-heirloom { color: #57c8ff; }
+  .gpos { color: var(--ok); font-weight: 700; }
+  .gneg { color: var(--err); font-weight: 600; }
+  tr.gbase td { color: var(--mut); font-style: italic; }
+  tr.gbest { background: linear-gradient(90deg, rgba(223,165,90,.12), transparent 70%); }
+  tr.gbest td:first-child { box-shadow: inset 3px 0 0 var(--acc2); }
+  .gsum { color: var(--mut); font-size: 13px; margin-top: 10px; }
+  .gsum b { color: var(--acc2); }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 26px; padding-top: 14px; }
+  .errbox { color: var(--err); font-size: 12.5px; width: 100%; white-space: pre-wrap;
+            font-family: ui-monospace, Consolas, monospace; max-height: 90px; overflow: auto; }
+  .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Top Stuff</span></div>
+        <div class="tagline">Quelle pièce te fait gagner le plus de DPS ?</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs">
+    <a class="tab" href="/">⚔️ Simulateur</a>
+    <a class="tab" href="/characters">👥 Personnages</a>
+    <a class="tab" href="/raids">📊 Rapports</a>
+    <a class="tab" href="/compare">⚖️ Comparateur</a>
+    <a class="tab active" href="/gear">🧰 Top Stuff</a>
+    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
+  </nav>
+  <p class="sub">Colle ton export <b>/simc</b>, ajoute les pièces à comparer (liens Wowhead ou identifiants) —
+    chaque pièce est simulée sur ton personnage et classée par DPS.</p>
+
+  <div class="card">
+    <label for="inp">Ton export /simc</label>
+    <textarea id="inp" placeholder="SimC Addon export — colle ici…"></textarea>
+    <div class="profbar">
+      <span class="plab">📁 Profil :</span>
+      <select id="profs"><option value="">— charger un profil —</option></select>
+      <span class="spacer"></span>
+      <input type="text" id="pname" maxlength="60" placeholder="nom du profil (pour enregistrer)">
+      <label class="chkline"><input type="checkbox" id="pshared"> Partager avec la guilde</label>
+      <button class="pbtn" id="psave" title="Enregistrer l'export comme profil">💾 Enregistrer</button>
+      <button class="pbtn" id="pdel" title="Supprimer le profil chargé" disabled>🗑</button>
+    </div>
+    <div id="submit-msg"></div>
+  </div>
+
+  <div class="card">
+    <label for="items">Pièces à comparer</label>
+    <textarea id="items" placeholder="Un lien Wowhead par ligne, ex.&#10;https://www.wowhead.com/fr/item=251080&#10;ou juste l'identifiant : 251080"></textarea>
+    <div id="items-count">0 pièce (max 15)</div>
+    <div class="row">
+      <div class="field">
+        <label for="iter">Précision</label>
+        <select id="iter">
+          <option value="5000" selected>Rapide — 5 000 itérations</option>
+          <option value="10000">Standard — 10 000 itérations</option>
+          <option value="25000">Précis — 25 000 itérations</option>
+        </select>
+      </div>
+      <button id="go">🧰 Comparer les pièces</button>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div class="card hidden" id="result-card">
+    <h2>Résultat — classement par DPS</h2>
+    <div class="gwrap"><table class="gtable" id="result"></table></div>
+    <p class="gsum" id="gsum"></p>
+  </div>
+
+  <footer>
+    Moteur : <b>SimulationCraft</b> (image Docker officielle) · Objets : API <b>Blizzard Entertainment</b> ·
+    Outil non affilié à Blizzard Entertainment · <span id="ver">…</span>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
+  if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
+const QUAL = new Set(["common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"]);
+
+async function jfetch(method, path, body) {
+  const r = await fetch(path, { method, headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body) });
+  if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || "Erreur");
+  return d;
+}
+
+function setMsg(text, cls) { const el = $("#submit-msg"); el.className = cls || ""; el.textContent = text || ""; }
+function setStatus(html, cls) { const el = $("#status"); el.className = cls || ""; el.innerHTML = html || ""; }
+
+// ---- Profils (/simc sauvegardés) ----
+let profiles = { mine: [], shared: [] };
+let currentProfile = null;
+
+function renderProfSelect(keep) {
+  const mine = profiles.mine.map(p => `<option value="${p.id}">${esc(p.name)}${p.shared ? " ⤴" : ""}</option>`).join("");
+  const shared = profiles.shared.map(p => `<option value="${p.id}">${esc(p.name)} — ${esc(p.user_name)}</option>`).join("");
+  $("#profs").innerHTML = `<option value="">— charger un profil —</option>` +
+    (mine ? `<optgroup label="Mes profils">${mine}</optgroup>` : "") +
+    (shared ? `<optgroup label="Partagés par la guilde">${shared}</optgroup>` : "");
+  if (keep != null) $("#profs").value = String(keep);
+}
+async function loadProfiles(keep) {
+  try { profiles = await jfetch("GET", "/api/profiles"); renderProfSelect(keep); }
+  catch (e) { /* silencieux */ }
+}
+$("#profs").addEventListener("change", async () => {
+  const id = $("#profs").value;
+  if (!id) { currentProfile = null; $("#pdel").disabled = true; return; }
+  try {
+    const p = await jfetch("GET", `/api/profiles/${id}`);
+    $("#inp").value = p.input;
+    localStorage.setItem("lotp_gear_input", p.input);
+    currentProfile = { id: p.id, mine: p.mine, name: p.name };
+    $("#pdel").disabled = !p.mine;
+    if (p.mine) $("#pshared").checked = !!p.shared;
+    setMsg(`Profil « ${p.name} » chargé ✅`, "msg-ok");
+  } catch (e) { setMsg(e.message, "msg-err"); }
+});
+$("#psave").addEventListener("click", async () => {
+  const input = $("#inp").value.trim();
+  if (input.length < 30) { setMsg("Colle d'abord un export /simc dans la zone de texte.", "msg-err"); return; }
+  const explicitName = $("#pname").value.trim();
+  const shared = $("#pshared").checked;
+  try {
+    if (currentProfile && currentProfile.mine && !explicitName) {
+      await jfetch("PATCH", `/api/profiles/${currentProfile.id}`, { input, shared });
+      setMsg(`Profil « ${currentProfile.name} » mis à jour ✅`, "msg-ok");
+    } else {
+      const name = explicitName;
+      if (!name) { setMsg("Donne un nom au profil (champ « nom du profil »).", "msg-err"); return; }
+      const d = await jfetch("POST", "/api/profiles", { name, input, shared });
+      currentProfile = { id: d.id, mine: true, name };
+      setMsg(`Profil « ${name} » enregistré ✅`, "msg-ok");
+      $("#pname").value = "";
+    }
+    await loadProfiles(currentProfile.id);
+  } catch (e) { setMsg(e.message, "msg-err"); }
+});
+$("#pdel").addEventListener("click", async () => {
+  if (!currentProfile || !currentProfile.mine) return;
+  if (!confirm(`Supprimer le profil « ${currentProfile.name} » ?`)) return;
+  try {
+    await jfetch("DELETE", `/api/profiles/${currentProfile.id}`);
+    currentProfile = null; $("#pdel").disabled = true;
+    await loadProfiles(); setMsg("Profil supprimé.", "msg-ok");
+  } catch (e) { setMsg(e.message, "msg-err"); }
+});
+loadProfiles();
+
+// ---- Saisie ----
+$("#inp").value = localStorage.getItem("lotp_gear_input") || "";
+$("#inp").addEventListener("input", () => localStorage.setItem("lotp_gear_input", $("#inp").value));
+$("#items").value = localStorage.getItem("lotp_gear_items") || "";
+function updateCount() {
+  const ids = ($("#items").value.match(/(?<!\d)\d{4,7}(?!\d)/g) || []);
+  const uniq = [...new Set(ids)];
+  $("#items-count").textContent = `${uniq.length} pièce${uniq.length > 1 ? "s" : ""} (max 15)`;
+}
+$("#items").addEventListener("input", () => { localStorage.setItem("lotp_gear_items", $("#items").value); updateCount(); });
+updateCount();
+
+// ---- Résultats ----
+function gearTable(d) {
+  const rows = [];
+  if (d.gear_base_dps) {
+    rows.push(`<tr class="gbase"><td></td><td>Équipement actuel</td><td>référence</td>
+      <td class="gv">${fmt(d.gear_base_dps)}</td><td class="gv">—</td></tr>`);
+  }
+  (d.gear || []).forEach((g, i) => {
+    const q = QUAL.has((g.quality || "").toLowerCase()) ? "q-" + g.quality.toLowerCase() : "q-common";
+    const dl = g.delta_pct;
+    const dcls = dl > 0.05 ? "gpos" : (dl < -0.05 ? "gneg" : "");
+    const sign = dl > 0 ? "+" : "";
+    const best = (i === 0 && dl > 0.05) ? " gbest" : "";
+    const icon = g.icon ? `<img class="gicon" src="${esc(g.icon)}" alt="">` : `<span class="gicon"></span>`;
+    const err = g.err_pct != null ? ` <small>± ${g.err_pct.toFixed(2)} %</small>` : "";
+    rows.push(`<tr class="${best}">
+      <td>${icon}</td>
+      <td class="gname ${q}">${esc(g.name)}</td>
+      <td>${esc(g.slot_fr || "")}</td>
+      <td class="gv">${fmt(g.dps)}${err}</td>
+      <td class="gv ${dcls}">${sign}${fmt(g.delta)} <small>(${sign}${(dl ?? 0).toFixed(2)} %)</small></td></tr>`);
+  });
+  $("#result").innerHTML =
+    `<thead><tr><th style="width:36px"></th><th>Pièce</th><th>Emplacement</th><th style="text-align:right">DPS</th><th style="text-align:right">Δ vs actuel</th></tr></thead>
+     <tbody>${rows.join("")}</tbody>`;
+  $("#gsum").innerHTML = d.gear && d.gear.length
+    ? `Simulation : ${fmt(d.iterations)} itérations · ${d.wall_s != null ? d.wall_s.toFixed(0) + " s" : ""} · ${ago(d.created)} · ` +
+      `<a class="hlink" href="/reports/${encodeURIComponent(d.id)}/report.html" target="_blank" rel="noopener">Rapport complet →</a>`
+    : "";
+  $("#result-card").classList.remove("hidden");
+}
+
+let pollTimer = null;
+function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+async function loadSim(id, quiet) {
+  const d = await jfetch("GET", `/api/sims/${encodeURIComponent(id)}`);
+  if (d.status === "done" && d.gear) { gearTable(d); if (!quiet) setStatus(""); return true; }
+  if (d.status === "failed") {
+    setStatus(`Échec de la simulation — vérifie que ton export /simc est complet.`, "msg-err");
+    return true;
+  }
+  return false;
+}
+
+$("#go").addEventListener("click", async () => {
+  const input = $("#inp").value.trim();
+  const items = $("#items").value.trim();
+  if (input.length < 30) { setStatus("Colle d'abord ton export /simc (pièce du haut).", "msg-err"); return; }
+  if (!/(?<!\d)\d{4,7}(?!\d)/.test(items)) { setStatus("Ajoute au moins une pièce (lien Wowhead ou identifiant).", "msg-err"); return; }
+  $("#go").disabled = true; stopPoll();
+  setStatus(`<span class="spin">⏳</span> Envoi…`);
+  try {
+    const d = await jfetch("POST", "/api/sim", { input, items, iterations: parseInt($("#iter").value, 10), kind: "gear" });
+    if (d.warnings && d.warnings.length) setStatus(d.warnings.map(esc).join("<br>"), "msg-warn");
+    if (d.cached) {
+      await loadSim(d.id);
+      setStatus(`${(d.warnings && d.warnings.length) ? d.warnings.map(esc).join("<br>") + "<br>" : ""}⚡ Résultat en cache — affiché ci-dessous.`, "msg-ok");
+    } else {
+      setStatus(`<span class="spin">⏳</span> Simulation en cours (${$("#iter").selectedOptions[0].text.split("—")[0].trim()}) — ça peut prendre 1 à 2 minutes selon le nombre de pièces…`);
+      pollTimer = setInterval(async () => {
+        try {
+          const done = await loadSim(d.id, true);
+          if (done) { stopPoll(); setStatus("Terminé ✅", "msg-ok"); }
+        } catch (e) { /* on retente */ }
+      }, 2500);
+    }
+  } catch (e) { setStatus(e.message, "msg-err"); }
+  $("#go").disabled = false;
+});
+
+// ---- Chargement initial : derniers résultats + session ----
+(async () => {
+  try {
+    const r = await fetch("/api/sims");
+    if (r.status === 401) { location.href = "/login"; return; }
+    const d = await r.json();
+    $("#ver").textContent = "v" + d.version;
+    const last = (d.sims || []).find(s => s.kind === "gear" && s.status === "done");
+    if (last) await loadSim(last.id, true);
+  } catch (e) { /* ignoré */ }
+})();
+(async () => {
+  try {
+    const r = await fetch("/api/me");
+    if (r.status === 401) { location.href = "/login"; return; }
+    const d = await r.json();
+    $("#who").textContent = d.name || d.email;
+    if (d.is_admin) $("#admin-link").classList.remove("hidden");
+  } catch (e) { /* ignoré */ }
+})();
+$("#logout").addEventListener("click", async (e) => {
+  e.preventDefault();
+  try { await fetch("/api/logout", { method: "POST" }); } catch (e2) { /* ignoré */ }
+  location.href = "/login";
+});
+</script>
+</body>
+</html>

@@ -69,7 +69,7 @@ def _access_token() -> str:
         return _token["value"]
 
 
-def _get(path: str, params: dict | None = None) -> dict:
+def _get(path: str, params: dict | None = None, not_found: str = "Personnage introuvable sur ce royaume.") -> dict:
     url = f"https://{REGION}.api.blizzard.com{path}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
@@ -79,7 +79,7 @@ def _get(path: str, params: dict | None = None) -> dict:
             return json.load(resp)
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
-            raise BnetError(404, "Personnage introuvable sur ce royaume.") from exc
+            raise BnetError(404, not_found) from exc
         raise BnetError(exc.code, "Erreur de l'API Battle.net.") from exc
 
 
@@ -190,3 +190,53 @@ def equipment(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
     ilvls = [it["ilvl"] for it in items if it.get("ilvl")]
     data = {"ilvl": round(sum(ilvls) / len(ilvls)) if ilvls else None, "items": items}
     return data, _store(key, data)
+
+
+# ---------------------------------------------------------------------------
+# Objets (comparateur de pièces — Top Stuff)
+# ---------------------------------------------------------------------------
+SLOT_FR = {
+    "head": "Tête", "neck": "Cou", "shoulder": "Épaules", "chest": "Torse",
+    "waist": "Taille", "legs": "Jambes", "feet": "Pieds", "wrist": "Poignets",
+    "hands": "Mains", "back": "Dos", "finger1": "Anneau 1", "finger2": "Anneau 2",
+    "trinket1": "Bijou 1", "trinket2": "Bijou 2",
+}
+# inventory_type Blizzard -> emplacement(s) SimC (les doubles = deux profilesets)
+INV_TO_SLOTS = {
+    "HEAD": ["head"], "NECK": ["neck"], "SHOULDER": ["shoulder"],
+    "CHEST": ["chest"], "ROBE": ["chest"], "BODY": ["chest"],
+    "WAIST": ["waist"], "LEGS": ["legs"], "FEET": ["feet"], "WRIST": ["wrist"],
+    "HANDS": ["hands"], "BACK": ["back"], "CLOAK": ["back"],
+    "FINGER": ["finger1", "finger2"], "TRINKET": ["trinket1", "trinket2"],
+}
+
+
+def item(item_id: int) -> dict:
+    """Objet (nom, qualité, emplacement, icône) depuis l'API Blizzard — cache 30 min."""
+    key = f"item/{int(item_id)}"
+    hit = _cached(key, False)
+    if hit:
+        return hit["data"]
+    raw = _get(
+        f"/data/wow/item/{int(item_id)}",
+        {"namespace": f"static-{REGION}", "locale": LOCALE},
+        not_found="Pièce introuvable (identifiant invalide ?).",
+    )
+    inv = raw.get("inventory_type") or {}
+    icon = None
+    try:
+        media = _get(f"/data/wow/media/item/{int(item_id)}", {"namespace": f"static-{REGION}"})
+        icon = next((a.get("value") for a in media.get("assets", []) if a.get("key") == "icon"), None)
+    except BnetError:
+        pass
+    data = {
+        "id": int(item_id),
+        "name": raw.get("name") or f"Objet {item_id}",
+        "quality": (raw.get("quality") or {}).get("type") or "COMMON",
+        "inv_type": inv.get("type") or "",
+        "inv_type_fr": inv.get("name") or "",
+        "subclass": (raw.get("item_subclass") or {}).get("name") or "",
+        "icon": icon,
+    }
+    _store(key, data)
+    return data
