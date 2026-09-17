@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.037 - 2026-09-17
+- Music: shuffle mode (random playback of the library) and loop mode (repeat the current track) - toggles on the Music page.
+- Auto-chaining engine runs app-side (background watcher) while modes are on.
+
 ## 2026.09.036 - 2026-09-17
 - Music: rename the bot and change its channel from the page (officers/admins) - the bot restarts itself (~10 s).
 - Bot renamed "DJ Fosse Septique" and moved to "La taverne".

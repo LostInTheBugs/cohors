@@ -2656,6 +2656,7 @@ def _music_payload(j: dict) -> dict:
         "volume": int(j.get("volume") or 0),
         "track": ({"uuid": ct.get("uuid", ""), "title": ct.get("title") or ct.get("filename", "")}
                   if ct.get("uuid") else None),
+        "modes": {"shuffle": bool((_music_state_load() or {}).get("shuffle")), "loop": bool((_music_state_load() or {}).get("loop"))},
     }
 
 
@@ -2709,6 +2710,10 @@ def music_play(payload: MusicPlay, request: Request):
     if not re.match(r"^[A-Za-z0-9-]{8,80}$", payload.uuid):
         raise HTTPException(400, "Identifiant invalide.")
     r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/play/byId/{payload.uuid}")
+    st = _music_state_load()
+    if st.get("paused"):
+        st.pop("paused", None)
+        _music_state_save(st)
     return {"ok": r.status_code == 200}
 
 
@@ -2716,6 +2721,9 @@ def music_play(payload: MusicPlay, request: Request):
 def music_pause(request: Request):
     _require_officer(request)
     r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/pause")
+    st = _music_state_load()
+    st["paused"] = True
+    _music_state_save(st)
     return {"ok": r.status_code == 200}
 
 
@@ -2723,6 +2731,10 @@ def music_pause(request: Request):
 def music_stop(request: Request):
     _require_officer(request)
     r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/stop")
+    st = _music_state_load()
+    if st.get("paused"):
+        st.pop("paused", None)
+        _music_state_save(st)
     return {"ok": r.status_code == 200}
 
 
@@ -2861,3 +2873,126 @@ def music_bot_set(payload: MusicBotConfig, request: Request):
     time.sleep(2)
     _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/spawn")
     return {"ok": True}
+
+
+# --- 🎵 Modes de lecture : aléatoire + boucle (moteur côté app) ---
+MUSIC_STATE_FILE = MUSIC_DIR / "state.json"
+
+
+def _music_state_load() -> dict:
+    try:
+        j = json.loads(MUSIC_STATE_FILE.read_text())
+        if isinstance(j, dict):
+            return j
+    except Exception:  # noqa: BLE001
+        pass
+    return {}
+
+
+def _music_state_save(st: dict) -> None:
+    try:
+        MUSIC_DIR.mkdir(parents=True, exist_ok=True)
+        MUSIC_STATE_FILE.write_text(json.dumps(st))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _music_pick_random(current_uuid: str = "") -> str:
+    import random
+    r = _sb_call("GET", "/api/v1/bot/files")
+    try:
+        files = r.json()
+    except Exception:  # noqa: BLE001
+        return ""
+    uuids = [f.get("uuid") for f in (files if isinstance(files, list) else []) if f.get("uuid")]
+    if not uuids:
+        return ""
+    pool = [u for u in uuids if u != current_uuid] or uuids
+    return random.choice(pool)
+
+
+@app.get("/api/music/modes")
+def music_modes(request: Request):
+    _require_officer(request)
+    st = _music_state_load()
+    return {"ok": True, "shuffle": bool(st.get("shuffle")), "loop": bool(st.get("loop"))}
+
+
+class MusicModes(BaseModel):
+    shuffle: bool | None = None
+    loop: bool | None = None
+
+
+@app.post("/api/music/modes")
+def music_modes_set(payload: MusicModes, request: Request):
+    _require_officer(request)
+    st = _music_state_load()
+    if payload.shuffle is not None:
+        st["shuffle"] = bool(payload.shuffle)
+    if payload.loop is not None:
+        st["loop"] = bool(payload.loop)
+    st.pop("paused", None)
+    _music_state_save(st)
+    started = ""
+    if payload.shuffle:
+        try:
+            r = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/status")
+            j = r.json()
+            if not j.get("playing"):
+                uid = _music_pick_random()
+                if uid:
+                    _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/play/byId/{uid}")
+                    started = uid
+        except Exception:  # noqa: BLE001
+            pass
+    return {"ok": True, "shuffle": bool(st.get("shuffle")), "loop": bool(st.get("loop")), "started": started}
+
+
+_MUSIC_WATCH = {"prev_playing": False, "prev_uuid": "", "prev_pos": 0, "max_pos": 0}
+
+
+def _music_watch_tick():
+    st = _music_state_load()
+    r = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/status")
+    j = r.json()
+    playing = bool(j.get("playing"))
+    pos = int(j.get("position") or 0)
+    uuid = ((j.get("currentTrack") or {}).get("uuid") or "")
+    P = _MUSIC_WATCH
+    if playing and uuid:
+        P["max_pos"] = max(P["max_pos"], pos) if P["prev_uuid"] == uuid else pos
+    ended = False
+    if P["prev_playing"] and not playing and uuid and uuid == P["prev_uuid"] and not st.get("paused"):
+        if pos > 0 and pos >= P["prev_pos"] and pos > 2500:
+            dur = (st.get("durations") or {}).get(uuid)
+            if dur:
+                ended = pos >= int(dur) - 2500
+            else:
+                ended = pos >= P["max_pos"] - 1000
+    if ended:
+        if not st.get("durations"):
+            st["durations"] = {}
+        st["durations"][uuid] = max(pos, P["max_pos"])
+        _music_state_save(st)
+        if st.get("shuffle"):
+            nxt = _music_pick_random(uuid)
+            if nxt:
+                _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/play/byId/{nxt}")
+        elif st.get("loop"):
+            _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/play/byId/{uuid}")
+    P["prev_playing"] = playing
+    P["prev_uuid"] = uuid if uuid else P["prev_uuid"]
+    P["prev_pos"] = pos
+
+
+def _music_watcher_loop():
+    time.sleep(20)
+    while True:
+        try:
+            _music_watch_tick()
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(3)
+
+
+threading.Thread(target=_music_watcher_loop, daemon=True).start()

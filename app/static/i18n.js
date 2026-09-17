@@ -560,7 +560,12 @@
  "Déplacer": "Move",
  "Renommer ou déplacer redémarre le bot (~10 s) — il se reconnecte tout seul.": "Renaming or moving restarts the bot (~10 s) — it reconnects by itself.",
  "Nom modifié ✓ — le bot redémarre (~10 s)…": "Name updated ✓ — bot restarting (~10 s)…",
- "Salon modifié ✓ — le bot redémarre (~10 s)…": "Channel updated ✓ — bot restarting (~10 s)…"
+ "Salon modifié ✓ — le bot redémarre (~10 s)…": "Channel updated ✓ — bot restarting (~10 s)…",
+ "🔀 Aléatoire": "🔀 Shuffle",
+ "🔁 Boucler": "🔁 Loop",
+ "Lecture aléatoire activée ✓": "Shuffle on ✓",
+ "Boucle activée ✓": "Loop on ✓",
+ "Mode désactivé": "Mode off"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

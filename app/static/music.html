@@ -47,6 +47,7 @@
   button.gbtn2 { background:transparent; border:1px solid var(--line); color:var(--fg); }
   button.gbtn2:hover { border-color:#3a4763; }
   button:disabled { opacity:.55; cursor:default; }
+  button.on { border-color:var(--acc2); color:var(--acc2); }
   .badge { padding:3px 11px; border-radius:999px; font-size:12.5px; font-weight:700; border:1px solid var(--line); color:var(--mut); }
   .badge.ok { color:var(--ok); border-color:#1f5f46; }
   .badge.play { color:var(--acc2); border-color:#7a5b2e; }
@@ -94,6 +95,10 @@
       <span class="plab" style="margin-left:10px">Volume</span>
       <input type="range" id="vol" min="0" max="100" step="5" style="flex:1;min-width:150px">
       <span id="volval" class="plab">50</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="btn-shuffle" class="gbtn2">🔀 Aléatoire</button>
+      <button id="btn-loop" class="gbtn2">🔁 Boucler</button>
     </div>
     <p class="note" id="player-msg"></p>
   </div>
@@ -175,6 +180,9 @@ async function refresh() {
     $("#track").textContent = st.track ? pretty(st.track.title) : "—";
     $("#pos").textContent = fmt(st.position);
     if (!dragging) { $("#vol").value = st.volume; $("#volval").textContent = st.volume; }
+    const m = st.modes || {};
+    $("#btn-shuffle").classList.toggle("on", !!m.shuffle);
+    $("#btn-loop").classList.toggle("on", !!m.loop);
     $("#btn-play").disabled = !st.track;
   } catch (e) {
     $("#state").textContent = "⚠️ Bot injoignable"; $("#state").className = "badge";
@@ -224,6 +232,15 @@ $("#vol").addEventListener("change", async () => {
   dragging = false;
   try { await jpost("/api/music/volume", { volume: Number($("#vol").value) }); } catch (e) { msg("#player-msg", e.message, false); }
 });
+async function setMode(which, val) {
+  try {
+    await jpost("/api/music/modes", { [which]: val });
+    msg("#player-msg", val ? (which === "shuffle" ? "Lecture aléatoire activée ✓" : "Boucle activée ✓") : "Mode désactivé", true);
+    setTimeout(refresh, 700);
+  } catch (e) { msg("#player-msg", e.message, false); }
+}
+$("#btn-shuffle").addEventListener("click", () => setMode("shuffle", !$("#btn-shuffle").classList.contains("on")));
+$("#btn-loop").addEventListener("click", () => setMode("loop", !$("#btn-loop").classList.contains("on")));
 $("#add-url").addEventListener("click", async () => {
   const u = $("#url").value.trim();
   if (!u) return;
