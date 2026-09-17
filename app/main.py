@@ -30,6 +30,8 @@ from pydantic import BaseModel, Field
 
 from worker.simrun import run_sim
 
+from app import bnet
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -345,6 +347,13 @@ def admin_page(request: Request):
     return FileResponse(STATIC_DIR / "admin.html")
 
 
+@app.api_route("/characters", methods=["GET", "HEAD"])
+def characters_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "characters.html")
+
+
 # ---------------------------------------------------------------------------
 # Auth API
 # ---------------------------------------------------------------------------
@@ -577,6 +586,58 @@ def report_json(sim_id: str):
     if r is None or not r["report_json"] or not Path(r["report_json"]).exists():
         raise HTTPException(404, "Rapport introuvable")
     return FileResponse(r["report_json"], media_type="application/json")
+
+
+# ---------------------------------------------------------------------------
+# Battle.net API — roster de guilde & personnages (cache serveur 30 min)
+# ---------------------------------------------------------------------------
+_REALM_RE = re.compile(r"^[a-z0-9-]{2,40}$")
+_CHARNAME_RE = re.compile(r"^[A-Za-z\u00c0-\u00ff][A-Za-z\u00c0-\u00ff'\-]{1,23}$")
+
+
+def _bnet_call(fn, realm: str, name: str, refresh: int = 0) -> dict:
+    _valid_char(realm, name)
+    try:
+        data, ts = fn(realm, name, force=bool(refresh))
+    except bnet.BnetError as exc:
+        raise HTTPException(exc.status if exc.status in (400, 404) else 502, str(exc))
+    data = dict(data)
+    data["fetched_at"] = ts
+    return data
+
+
+def _valid_char(realm: str, name: str) -> None:
+    if not _REALM_RE.match(realm.lower()) or not _CHARNAME_RE.match(name):
+        raise HTTPException(400, "Nom de personnage ou royaume invalide.")
+
+
+@app.get("/api/roster")
+def api_roster(request: Request, refresh: int = 0):
+    _require_user(request)
+    try:
+        data, ts = bnet.roster(force=bool(refresh))
+    except bnet.BnetError as exc:
+        raise HTTPException(exc.status if exc.status in (400, 404) else 502, str(exc))
+    return {
+        "guild": data["guild"],
+        "realm": data["realm"],
+        "region": data["region"],
+        "members": data["members"],
+        "count": len(data["members"]),
+        "fetched_at": ts,
+    }
+
+
+@app.get("/api/char/{realm}/{name}/summary")
+def api_char_summary(realm: str, name: str, request: Request, refresh: int = 0):
+    _require_user(request)
+    return _bnet_call(bnet.character, realm, name, refresh)
+
+
+@app.get("/api/char/{realm}/{name}/equipment")
+def api_char_equipment(realm: str, name: str, request: Request, refresh: int = 0):
+    _require_user(request)
+    return _bnet_call(bnet.equipment, realm, name, refresh)
 
 
 # ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 # WoW Companion (working title)
 
 Self-hosted companion for World of Warcraft: guild-friendly simulation reports built on
-the official SimulationCraft Docker image, with Warcraft Logs and Battle.net API
-integrations planned.
+the official SimulationCraft Docker image, plus a guild roster and character pages fed
+by the Battle.net API (Warcraft Logs integration planned).
 
 > Early development. Not affiliated with Blizzard Entertainment, Inc. Game data is
 > provided by Blizzard Entertainment and Warcraft Logs (see attribution requirements).
@@ -16,7 +16,9 @@ integrations planned.
 - [x] Accounts — invite-only registration (`/invite/<token>` links), login sessions,
       admin panel (`/admin`) for invitations and account management.
 - [x] Stat-weights mode ("optimiseur", Mr Robot-style) — scale factors from the same engine.
-- [ ] Warcraft Logs / Battle.net integrations
+- [x] Guild roster & characters (« Personnages ») — Battle.net API: ranks, levels, item
+      level, last seen, per-character equipped items (Wowhead links), 30-min server cache.
+- [ ] Warcraft Logs integration
 
 ## Requirements
 
@@ -70,6 +72,11 @@ reverse proxy and small until the simulation worker is split out.
 | `SESSION_DAYS` | `30` | Session cookie lifetime (days) |
 | `INVITE_TTL_DAYS` | `7` | Invitation link validity (days) |
 | `COOKIE_SECURE` | `1` | Set to `0` for plain-HTTP local development only |
+| `BNET_CLIENT_ID` | — | Battle.net API client ID (https://develop.battle.net) — roster page |
+| `BNET_CLIENT_SECRET` | — | Battle.net API client secret |
+| `BNET_REGION` | `eu` | Battle.net region |
+| `BNET_GUILD_REALM` | `hyjal` | Guild realm slug |
+| `BNET_GUILD_SLUG` | `lords-of-the-pit` | Guild slug |
 
 ## API
 
@@ -88,6 +95,9 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/sims/{id}` | GET | One simulation (full record) |
 | `/reports/{id}/report.html` | GET | SimulationCraft HTML report (public) |
 | `/reports/{id}/report.json` | GET | SimulationCraft JSON report (public) |
+| `/api/roster` | GET | Guild roster — `?refresh=1` forces a refetch (1×/min max) |
+| `/api/char/{realm}/{name}/summary` | GET | Character summary (Battle.net) |
+| `/api/char/{realm}/{name}/equipment` | GET | Equipped items (Battle.net) |
 | `/api/admin/invites` | GET / POST | List / create invitations |
 | `/api/admin/invites/{token}` | DELETE | Revoke an invitation |
 | `/api/admin/users` | GET | List accounts |
@@ -106,6 +116,8 @@ app/static/index.html   Simulator UI (French)
 app/static/login.html   Login page
 app/static/register.html Invitation registration page
 app/static/admin.html   Admin panel (invitations + accounts)
+app/static/characters.html Guild roster & character pages (French)
+app/bnet.py             Battle.net API client (roster, characters, 30-min cache)
 worker/simrun.py        SimulationCraft engine wrapper (official Docker image)
 Dockerfile              App image (Python + Docker CLI)
 docker-compose.yml      App deployment (Docker socket + data dir, both required)
@@ -115,7 +127,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.003` (see `CHANGELOG.md`).
+Current version: `2026.09.005` (see `CHANGELOG.md`).
 
 ## License
 

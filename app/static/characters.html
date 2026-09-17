@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Personnages</title>
+<link rel="icon" type="image/png" href="/static/crest.png">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 28px 18px 40px; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: .3px; }
+  h1 span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; align-self: center; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 13px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  .sub { color: var(--mut); font-size: 14px; margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  input[type=search] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 260px; }
+  input:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+  button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+           padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+                 padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
+  button.ghost:hover { border-color: var(--acc2); color: var(--acc2); }
+  .meta { color: var(--mut); font-size: 13px; }
+  .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
+  .chkline input { accent-color: var(--acc); }
+  .tscroll { max-height: 66vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card2); }
+  table { width: 100%; border-collapse: collapse; }
+  th { position: sticky; top: 0; background: #202a3f; z-index: 2; text-align: left; font-size: 12.5px;
+       color: var(--mut); padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 8px 12px; border-top: 1px solid var(--line); font-size: 14px; }
+  tr.crow:hover td { background: #1e2941; }
+  .rk { color: var(--mut); font-size: 13px; white-space: nowrap; }
+  .rk.gm { color: var(--acc2); font-weight: 600; }
+  .cname { font-weight: 600; }
+  .cname a { color: inherit; text-decoration: none; }
+  .cname a:hover { text-decoration: underline; }
+  .lv, .il, .vu { color: var(--mut); font-size: 13.5px; white-space: nowrap; }
+  .il b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  .chip { display: inline-block; min-width: 34px; text-align: center; }
+  .detrow td { background: #16202f; padding: 12px 16px 16px; }
+  .det-top { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; font-size: 13.5px; }
+  .det-top .spec { font-weight: 700; }
+  .det-top a { color: var(--acc2); text-decoration: none; font-weight: 600; }
+  .det-top a:hover { text-decoration: underline; }
+  .gear { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 4px 18px; }
+  .gi { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; padding: 2px 0; }
+  .gi .gs { color: var(--mut); min-width: 92px; flex-shrink: 0; font-size: 12.5px; }
+  .gi a { text-decoration: none; }
+  .gi a:hover { text-decoration: underline; }
+  .gi .gl { margin-left: auto; color: var(--mut); font-variant-numeric: tabular-nums; }
+  .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
+  .err { color: var(--err); font-size: 13px; }
+  .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 24px; padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+    <h1>LOTP <span>Personnages</span></h1>
+    <span class="tagline">Roster &amp; équipement de la guilde</span>
+    <span class="spacer"></span>
+    <span class="who" id="who"></span>
+    <a class="hlink hidden" id="admin-link" href="/admin">Administration</a>
+    <a class="hlink" href="/">← Simulateur</a>
+    <a class="hlink" href="#" id="logout">Déconnexion</a>
+  </header>
+  <p class="sub">Roster de la guilde (données live de l'API Battle.net). Clique sur un personnage pour voir son équipement.</p>
+
+  <div class="card">
+    <div class="row">
+      <input type="search" id="srch" placeholder="Rechercher un personnage…">
+      <label class="chkline"><input type="checkbox" id="f90"> Niveau max (90) uniquement</label>
+      <span class="spacer"></span>
+      <span class="meta" id="rmeta">Chargement…</span>
+      <button class="ghost" id="refresh" title="Refetch des données (max 1×/min)">⟳ Actualiser</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tscroll" id="tscroll">
+      <table>
+        <thead>
+          <tr><th>Rang</th><th>Nom</th><th>Niv.</th><th>iLvl</th><th>Vu</th><th></th></tr>
+        </thead>
+        <tbody id="tbody"><tr><td colspan="6"><div class="empty">Chargement…</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    Roster : <b>API Battle.net officielle</b> (cache 30 min) · Données de jeu fournies par
+    <b>Blizzard Entertainment</b> · Outil non affilié à Blizzard Entertainment ·
+    <span id="ver">…</span>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
+const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
+  if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
+
+const CLASS_COLORS = {
+  "Chevalier de la mort": "#C41E3A", "Chasseur de démons": "#A330C9", "Druide": "#FF7C0A",
+  "Évocateur": "#33937F", "Chasseur": "#AAD372", "Mage": "#3FC7EB", "Moine": "#00FF98",
+  "Paladin": "#F48CBA", "Prêtre": "#FFFFFF", "Voleur": "#FFF468", "Chaman": "#0070DD",
+  "Démoniste": "#8788EE", "Guerrier": "#C69B6D"
+};
+const QUA = { POOR: "#9d9d9d", COMMON: "#e7ebf5", UNCOMMON: "#1eff00", RARE: "#0070dd",
+  EPIC: "#a335ee", LEGENDARY: "#ff8000", ARTIFACT: "#e6cc80", HEIRLOOM: "#00ccff" };
+
+let REGION = "eu";
+const SUMS = new Map();   // clé -> résumé (pour réutiliser au détail)
+let observer = null;
+
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+
+function pool(items, worker, size) {
+  let i = 0;
+  const next = () => { if (i >= items.length) return Promise.resolve();
+    const it = items[i++]; return worker(it).catch(() => {}).then(next); };
+  return Promise.all(Array.from({ length: Math.min(size, items.length) }, next));
+}
+
+function rankLabel(r) { return r === 0 ? "Maître de guilde" : "Rang " + r; }
+
+function renderRoster(data) {
+  REGION = data.region || "eu";
+  const tb = $("#tbody");
+  tb.innerHTML = data.members.map(m => {
+    const key = `${m.realm}|${m.name.toLowerCase()}`;
+    const armory = `https://worldofwarcraft.blizzard.com/fr-fr/character/${esc(REGION)}/${esc(m.realm)}/${esc(m.name.toLowerCase())}`;
+    return `<tr class="crow" data-key="${esc(key)}" data-name="${esc(m.name.toLowerCase())}" data-level="${m.level || 0}">
+      <td class="rk ${m.rank === 0 ? "gm" : ""}">${rankLabel(m.rank)}</td>
+      <td class="cname"><a href="${armory}" target="_blank" rel="noopener">${esc(m.name)}</a></td>
+      <td class="lv">${m.level || "—"}</td>
+      <td class="il"><span class="chip" data-il>…</span></td>
+      <td class="vu" data-vu>—</td>
+      <td><button class="ghost" data-det>Détails</button></td>
+    </tr>`;
+  }).join("");
+  $("#rmeta").textContent = `${data.count} membres · actualisé ${ago(data.fetched_at)}`;
+  tb.querySelectorAll("tr.crow").forEach(tr => observer.observe(tr));
+  tb.querySelectorAll("button[data-det]").forEach(b =>
+    b.addEventListener("click", () => toggleDetail(b.closest("tr"))));
+  applyFilters();
+}
+
+async function loadSummary(tr) {
+  const [realm, name] = tr.dataset.key.split("|");
+  try {
+    const s = await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/summary`);
+    SUMS.set(tr.dataset.key, s);
+    const il = tr.querySelector("[data-il]");
+    const vu = tr.querySelector("[data-vu]");
+    il.innerHTML = `<b>${fmt(s.ilvl_equipped)}</b>`;
+    vu.textContent = s.last_login ? ago(s.last_login / 1000) : "—";
+    const cn = tr.querySelector(".cname");
+    if (s.class && CLASS_COLORS[s.class]) cn.style.color = CLASS_COLORS[s.class];
+  } catch (e) {
+    tr.querySelector("[data-il]").textContent = "—";
+  }
+}
+
+function renderDetail(s, g) {
+  const cclass = CLASS_COLORS[s.class] || "var(--fg)";
+  const head = `<div class="det-top">
+    <span class="spec" style="color:${cclass}">${esc(s.spec || "?")} — ${esc(s.class || "")}</span>
+    <span class="meta">${esc(s.race || "")}${s.faction ? " · " + esc(s.faction) : ""}</span>
+    <span class="meta">iLvl équipé <b>${fmt(s.ilvl_equipped)}</b> (moyen ${fmt(s.ilvl_avg)})</span>
+    <span class="meta">${fmt(s.achievement_points)} points de hauts faits</span>
+    <span class="meta">vu ${s.last_login ? ago(s.last_login / 1000) : "?"}</span>
+    <span class="spacer"></span>
+    <a href="${esc(s.armory)}" target="_blank" rel="noopener">Armurerie ↗</a>
+  </div>`;
+  const items = (g.items || []).map(it => {
+    const col = QUA[it.quality] || "#e7ebf5";
+    const url = it.item_id ? `https://www.wowhead.com/item=${it.item_id}` : null;
+    const nm = url
+      ? `<a href="${url}" target="_blank" rel="noopener" style="color:${col}">${esc(it.name)}</a>`
+      : `<span style="color:${col}">${esc(it.name)}</span>`;
+    return `<div class="gi"><span class="gs">${esc(it.slot)}</span>${nm}<span class="gl">${fmt(it.ilvl)}</span></div>`;
+  }).join("");
+  return head + `<div class="gear">${items}</div>`;
+}
+
+async function toggleDetail(tr) {
+  const nxt = tr.nextElementSibling;
+  if (nxt && nxt.classList.contains("detrow")) { nxt.remove(); return; }
+  const [realm, name] = tr.dataset.key.split("|");
+  const det = document.createElement("tr");
+  det.className = "detrow";
+  det.innerHTML = `<td colspan="6"><div class="empty"><span class="spin">⏳</span> Chargement de l'équipement…</div></td>`;
+  tr.after(det);
+  try {
+    const s = SUMS.get(tr.dataset.key) || await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/summary`);
+    const g = await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/equipment`);
+    det.querySelector("td").innerHTML = renderDetail(s, g);
+  } catch (e) {
+    det.querySelector("td").innerHTML = `<div class="err">Erreur : ${esc(e.message)}</div>`;
+  }
+}
+
+function applyFilters() {
+  const q = $("#srch").value.trim().toLowerCase();
+  const max90 = $("#f90").checked;
+  let shown = 0;
+  document.querySelectorAll("tr.crow").forEach(tr => {
+    const okQ = !q || tr.dataset.name.includes(q);
+    const okL = !max90 || parseInt(tr.dataset.level, 10) >= 90;
+    const vis = okQ && okL;
+    tr.style.display = vis ? "" : "none";
+    if (vis) shown++;
+    if (!vis) { const nx = tr.nextElementSibling; if (nx && nx.classList.contains("detrow")) nx.remove(); }
+  });
+  return shown;
+}
+
+async function load(refresh = 0) {
+  try {
+    const data = await jget("/api/roster" + (refresh ? "?refresh=1" : ""));
+    renderRoster(data);
+  } catch (e) {
+    $("#tbody").innerHTML = `<tr><td colspan="6"><div class="err">Erreur de chargement du roster : ${esc(e.message)}</div></td></tr>`;
+  }
+}
+
+observer = new IntersectionObserver((entries) => {
+  const todo = [];
+  for (const e of entries) {
+    if (e.isIntersecting && e.target.classList.contains("crow")) {
+      observer.unobserve(e.target);
+      if (!SUMS.has(e.target.dataset.key) && e.target.querySelector("[data-il]").textContent === "…") todo.push(e.target);
+    }
+  }
+  if (todo.length) pool(todo, loadSummary, 4);
+}, { root: $("#tscroll"), rootMargin: "150px" });
+
+$("#srch").addEventListener("input", applyFilters);
+$("#f90").addEventListener("change", applyFilters);
+$("#refresh").addEventListener("click", async (ev) => {
+  ev.target.disabled = true;
+  await load(1);
+  ev.target.disabled = false;
+});
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin) $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  load(0);
+})();
+</script>
+</body>
+</html>

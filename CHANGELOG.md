@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.005] — 2026-09-17
+
+### Added
+
+- « Personnages » page: full guild roster from the official Battle.net API
+  (ranks, levels, item level, last seen), search + level filter, and a detail
+  view with the character's equipped items (per-item Wowhead links).
+- Battle.net integration (OAuth client credentials) with a 30-minute server
+  cache; manual refresh available (max once per minute).
+- Configuration: `BNET_CLIENT_ID` / `BNET_CLIENT_SECRET` (plus optional
+  `BNET_REGION`, `BNET_GUILD_REALM`, `BNET_GUILD_SLUG`, `BNET_LOCALE`).
+
 ## [2026.09.004] — 2026-09-17
 
 ### Added
