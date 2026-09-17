@@ -48,6 +48,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       parses), recent roster moves.
 - [x] Raid calendar — officers plan raids, members answer
       Présent/Peut-être/Absent; the Discord bot announces and reminds.
+- [x] Group simulation — combine members' `/simc` profiles into one
+      multi-actor run (raid buffs) and rank the guild by DPS.
 
 ## Requirements
 
@@ -133,6 +135,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me/settings` | POST | Save your account settings (language / display name) |
 | `/api/me/password` | POST | Change your password (other sessions signed out) |
 | `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
+| `/api/group/sim` | POST | Group sim (profiles combined, multi-actor) |
 | `/api/raids` | GET / POST | Raid calendar (create: officer+) |
 | `/api/raids/{id}` | DELETE | Delete a raid (officer+) |
 | `/api/raids/{id}/signup` | POST | Answer yes / no / maybe |
@@ -194,7 +197,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.020` (see `CHANGELOG.md`).
+Current version: `2026.09.021` (see `CHANGELOG.md`).
 
 ## License
 

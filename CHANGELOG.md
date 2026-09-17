@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.021] — 2026-09-17
+
+### Added
+
+- Group simulation (simulator page, new card): pick saved `/simc` profiles and
+  the app combines them into **one multi-actor SimulationCraft run** (raid buffs
+  included) and ranks every character by DPS with class colors. Duplicate
+  characters are skipped with a warning; results link to the full report.
+- New API: `POST /api/group/sim` (launches a `group` kind sim).
+
 ## [2026.09.020] — 2026-09-17
 
 ### Added

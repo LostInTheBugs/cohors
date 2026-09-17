@@ -91,6 +91,64 @@ def parse_gear_results(json_path: Path | None) -> list[dict] | None:
     return out or None
 
 
+_CLASS_NORM = {
+    "deathknight": "DeathKnight", "demonhunter": "DemonHunter", "druid": "Druid", "evoker": "Evoker",
+    "hunter": "Hunter", "mage": "Mage", "monk": "Monk", "paladin": "Paladin", "priest": "Priest",
+    "rogue": "Rogue", "shaman": "Shaman", "warlock": "Warlock", "warrior": "Warrior",
+}
+
+
+def _norm_class(raw: str) -> str:
+    k = re.sub(r"[^a-z]", "", (raw or "").lower())
+    return _CLASS_NORM.get(k, raw or "")
+
+
+_CLASS_NAMES = ("Death Knight", "Demon Hunter", "Druid", "Evoker", "Hunter", "Mage", "Monk",
+                "Paladin", "Priest", "Rogue", "Shaman", "Warlock", "Warrior")
+
+
+def parse_group_results(json_path: Path | None) -> list[dict] | None:
+    """Sim de groupe : DPS de chaque acteur (nom, classe, spé, ilvl)."""
+    if json_path is None or not Path(json_path).exists():
+        return None
+    try:
+        data = json.loads(Path(json_path).read_text())
+        players = (data.get("sim") or {}).get("players") or []
+    except Exception:  # noqa: BLE001
+        return None
+    out: list[dict] = []
+    for p in players:
+        cd = p.get("collected_data") or {}
+        dps = cd.get("dps") or {}
+        mean = dps.get("mean")
+        if mean is None:
+            continue
+        # « specialization » de simc = « Arcane Mage » → on sépare spé et classe.
+        spec_raw = str(p.get("specialization") or "")
+        cls, spec = "", spec_raw
+        for cn in _CLASS_NAMES:
+            if spec_raw.endswith(cn):
+                cls, spec = cn, spec_raw[: len(spec_raw) - len(cn)].strip()
+                break
+        ilvl = None
+        gear = p.get("gear") or {}
+        if isinstance(gear, dict):
+            vals = [float(it.get("ilevel")) for it in gear.values()
+                    if isinstance(it, dict) and it.get("ilevel")]
+            if vals:
+                ilvl = round(sum(vals) / len(vals), 1)
+        out.append({
+            "name": p.get("name") or "?",
+            "class": _norm_class(cls) if cls else "",
+            "spec": spec,
+            "ilvl": ilvl,
+            "dps": float(mean),
+            "err": float(dps["mean_error"]) if dps.get("mean_error") else None,
+        })
+    out.sort(key=lambda r: r["dps"], reverse=True)
+    return out or None
+
+
 def run_sim(
     profile_path: Path | None = None,
     container_profile: str | None = None,
@@ -146,6 +204,7 @@ def run_sim(
         "log_tail": "\n".join(log.splitlines()[-30:]),
         "scale_factors": parse_scale_factors(log, js),
         "gear": parse_gear_results(js),
+        "group": parse_group_results(js),
     }
 
 

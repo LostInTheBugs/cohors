@@ -100,6 +100,12 @@
   .spin { display: inline-block; animation: spin 1.2s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none !important; }
+  .gprofs { display:flex; flex-wrap:wrap; gap:6px 18px; margin:8px 0 12px; }
+  .gtable { width:100%; border-collapse:collapse; margin-top:8px; }
+  .gtable th, .gtable td { padding:6px 8px; border-bottom:1px solid var(--line,#2a3446); text-align:left; font-size:13.5px; }
+  .gtable th { color:var(--mut,#8b96ad); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
+  .gbar { height:7px; border-radius:4px; background:linear-gradient(90deg,var(--acc,#b1002e),var(--acc2,#dfa55a)); }
+  .gmeta { color:var(--mut,#8b96ad); font-size:12px; }
 </style>
 </head>
 <body>
@@ -176,6 +182,24 @@
       <button class="pbtn" id="pdel" title="Supprimer le profil chargé" disabled>🗑</button>
     </div>
     <div id="submit-msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>🧑‍🤝‍🧑 Sim de groupe — le raid entier</h2>
+    <p class="note">Coche les profils /simc des participants : l'app les simule ensemble (buffs de raid inclus) et classe la guilde par DPS.</p>
+    <div id="gprofiles" class="gprofs"><div class="empty">Chargement…</div></div>
+    <div class="row">
+      <label class="chkline">Itérations :
+        <select id="giter">
+          <option value="1000">1 000 (rapide)</option>
+          <option value="5000" selected>5 000</option>
+          <option value="10000">10 000</option>
+        </select>
+      </label>
+      <button id="ggo">▶ Lancer la sim de groupe</button>
+      <span id="gmsg"></span>
+    </div>
+    <div id="gresult"></div>
   </div>
 
   <div class="card">
@@ -306,7 +330,7 @@ function renderProfSelect(keep) {
 }
 
 async function loadProfiles(keep) {
-  try { profiles = await jfetch("GET", "/api/profiles"); renderProfSelect(keep); }
+  try { profiles = await jfetch("GET", "/api/profiles"); renderProfSelect(keep); renderGroupProfiles(); }
   catch (e) { /* silencieux */ }
 }
 
@@ -380,6 +404,88 @@ $("#go").addEventListener("click", async () => {
     load();
   } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; }
   $("#go").disabled = false;
+});
+// ---- Sim de groupe (profils /simc combinés) ----
+const GCLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+  Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+  Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
+const GCLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur de démons", Druid: "Druide",
+  Evoker: "Évocateur", Hunter: "Chasseur", Mage: "Mage", Monk: "Moine", Paladin: "Paladin",
+  Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
+const gnum = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+
+function renderGroupProfiles() {
+  const box = $("#gprofiles");
+  const all = [...profiles.mine, ...profiles.shared];
+  if (!all.length) {
+    box.innerHTML = `<div class="empty">Aucun profil enregistré — sauvegarde d'abord un export /simc ci-dessus (💾 Enregistrer).</div>`;
+    return;
+  }
+  box.innerHTML = all.map(p => {
+    const mine = profiles.mine.includes(p);
+    return `<label class="chkline"><input type="checkbox" value="${p.id}" ${mine ? "checked" : ""}> ${mine ? "⭐" : "👤"} ${esc(p.name)}${mine ? "" : " — " + esc(p.user_name)}</label>`;
+  }).join("");
+}
+
+function gsetMsg(text, cls) {
+  const el = $("#gmsg");
+  el.className = cls || "";
+  el.textContent = text || "";
+}
+
+function renderGroupResult(id, s) {
+  const rows = s.group || [];
+  if (!rows.length) {
+    $("#gresult").innerHTML = `<div class="empty">Aucun résultat par personnage.</div>`;
+    return;
+  }
+  const top = Math.max(...rows.map(r => r.dps || 0)) || 1;
+  const body = rows.map((r, i) => {
+    const col = GCLASS_COLORS[r.class] || "var(--fg,#e8edf7)";
+    const pct = Math.round(1000 * (r.dps || 0) / top) / 10;
+    return `<tr>
+      <td><b>${i + 1}</b></td>
+      <td><b style="color:${col}">${esc(r.name)}</b><br><span class="gmeta">${esc(GCLASS_FR[r.class] || r.class || "")} ${esc(r.spec || "")}${r.ilvl ? " · ilvl " + r.ilvl : ""}</span></td>
+      <td style="text-align:right"><b>${gnum(r.dps)}</b></td>
+      <td style="width:36%"><div class="gbar" style="width:${Math.max(4, pct)}%"></div></td>
+      <td style="text-align:right" class="gmeta">${i === 0 ? "🏆" : "-" + gnum(100 * (1 - (r.dps || 0) / top), 1) + " %"}</td>
+    </tr>`;
+  }).join("");
+  $("#gresult").innerHTML = `<table class="gtable">
+    <thead><tr><th>#</th><th>Personnage</th><th style="text-align:right">DPS</th><th></th><th></th></tr></thead>
+    <tbody>${body}</tbody></table>
+    <p class="note"><a class="hlink" href="/reports/${id}/report.html" target="_blank">📄 Rapport complet</a> · ${rows.length} personnages simulés ensemble (buffs de raid inclus).</p>`;
+}
+
+let gPoll = null;
+
+$("#ggo").addEventListener("click", async () => {
+  const ids = Array.from(document.querySelectorAll("#gprofiles input:checked")).map(c => parseInt(c.value, 10));
+  if (ids.length < 2) { gsetMsg("Coche au moins 2 profils.", "msg-err"); return; }
+  $("#ggo").disabled = true;
+  $("#gresult").innerHTML = "";
+  try {
+    const d = await jfetch("POST", "/api/group/sim", { ids, iterations: parseInt($("#giter").value, 10) });
+    gsetMsg("⏳ Sim de groupe envoyée — en file d'attente…", "msg-ok");
+    if ((d.warnings || []).length) $("#gresult").innerHTML = d.warnings.map(w => `<div class="empty">⚠️ ${esc(w)}</div>`).join("");
+    if (gPoll) clearInterval(gPoll);
+    gPoll = setInterval(async () => {
+      try {
+        const st = await jfetch("GET", `/api/sims/${d.id}`);
+        if (st.status === "queued") gsetMsg("⏳ En file d'attente…", "msg-ok");
+        else if (st.status === "running") gsetMsg("⚙️ Simulation en cours…", "msg-ok");
+        else if (st.status === "done") {
+          clearInterval(gPoll); gPoll = null; $("#ggo").disabled = false;
+          gsetMsg("✅ Terminé !", "msg-ok");
+          renderGroupResult(d.id, st);
+          load();
+        } else if (st.status === "failed") {
+          clearInterval(gPoll); gPoll = null; $("#ggo").disabled = false;
+          gsetMsg("Échec : " + (st.error || "erreur inconnue"), "msg-err");
+        }
+      } catch (e) { clearInterval(gPoll); gPoll = null; $("#ggo").disabled = false; gsetMsg(e.message, "msg-err"); }
+    }, 2500);
+  } catch (e) { $("#ggo").disabled = false; gsetMsg(e.message, "msg-err"); }
 });
 </script>
 </body>

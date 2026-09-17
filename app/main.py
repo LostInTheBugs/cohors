@@ -409,10 +409,16 @@ def _run_one(sim_id: str) -> None:
     try:
         kind = row["kind"] or "dps"
         extra = ["calculate_scale_factors=1"] if kind == "weights" else None
+        if kind == "group":
+            extra = ["calculate_scale_factors=0", "fight_style=Patchwerk", "max_time=300"]
         res = run_sim(profile_path=input_file, iterations=iterations, outdir=input_file.parent, timeout=SIM_TIMEOUT, extra=extra)
         ok = bool(res.get("ok"))
         weights = json.dumps(res.get("scale_factors")) if res.get("scale_factors") else None
         gear = json.dumps(res.get("gear")) if res.get("gear") else None
+        if kind == "group" and res.get("group"):
+            gear = json.dumps(res.get("group"))
+        if kind == "group":
+            res["dps"] = None  # DPS multi-acteurs : pas de valeur globale
         with _db_lock, _db() as conn:
             conn.execute(
                 """UPDATE sims SET status=?, dps=?, dps_error_pct=?, wall_s=?, report_html=?, report_json=?,
@@ -771,6 +777,7 @@ def _public_row(r: sqlite3.Row) -> dict:
         "kind": (r["kind"] or "dps"),
         "weights": _parse_weights_json(r["weights"]) if r["kind"] == "weights" else None,
         "gear": _parse_weights_json(r["gear"]) if r["kind"] == "gear" else None,
+        "group": _parse_weights_json(r["gear"]) if r["kind"] == "group" else None,
     }
 
 
@@ -1062,6 +1069,133 @@ def delete_profile(pid: int, request: Request):
             raise HTTPException(403, "Ce profil n'est pas à toi.")
         conn.execute("DELETE FROM profiles WHERE id=?", (pid,))
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Sim de groupe (profils /simc combinés en une seule simulation multi-acteurs)
+# ---------------------------------------------------------------------------
+_ACTOR_RE = re.compile(r'^[a-z_]+="[^"]+"\s*$')
+
+
+def _profile_actor(text: str) -> str | None:
+    """Nom du personnage (1re ligne acteur hors commentaires) d'un export /simc, ou None."""
+    for ln in (text or "").replace("\r\n", "\n").splitlines():
+        st = ln.strip()
+        if not st or st.startswith("#"):
+            continue
+        if _ACTOR_RE.match(st):
+            return st.split('"')[1]
+        return None
+    return None
+
+
+def _build_group_input(rows: list) -> tuple[str, list[str]]:
+    """Combine N exports /simc en un seul fichier multi-acteurs (sim de groupe)."""
+    warnings: list[str] = []
+    blocks: list[str] = []
+    seen: set[str] = set()
+    for r in rows:
+        text = (r["input"] or "").replace("\r\n", "\n")
+        actor = _profile_actor(text)
+        if not actor:
+            warnings.append(f"{r['name']} : format /simc non reconnu — ignoré.")
+            continue
+        if actor.lower() in seen:
+            warnings.append(f"{r['name']} : {actor} est déjà inclus — doublon ignoré.")
+            continue
+        seen.add(actor.lower())
+        lines: list[str] = []
+        started = False
+        for ln in text.splitlines():
+            st = ln.strip()
+            if not started:
+                if _ACTOR_RE.match(st):
+                    started = True
+                else:
+                    continue
+            lines.append(ln.rstrip())
+        blocks.append("\n".join(lines))
+    if not blocks:
+        raise HTTPException(400, "Aucun profil exploitable dans la sélection.")
+    header = (
+        "# Sim de groupe — exports /simc combinés\n"
+        "fight_style=Patchwerk\n"
+        "max_time=300\n"
+        "calculate_scale_factors=0\n"
+    )
+    return header + "\n".join(blocks) + "\n", warnings
+
+
+class GroupSimRequest(BaseModel):
+    ids: list[int]
+    iterations: int = 5000
+    label: str = ""
+
+
+@app.post("/api/group/sim")
+def submit_group_sim(payload: GroupSimRequest, request: Request):
+    user = _require_user(request)
+    ids = [int(i) for i in payload.ids][:40]
+    if len(ids) < 2:
+        raise HTTPException(400, "Sélectionne au moins 2 profils.")
+    if payload.iterations not in ITER_CHOICES:
+        raise HTTPException(400, f"Valeurs d'itérations acceptées : {', '.join(map(str, ITER_CHOICES))}")
+    ip = _client_ip(request)
+    now = time.time()
+    with _db_lock, _db() as conn:
+        ph = ",".join("?" * len(ids))
+        rows = conn.execute(f"SELECT * FROM profiles WHERE id IN ({ph})", ids).fetchall()
+        allowed = [r for r in rows if r["user_email"] == user["email"] or r["shared"]]
+        if len(allowed) != len(rows):
+            raise HTTPException(403, "Un des profils n'est pas accessible.")
+        active = conn.execute(
+            "SELECT COUNT(*) AS c FROM sims WHERE ip=? AND status IN ('queued','running')", (ip,)
+        ).fetchone()["c"]
+        if active >= PER_IP_ACTIVE:
+            raise HTTPException(429, f"Tu as déjà {active} simulation(s) en attente — patiente un peu.")
+        user_active = conn.execute(
+            "SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
+            (user["email"],),
+        ).fetchone()["c"]
+        if user_active >= PER_USER_ACTIVE:
+            raise HTTPException(429, f"Tu as déjà {user_active} simulation(s) en attente — patiente un peu.")
+        last_ts = conn.execute("SELECT MAX(created) AS m FROM sims WHERE ip=?", (ip,)).fetchone()["m"]
+        if last_ts and now - last_ts < PER_IP_COOLDOWN_S:
+            wait = int(PER_IP_COOLDOWN_S - (now - last_ts)) + 1
+            raise HTTPException(429, f"Doucement ! Réessaie dans {wait} s.")
+        queue_len = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status IN ('queued','running')").fetchone()["c"]
+        if queue_len >= QUEUE_MAX:
+            raise HTTPException(503, "La file est pleine, réessaie dans quelques minutes.")
+        text, warnings = _build_group_input(allowed)
+        if len(text) > MAX_INPUT_CHARS:
+            raise HTTPException(400, "Profils trop volumineux pour une sim combinée — retire quelques profils.")
+        input_hash = hashlib.sha256(f"group\n{payload.iterations}\n{text}".encode()).hexdigest()
+        cached = conn.execute(
+            "SELECT * FROM sims WHERE input_hash=? AND status='done' ORDER BY finished DESC LIMIT 1", (input_hash,)
+        ).fetchone()
+        sim_id = uuid.uuid4().hex[:12]
+        sim_dir = REPORTS_DIR / sim_id
+        sim_dir.mkdir(parents=True, exist_ok=True)
+        input_file = sim_dir / "input.simc"
+        input_file.write_text(text)
+        label = payload.label.strip()[:60] or f"Sim de groupe ({len(allowed)} profils)"
+        if cached:
+            conn.execute(
+                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, cached_from,
+                                     dps, dps_error_pct, wall_s, report_html, report_json, started, finished,
+                                     user_email, user_name, kind, gear)
+                   VALUES (?,?,?,?,?, 'done', ?,?,?,?,?,?,?,?,?,?,?,?,'group',?)""",
+                (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), cached["id"],
+                 None, None, cached["wall_s"], cached["report_html"], cached["report_json"],
+                 now, now, user["email"], user["name"], cached["gear"]),
+            )
+            return {"id": sim_id, "status": "done", "cached": True, "warnings": warnings, "count": len(allowed)}
+        conn.execute(
+            "INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, user_email, user_name, kind) "
+            "VALUES (?,?,?,?,?, 'queued', ?,?,?,?, 'group')",
+            (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"]),
+        )
+    return {"id": sim_id, "status": "queued", "position": queue_len + 1, "warnings": warnings, "count": len(allowed)}
 
 
 # ---------------------------------------------------------------------------
