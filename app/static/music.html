@@ -175,6 +175,8 @@ async function refresh() {
     const b = $("#state");
     if (!st.connected) { b.textContent = "🔴 Éteint"; b.className = "badge"; }
     else if (st.playing) { b.textContent = "▶️ En lecture"; b.className = "badge play"; }
+    else if (st.paused) { b.textContent = "⏸ En pause"; b.className = "badge"; }
+    else if (st.stopped) { b.textContent = "⏹ Arrêté"; b.className = "badge"; }
     else { b.textContent = "🟢 En ligne"; b.className = "badge ok"; }
     lastTrack = st.track || null;
     $("#track").textContent = st.track ? pretty(st.track.title) : "—";

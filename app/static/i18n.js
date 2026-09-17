@@ -567,7 +567,9 @@
  "Boucle activée ✓": "Loop on ✓",
  "Mode désactivé": "Mode off",
  "🎧 Panneau vocal": "🎧 Voice panel",
- "connecté(s) sur TeamSpeak (hors bot)": "connected on TeamSpeak (bot excluded)"
+ "connecté(s) sur TeamSpeak (hors bot)": "connected on TeamSpeak (bot excluded)",
+ "⏸ En pause": "⏸ Paused",
+ "⏹ Arrêté": "⏹ Stopped"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

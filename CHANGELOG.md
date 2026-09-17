@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.043 - 2026-09-17
+- Music player: play now verifies the track actually starts (deleted file => clear message instead of silent nothing).
+- Music player: status badge shows Paused / Stopped states (feedback on pause/stop clicks).
+
 ## 2026.09.042 - 2026-09-17
 - Music: deleting a track now also removes the local mp3 file (no leftover on disk).
 

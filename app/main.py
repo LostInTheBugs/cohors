@@ -2684,6 +2684,8 @@ def _music_payload(j: dict) -> dict:
         "running": bool(j.get("running")),
         "connected": bool(conn.get("status") == 4),
         "playing": bool(j.get("playing")),
+        "paused": bool((_music_state_load() or {}).get("paused")),
+        "stopped": bool((_music_state_load() or {}).get("stopped")),
         "position": int(j.get("position") or 0),
         "volume": int(j.get("volume") or 0),
         "track": ({"uuid": ct.get("uuid", ""), "title": ct.get("title") or ct.get("filename", "")}
@@ -2742,6 +2744,18 @@ def music_play(payload: MusicPlay, request: Request):
     if not re.match(r"^[A-Za-z0-9-]{8,80}$", payload.uuid):
         raise HTTPException(400, "Identifiant invalide.")
     r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/play/byId/{payload.uuid}")
+    if r.status_code != 200:
+        raise HTTPException(502, "Le bot a refusé la lecture.")
+    # Vérifier que la lecture démarre vraiment (piste supprimée du serveur => silence trompeur).
+    time.sleep(1.6)
+    try:
+        _j = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/status").json()
+        if not _j.get("playing") and int(_j.get("position") or 0) <= 0:
+            raise HTTPException(409, "Impossible de lire ce morceau : le fichier n'existe plus sur le serveur. Choisis une piste dans la bibliothèque.")
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001
+        pass  # statut indisponible : on ne bloque pas la lecture
     st = _music_state_load()
     if st.get("paused") or st.get("stopped"):
         st.pop("paused", None)
