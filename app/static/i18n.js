@@ -302,6 +302,32 @@
  "LOTP — Inscription": "LOTP — Sign-up",
  "LOTP — Top Stuff": "LOTP — Top Stuff",
  "LOTP — Administration": "LOTP — Admin",
+ "⚙️ Paramètres": "⚙️ Settings",
+ "LOTP — Paramètres": "LOTP — Settings",
+ "Paramètres": "Settings",
+ "Langue, nom et mot de passe — liés à ton compte.": "Language, name and password — tied to your account.",
+ "🌐 Langue de l'interface": "🌐 Interface language",
+ "🇫🇷 Français": "🇫🇷 French",
+ "Cette préférence est liée à ton compte (elle te suit sur tous tes appareils).": "This preference is tied to your account (it follows you across devices).",
+ "👤 Nom affiché": "👤 Display name",
+ "Enregistrer": "Save",
+ "🔒 Mot de passe": "🔒 Password",
+ "Mot de passe actuel": "Current password",
+ "Nouveau mot de passe (8 caractères minimum)": "New password (8 characters minimum)",
+ "Confirmer le nouveau mot de passe": "Confirm new password",
+ "Changer le mot de passe": "Change password",
+ "⚠️ Tes autres appareils seront déconnectés.": "⚠️ Your other devices will be signed out.",
+ "Langue mise à jour ✓": "Language updated ✓",
+ "Nom mis à jour ✓": "Name updated ✓",
+ "Mot de passe modifié ✓": "Password changed ✓",
+ "Remplis tous les champs.": "Fill in all fields.",
+ "Mot de passe actuel incorrect.": "Current password is incorrect.",
+ "Le nom ne peut pas être vide.": "Name cannot be empty.",
+ "Langue inconnue.": "Unknown language.",
+ "👤 Profil": "👤 Profile",
+ "Nom affiché": "Display name",
+ "Langue :": "Language:",
+ "Langue et nom sont liés à ton compte (ils te suivent sur tous tes appareils).": "Language and name are tied to your account (they follow you across devices).",
  "· Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment": "· Engine: SimulationCraft · Not affiliated with Blizzard Entertainment"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
@@ -468,6 +494,7 @@
   // ---------------- sélecteur de langue
   function injectBox() {
     if (document.getElementById("langbox")) return;
+    if (document.body && document.body.dataset && document.body.dataset.noLangbox) return;
     const el = document.createElement("span");
     el.id = "langbox";
     el.style.cssText = "display:inline-flex;gap:4px;align-items:center;margin-left:10px;font-size:12.5px;";

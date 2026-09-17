@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Paramètres</title>
+<link rel="icon" href="/static/crest.png">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width:880px; margin:0 auto; padding:18px 18px 34px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .plab { color:var(--mut); font-size:13.5px; }
+  input[type=email], input[type=text], input[type=password] { background:var(--bg); color:var(--fg);
+        border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; flex:1; min-width:260px; }
+  input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
+  .radio { display:flex; gap:8px; align-items:center; border:1px solid var(--line); border-radius:10px;
+           padding:8px 15px; cursor:pointer; font-size:14px; }
+  .radio input { accent-color:var(--acc); }
+  .radio:has(input:checked) { border-color:var(--acc2); color:var(--acc2); }
+  button { background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
+           padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  button:disabled { opacity:.55; cursor:default; }
+  .note { color:var(--mut); font-size:12.5px; margin:10px 0 0; }
+  .msg-ok { color:var(--ok); font-size:13px; }
+  .msg-err { color:var(--err); font-size:13px; }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body data-no-langbox="1">
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Paramètres</span></div>
+        <div class="tagline">Langue, nom et mot de passe — liés à ton compte.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/">← Retour à l'application</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs">
+    <a class="tab" href="/">⚔️ Simulateur</a>
+    <a class="tab" href="/characters">👥 Personnages</a>
+    <a class="tab" href="/raids">📊 Rapports</a>
+    <a class="tab" href="/compare">⚖️ Comparateur</a>
+    <a class="tab" href="/gear">🧰 Top Stuff</a>
+    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
+  </nav>
+
+  <div class="card">
+    <h2>👤 Profil</h2>
+    <div class="row">
+      <span class="plab">Langue :</span>
+      <label class="radio"><input type="radio" name="lang" value="fr"> 🇫🇷 Français</label>
+      <label class="radio"><input type="radio" name="lang" value="en"> 🇬🇧 English</label>
+      <span id="lang-msg"></span>
+    </div>
+    <div class="row" style="margin-top:11px">
+      <input type="text" id="name" maxlength="60" placeholder="Nom affiché">
+      <button id="name-save">💾 Enregistrer</button>
+      <span id="name-msg"></span>
+    </div>
+    <p class="note">Langue et nom sont liés à ton compte (ils te suivent sur tous tes appareils).</p>
+  </div>
+
+  <div class="card">
+    <h2>🔒 Mot de passe</h2>
+    <div class="row">
+      <input type="password" id="pw-cur" placeholder="Mot de passe actuel" autocomplete="current-password">
+      <input type="password" id="pw-new" placeholder="Nouveau mot de passe (8 caractères minimum)" autocomplete="new-password">
+    </div>
+    <div class="row" style="margin-top:9px">
+      <input type="password" id="pw-new2" placeholder="Confirmer le nouveau mot de passe" autocomplete="new-password">
+      <button id="pw-save">Changer le mot de passe</button>
+    </div>
+    <p class="note">⚠️ Tes autres appareils seront déconnectés. <span id="pw-msg"></span></p>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jpost = async (u, b) => { const r = await fetch(u, { method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur"); return j; };
+
+function setMsg(sel, t, ok) { const e = $(sel); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; }
+
+$("#logout").addEventListener("click", async () => { await fetch("/api/logout", { method: "POST" }); location.href = "/login"; });
+
+document.querySelectorAll("input[name=lang]").forEach(r => r.addEventListener("change", async () => {
+  try {
+    try { localStorage.setItem("lotp_lang", r.value); } catch (e) {}
+    await jpost("/api/me/settings", { lang: r.value });
+    location.reload();
+  } catch (e) { setMsg("#lang-msg", e.message, false); }
+}));
+
+$("#name-save").addEventListener("click", async () => {
+  $("#name-save").disabled = true;
+  try {
+    const d = await jpost("/api/me/settings", { name: $("#name").value });
+    $("#who").textContent = d.name || "";
+    setMsg("#name-msg", "Nom mis à jour ✓", true);
+  } catch (e) { setMsg("#name-msg", e.message, false); }
+  $("#name-save").disabled = false;
+});
+
+$("#pw-save").addEventListener("click", async () => {
+  const cur = $("#pw-cur").value, nw = $("#pw-new").value, nw2 = $("#pw-new2").value;
+  if (!cur || !nw || !nw2) { setMsg("#pw-msg", "Remplis tous les champs.", false); return; }
+  if (nw.length < 8) { setMsg("#pw-msg", "Le mot de passe doit faire au moins 8 caractères.", false); return; }
+  if (nw !== nw2) { setMsg("#pw-msg", "Les deux mots de passe ne correspondent pas.", false); return; }
+  $("#pw-save").disabled = true;
+  try {
+    await jpost("/api/me/password", { current: cur, new: nw });
+    setMsg("#pw-msg", "Mot de passe modifié ✓", true);
+    $("#pw-cur").value = ""; $("#pw-new").value = ""; $("#pw-new2").value = "";
+  } catch (e) { setMsg("#pw-msg", e.message, false); }
+  $("#pw-save").disabled = false;
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    $("#name").value = me.name || "";
+    let lang = "";
+    try { lang = localStorage.getItem("lotp_lang") || ""; } catch (e) {}
+    if (!lang) lang = document.documentElement.lang === "en" ? "en" : "fr";
+    const r = document.querySelector('input[name=lang][value="' + lang + '"]');
+    if (r) r.checked = true;
+    if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+})();
+</script>
+</body>
+</html>

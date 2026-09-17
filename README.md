@@ -40,6 +40,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       admins handle accounts, roles and the Discord bot.
 - [x] Bilingual UI (FR/EN) — header switcher, remembered choice; English is
       applied automatically for English-language browsers.
+- [x] Account settings page — language stored on the account, display name,
+      password change (per-account preference follows you everywhere).
 
 ## Requirements
 
@@ -122,6 +124,8 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me` | GET | Current account |
 | `/api/register` | POST | Register (or reset a password) from an invitation `{token, name, email?, password}` |
 | `/api/invite/{token}` | GET | Invitation info (public) |
+| `/api/me/settings` | POST | Save your account settings (language / display name) |
+| `/api/me/password` | POST | Change your password (other sessions signed out) |
 | `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
 | `/api/me/chars` | GET / POST | Linked characters — POST links one (`{name, main?}`) |
 | `/api/me/chars/{id}` | DELETE | Unlink one of your characters |
@@ -180,7 +184,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.016` (see `CHANGELOG.md`).
+Current version: `2026.09.017` (see `CHANGELOG.md`).
 
 ## License
 

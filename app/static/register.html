@@ -88,7 +88,8 @@ async function submit() {
   $("#go").disabled = true; msg.className = ""; msg.textContent = "Création du compte…";
   try {
     const r = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, name, email, password: pw }) });
+      body: JSON.stringify({ token, name, email, password: pw,
+        lang: (function () { try { return localStorage.getItem("lotp_lang") || ""; } catch (e) { return ""; } })() }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur."; $("#go").disabled = false; return; }
     msg.className = "msg-ok"; msg.textContent = "Compte créé — redirection…";

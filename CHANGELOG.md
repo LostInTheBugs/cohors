@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.017] — 2026-09-17
+
+### Added
+
+- Account settings page (`/settings`): interface language stored **on the
+  account** (follows you across devices; also applied right after login and
+  at sign-up), display name, and self-service password change (other sessions
+  are signed out). Header link « ⚙️ Paramètres / Settings » on every page.
+- New API: `POST /api/me/settings`, `POST /api/me/password`; login and
+  `/api/me` now return the account language.
+
 ## [2026.09.016] — 2026-09-17
 
 ### Added

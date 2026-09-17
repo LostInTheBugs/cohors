@@ -115,6 +115,7 @@ def _init_db() -> None:
                 pwd        TEXT NOT NULL,
                 is_admin   INTEGER NOT NULL DEFAULT 0,
                 role       TEXT NOT NULL DEFAULT 'member',
+                lang       TEXT NOT NULL DEFAULT '',
                 active     INTEGER NOT NULL DEFAULT 1,
                 created    REAL NOT NULL,
                 last_login REAL
@@ -198,6 +199,8 @@ def _init_db() -> None:
         if "role" not in cols:
             conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'")
         conn.execute("UPDATE users SET role='admin' WHERE is_admin=1 AND role != 'admin'")
+        if "lang" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN lang TEXT NOT NULL DEFAULT ''")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_status ON sims(status)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
         # migrations (idempotent)
@@ -295,6 +298,15 @@ def _user_role(user: sqlite3.Row) -> str:
     if role in ("member", "officer", "admin"):
         return role
     return "admin" if user["is_admin"] else "member"
+
+
+def _user_lang(user: sqlite3.Row) -> str:
+    """Langue préférée du compte (« fr » / « en », sinon vide = auto)."""
+    try:
+        lang = (user["lang"] or "").strip()
+    except (IndexError, KeyError):
+        lang = ""
+    return lang if lang in ("fr", "en") else ""
 
 
 def _require_admin(request: Request) -> sqlite3.Row:
@@ -457,6 +469,7 @@ class RegisterRequest(BaseModel):
     name: str = Field("", max_length=60)
     email: str = Field("", max_length=200)
     password: str = Field(..., min_length=8, max_length=200)
+    lang: str = Field("", max_length=5)
 
 
 @app.api_route("/gear", methods=["GET", "HEAD"])
@@ -485,7 +498,8 @@ def login(payload: LoginRequest, request: Request, response: Response):
         conn.execute("UPDATE users SET last_login=? WHERE id=?", (now, user["id"]))
     _login_attempts.pop(ip, None)
     _set_session_cookie(response, token)
-    return {"ok": True, "name": user["name"], "is_admin": bool(user["is_admin"]), "role": _user_role(user)}
+    return {"ok": True, "name": user["name"], "is_admin": bool(user["is_admin"]),
+            "role": _user_role(user), "lang": _user_lang(user)}
 
 
 @app.post("/api/logout")
@@ -503,7 +517,8 @@ def me(request: Request):
     user = _get_session_user(request)
     if user is None:
         raise HTTPException(401, "Non connecté")
-    return {"email": user["email"], "name": user["name"], "is_admin": bool(user["is_admin"]), "role": _user_role(user)}
+    return {"email": user["email"], "name": user["name"], "is_admin": bool(user["is_admin"]),
+            "role": _user_role(user), "lang": _user_lang(user)}
 
 
 @app.get("/api/invite/{token}")
@@ -535,9 +550,12 @@ def register(payload: RegisterRequest, request: Request, response: Response):
             user_id = existing["id"]
         else:
             name = payload.name.strip()[:60] or email.split("@")[0]
+            lang_val = payload.lang.strip().lower()
+            if lang_val not in ("fr", "en"):
+                lang_val = ""
             cur = conn.execute(
-                "INSERT INTO users (email, name, pwd, is_admin, role, active, created) VALUES (?,?,?,0,'member',1,?)",
-                (email, name, _hash_password(payload.password), now),
+                "INSERT INTO users (email, name, pwd, is_admin, role, active, created, lang) VALUES (?,?,?,0,'member',1,?,?)",
+                (email, name, _hash_password(payload.password), now, lang_val),
             )
             user_id = int(cur.lastrowid or 0)
         conn.execute("UPDATE invites SET used=?, used_by=? WHERE token=?", (now, user_id, payload.token))
@@ -1427,6 +1445,59 @@ def admin_bot_test(request: Request):
     except discord_bot.DiscordError as exc:
         raise HTTPException(502, str(exc))
     _bot_save({"last_message": "message de test envoyé"})
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Paramètres du compte (langue, nom, mot de passe)
+# ---------------------------------------------------------------------------
+@app.api_route("/settings", methods=["GET", "HEAD"])
+def settings_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "settings.html")
+
+
+class SettingsRequest(BaseModel):
+    lang: str | None = Field(None, max_length=5)
+    name: str | None = Field(None, max_length=60)
+
+
+@app.post("/api/me/settings")
+def save_my_settings(payload: SettingsRequest, request: Request):
+    user = _require_user(request)
+    updates: dict = {}
+    if payload.lang is not None:
+        lang = payload.lang.strip().lower()
+        if lang not in ("", "fr", "en"):
+            raise HTTPException(400, "Langue inconnue.")
+        updates["lang"] = lang
+    if payload.name is not None:
+        name = payload.name.strip()[:60]
+        if not name:
+            raise HTTPException(400, "Le nom ne peut pas être vide.")
+        updates["name"] = name
+    if updates:
+        sets = ", ".join(f"{k}=?" for k in updates)
+        with _db_lock, _db() as conn:
+            conn.execute(f"UPDATE users SET {sets} WHERE id=?", (*updates.values(), user["id"]))
+    return {"ok": True, "lang": updates.get("lang", _user_lang(user)), "name": updates.get("name", user["name"])}
+
+
+class PasswordChangeRequest(BaseModel):
+    current: str = Field(..., max_length=200)
+    new: str = Field(..., min_length=8, max_length=200)
+
+
+@app.post("/api/me/password")
+def change_my_password(payload: PasswordChangeRequest, request: Request):
+    user = _require_user(request)
+    if not _verify_password(payload.current, user["pwd"]):
+        raise HTTPException(400, "Mot de passe actuel incorrect.")
+    token = request.cookies.get(SESSION_COOKIE) or ""
+    with _db_lock, _db() as conn:
+        conn.execute("UPDATE users SET pwd=? WHERE id=?", (_hash_password(payload.new), user["id"]))
+        conn.execute("DELETE FROM sessions WHERE user_id=? AND token != ?", (user["id"], token))
     return {"ok": True}
 
 
