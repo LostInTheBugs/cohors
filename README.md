@@ -38,6 +38,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       (⭐ main + alts) from the Personnages page; stars show up in the roster.
 - [x] Roles: membre / officier / administrateur — officers manage invitations,
       admins handle accounts, roles and the Discord bot.
+- [x] Bilingual UI (FR/EN) — header switcher, remembered choice; English is
+      applied automatically for English-language browsers.
 
 ## Requirements
 
@@ -167,6 +169,7 @@ app/static/raids.html   Raid reports page (French)
 app/static/compare.html Member comparison page (French)
 app/mailer.py           Outgoing e-mail (invitations) via SMTP
 app/static/gear.html    « Top Stuff » gear comparison page (French)
+app/static/i18n.js      FR/EN translation engine (dictionary + DOM translation)
 app/discord_bot.py      Discord REST client (bot announcements, no dependencies)
 worker/simrun.py        SimulationCraft engine wrapper (official Docker image)
 Dockerfile              App image (Python + Docker CLI)
@@ -177,7 +180,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.015` (see `CHANGELOG.md`).
+Current version: `2026.09.016` (see `CHANGELOG.md`).
 
 ## License
 

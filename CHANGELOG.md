@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.016] — 2026-09-17
+
+### Added
+
+- Bilingual UI (FR/EN): a FR/EN switcher in the header of every page,
+  remembered in the browser (automatic English for English-language browsers,
+  French otherwise). The whole site is translated client-side — pages stay
+  French in the source and `app/static/i18n.js` translates the rendered DOM
+  (exact dictionary + rules for dynamic strings, MutationObserver for
+  JS-rendered content). Dates and numbers switch to English formatting.
+
 ## [2026.09.015] — 2026-09-17
 
 ### Added

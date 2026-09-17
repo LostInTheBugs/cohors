@@ -158,6 +158,7 @@
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
 <div id="toast"></div>
+<script src="/static/i18n.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -315,7 +316,7 @@ $("#inv-create").addEventListener("click", async () => {
     if (!me.is_admin && me.role !== "officer") { location.href = "/"; return; }
     ME = me;
     IM_ADMIN = !!me.is_admin;
-    document.title = `LOTP — ${me.is_admin ? "Admin" : "Officiers"} (${me.name})`;
+    document.title = `LOTP — ${me.is_admin ? "Admin" : (localStorage.getItem("lotp_lang") === "en" ? "Officers" : "Officiers")} (${me.name})`;
     if (!IM_ADMIN) {
       $("#tab-comptes").classList.add("hidden");
       $("#tab-bot").classList.add("hidden");
