@@ -1184,13 +1184,15 @@ def set_main_char(cid: int, request: Request):
 # Bot Discord (annonces de guilde)
 # ---------------------------------------------------------------------------
 class BotConfigRequest(BaseModel):
-    enabled: bool = False
+    """Mise à jour PARTIELLE : seuls les champs transmis sont modifiés."""
+
+    enabled: bool | None = None
     token: str = Field("", max_length=200)
-    app_id: str = Field("", max_length=32)
+    app_id: str | None = Field(None, max_length=32)
     channel_id: str = Field("", max_length=32)
     channel_name: str = Field("", max_length=120)
-    notify_reports: bool = True
-    notify_roster: bool = True
+    notify_reports: bool | None = None
+    notify_roster: bool | None = None
 
 
 def _bot_config() -> sqlite3.Row | None:
@@ -1309,12 +1311,15 @@ def admin_bot_get(request: Request):
 @app.post("/api/admin/bot")
 def admin_bot_save(payload: BotConfigRequest, request: Request):
     _require_admin(request)
-    updates: dict = {
-        "enabled": 1 if payload.enabled else 0,
-        "app_id": payload.app_id.strip(),
-        "notify_reports": 1 if payload.notify_reports else 0,
-        "notify_roster": 1 if payload.notify_roster else 0,
-    }
+    updates: dict = {}
+    if payload.enabled is not None:
+        updates["enabled"] = 1 if payload.enabled else 0
+    if payload.app_id is not None:
+        updates["app_id"] = payload.app_id.strip()
+    if payload.notify_reports is not None:
+        updates["notify_reports"] = 1 if payload.notify_reports else 0
+    if payload.notify_roster is not None:
+        updates["notify_roster"] = 1 if payload.notify_roster else 0
     if payload.channel_id.strip():
         updates["channel_id"] = payload.channel_id.strip()
         updates["channel_name"] = payload.channel_name.strip()[:120]

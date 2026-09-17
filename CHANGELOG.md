@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.014] — 2026-09-17
+
+### Fixed
+
+- `POST /api/admin/bot` now performs **partial** updates: fields omitted from
+  the request are left untouched (installing a token no longer clears the
+  previously saved Application ID, and vice-versa).
+
 ## [2026.09.013] — 2026-09-17
 
 ### Changed
