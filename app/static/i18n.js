@@ -569,7 +569,8 @@
  "🎧 Panneau vocal": "🎧 Voice panel",
  "connecté(s) sur TeamSpeak (hors bot)": "connected on TeamSpeak (bot excluded)",
  "⏸ En pause": "⏸ Paused",
- "⏹ Arrêté": "⏹ Stopped"
+ "⏹ Arrêté": "⏹ Stopped",
+ "🚪 Déconnexion": "🚪 Sign out"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

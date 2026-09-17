@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.050 - 2026-09-17
+- Mobile drawer polish: brighter section labels, darker scrim, safe-area bottom padding.
+
+## 2026.09.049 - 2026-09-17
+- Mobile menu redesign: hamburger button opens a full side drawer (all sections visible, grouped, app-like) instead of the horizontally scrolling pill row; desktop unchanged.
+
 ## 2026.09.048 - 2026-09-17
 - Mobile: right-edge fade on the scrollable nav (scroll affordance).
 

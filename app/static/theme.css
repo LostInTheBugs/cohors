@@ -163,3 +163,10 @@ body.wb {
     z-index: 5;
   }
 }
+
+/* 📱 Menu mobile = burger + tiroir (v049) : on neutralise le scroll horizontal de nav. */
+@media (max-width: 760px) {
+  #topwrap::after { display: none !important; }
+  #topwrap nav.tabs { overflow-x: visible !important; }
+  #topwrap { padding: 6px 12px 6px !important; }
+}
