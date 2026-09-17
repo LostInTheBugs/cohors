@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Simulateur</title>
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #7c6cf6; --acc2: #a78bfa;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 18px 40px; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: .3px; }
+  h1 span { color: var(--acc2); }
+  .sub { color: var(--mut); font-size: 14px; margin: 0 0 22px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+  label { display: block; font-size: 13px; color: var(--mut); margin: 0 0 6px; }
+  textarea { width: 100%; min-height: 170px; resize: vertical; background: var(--bg); color: var(--fg);
+             border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: 13px/1.5 ui-monospace, Consolas, monospace; }
+  textarea:focus, input:focus, select:focus { outline: 2px solid var(--acc); outline-offset: 0; border-color: var(--acc); }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
+  .field { display: flex; flex-direction: column; }
+  input[type=text], select { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+            border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 170px; }
+  .grow { flex: 1; }
+  input[type=text] { width: 100%; }
+  button { background: linear-gradient(135deg, var(--acc), #5b4bd6); color: #fff; border: 0; border-radius: 10px;
+           padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  #submit-msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
+  .msg-ok { color: var(--ok); } .msg-err { color: var(--err); } .msg-warn { color: var(--warn); }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .sim { border: 1px solid var(--line); background: var(--card2); border-radius: 11px; padding: 12px 14px;
+         margin-bottom: 10px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .sim .who { font-weight: 600; min-width: 120px; }
+  .sim .meta { color: var(--mut); font-size: 12.5px; }
+  .sim .dps { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .sim .dps small { color: var(--mut); font-weight: 400; }
+  .badge { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); }
+  .b-queued { color: var(--warn); border-color: #5a4a12; }
+  .b-running { color: var(--acc2); border-color: #3d3470; }
+  .b-done { color: var(--ok); border-color: #1d4a3a; }
+  .b-failed { color: var(--err); border-color: #5a2626; }
+  .b-cache { color: #6cc7f6; border-color: #1d3f52; }
+  .sim a { color: var(--acc2); text-decoration: none; font-weight: 600; }
+  .sim a:hover { text-decoration: underline; }
+  .empty { color: var(--mut); font-size: 14px; padding: 6px 2px; }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 26px; padding-top: 14px; }
+  .errbox { color: var(--err); font-size: 12.5px; width: 100%; white-space: pre-wrap;
+            font-family: ui-monospace, Consolas, monospace; max-height: 90px; overflow: auto; }
+  .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>LOTP <span>Simulateur</span></h1>
+    <span class="meta" style="color:var(--mut);font-size:13px">SimulationCraft pour la guilde</span>
+  </header>
+  <p class="sub">Colle ton export <b>/simc</b> (en jeu : tape <b>/simc</b> puis copie tout le texte) et lance la simulation.</p>
+
+  <div class="card">
+    <label for="inp">Export /simc</label>
+    <textarea id="inp" placeholder="SimC Addon export — colle ici…"></textarea>
+    <div class="row">
+      <div class="field grow">
+        <label for="lbl">Nom / perso (optionnel)</label>
+        <input type="text" id="lbl" maxlength="60" placeholder="ex. Thrall — war fury">
+      </div>
+      <div class="field">
+        <label for="iter">Précision</label>
+        <select id="iter">
+          <option value="5000">Rapide — 5 000 itérations</option>
+          <option value="10000" selected>Standard — 10 000 itérations</option>
+          <option value="25000">Précis — 25 000 itérations</option>
+          <option value="50000">Très précis — 50 000 itérations</option>
+        </select>
+      </div>
+      <button id="go">▶ Lancer la simulation</button>
+    </div>
+    <div id="submit-msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>Dernières simulations</h2>
+    <div id="list"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <footer>
+    Moteur : <b>SimulationCraft</b> (image Docker officielle) · Données de jeu fournies par
+    <b>Blizzard Entertainment</b> · Outil non affilié à Blizzard Entertainment ·
+    <span id="ver">…</span>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", {maximumFractionDigits: d}).format(n);
+const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
+  if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
+
+const STATUS = { queued: ["En file ⏳", "b-queued"], running: ["En simulation…", "b-running"],
+                 done: ["Terminé", "b-done"], failed: ["Échoué", "b-failed"] };
+
+function render(sims) {
+  const box = $("#list");
+  if (!sims.length) { box.innerHTML = '<div class="empty">Aucune simulation pour le moment.</div>'; return; }
+  box.innerHTML = sims.map(s => {
+    const [txt, cls] = STATUS[s.status] || [s.status, ""];
+    const badge = `<span class="badge ${cls}">${txt}</span>`;
+    const cache = s.cached ? ' <span class="badge b-cache">⚡ cache</span>' : "";
+    const who = s.label ? s.label : "Simulation";
+    let right = "";
+    if (s.status === "done") {
+      right = `<span class="dps">${fmt(s.dps)} DPS <small>± ${s.dps_error_pct != null ? s.dps_error_pct.toFixed(2) : "?"} %</small></span>`;
+      if (s.has_report) right += ` <a href="/reports/${s.id}/report.html" target="_blank" rel="noopener">Rapport →</a>`;
+    } else if (s.status === "failed") {
+      right = `<span class="meta">Échec — vérifie que ton export est complet (copié en entier depuis /simc).</span>`;
+    } else {
+      right = `<span class="spin">⏳</span>`;
+    }
+    const err = (s.status === "failed" && s.error) ? `<div class="errbox">${s.error.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</div>` : "";
+    return `<div class="sim"><span class="who">${who.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</span>
+      ${badge}${cache}
+      <span class="meta">${fmt(s.iterations)} it · ${ago(s.created)}</span>
+      <span style="flex:1"></span>${right}${err}</div>`;
+  }).join("");
+}
+
+async function load() {
+  try {
+    const r = await fetch("/api/sims"); const d = await r.json();
+    render(d.sims); $("#ver").textContent = "v" + d.version;
+  } catch (e) { /* réseau : on retente au tick suivant */ }
+}
+setInterval(load, 5000); load();
+
+$("#inp").value = localStorage.getItem("lotp_input") || "";
+$("#inp").addEventListener("input", () => localStorage.setItem("lotp_input", $("#inp").value));
+$("#lbl").value = localStorage.getItem("lotp_label") || "";
+$("#lbl").addEventListener("input", () => localStorage.setItem("lotp_label", $("#lbl").value));
+
+$("#go").addEventListener("click", async () => {
+  const input = $("#inp").value.trim();
+  const msg = $("#submit-msg");
+  if (input.length < 30) { msg.className = "msg-err"; msg.textContent = "Colle d'abord ton export /simc (le texte semble vide ou trop court)."; return; }
+  $("#go").disabled = true; msg.className = ""; msg.textContent = "Envoi…";
+  try {
+    const r = await fetch("/api/sim", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input, iterations: parseInt($("#iter").value, 10), label: $("#lbl").value }) });
+    const d = await r.json();
+    if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur"; }
+    else if (d.cached) { msg.className = "msg-ok"; msg.textContent = "⚡ Résultat déjà en cache — simulation identique trouvée !"; }
+    else { msg.className = "msg-ok"; msg.textContent = `En file (position ${d.position}) — la simulation démarre dans quelques instants…`; }
+    load();
+  } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; }
+  $("#go").disabled = false;
+});
+</script>
+</body>
+</html>

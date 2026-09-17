@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    image: wow-companion-app:latest
+    container_name: wow-app
+    restart: unless-stopped
+    env_file: [.env]
+    volumes:
+      # Launch sibling SimulationCraft containers from the host daemon.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Same absolute path on the host and in the container: passed to the
+      # SimulationCraft containers for input and report files.
+      - ${DATA_DIR:?set DATA_DIR in .env (see .env.example)}:${DATA_DIR:?set DATA_DIR in .env (see .env.example)}
+    ports:
+      - "127.0.0.1:${PORT:-8030}:${PORT:-8030}"
