@@ -63,18 +63,7 @@
       <a class="hlink" href="#" id="logout">Déconnexion</a>
     </div>
   </header>
-  <nav class="tabs">
-    <a class="tab" href="/dashboard">🏠 Tableau de bord</a>
-    <a class="tab" href="/guild">🛡️ Guilde</a>
-    <a class="tab" href="/">⚔️ Simulateur</a>
-    <a class="tab" href="/characters">👥 Personnages</a>
-    <a class="tab" href="/raids">📊 Rapports</a>
-    <a class="tab" href="/calendar">🗓️ Calendrier</a>
-    <a class="tab" href="/compare">⚖️ Comparateur</a>
-    <a class="tab" href="/gear">🧰 Top Stuff</a>
-    <a class="tab" href="/help">📖 Aide</a>
-    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
-  </nav>
+  <nav class="tabs" id="navmain"></nav>
 
   <div class="card">
     <h2>👤 Profil</h2>
@@ -107,6 +96,7 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
+<script src="/static/nav.js"></script>
 <script src="/static/i18n.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.024] — 2026-09-17
+
+### Changed
+
+- Structured navigation: every page now shares one rendered menu (`nav.js`)
+  with direct links (Dashboard, Help) and drop-down sub-menus (Simulation →
+  Simulator / Top Stuff / Comparison; Guild → Characters / Reports / Calendar /
+  Info & links). Active section and page are highlighted; the admin link is
+  rendered too, so the menu stays in sync everywhere.
+
 ## [2026.09.023] — 2026-09-17
 
 ### Added

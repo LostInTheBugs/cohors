@@ -94,18 +94,7 @@
       <a class="hlink" href="#" id="logout">Déconnexion</a>
     </div>
   </header>
-  <nav class="tabs">
-    <a class="tab" href="/dashboard">🏠 Tableau de bord</a>
-    <a class="tab" href="/guild">🛡️ Guilde</a>
-    <a class="tab" href="/">⚔️ Simulateur</a>
-    <a class="tab" href="/characters">👥 Personnages</a>
-    <a class="tab active" href="/raids">📊 Rapports</a>
-    <a class="tab" href="/calendar">🗓️ Calendrier</a>
-    <a class="tab" href="/compare">⚖️ Comparateur</a>
-    <a class="tab" href="/gear">🧰 Top Stuff</a>
-    <a class="tab" href="/help">📖 Aide</a>
-    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
-  </nav>
+  <nav class="tabs" id="navmain"></nav>
   <p class="sub">Derniers rapports de guilde sur Warcraft Logs. Clique sur un rapport pour voir les boss, les wipes/kills et les parses de chaque joueur.</p>
 
   <div class="card">
@@ -130,6 +119,7 @@
   </footer>
 </div>
 
+<script src="/static/nav.js"></script>
 <script src="/static/i18n.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
