@@ -210,6 +210,22 @@ def _init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS wishlist (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                item_id    INTEGER NOT NULL,
+                name       TEXT NOT NULL,
+                slot       TEXT NOT NULL DEFAULT '',
+                inv_type   TEXT NOT NULL DEFAULT '',
+                quality    TEXT NOT NULL DEFAULT 'COMMON',
+                icon       TEXT,
+                added      REAL NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_wishlist_uniq ON wishlist(user_email, item_id)")
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS guild_events (
                 id      INTEGER PRIMARY KEY AUTOINCREMENT,
                 kind    TEXT NOT NULL,
@@ -1359,6 +1375,91 @@ def api_leaderboard(request: Request, refresh: int = 0):
         _LB_CACHE["ts"] = time.time()
         _LB_CACHE["data"] = data
     return data
+
+
+# ---------------------------------------------------------------------------
+# Wishlist (pièces à obtenir + gains)
+# ---------------------------------------------------------------------------
+class WishlistAdd(BaseModel):
+    item: str = Field(..., min_length=4, max_length=300)
+
+
+@app.api_route("/wishlist", methods=["GET", "HEAD"])
+def wishlist_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "wishlist.html")
+
+
+@app.get("/api/wishlist")
+def api_wishlist(request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = conn.execute(
+            "SELECT item_id, name, slot, quality, icon, added FROM wishlist WHERE user_email=? ORDER BY added DESC",
+            (user["email"],),
+        ).fetchall()
+        chars = conn.execute(
+            "SELECT realm, name, display, is_main FROM char_links WHERE user_email=? ORDER BY is_main DESC, name",
+            (user["email"],),
+        ).fetchall()
+    items = [
+        {
+            "item_id": r["item_id"], "name": r["name"],
+            "slot": r["slot"], "slot_fr": bnet.SLOT_FR.get(r["slot"], r["slot"] or ""),
+            "quality": r["quality"], "icon": r["icon"], "added": r["added"],
+        }
+        for r in rows
+    ]
+    chars_out = [dict(c) for c in chars]
+    for ch in chars_out:
+        try:
+            eq, _t = bnet.equipment(ch["realm"], ch["name"])
+        except bnet.BnetError:
+            ch["_ids"] = set()
+            continue
+        ch["_ids"] = {it.get("item_id") for it in (eq.get("items") or []) if it.get("item_id")}
+    for it in items:
+        it["owned"] = {ch["name"]: (it["item_id"] in ch["_ids"]) for ch in chars_out}
+    for ch in chars_out:
+        ch.pop("_ids", None)
+    return {"items": items, "chars": chars_out}
+
+
+@app.post("/api/wishlist")
+def api_wishlist_add(payload: WishlistAdd, request: Request):
+    user = _require_user(request)
+    m = ITEM_REF_RE.search(payload.item or "")
+    if not m:
+        raise HTTPException(400, "Indique une pièce (identifiant ou lien Wowhead).")
+    iid = int(m.group(1))
+    try:
+        it = bnet.item(iid)
+    except bnet.BnetError as exc:
+        raise HTTPException(400, str(exc))
+    slot = (bnet.INV_TO_SLOTS.get(it["inv_type"]) or [""])[0]
+    with _db_lock, _db() as conn:
+        exists = conn.execute(
+            "SELECT 1 AS x FROM wishlist WHERE user_email=? AND item_id=?", (user["email"], iid)
+        ).fetchone()
+        if exists:
+            return {"ok": True, "already": True, "name": it["name"]}
+        conn.execute(
+            "INSERT INTO wishlist (user_email, item_id, name, slot, inv_type, quality, icon, added) VALUES (?,?,?,?,?,?,?,?)",
+            (user["email"], iid, it["name"], slot, it["inv_type"], it["quality"], it.get("icon"), time.time()),
+        )
+        count = conn.execute(
+            "SELECT COUNT(*) AS c FROM wishlist WHERE user_email=?", (user["email"],)
+        ).fetchone()["c"]
+    return {"ok": True, "name": it["name"], "slot": slot, "count": count}
+
+
+@app.delete("/api/wishlist/{item_id}")
+def api_wishlist_del(item_id: int, request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM wishlist WHERE user_email=? AND item_id=?", (user["email"], item_id))
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

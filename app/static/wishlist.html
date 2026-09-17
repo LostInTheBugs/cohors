@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Wishlist</title>
+<link rel="icon" href="/static/crest.png">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  .topbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { margin-left:auto; display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .spacer { flex:1; }
+  .btn { background:linear-gradient(135deg,var(--acc),#7d0020); border:0; color:#fff; border-radius:10px;
+         padding:8px 16px; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn:disabled { opacity:.55; cursor:default; }
+  .gbtn { background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:10px;
+          padding:8px 14px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .gbtn:hover { border-color:#3a4763; }
+  .gbtn:disabled { opacity:.55; cursor:default; }
+  input[type=text] { background:var(--card2); border:1px solid var(--line); color:var(--fg); border-radius:10px;
+                     padding:8px 12px; font-size:14px; min-width:260px; }
+  select { background:var(--card2); border:1px solid var(--line); color:var(--fg); border-radius:10px;
+           padding:8px 12px; font-size:14px; min-width:220px; }
+  .meta { color:var(--mut); font-size:12.5px; }
+  table.rtab { width:100%; border-collapse:collapse; margin-top:6px; }
+  table.rtab th, table.rtab td { padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; font-size:13.5px; }
+  table.rtab th { color:var(--mut); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
+  .icn { width:26px; height:26px; border-radius:6px; display:block; }
+  .chip { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:1px 9px; font-size:12px;
+          color:var(--mut); margin-right:6px; }
+  .chip.ok { color:var(--ok); border-color:#1f5c43; }
+  .del { background:transparent; border:0; cursor:pointer; font-size:15px; padding:0 4px; }
+  .del:hover { filter:brightness(1.4); }
+  .q-common { color:#fff; } .q-uncommon { color:#1eff00; } .q-rare { color:#0070dd; }
+  .q-epic { color:#a335ee; } .q-legendary { color:#ff8000; } .q-artifact { color:#e6cc80; } .q-heirloom { color:#00ccff; }
+  .gv { text-align:right; }
+  .gpos { color:var(--ok); } .gneg { color:var(--err); }
+  .gbest { background:rgba(56,201,142,.07); }
+  .gbase { color:var(--mut); }
+  .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
+  .err { color:var(--err); font-size:13.5px; padding:6px 2px; }
+  .ok-msg { color:var(--ok); font-size:13.5px; }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Wishlist</span></div>
+        <div class="tagline">Tes pièces à obtenir — vois qui les possède déjà, simule ce que ça rapporte.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+
+  <div class="card">
+    <h2>🎯 Mes pièces <span class="meta">(<span id="count">0</span>)</span></h2>
+    <div class="row" style="margin-bottom:8px">
+      <input type="text" id="addref" placeholder="Ex. 235623 ou un lien Wowhead">
+      <button class="btn" id="addbtn">Ajouter</button>
+      <span class="spacer"></span>
+      <span class="meta" id="addmsg"></span>
+    </div>
+    <div id="items"></div>
+    <p class="meta" style="margin:10px 0 0">Astuce : ajoute des pièces depuis 🧰 Top Stuff avec le bouton 🎯.</p>
+  </div>
+
+  <div class="card hidden" id="sim-card">
+    <h2>⚡ Simuler les gains</h2>
+    <div class="row" style="margin-bottom:8px">
+      <select id="prof"></select>
+      <button class="btn" id="run" disabled>▶ Lancer la simulation</button>
+      <span class="spacer"></span>
+      <span class="meta" id="simstatus"></span>
+    </div>
+    <p class="meta" id="simhint"></p>
+    <div id="simres"></div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js"></script>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jfetch = async (method, u, body) => { const r = await fetch(u, { method, headers: { "Content-Type": "application/json" },
+  body: body === undefined ? undefined : JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+
+let W = null;
+let POLL = null;
+
+function slotFr(s) { return s || ""; }
+
+function renderItems() {
+  const items = W.items || [];
+  $("#count").textContent = items.length;
+  const chars = W.chars || [];
+  if (!items.length) {
+    $("#items").innerHTML = `<div class="empty">Ta wishlist est vide — ajoute une pièce ci-dessus ou depuis 🧰 Top Stuff avec le bouton 🎯.</div>`;
+    return;
+  }
+  const thChars = chars.length ? `<th>Possédé</th>` : `<th></th>`;
+  $("#items").innerHTML = `<table class="rtab"><thead><tr>
+      <th style="width:36px"></th><th>Pièce</th><th>Emplacement</th>${thChars}<th></th></tr></thead><tbody>` +
+    items.map(it => {
+      const qcls = "q-" + (it.quality || "common").toLowerCase();
+      const chips = chars.length
+        ? chars.map(c => `<span class="chip ${it.owned && it.owned[c.name] ? "ok" : ""}" title="${esc(c.display || c.name)}">${c.is_main ? "⭐ " : ""}${esc(c.display || c.name)}${it.owned && it.owned[c.name] ? " ✓" : ""}</span>`).join("")
+        : `<span class="meta">Lie tes personnages (page 👥 Personnages) pour voir qui possède quoi.</span>`;
+      return `<tr><td>${it.icon ? `<img class="icn" src="${esc(it.icon)}" alt="">` : ""}</td>
+        <td class="${qcls}">${esc(it.name)}</td><td class="meta">${esc(it.slot_fr || "")}</td>
+        <td>${chips}</td>
+        <td><button class="del" data-id="${it.item_id}" title="Retirer">🗑</button></td></tr>`;
+    }).join("") + `</tbody></table>`;
+  document.querySelectorAll(".del").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { await jfetch("DELETE", "/api/wishlist/" + b.dataset.id); await load(); } catch (e) { b.disabled = false; }
+  });
+}
+
+async function loadProfiles() {
+  const d = await jget("/api/profiles");
+  const all = [...(d.mine || []), ...(d.shared || [])];
+  const sel = $("#prof");
+  sel.innerHTML = all.length
+    ? all.map(p => `<option value="${p.id}">${esc(p.name)}${p.shared ? " (partagé)" : ""}</option>`).join("")
+    : "";
+  $("#run").disabled = !all.length || !(W.items || []).length;
+  $("#simhint").textContent = all.length
+    ? `Les ${Math.min((W.items || []).length, 15)} première(s) pièce(s) de ta wishlist seront simulées avec le profil choisi.`
+    : `Aucun profil enregistré — crée-en un sur la page ⚔️ Simulateur (bouton « Sauvegarder »).`;
+}
+
+async function load() {
+  W = await jget("/api/wishlist");
+  renderItems();
+  $("#sim-card").classList.toggle("hidden", !(W.items || []).length);
+  if ((W.items || []).length) await loadProfiles();
+}
+
+// --- ajout
+async function addRef() {
+  const v = ($("#addref").value || "").trim();
+  if (!v) return;
+  $("#addmsg").className = "meta";
+  $("#addmsg").textContent = "…";
+  try {
+    const d = await jfetch("POST", "/api/wishlist", { item: v });
+    $("#addmsg").className = "ok-msg";
+    $("#addmsg").textContent = d.already ? `${d.name} — déjà dans ta wishlist` : `${d.name} ajoutée ✓`;
+    $("#addref").value = "";
+    await load();
+  } catch (e) {
+    $("#addmsg").className = "err";
+    $("#addmsg").textContent = e.message;
+  }
+}
+$("#addbtn").addEventListener("click", addRef);
+$("#addref").addEventListener("keydown", (e) => { if (e.key === "Enter") addRef(); });
+
+// --- simulation
+function stopPoll() { if (POLL) { clearInterval(POLL); POLL = null; } }
+
+function simTable(d) {
+  const rows = [];
+  if (d.gear_base_dps) {
+    rows.push(`<tr class="gbase"><td></td><td>Équipement actuel</td><td>référence</td>
+      <td class="gv">${fmt(d.gear_base_dps)}</td><td class="gv">—</td></tr>`);
+  }
+  (d.gear || []).forEach((g, i) => {
+    const q = "q-" + (g.quality || "common").toLowerCase();
+    const dl = g.delta_pct;
+    const dcls = dl > 0.05 ? "gpos" : (dl < -0.05 ? "gneg" : "");
+    const sign = dl > 0 ? "+" : "";
+    const best = (i === 0 && dl > 0.05) ? " gbest" : "";
+    const icon = g.icon ? `<img class="icn" src="${esc(g.icon)}" alt="">` : "";
+    rows.push(`<tr class="${best}"><td>${icon}</td>
+      <td class="${q}">${esc(g.name)}</td><td class="meta">${esc(g.slot_fr || "")}</td>
+      <td class="gv">${fmt(g.dps)}</td>
+      <td class="gv ${dcls}">${sign}${fmt(g.delta)} <small>(${sign}${(dl ?? 0).toFixed(2)} %)</small></td></tr>`);
+  });
+  $("#simres").innerHTML = `<table class="rtab"><thead><tr>
+      <th style="width:36px"></th><th>Pièce</th><th>Emplacement</th>
+      <th style="text-align:right">DPS</th><th style="text-align:right">Gain vs équipement actuel</th></tr></thead>
+    <tbody>${rows.join("")}</tbody></table>
+    <p class="meta" style="margin-top:8px">${fmt(d.iterations)} itérations · ${d.wall_s != null ? d.wall_s.toFixed(0) + " s" : ""} ·
+    <a class="hlink" href="/reports/${encodeURIComponent(d.id)}/report.html" target="_blank" rel="noopener">Rapport complet →</a></p>`;
+}
+
+async function launch() {
+  stopPoll();
+  const items = (W.items || []).slice(0, 15);
+  const pid = $("#prof").value;
+  if (!pid) return;
+  $("#run").disabled = true;
+  $("#simstatus").textContent = "Simulation en cours…";
+  $("#simres").innerHTML = "";
+  try {
+    const p = await jget("/api/profiles/" + encodeURIComponent(pid));
+    const d = await jfetch("POST", "/api/sim", {
+      input: p.input, kind: "gear", label: "Wishlist", iterations: 1000,
+      items: items.map(i => i.item_id).join(" "),
+    });
+    if (d.cached) {
+      const full = await jget("/api/sims/" + encodeURIComponent(d.id));
+      simTable(full); $("#simstatus").textContent = "Résultat en cache ✓"; $("#run").disabled = false; return;
+    }
+    let n = 0;
+    POLL = setInterval(async () => {
+      n++;
+      try {
+        const full = await jget("/api/sims/" + encodeURIComponent(d.id));
+        if (full.status === "done" && full.gear) {
+          stopPoll(); simTable(full);
+          $("#simstatus").textContent = "Terminé ✓"; $("#run").disabled = false;
+        } else if (full.status === "failed") {
+          stopPoll();
+          $("#simstatus").textContent = "";
+          $("#simres").innerHTML = `<div class="err">Échec de la simulation — vérifie que ton profil /simc est complet.</div>`;
+          $("#run").disabled = false;
+        } else if (n > 90) { stopPoll(); $("#simstatus").textContent = ""; $("#run").disabled = false; }
+      } catch (e) { stopPoll(); $("#simstatus").textContent = ""; $("#run").disabled = false; }
+    }, 2000);
+  } catch (e) {
+    $("#simstatus").textContent = "";
+    $("#simres").innerHTML = `<div class="err">${esc(e.message)}</div>`;
+    $("#run").disabled = false;
+  }
+}
+$("#run").addEventListener("click", launch);
+
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+  } catch (e) { return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  try { await load(); } catch (e) { $("#items").innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+})();
+</script>
+</body>
+</html>

@@ -6,6 +6,7 @@
     { label: "⚔️ Simulation", items: [
       { href: "/", label: "⚔️ Simulateur" },
       { href: "/gear", label: "🧰 Top Stuff" },
+      { href: "/wishlist", label: "🎯 Ma wishlist" },
       { href: "/compare", label: "⚖️ Comparateur" }
     ] },
     { label: "👥 Guilde", items: [

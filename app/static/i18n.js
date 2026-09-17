@@ -70,7 +70,7 @@
  "Standard — 10 000 itérations": "Standard — 10,000 iterations",
  "Précis — 25 000 itérations": "Precise — 25,000 iterations",
  "Très précis — 50 000 itérations": "Very precise — 50,000 iterations",
- "▶ Lancer la simulation": "▶ Run simulation",
+ "▶ Lancer la simulation": "▶ Run the simulation",
  "📁 Profil :": "📁 Profile:",
  "— charger un profil —": "— load a profile —",
  "💾 Enregistrer": "💾 Save",
@@ -478,7 +478,24 @@
  "Lien client web": "Web client link",
  "Note client web": "Web client note",
  "Client web à venir — un administrateur peut le renseigner.": "Web client coming soon — an administrator can fill it in.",
- "🎧 Pas de client installé ? Le client web (lien sur la même page) fait tourner TeamSpeak dans le navigateur — aucun logiciel à installer.": "🎧 No installed client? The web client (link on the same page) runs TeamSpeak in your browser — no software to install."
+ "🎧 Pas de client installé ? Le client web (lien sur la même page) fait tourner TeamSpeak dans le navigateur — aucun logiciel à installer.": "🎧 No installed client? The web client (link on the same page) runs TeamSpeak in your browser — no software to install.",
+ "🎯 Ma wishlist": "🎯 My wishlist",
+ "LOTP — Wishlist": "LOTP — Wishlist",
+ "Tes pièces à obtenir — vois qui les possède déjà, simule ce que ça rapporte.": "Your items to get — see who already owns them, sim what they bring.",
+ "🎯 Mes pièces": "🎯 My items",
+ "Ajouter": "Add",
+ "Ex. 235623 ou un lien Wowhead": "E.g. 235623 or a Wowhead link",
+ "Ta wishlist est vide — ajoute une pièce ci-dessus ou depuis 🧰 Top Stuff avec le bouton 🎯.": "Your wishlist is empty — add an item above or from 🧰 Top Stuff with the 🎯 button.",
+ "Astuce : ajoute des pièces depuis 🧰 Top Stuff avec le bouton 🎯.": "Tip: add items from 🧰 Top Stuff with the 🎯 button.",
+ "Possédé": "Owned",
+ "Lie tes personnages (page 👥 Personnages) pour voir qui possède quoi.": "Link your characters (👥 Characters page) to see who owns what.",
+ "⚡ Simuler les gains": "⚡ Sim the gains",
+ "Simulation en cours…": "Simulation running…",
+ "Gain vs équipement actuel": "Gain vs current gear",
+ "Aucun profil enregistré — crée-en un sur la page ⚔️ Simulateur (bouton « Sauvegarder »).": "No saved profile — create one on the ⚔️ Simulation page (« Save » button).",
+ "Le bouton 🎯 ajoute une pièce à ta <b>wishlist</b> (« 🎯 Ma wishlist ») : tu vois quels personnages la possèdent déjà et tu peux simuler les gains de DPS.": "The 🎯 button adds an item to your <b>wishlist</b> (« 🎯 My wishlist »): see which characters already own it and sim the DPS gain.",
+ "Résultat en cache ✓": "Cached result ✓",
+ "Terminé ✓": "Done ✓"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

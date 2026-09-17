@@ -139,6 +139,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me/settings` | POST | Save your account settings (language / display name) |
 | `/api/me/password` | POST | Change your password (other sessions signed out) |
 | `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
+| `/api/wishlist` | GET / POST / DEL | Wishlist (items + gains) |
 | `/api/leaderboard` | GET | Rankings (parses + M+ mains) |
 | `/api/guild/info` | GET / POST | Guild info (write: admin only) |
 | `/api/group/sim` | POST | Group sim (profiles combined, multi-actor) |
@@ -203,7 +204,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.026` (see `CHANGELOG.md`).
+Current version: `2026.09.027` (see `CHANGELOG.md`).
 
 ## License
 

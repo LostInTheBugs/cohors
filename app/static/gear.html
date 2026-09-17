@@ -269,9 +269,10 @@ function gearTable(d) {
     const best = (i === 0 && dl > 0.05) ? " gbest" : "";
     const icon = g.icon ? `<img class="gicon" src="${esc(g.icon)}" alt="">` : `<span class="gicon"></span>`;
     const err = g.err_pct != null ? ` <small>± ${g.err_pct.toFixed(2)} %</small>` : "";
+    const wid = g.item_id ? ` <button class="wbtn" onclick="addWish(${g.item_id}, this)" title="Ajouter à ma wishlist" style="background:transparent;border:0;cursor:pointer;font-size:14px;padding:0 2px;vertical-align:-1px">🎯</button>` : "";
     rows.push(`<tr class="${best}">
       <td>${icon}</td>
-      <td class="gname ${q}">${esc(g.name)}</td>
+      <td class="gname ${q}">${esc(g.name)}${wid}</td>
       <td>${esc(g.slot_fr || "")}</td>
       <td class="gv">${fmt(g.dps)}${err}</td>
       <td class="gv ${dcls}">${sign}${fmt(g.delta)} <small>(${sign}${(dl ?? 0).toFixed(2)} %)</small></td></tr>`);
@@ -284,6 +285,15 @@ function gearTable(d) {
       `<a class="hlink" href="/reports/${encodeURIComponent(d.id)}/report.html" target="_blank" rel="noopener">Rapport complet →</a>`
     : "";
   $("#result-card").classList.remove("hidden");
+}
+
+async function addWish(id, btn) {
+  btn.disabled = true;
+  try {
+    const d = await jfetch("POST", "/api/wishlist", { item: String(id) });
+    btn.textContent = "✅";
+    btn.title = d.already ? "Déjà dans ta wishlist" : "Ajoutée à ta wishlist ✓";
+  } catch (e) { btn.disabled = false; setStatus("Wishlist : " + e.message, "msg-err"); }
 }
 
 let pollTimer = null;

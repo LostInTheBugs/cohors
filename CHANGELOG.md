@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.027] — 2026-09-17
+
+### Added
+
+- Wishlist (« 🎯 Ma wishlist », in the Simulation menu): save items you are
+  after (from Top Stuff 🎯 or by pasting a Wowhead ref), see which of your
+  linked characters already own them, and sim the DPS gain of the whole
+  wishlist against a saved /simc profile. New API: GET/POST /api/wishlist,
+  DELETE /api/wishlist/{item_id}.
+
 ## [2026.09.026] — 2026-09-17
 
 ### Added
