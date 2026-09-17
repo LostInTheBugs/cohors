@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.051 - 2026-09-17
+- Cache: static assets (js/css) now served with Cache-Control no-cache + versioned URLs in pages (?v=) so phones/PWA always pick up new versions; service worker cache bumped.
+
 ## 2026.09.050 - 2026-09-17
 - Mobile drawer polish: brighter section labels, darker scrim, safe-area bottom padding.
 

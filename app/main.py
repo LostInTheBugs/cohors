@@ -2453,10 +2453,10 @@ app.add_middleware(VoiceGateMiddleware)
 
 @app.middleware("http")
 async def html_no_cache(request: Request, call_next):
-    """Les pages HTML doivent toujours être revalidées (évite les vieilles pages en cache)."""
+    """Pages HTML et fichiers statiques : toujours revalidés (évite les vieilles versions en cache)."""
     response = await call_next(request)
     ctype = response.headers.get("content-type", "")
-    if ctype.startswith("text/html"):
+    if ctype.startswith("text/html") or request.url.path.startswith("/static/"):
         response.headers["Cache-Control"] = "no-cache, must-revalidate"
     return response
 
