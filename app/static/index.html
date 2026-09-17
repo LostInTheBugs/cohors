@@ -258,16 +258,17 @@ function render(sims) {
       }
       if (s.has_report) right += ` <a href="/reports/${s.id}/report.html" target="_blank" rel="noopener">Rapport →</a>`;
     } else if (s.status === "failed") {
-      right = `<span class="meta">Échec — vérifie que ton export est complet (copié en entier depuis /simc).</span>`;
+      right = `<span class="meta">Échec — détail ci-dessous (export incomplet ou objet qui plante le moteur).</span>`;
     } else {
       right = `<span class="spin">⏳</span>`;
     }
     const err = (s.status === "failed" && s.error) ? `<div class="errbox">${esc(s.error)}</div>` : "";
+    const note = (s.status === "done" && s.note) ? `<div class="errbox" style="border-color:#7a5b2e;color:#dfa55a;">⚠️ ${esc(s.note)}</div>` : "";
     const wbox = (s.kind === "weights" && s.weights && s.weights.length) ? weightsBox(s.weights) : "";
     return `<div class="sim"><span class="who2">${who}</span>
       ${badge}${cache}
       <span class="meta">${fmt(s.iterations)} it · ${ago(s.created)}${by}</span>
-      <span class="spacer"></span>${right}${err}${wbox}</div>`;
+      <span class="spacer"></span>${right}${err}${note}${wbox}</div>`;
   }).join("");
 }
 

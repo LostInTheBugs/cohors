@@ -433,6 +433,24 @@ def _next_queued() -> str | None:
         return row["id"]
 
 
+# Certains objets font planter SimulationCraft (segfault) — retirés automatiquement et signalés.
+CRASH_ITEM_IDS = {"270162": "Réceptacle rituel de l'Entortillâme"}
+
+
+def _strip_crash_items(text: str) -> tuple[str, list[str]]:
+    kept, removed = [], []
+    for line in text.splitlines():
+        m = re.match(r"^\s*(head|neck|shoulder|back|chest|shirt|tabard|wrist|hands|waist|legs|feet|finger1|finger2|trinket1|trinket2|main_hand|off_hand)\s*=", line)
+        if m:
+            ids = re.findall(r"\bid=(\d+)", line)
+            hit = next((i for i in ids if i in CRASH_ITEM_IDS), None)
+            if hit:
+                removed.append(CRASH_ITEM_IDS[hit] + f" (id {hit})")
+                continue
+        kept.append(line)
+    return "\n".join(kept), removed
+
+
 def _run_one(sim_id: str) -> None:
     with _db_lock, _db() as conn:
         row = conn.execute("SELECT * FROM sims WHERE id=?", (sim_id,)).fetchone()
@@ -447,6 +465,19 @@ def _run_one(sim_id: str) -> None:
         if kind == "group":
             extra = ["calculate_scale_factors=0", "fight_style=Patchwerk", "max_time=300"]
         res = run_sim(profile_path=input_file, iterations=iterations, outdir=input_file.parent, timeout=SIM_TIMEOUT, extra=extra)
+        if not res.get("ok") and res.get("rc") == 139:
+            # Segfault du moteur : réessayer sans les objets connus comme faisant planter SimC.
+            try:
+                stripped, removed = _strip_crash_items(input_file.read_text())
+                if removed:
+                    input_file.write_text(stripped)
+                    res = run_sim(profile_path=input_file, iterations=iterations, outdir=input_file.parent, timeout=SIM_TIMEOUT, extra=extra)
+                    if res.get("ok"):
+                        res["note"] = "Sim lancée SANS " + ", ".join(removed) + " — cet objet fait planter le moteur SimulationCraft (bug du moteur, pas de l'export)."
+            except Exception:  # noqa: BLE001
+                pass
+        if not res.get("ok") and res.get("rc") == 139 and not res.get("note"):
+            res["log_tail"] = ("Le moteur a planté (segfault) sur cet export — c'est un bug du moteur SimC (souvent un objet précis, connu : Réceptacle rituel de l'Entortillâme). " + (res.get("log_tail") or ""))[:2000]
         ok = bool(res.get("ok"))
         weights = json.dumps(res.get("scale_factors")) if res.get("scale_factors") else None
         gear = json.dumps(res.get("gear")) if res.get("gear") else None
@@ -462,7 +493,7 @@ def _run_one(sim_id: str) -> None:
                     "done" if ok else "failed",
                     res.get("dps"), res.get("dps_error_pct"), res.get("wall_s"),
                     res.get("html"), res.get("json"),
-                    None if ok else (res.get("log_tail") or "échec de la simulation")[-2000:],
+                    (res.get("note") or None) if ok else (res.get("log_tail") or "échec de la simulation")[-2000:],
                     time.time(), weights, gear, sim_id,
                 ),
             )
@@ -843,6 +874,7 @@ def _public_row(r: sqlite3.Row) -> dict:
         "wall_s": r["wall_s"],
         "has_report": r["status"] == "done" and bool(r["report_html"]),
         "error": (r["error"] or "")[:300] if r["status"] == "failed" else None,
+        "note": ((r["error"] or "")[:300] or None) if r["status"] == "done" else None,
         "kind": (r["kind"] or "dps"),
         "weights": _parse_weights_json(r["weights"]) if r["kind"] == "weights" else None,
         "gear": _parse_weights_json(r["gear"]) if r["kind"] == "gear" else None,

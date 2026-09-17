@@ -95,7 +95,7 @@
  "Profil supprimé.": "Profile deleted.",
  "Colle d'abord ton export /simc (le texte semble vide ou trop court).": "Paste your /simc export first (the text looks empty or too short).",
  "⚡ Résultat déjà en cache — simulation identique trouvée !": "⚡ Result already cached — identical simulation found!",
- "Échec — vérifie que ton export est complet (copié en entier depuis /simc).": "Failed — make sure your export is complete (copied entirely from /simc).",
+ "Échec — détail ci-dessous (export incomplet ou objet qui plante le moteur).": "Failed — details below (incomplete export or item crashing the engine).",
  "· par": "· by",
  "Roster & équipement de la guilde": "Guild roster & gear",
  "Roster de la guilde (données live de l'API Battle.net). Clique sur un personnage pour voir son équipement.": "Guild roster (live from the Battle.net API). Click a character to see their gear.",

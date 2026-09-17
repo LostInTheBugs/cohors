@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.040 - 2026-09-17
+- Sim engine: safety net for SimC segfaults - items known to crash the engine (Réceptacle rituel de l'Entortillâme, id 270162) are auto-stripped and the sim is retried with a visible warning.
+- Clearer failure hint when the engine segfaults.
+
 ## 2026.09.039 - 2026-09-17
 - Dashboard: TeamSpeak users grouped by channel (one line per channel, live).
 
