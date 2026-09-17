@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.004] — 2026-09-17
+
+### Added
+
+- Stat-weights mode ("optimiseur", Mr Robot-style): runs SimulationCraft with
+  `calculate_scale_factors=1`, parses the resulting weights (values, error
+  margins, normalized), stores them with the simulation and renders them as a
+  bar table in the web UI.
+- Guild crest (in-game emblem) as page logo and favicon, with a crimson/gold
+  color theme across all pages.
+
+### Changed
+
+- Sim submissions now carry a `kind` (`dps` or `weights`); the result cache is
+  keyed on it.
+
 ## [2026.09.003] — 2026-09-17
 
 ### Added

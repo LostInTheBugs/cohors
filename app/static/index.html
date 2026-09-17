@@ -60,6 +60,13 @@
   .b-done { color: var(--ok); border-color: #1d4a3a; }
   .b-failed { color: var(--err); border-color: #5a2626; }
   .b-cache { color: #6cc7f6; border-color: #1d3f52; }
+  .b-weights { color: #e8c07d; border-color: #5e4a1e; }
+  .wbox { width: 100%; margin-top: 4px; display: grid; gap: 5px; }
+  .wrow { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .wrow .wstat { width: 150px; color: var(--mut); }
+  .wrow .wval { width: 74px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .wrow small { color: var(--mut); }
+  .wbar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--acc), var(--acc2)); min-width: 3px; }
   .sim a { color: var(--acc2); text-decoration: none; font-weight: 600; }
   .sim a:hover { text-decoration: underline; }
   .empty { color: var(--mut); font-size: 14px; padding: 6px 2px; }
@@ -103,6 +110,13 @@
         <input type="text" id="lbl" maxlength="60" placeholder="ex. Thrall — war fury">
       </div>
       <div class="field">
+        <label for="kind">Type</label>
+        <select id="kind">
+          <option value="dps" selected>Dégâts (DPS)</option>
+          <option value="weights">Poids de stats (optimiseur)</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="iter">Précision</label>
         <select id="iter">
           <option value="5000">Rapide — 5 000 itérations</option>
@@ -136,6 +150,19 @@ const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
   if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
 
+const STAT_FR = { Int: "Intelligence", SP: "Puissance des sorts", AP: "Puissance d'attaque",
+  Str: "Force", Agi: "Agilité", Crit: "Critique", Haste: "Hâte", Mastery: "Maîtrise",
+  Vers: "Polyvalence", Stam: "Endurance", Wdps: "DPS d'arme", WpnDps: "DPS d'arme", Armor: "Armure" };
+function weightsBox(weights) {
+  const max = Math.max(...weights.map(w => w.value), 0.0001);
+  return `<div class="wbox">` + weights.map(w => {
+    const label = STAT_FR[w.stat] || w.stat;
+    const pct = Math.max(2, Math.round(100 * w.value / max));
+    const err = w.error != null ? ` <small>± ${w.error.toFixed(1)}</small>` : "";
+    return `<div class="wrow"><span class="wstat">${label}</span><span class="wval">${w.value.toFixed(1)}</span><span class="wbar" style="width:${pct}%"></span>${err}</div>`;
+  }).join("") + `</div>`;
+}
+
 const STATUS = { queued: ["En file ⏳", "b-queued"], running: ["En simulation…", "b-running"],
                  done: ["Terminé", "b-done"], failed: ["Échoué", "b-failed"] };
 
@@ -150,7 +177,11 @@ function render(sims) {
     const by = s.user_name ? ` · par ${esc(s.user_name)}` : "";
     let right = "";
     if (s.status === "done") {
-      right = `<span class="dps">${fmt(s.dps)} DPS <small>± ${s.dps_error_pct != null ? s.dps_error_pct.toFixed(2) : "?"} %</small></span>`;
+      if (s.kind === "weights") {
+        right = `<span class="badge b-weights">⚖️ Poids de stats</span>`;
+      } else {
+        right = `<span class="dps">${fmt(s.dps)} DPS <small>± ${s.dps_error_pct != null ? s.dps_error_pct.toFixed(2) : "?"} %</small></span>`;
+      }
       if (s.has_report) right += ` <a href="/reports/${s.id}/report.html" target="_blank" rel="noopener">Rapport →</a>`;
     } else if (s.status === "failed") {
       right = `<span class="meta">Échec — vérifie que ton export est complet (copié en entier depuis /simc).</span>`;
@@ -158,10 +189,11 @@ function render(sims) {
       right = `<span class="spin">⏳</span>`;
     }
     const err = (s.status === "failed" && s.error) ? `<div class="errbox">${esc(s.error)}</div>` : "";
+    const wbox = (s.kind === "weights" && s.weights && s.weights.length) ? weightsBox(s.weights) : "";
     return `<div class="sim"><span class="who2">${who}</span>
       ${badge}${cache}
       <span class="meta">${fmt(s.iterations)} it · ${ago(s.created)}${by}</span>
-      <span class="spacer"></span>${right}${err}</div>`;
+      <span class="spacer"></span>${right}${err}${wbox}</div>`;
   }).join("");
 }
 
@@ -190,6 +222,10 @@ $("#logout").addEventListener("click", async (e) => {
   location.href = "/login";
 });
 
+$("#kind").addEventListener("change", () => {
+  if ($("#kind").value === "weights") { $("#iter").value = "5000"; }
+});
+
 $("#inp").value = localStorage.getItem("lotp_input") || "";
 $("#inp").addEventListener("input", () => localStorage.setItem("lotp_input", $("#inp").value));
 $("#lbl").value = localStorage.getItem("lotp_label") || "";
@@ -202,7 +238,7 @@ $("#go").addEventListener("click", async () => {
   $("#go").disabled = true; msg.className = ""; msg.textContent = "Envoi…";
   try {
     const r = await fetch("/api/sim", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input, iterations: parseInt($("#iter").value, 10), label: $("#lbl").value }) });
+      body: JSON.stringify({ input, iterations: parseInt($("#iter").value, 10), label: $("#lbl").value, kind: $("#kind").value }) });
     if (r.status === 401) { location.href = "/login"; return; }
     const d = await r.json();
     if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur"; }

@@ -15,6 +15,7 @@ integrations planned.
       shared result cache, per-IP + per-user quotas, French UI, report archive over HTTP.
 - [x] Accounts — invite-only registration (`/invite/<token>` links), login sessions,
       admin panel (`/admin`) for invitations and account management.
+- [x] Stat-weights mode ("optimiseur", Mr Robot-style) — scale factors from the same engine.
 - [ ] Warcraft Logs / Battle.net integrations
 
 ## Requirements
@@ -82,7 +83,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me` | GET | Current account |
 | `/api/register` | POST | Register (or reset a password) from an invitation `{token, name, email?, password}` |
 | `/api/invite/{token}` | GET | Invitation info (public) |
-| `/api/sim` | POST | Submit `{input, iterations, label?}` — returns `{id, status, position?, cached}` |
+| `/api/sim` | POST | Submit `{input, iterations, label?, kind?}` (`kind`: `dps` or `weights`) — returns `{id, status, position?, cached}` |
 | `/api/sims` | GET | Last 50 simulations (summary) |
 | `/api/sims/{id}` | GET | One simulation (full record) |
 | `/reports/{id}/report.html` | GET | SimulationCraft HTML report (public) |

@@ -36,6 +36,37 @@ from pathlib import Path
 
 IMAGE = os.environ.get("SIMC_IMAGE", "simulationcraftorg/simc:latest")
 DPS_RE = re.compile(r"DPS=([0-9.]+)\s+DPS-Error=([0-9.]+)/([0-9.]+)%")
+SF_WEIGHTS_RE = re.compile(r"Weights\s*:\s*(.+)")
+SF_ITEM_RE = re.compile(r"(\w+)=([0-9.]+)\(([0-9.]+)\)")
+
+
+def parse_scale_factors(log: str, json_path: Path | None = None) -> list[dict] | None:
+    """Extract scale factors (stat weights) from a simc run — JSON first, text fallback."""
+    factors: list[dict] | None = None
+    if json_path is not None and Path(json_path).exists():
+        try:
+            data = json.loads(Path(json_path).read_text())
+            sf = (data.get("sim", {}).get("players") or [{}])[0].get("scale_factors") or {}
+            if sf:
+                factors = [{"stat": k, "value": float(v)} for k, v in sf.items()]
+        except Exception:  # noqa: BLE001
+            factors = None
+    m = SF_WEIGHTS_RE.search(log)
+    errs: dict[str, float] = {}
+    if m:
+        errs = {k: float(e) for k, _v, e in SF_ITEM_RE.findall(m.group(1))}
+    if factors is None and m:
+        factors = [{"stat": k, "value": float(v), "error": float(e)}
+                   for k, v, e in SF_ITEM_RE.findall(m.group(1))]
+    if not factors:
+        return None
+    for f in factors:
+        if f["stat"] in errs and "error" not in f:
+            f["error"] = errs[f["stat"]]
+    top = max((f["value"] for f in factors), default=0.0) or 1.0
+    for f in factors:
+        f["normalized"] = round(f["value"] / top, 4)
+    return factors
 
 
 def run_sim(
@@ -91,6 +122,7 @@ def run_sim(
         "html": str(html) if html.exists() else None,
         "json": str(js) if js.exists() else None,
         "log_tail": "\n".join(log.splitlines()[-30:]),
+        "scale_factors": parse_scale_factors(log, js),
     }
 
 

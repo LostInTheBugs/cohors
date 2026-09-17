@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import re
 import secrets
@@ -143,7 +144,8 @@ def _init_db() -> None:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_status ON sims(status)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
         # migrations (idempotent)
-        for table, col in (("sims", "user_email"), ("sims", "user_name")):
+        for table, col in (("sims", "user_email"), ("sims", "user_name"),
+                           ("sims", "kind"), ("sims", "weights")):
             cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
             if col not in cols:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
@@ -265,18 +267,21 @@ def _run_one(sim_id: str) -> None:
         iterations = int(row["iterations"])
 
     try:
-        res = run_sim(profile_path=input_file, iterations=iterations, outdir=input_file.parent, timeout=SIM_TIMEOUT)
+        kind = row["kind"] or "dps"
+        extra = ["calculate_scale_factors=1"] if kind == "weights" else None
+        res = run_sim(profile_path=input_file, iterations=iterations, outdir=input_file.parent, timeout=SIM_TIMEOUT, extra=extra)
         ok = bool(res.get("ok"))
+        weights = json.dumps(res.get("scale_factors")) if res.get("scale_factors") else None
         with _db_lock, _db() as conn:
             conn.execute(
                 """UPDATE sims SET status=?, dps=?, dps_error_pct=?, wall_s=?, report_html=?, report_json=?,
-                                    error=?, finished=? WHERE id=?""",
+                                    error=?, finished=?, weights=? WHERE id=?""",
                 (
                     "done" if ok else "failed",
                     res.get("dps"), res.get("dps_error_pct"), res.get("wall_s"),
                     res.get("html"), res.get("json"),
                     None if ok else (res.get("log_tail") or "échec de la simulation")[-2000:],
-                    time.time(), sim_id,
+                    time.time(), weights, sim_id,
                 ),
             )
     except Exception as exc:  # noqa: BLE001
@@ -442,6 +447,7 @@ class SimRequest(BaseModel):
     input: str = Field(..., min_length=30, max_length=MAX_INPUT_CHARS)
     iterations: int = DEFAULT_ITERATIONS
     label: str = ""
+    kind: str = "dps"
 
 
 @app.post("/api/sim")
@@ -449,6 +455,9 @@ def submit_sim(payload: SimRequest, request: Request):
     user = _require_user(request)
     if payload.iterations not in ITER_CHOICES:
         raise HTTPException(400, f"Valeurs d'itérations acceptées : {', '.join(map(str, ITER_CHOICES))}")
+    kind = payload.kind if payload.kind in ("dps", "weights") else None
+    if kind is None:
+        raise HTTPException(400, "Type de simulation invalide.")
     text = payload.input.replace("\r\n", "\n").strip()
     label = payload.label.strip()[:60]
     ip = _client_ip(request)
@@ -473,7 +482,7 @@ def submit_sim(payload: SimRequest, request: Request):
         if queue_len >= QUEUE_MAX:
             raise HTTPException(503, "La file est pleine, réessaie dans quelques minutes.")
 
-        input_hash = hashlib.sha256(f"{payload.iterations}\n{text}".encode()).hexdigest()
+        input_hash = hashlib.sha256(f"{kind}\n{payload.iterations}\n{text}".encode()).hexdigest()
         cached = conn.execute(
             "SELECT * FROM sims WHERE input_hash=? AND status='done' ORDER BY finished DESC LIMIT 1", (input_hash,)
         ).fetchone()
@@ -488,20 +497,29 @@ def submit_sim(payload: SimRequest, request: Request):
             conn.execute(
                 """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, cached_from,
                                      dps, dps_error_pct, wall_s, report_html, report_json, started, finished,
-                                     user_email, user_name)
-                   VALUES (?,?,?,?,?, 'done', ?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                     user_email, user_name, kind, weights)
+                   VALUES (?,?,?,?,?, 'done', ?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), cached["id"],
                  cached["dps"], cached["dps_error_pct"], cached["wall_s"], cached["report_html"], cached["report_json"],
-                 now, now, user["email"], user["name"]),
+                 now, now, user["email"], user["name"], kind, cached["weights"]),
             )
             return {"id": sim_id, "status": "done", "cached": True}
 
         conn.execute(
-            """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, user_email, user_name)
-               VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?)""",
-            (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"]),
+            """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, user_email, user_name, kind)
+               VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, ?)""",
+            (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"], kind),
         )
         return {"id": sim_id, "status": "queued", "cached": False, "position": queue_len + 1}
+
+
+def _parse_weights_json(raw: str | None) -> list | None:
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _public_row(r: sqlite3.Row) -> dict:
@@ -518,6 +536,8 @@ def _public_row(r: sqlite3.Row) -> dict:
         "wall_s": r["wall_s"],
         "has_report": r["status"] == "done" and bool(r["report_html"]),
         "error": (r["error"] or "")[:300] if r["status"] == "failed" else None,
+        "kind": (r["kind"] or "dps"),
+        "weights": _parse_weights_json(r["weights"]) if r["kind"] == "weights" else None,
     }
 
 
