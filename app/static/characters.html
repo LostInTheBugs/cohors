@@ -347,7 +347,7 @@ function renderMyChips() {
   if (!MYCHARS.length) { box.innerHTML = `<span class="empty">Aucun personnage lié pour l'instant.</span>`; return; }
   box.innerHTML = MYCHARS.map(c => `<span class="mychip ${c.is_main ? "mm" : ""}">
     ${c.is_main ? "⭐" : "•"} <b>${esc(c.display)}</b>
-    ${c.is_main ? "" : `<a data-mmain="${c.id}" title="Définir comme main">⭐ main</a>`}
+    ${c.is_main ? "" : `<a data-mmain="${c.id}" title="Définir comme main">⭐ définir main</a>`}
     <a data-mdel="${c.id}" title="Retirer de mon compte">✕</a></span>`).join("");
   box.querySelectorAll("[data-mmain]").forEach(a => a.addEventListener("click", async () => {
     try { await jreq("POST", `/api/me/chars/${a.dataset.mmain}/main`); await loadMyChars(); myMsg("Main mis à jour ⭐"); }

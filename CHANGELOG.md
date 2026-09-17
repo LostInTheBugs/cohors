@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.018] — 2026-09-17
+
+### Fixed
+
+- **One main per account, enforced**: a partial unique index now makes multiple
+  mains impossible (legacy duplicates are auto-normalised at startup, keeping the
+  most recent). The first character linked to an account automatically becomes its
+  main. The character chip action is now clearly labelled « ⭐ définir main » /
+  « ⭐ set main » (it used to read « ⭐ main », which looked like a status).
+
+### Changed
+
+- The language switcher was removed from page headers: the language is now
+  chosen in exactly two places — **before signing in** (login and sign-up pages)
+  or **in the account settings**.
+
 ## [2026.09.017] — 2026-09-17
 
 ### Added

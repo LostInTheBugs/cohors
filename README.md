@@ -42,6 +42,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       applied automatically for English-language browsers.
 - [x] Account settings page — language stored on the account, display name,
       password change (per-account preference follows you everywhere).
+- [x] One main per account (enforced) — first linked character becomes the main;
+      switch it anytime from its chip.
 
 ## Requirements
 
@@ -184,7 +186,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.017` (see `CHANGELOG.md`).
+Current version: `2026.09.018` (see `CHANGELOG.md`).
 
 ## License
 

@@ -323,6 +323,7 @@
  "Remplis tous les champs.": "Fill in all fields.",
  "Mot de passe actuel incorrect.": "Current password is incorrect.",
  "Le nom ne peut pas être vide.": "Name cannot be empty.",
+ "⭐ définir main": "⭐ set main",
  "Langue inconnue.": "Unknown language.",
  "👤 Profil": "👤 Profile",
  "Nom affiché": "Display name",
@@ -450,7 +451,7 @@
     return String(nav).toLowerCase().startsWith("en") ? "en" : "fr";
   }
   const LANG = resolveLang();
-  if (LANG !== "en") { injectBox(); return; }
+  if (LANG !== "en") return;
 
   document.documentElement.lang = "en";
 
@@ -488,39 +489,6 @@
     translateTitle();
     walk(document.body);
     startObserver();
-    injectBox();
-  }
-
-  // ---------------- sélecteur de langue
-  function injectBox() {
-    if (document.getElementById("langbox")) return;
-    if (document.body && document.body.dataset && document.body.dataset.noLangbox) return;
-    const el = document.createElement("span");
-    el.id = "langbox";
-    el.style.cssText = "display:inline-flex;gap:4px;align-items:center;margin-left:10px;font-size:12.5px;";
-    el.innerHTML = "";
-    for (const [code, label] of [["fr", "🇫🇷 FR"], ["en", "🇬🇧 EN"]]) {
-      const b = document.createElement("a");
-      b.textContent = label;
-      b.href = "#";
-      b.style.cssText = "cursor:pointer;text-decoration:none;padding:2px 8px;border-radius:999px;border:1px solid "
-        + (code === LANG ? "var(--acc2,#dfa55a);color:var(--acc2,#dfa55a)" : "var(--line,#2a3446);color:var(--mut,#8b96ad)");
-      b.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        if (code === LANG) return;
-        try { localStorage.setItem(STORE, code); } catch (e) {}
-        location.reload();
-      });
-      el.appendChild(b);
-    }
-    const box = document.querySelector("header.topbar .userbox");
-    if (box) { box.appendChild(el); }
-    else {
-      el.style.position = "fixed"; el.style.top = "10px"; el.style.right = "12px"; el.style.zIndex = "99";
-      el.style.background = "var(--card, #131a26)"; el.style.padding = "3px 8px"; el.style.borderRadius = "999px";
-      el.style.border = "1px solid var(--line,#2a3446)";
-      document.body.appendChild(el);
-    }
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply);

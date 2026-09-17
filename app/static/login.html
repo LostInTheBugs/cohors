@@ -27,6 +27,9 @@
   .msg-err { color:var(--err); } .msg-ok { color:var(--ok); }
   .note { color:var(--mut); font-size:13px; margin-top:18px; }
   footer { color:var(--mut); font-size:12px; border-top:1px solid var(--line); margin-top:28px; padding-top:12px; }
+  .langrow { margin:12px 0 0; font-size:13px; color:var(--mut); }
+  .langrow a { color:var(--mut); text-decoration:none; margin:0 5px; }
+  .langrow a.on { color:var(--acc2); font-weight:700; }
 </style>
 </head>
 <body>
@@ -41,6 +44,9 @@
     <input type="password" id="pwd" autocomplete="current-password">
     <button id="go">Se connecter</button>
     <div id="msg"></div>
+    <p class="langrow">
+      <a href="#" data-lang="fr">🇫🇷 Français</a> · <a href="#" data-lang="en">🇬🇧 English</a>
+    </p>
   </div>
   <p class="note">Pas encore de compte ? L'accès se fait <b>sur invitation</b> — demande un lien à un officier de la guilde.<br>
   Mot de passe oublié ? Demande un lien de réinitialisation à un officier.</p>
@@ -65,6 +71,15 @@ async function login() {
 }
 $("#go").addEventListener("click", login);
 document.addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+document.querySelectorAll(".langrow a").forEach(a => {
+  let cur = "";
+  try { cur = localStorage.getItem("lotp_lang") || ""; } catch (e) {}
+  if (!cur) cur = String(navigator.language || "fr").toLowerCase().startsWith("en") ? "en" : "fr";
+  if (a.dataset.lang === cur) a.classList.add("on");
+  a.addEventListener("click", (ev) => { ev.preventDefault();
+    try { localStorage.setItem("lotp_lang", a.dataset.lang); } catch (e) {}
+    location.reload(); });
+});
 </script>
 </body>
 </html>

@@ -30,6 +30,9 @@
   a { color:var(--acc2); }
   .hidden { display:none !important; }
   footer { color:var(--mut); font-size:12px; border-top:1px solid var(--line); margin-top:28px; padding-top:12px; }
+  .langrow { margin:12px 0 0; font-size:13px; color:var(--mut); }
+  .langrow a { color:var(--mut); text-decoration:none; margin:0 5px; }
+  .langrow a.on { color:var(--acc2); font-weight:700; }
 </style>
 </head>
 <body>
@@ -57,6 +60,9 @@
       <input type="password" id="pwd2" autocomplete="new-password">
       <button id="go">Créer mon compte</button>
       <div id="msg"></div>
+      <p class="langrow">
+        <a href="#" data-lang="fr">🇫🇷 Français</a> · <a href="#" data-lang="en">🇬🇧 English</a>
+      </p>
     </div>
   </div>
 
@@ -97,6 +103,15 @@ async function submit() {
   } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; $("#go").disabled = false; }
 }
 $("#go").addEventListener("click", submit);
+document.querySelectorAll(".langrow a").forEach(a => {
+  let cur = "";
+  try { cur = localStorage.getItem("lotp_lang") || ""; } catch (e) {}
+  if (!cur) cur = String(navigator.language || "fr").toLowerCase().startsWith("en") ? "en" : "fr";
+  if (a.dataset.lang === cur) a.classList.add("on");
+  a.addEventListener("click", (ev) => { ev.preventDefault();
+    try { localStorage.setItem("lotp_lang", a.dataset.lang); } catch (e) {}
+    location.reload(); });
+});
 </script>
 </body>
 </html>

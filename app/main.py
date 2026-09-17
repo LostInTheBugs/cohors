@@ -194,6 +194,20 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_char_links_uniq ON char_links(user_email, realm, name)")
+        # v2026.09.018 — UN SEUL « main » par compte : normalise les doublons éventuels
+        # (on garde le plus récent) puis verrouille par index partiel unique.
+        rows = conn.execute(
+            "SELECT user_email, id FROM char_links WHERE is_main=1 ORDER BY created DESC, id DESC"
+        ).fetchall()
+        seen_main: set = set()
+        for r in rows:
+            if r["user_email"] in seen_main:
+                conn.execute("UPDATE char_links SET is_main=0 WHERE id=?", (r["id"],))
+            else:
+                seen_main.add(r["user_email"])
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_char_links_one_main ON char_links(user_email) WHERE is_main=1"
+        )
         # v2026.09.015 — rôles (membre / officier / administrateur).
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "role" not in cols:
@@ -1213,11 +1227,15 @@ def link_char(payload: CharLinkRequest, request: Request):
             "SELECT id FROM char_links WHERE realm=? AND name=? AND user_email != ? LIMIT 1",
             (realm, lname, user["email"]),
         ).fetchone() is not None
-        if payload.main:
+        first_char = conn.execute(
+            "SELECT COUNT(*) AS c FROM char_links WHERE user_email=?", (user["email"],)
+        ).fetchone()["c"] == 0
+        set_main = bool(payload.main) or first_char
+        if set_main:
             conn.execute("UPDATE char_links SET is_main=0 WHERE user_email=?", (user["email"],))
         cur = conn.execute(
             "INSERT INTO char_links (user_email, realm, name, display, is_main, created) VALUES (?,?,?,?,?,?)",
-            (user["email"], realm, lname, display, 1 if payload.main else 0, time.time()),
+            (user["email"], realm, lname, display, 1 if set_main else 0, time.time()),
         )
         cid = int(cur.lastrowid or 0)
     return {"id": cid, "ok": True, "taken": taken, "display": display}
