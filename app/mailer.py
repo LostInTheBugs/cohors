@@ -10,6 +10,9 @@ import os
 import smtplib
 import ssl
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
+
+SMTP_HELO = os.environ.get("SMTP_HELO", "mail.ruban-adhesif.com")
 
 
 class MailError(Exception):
@@ -41,14 +44,15 @@ def send_mail(to: str, subject: str, text: str, html: str | None = None) -> None
         raise MailError("SMTP non configuré sur le serveur (variables SMTP_* absentes).")
     msg = EmailMessage()
     msg["From"] = cfg["sender"]
-    msg["To"] = to
+    msg["To"] = to if "<" in to else f"<{to}>"
     msg["Subject"] = subject
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=cfg["user"].split("@")[-1])
     msg.set_content(text)
     if html:
         msg.add_alternative(html, subtype="html")
     try:
-        with smtplib.SMTP(cfg["host"], cfg["port"], timeout=25) as smtp:
-            smtp.ehlo()
+        with smtplib.SMTP(cfg["host"], cfg["port"], timeout=25, local_hostname=SMTP_HELO) as smtp:
             smtp.starttls(context=ssl.create_default_context())
             smtp.login(cfg["user"], cfg["password"])
             smtp.send_message(msg)
