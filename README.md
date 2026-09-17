@@ -31,6 +31,11 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
 - [x] « Top Stuff » — paste Wowhead item links or IDs (max 15): each item is
       simulated on your character (SimulationCraft profilesets) and ranked by DPS;
       rings and trinkets are tested on both slots (item data from the Blizzard API).
+- [x] Discord bot (« 🤖 Bot Discord » admin tab) — invite it with a generated
+      OAuth2 link, activate it, pick the announcement channel and let it post new
+      raid reports (Warcraft Logs) and guild roster changes.
+- [x] Account ↔ character links — link your account to your guild characters
+      (⭐ main + alts) from the Personnages page; stars show up in the roster.
 
 ## Requirements
 
@@ -99,6 +104,7 @@ reverse proxy and small until the simulation worker is split out.
 | `SMTP_PORT` | `587` | SMTP submission port (STARTTLS) |
 | `SMTP_USER` / `SMTP_PASSWORD` | — | SMTP credentials (mailbox used to send) |
 | `SMTP_FROM` | — | From header (e.g. `LOTP Simulateur <noreply@ruban-adhesif.com>`) |
+| `BOT_POLL_S` | `300` | Discord announcement polling interval (seconds) |
 
 ## API
 
@@ -112,6 +118,13 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me` | GET | Current account |
 | `/api/register` | POST | Register (or reset a password) from an invitation `{token, name, email?, password}` |
 | `/api/invite/{token}` | GET | Invitation info (public) |
+| `/api/me/chars` | GET / POST | Linked characters — POST links one (`{name, main?}`) |
+| `/api/me/chars/{id}` | DELETE | Unlink one of your characters |
+| `/api/me/chars/{id}/main` | POST | Set a linked character as your main |
+| `/api/admin/bot` | GET / POST | Discord bot status / configuration |
+| `/api/admin/bot/guilds` | GET | Servers the bot is in (live) |
+| `/api/admin/bot/guilds/{id}/channels` | GET | Text channels of a server (live) |
+| `/api/admin/bot/test` | POST | Send a test message to the configured channel |
 | `/api/sim` | POST | Submit `{input, iterations, label?, kind?, items?}` (`kind`: `dps`, `weights` or `gear` — `items` = item refs for gear) — returns `{id, status, position?, cached, warnings}` |
 | `/api/sims` | GET | Last 50 simulations (summary) |
 | `/api/sims/{id}` | GET | One simulation (full record) |
@@ -151,6 +164,7 @@ app/static/raids.html   Raid reports page (French)
 app/static/compare.html Member comparison page (French)
 app/mailer.py           Outgoing e-mail (invitations) via SMTP
 app/static/gear.html    « Top Stuff » gear comparison page (French)
+app/discord_bot.py      Discord REST client (bot announcements, no dependencies)
 worker/simrun.py        SimulationCraft engine wrapper (official Docker image)
 Dockerfile              App image (Python + Docker CLI)
 docker-compose.yml      App deployment (Docker socket + data dir, both required)
@@ -160,7 +174,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.011` (see `CHANGELOG.md`).
+Current version: `2026.09.012` (see `CHANGELOG.md`).
 
 ## License
 

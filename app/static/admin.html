@@ -34,6 +34,8 @@
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:18px; }
   input[type=email], input[type=text] { background:var(--bg); color:var(--fg); border:1px solid var(--line);
         border-radius:10px; padding:9px 12px; font-size:14px; }
+  select { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
+           padding:9px 12px; font-size:14px; min-width:200px; }
   input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   button { background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
@@ -84,6 +86,7 @@
   <nav class="tabs">
     <button class="tab active" id="tab-invitations" type="button">✉️ Invitations</button>
     <button class="tab" id="tab-comptes" type="button">👤 Comptes</button>
+    <button class="tab" id="tab-bot" type="button">🤖 Bot Discord</button>
   </nav>
 
   <div id="sec-invitations">
@@ -108,6 +111,45 @@
     <div class="card">
       <h2>Comptes</h2>
       <div id="users"><div class="empty">Chargement…</div></div>
+    </div>
+  </div>
+
+  <div id="sec-bot" class="hidden">
+    <div class="card">
+      <h2>🤖 Bot Discord <span class="badge" id="bot-status">…</span></h2>
+      <p class="sub" style="margin:4px 0 14px">Annonce automatiquement les <b>nouveaux rapports de raid</b> (Warcraft Logs) et les <b>mouvements de guilde</b> (arrivées / départs) dans un salon Discord.</p>
+      <details style="background:var(--card2); border:1px dashed var(--line); border-radius:10px; padding:10px 14px; margin-bottom:14px;">
+        <summary style="cursor:pointer; font-weight:600; color:var(--acc2);">❓ Créer l'application Discord (une seule fois)</summary>
+        <ol style="margin:10px 0 6px; padding-left:22px; color:var(--mut); font-size:13.5px;">
+          <li>Ouvre le <a class="hlink" href="https://discord.com/developers/applications" target="_blank" rel="noopener">Portail développeurs Discord</a> → <b>New Application</b> (nom : « LOTP Simulateur »).</li>
+          <li>Copie l'<b>Application ID</b> (General Information) → colle-le ci-dessous.</li>
+          <li>Onglet <b>Bot</b> → <b>Reset Token</b> → copie le <b>token</b> → colle-le ci-dessous (secret).</li>
+          <li>Clique <b>📎 Lien d'invitation</b>, ouvre-le et ajoute le bot à ton serveur.</li>
+          <li><b>🔄 Charger les salons</b>, choisis le salon, <b>💾 Enregistrer</b> puis <b>📨 Message de test</b>.</li>
+        </ol>
+        <p style="color:var(--mut); font-size:12.5px; margin:6px 0 2px;">Au premier passage, le bot pose ses références (aucune annonce rétroactive) : les annonces démarrent à partir de l'activation.</p>
+      </details>
+      <div class="row" style="margin-bottom:12px">
+        <label class="chk"><input type="checkbox" id="bot-enabled"> Bot actif</label>
+        <label class="chk"><input type="checkbox" id="bot-reports"> 📊 Nouveaux rapports de raid</label>
+        <label class="chk"><input type="checkbox" id="bot-roster"> 👥 Mouvements de guilde</label>
+      </div>
+      <div class="row">
+        <input type="text" id="bot-appid" placeholder="Application ID (Portail développeurs)" style="min-width:260px">
+        <button class="small ghost" id="bot-invite">📎 Lien d'invitation</button>
+        <button class="small ghost" id="bot-guilds">🔄 Charger les salons</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <select id="bot-guild" class="hidden"></select>
+        <select id="bot-channel" class="hidden"></select>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <input type="text" id="bot-token" placeholder="Token du bot" style="min-width:320px">
+        <button id="bot-save">💾 Enregistrer</button>
+        <button class="small ghost" id="bot-test">📨 Message de test</button>
+      </div>
+      <div class="linkbox hidden" id="bot-invite-box" style="margin-top:12px"></div>
+      <div class="empty" id="bot-info" style="margin-top:12px; line-height:1.9"></div>
     </div>
   </div>
 
@@ -184,6 +226,12 @@ async function loadInvites() {
   }));
 }
 
+function charInfo(u) {
+  if (!u.main_char) return "";
+  const alts = (u.chars_count || 0) - 1;
+  return ` · ⭐ ${esc(u.main_char)}${alts > 0 ? ` (+${alts})` : ""}`;
+}
+
 async function loadUsers() {
   const d = await api("GET", "/api/admin/users");
   const box = $("#users");
@@ -195,7 +243,7 @@ async function loadUsers() {
     const btnDel = `<button class="small danger" data-del="${u.id}" data-name="${esc(u.name)}">Supprimer</button>`;
     return `<div class="item">
       <div class="main"><span class="name">${esc(u.name || u.email)} ${badges}</span>
-      <span class="meta">${esc(u.email)} · créé le ${onDate(u.created)} · dernière connexion ${ago(u.last_login)} · ${u.sims_count} sim(s)</span></div>
+      <span class="meta">${esc(u.email)} · créé le ${onDate(u.created)} · dernière connexion ${ago(u.last_login)} · ${u.sims_count} sim(s)${charInfo(u)}</span></div>
       <span class="spacer"></span>${btnActive} ${btnReset} ${btnDel}</div>`;
   }).join("");
   box.querySelectorAll("[data-active]").forEach(b => b.addEventListener("click", async () => {
@@ -216,6 +264,8 @@ document.querySelectorAll("nav.tabs .tab").forEach((tb) => tb.addEventListener("
   document.querySelectorAll("nav.tabs .tab").forEach((o) => o.classList.toggle("active", o === tb));
   $("#sec-invitations").classList.toggle("hidden", tb.id !== "tab-invitations");
   $("#sec-comptes").classList.toggle("hidden", tb.id !== "tab-comptes");
+  $("#sec-bot").classList.toggle("hidden", tb.id !== "tab-bot");
+  if (tb.id === "tab-bot") loadBot();
 }));
 
 $("#inv-email").addEventListener("input", () => {
@@ -247,7 +297,84 @@ $("#inv-create").addEventListener("click", async () => {
   } catch (e) { return; }
   const h = await api("GET", "/api/health").catch(() => null);
   if (h) $("#ver").textContent = "v" + h.version;
-  loadInvites(); loadUsers();
+// ---- Bot Discord ----
+async function loadBot() {
+  const d = await api("GET", "/api/admin/bot");
+  const st = $("#bot-status");
+  if (d.status === "ok") { st.textContent = `🟢 En ligne — ${d.bot_user}`; st.className = "badge b-used"; }
+  else if (d.status === "error") { st.textContent = "🔴 Token refusé"; st.className = "badge b-off"; }
+  else { st.textContent = "⚪ Non configuré"; st.className = "badge"; }
+  $("#bot-enabled").checked = d.enabled;
+  $("#bot-reports").checked = d.notify_reports;
+  $("#bot-roster").checked = d.notify_roster;
+  $("#bot-appid").value = d.app_id || "";
+  $("#bot-token").placeholder = d.token_set ? `Token actuel : …${d.token_hint} (laisser vide = inchangé)` : "Token du bot (Portail développeurs → onglet Bot)";
+  const bits = [];
+  if (d.channel_name || d.channel_id) bits.push(`Salon : <b>#${esc(d.channel_name || d.channel_id)}</b>`);
+  if (d.last_message) bits.push(esc(d.last_message));
+  if (d.last_error) bits.push(`<span style="color:var(--err)">⚠ ${esc(d.last_error)}</span>`);
+  if (d.status_error) bits.push(`<span style="color:var(--err)">${esc(d.status_error)}</span>`);
+  $("#bot-info").innerHTML = bits.join("<br>");
+}
+
+$("#bot-invite").addEventListener("click", () => {
+  const appId = $("#bot-appid").value.trim();
+  if (!appId) { toast("Colle d'abord l'Application ID (Portail développeurs Discord)"); return; }
+  const url = `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(appId)}&scope=bot&permissions=19456`;
+  const bx = $("#bot-invite-box");
+  bx.classList.remove("hidden");
+  bx.innerHTML = `Lien d'invitation — ouvre-le et choisis ton serveur :<br><code>${esc(url)}</code>
+    <button class="small" id="bot-invite-copy">Copier</button>
+    <a class="hlink" style="margin-left:10px" href="${esc(url)}" target="_blank" rel="noopener">Ouvrir →</a>`;
+  $("#bot-invite-copy").addEventListener("click", () => copy(url));
+});
+
+async function loadBotChannels() {
+  const gid = $("#bot-guild").value;
+  if (!gid) return;
+  const d = await api("GET", `/api/admin/bot/guilds/${gid}/channels`);
+  $("#bot-channel").classList.remove("hidden");
+  $("#bot-channel").innerHTML = d.channels.map(c => `<option value="${esc(c.id)}">#${esc(c.name)}</option>`).join("");
+}
+
+$("#bot-guild").addEventListener("change", loadBotChannels);
+
+$("#bot-guilds").addEventListener("click", async () => {
+  try {
+    const d = await api("GET", "/api/admin/bot/guilds");
+    $("#bot-guild").classList.remove("hidden");
+    $("#bot-guild").innerHTML = d.guilds.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
+    await loadBotChannels();
+  } catch (e) {}
+});
+
+$("#bot-save").addEventListener("click", async () => {
+  const body = {
+    enabled: $("#bot-enabled").checked,
+    notify_reports: $("#bot-reports").checked,
+    notify_roster: $("#bot-roster").checked,
+    app_id: $("#bot-appid").value.trim(),
+    token: $("#bot-token").value.trim(),
+  };
+  const sel = $("#bot-channel");
+  if (sel.value) {
+    body.channel_id = sel.value;
+    body.channel_name = (sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : "").replace(/^#/, "");
+  }
+  try {
+    await api("POST", "/api/admin/bot", body);
+    $("#bot-token").value = "";
+    toast("Configuration enregistrée ✓");
+    loadBot();
+  } catch (e) {}
+});
+
+$("#bot-test").addEventListener("click", async () => {
+  try { await api("POST", "/api/admin/bot/test"); toast("Message de test envoyé 📨"); loadBot(); }
+  catch (e) {}
+});
+
+  loadInvites(); loadUsers(); loadBot();
 })();
 </script>
 </body>

@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 from worker.simrun import run_sim
 
-from app import bnet, mailer, wcl
+from app import bnet, discord_bot, mailer, wcl
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -54,6 +54,7 @@ SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
 INVITE_TTL_DAYS = int(os.environ.get("INVITE_TTL_DAYS", "7"))
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1") not in ("0", "false", "no", "")
+BOT_POLL_S = int(os.environ.get("BOT_POLL_S", "300"))  # intervalle du bot Discord (secondes)
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -157,6 +158,40 @@ def _init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bot_config (
+                id             INTEGER PRIMARY KEY CHECK (id = 1),
+                enabled        INTEGER NOT NULL DEFAULT 0,
+                token          TEXT NOT NULL DEFAULT '',
+                app_id         TEXT NOT NULL DEFAULT '',
+                channel_id     TEXT NOT NULL DEFAULT '',
+                channel_name   TEXT NOT NULL DEFAULT '',
+                notify_reports INTEGER NOT NULL DEFAULT 1,
+                notify_roster  INTEGER NOT NULL DEFAULT 1,
+                last_report_t  REAL NOT NULL DEFAULT 0,
+                roster_snap    TEXT NOT NULL DEFAULT '[]',
+                last_message   TEXT NOT NULL DEFAULT '',
+                last_error     TEXT NOT NULL DEFAULT '',
+                updated        REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("INSERT OR IGNORE INTO bot_config (id, updated) VALUES (1, 0)")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS char_links (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                realm      TEXT NOT NULL,
+                name       TEXT NOT NULL,
+                display    TEXT NOT NULL,
+                is_main    INTEGER NOT NULL DEFAULT 0,
+                created    REAL NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_char_links_uniq ON char_links(user_email, realm, name)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_status ON sims(status)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
         # migrations (idempotent)
@@ -323,6 +358,7 @@ async def _lifespan(_app: FastAPI):
     _init_db()
     _bootstrap_admin()
     threading.Thread(target=_worker_loop, daemon=True, name="sim-worker").start()
+    threading.Thread(target=_bot_loop, daemon=True, name="discord-bot").start()
     yield
 
 
@@ -943,7 +979,9 @@ def admin_users(request: Request):
     with _db_lock, _db() as conn:
         rows = conn.execute(
             """SELECT u.id, u.email, u.name, u.is_admin, u.active, u.created, u.last_login,
-                      (SELECT COUNT(*) FROM sims s WHERE s.user_email = u.email) AS sims_count
+                      (SELECT COUNT(*) FROM sims s WHERE s.user_email = u.email) AS sims_count,
+                      (SELECT c.display FROM char_links c WHERE c.user_email = u.email AND c.is_main = 1 LIMIT 1) AS main_char,
+                      (SELECT COUNT(*) FROM char_links c WHERE c.user_email = u.email) AS chars_count
                FROM users u ORDER BY u.created""",
         ).fetchall()
     return {"users": [dict(r) for r in rows]}
@@ -969,9 +1007,11 @@ def admin_delete_user(uid: int, request: Request):
     if uid == me_row["id"]:
         raise HTTPException(400, "Impossible de supprimer ton propre compte.")
     with _db_lock, _db() as conn:
-        if conn.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone() is None:
+        u = conn.execute("SELECT email FROM users WHERE id=?", (uid,)).fetchone()
+        if u is None:
             raise HTTPException(404, "Compte inconnu")
         conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM char_links WHERE user_email=?", (u["email"],))
         conn.execute("DELETE FROM users WHERE id=?", (uid,))
     return {"ok": True}
 
@@ -1060,6 +1100,280 @@ def admin_revoke_invite(token: str, request: Request):
     _require_admin(request)
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM invites WHERE token=? AND used IS NULL", (token,))
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Mes personnages (liaison compte ↔ personnages de guilde)
+# ---------------------------------------------------------------------------
+class CharLinkRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=40)
+    main: bool = False
+
+
+@app.get("/api/me/chars")
+def my_chars(request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = conn.execute(
+            "SELECT id, realm, name, display, is_main, created FROM char_links WHERE user_email=? ORDER BY is_main DESC, display",
+            (user["email"],),
+        ).fetchall()
+    return {"chars": [dict(r) for r in rows]}
+
+
+@app.post("/api/me/chars")
+def link_char(payload: CharLinkRequest, request: Request):
+    user = _require_user(request)
+    name = payload.name.strip()
+    try:
+        data, _ts = bnet.roster()
+    except bnet.BnetError as exc:
+        raise HTTPException(502, f"Roster indisponible : {exc}")
+    hit = next((m for m in (data.get("members") or []) if (m.get("name") or "").lower() == name.lower()), None)
+    if hit is None:
+        raise HTTPException(404, "Personnage introuvable dans le roster de la guilde — vérifie l'orthographe.")
+    realm = (hit.get("realm") or bnet.GUILD_REALM).lower()
+    display = hit.get("name") or name
+    lname = display.lower()
+    with _db_lock, _db() as conn:
+        dup = conn.execute(
+            "SELECT id FROM char_links WHERE user_email=? AND realm=? AND name=?",
+            (user["email"], realm, lname),
+        ).fetchone()
+        if dup is not None:
+            raise HTTPException(400, "Ce personnage est déjà lié à ton compte.")
+        taken = conn.execute(
+            "SELECT id FROM char_links WHERE realm=? AND name=? AND user_email != ? LIMIT 1",
+            (realm, lname, user["email"]),
+        ).fetchone() is not None
+        if payload.main:
+            conn.execute("UPDATE char_links SET is_main=0 WHERE user_email=?", (user["email"],))
+        cur = conn.execute(
+            "INSERT INTO char_links (user_email, realm, name, display, is_main, created) VALUES (?,?,?,?,?,?)",
+            (user["email"], realm, lname, display, 1 if payload.main else 0, time.time()),
+        )
+        cid = int(cur.lastrowid or 0)
+    return {"id": cid, "ok": True, "taken": taken, "display": display}
+
+
+@app.delete("/api/me/chars/{cid}")
+def unlink_char(cid: int, request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        r = conn.execute("SELECT * FROM char_links WHERE id=?", (cid,)).fetchone()
+        if r is None or (r["user_email"] != user["email"] and not user["is_admin"]):
+            raise HTTPException(404, "Personnage non lié à ton compte.")
+        conn.execute("DELETE FROM char_links WHERE id=?", (cid,))
+    return {"ok": True}
+
+
+@app.post("/api/me/chars/{cid}/main")
+def set_main_char(cid: int, request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        r = conn.execute("SELECT * FROM char_links WHERE id=?", (cid,)).fetchone()
+        if r is None or r["user_email"] != user["email"]:
+            raise HTTPException(404, "Personnage non lié à ton compte.")
+        conn.execute("UPDATE char_links SET is_main=0 WHERE user_email=?", (user["email"],))
+        conn.execute("UPDATE char_links SET is_main=1 WHERE id=?", (cid,))
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Bot Discord (annonces de guilde)
+# ---------------------------------------------------------------------------
+class BotConfigRequest(BaseModel):
+    enabled: bool = False
+    token: str = Field("", max_length=200)
+    app_id: str = Field("", max_length=32)
+    channel_id: str = Field("", max_length=32)
+    channel_name: str = Field("", max_length=120)
+    notify_reports: bool = True
+    notify_roster: bool = True
+
+
+def _bot_config() -> sqlite3.Row | None:
+    with _db_lock, _db() as conn:
+        return conn.execute("SELECT * FROM bot_config WHERE id=1").fetchone()
+
+
+def _bot_save(updates: dict) -> None:
+    if not updates:
+        return
+    sets = ", ".join(f"{k}=?" for k in updates)
+    with _db_lock, _db() as conn:
+        conn.execute(f"UPDATE bot_config SET {sets}, updated=? WHERE id=1", (*updates.values(), time.time()))
+
+
+def _bot_tick() -> None:
+    """Un passage d'annonces : nouveaux rapports WCL + mouvements de roster."""
+    cfg = _bot_config()
+    if cfg is None or not cfg["enabled"]:
+        return
+    token, channel = (cfg["token"] or "").strip(), (cfg["channel_id"] or "").strip()
+    if not token or not channel:
+        return
+    updates: dict = {}
+    notes: list[str] = []
+    errs: list[str] = []
+
+    if cfg["notify_reports"]:
+        try:
+            data, _ts = wcl.reports(limit=30)
+            rows = data.get("data") or []
+            newest = max((float(r.get("startTime") or 0.0) for r in rows), default=0.0)
+            last = float(cfg["last_report_t"] or 0.0)
+            if newest and last <= 0:
+                updates["last_report_t"] = newest  # premier passage : référence, pas d'annonce rétroactive
+            elif newest > last:
+                fresh = sorted(
+                    (r for r in rows if float(r.get("startTime") or 0.0) > last),
+                    key=lambda r: float(r.get("startTime") or 0.0),
+                )
+                for r in fresh[:5]:
+                    discord_bot.send(token, channel, embeds=[discord_bot.report_embed(r)])
+                updates["last_report_t"] = newest
+                notes.append(f"{min(len(fresh), 5)} annonce(s) « rapport »")
+        except Exception as exc:  # noqa: BLE001
+            errs.append(f"rapports — {exc}")
+
+    if cfg["notify_roster"]:
+        try:
+            data, _ts = bnet.roster()
+            members = {m["name"]: m for m in (data.get("members") or []) if m.get("name")}
+            snap = set(json.loads(cfg["roster_snap"] or "[]"))
+            if not snap:
+                updates["roster_snap"] = json.dumps(sorted(members))
+            else:
+                added = sorted(set(members) - snap)
+                gone = sorted(snap - set(members))
+                for n in added[:5]:
+                    discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("join", members[n])])
+                for n in gone[:5]:
+                    discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("leave", {"name": n})])
+                if added or gone:
+                    updates["roster_snap"] = json.dumps(sorted(members))
+                    notes.append(f"roster : +{len(added)} / -{len(gone)}")
+        except Exception as exc:  # noqa: BLE001
+            errs.append(f"roster — {exc}")
+
+    if updates or notes or errs or cfg["last_error"]:
+        updates["last_message"] = " ; ".join(notes)[:300] if notes else (cfg["last_message"] or "")
+        updates["last_error"] = " ; ".join(errs)[:300]
+        _bot_save(updates)
+
+
+def _bot_loop() -> None:
+    time.sleep(15)
+    while True:
+        try:
+            _bot_tick()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[bot] tick: {exc}")
+        time.sleep(BOT_POLL_S)
+
+
+@app.get("/api/admin/bot")
+def admin_bot_get(request: Request):
+    _require_admin(request)
+    cfg = _bot_config()
+    token = (cfg["token"] or "").strip()
+    out = {
+        "enabled": bool(cfg["enabled"]),
+        "token_set": bool(token),
+        "token_hint": token[-4:] if token else "",
+        "app_id": cfg["app_id"] or "",
+        "channel_id": cfg["channel_id"] or "",
+        "channel_name": cfg["channel_name"] or "",
+        "notify_reports": bool(cfg["notify_reports"]),
+        "notify_roster": bool(cfg["notify_roster"]),
+        "last_message": cfg["last_message"] or "",
+        "last_error": cfg["last_error"] or "",
+        "last_report_t": cfg["last_report_t"],
+        "updated": cfg["updated"],
+        "invite_url": discord_bot.invite_url(cfg["app_id"]) if (cfg["app_id"] or "").strip() else "",
+        "status": "unconfigured",
+    }
+    if token:
+        try:
+            who = discord_bot.me(token)
+            out["status"] = "ok"
+            out["bot_user"] = str(who.get("username") or "?")
+        except discord_bot.DiscordError as exc:
+            out["status"] = "error"
+            out["status_error"] = str(exc)
+    return out
+
+
+@app.post("/api/admin/bot")
+def admin_bot_save(payload: BotConfigRequest, request: Request):
+    _require_admin(request)
+    updates: dict = {
+        "enabled": 1 if payload.enabled else 0,
+        "app_id": payload.app_id.strip(),
+        "notify_reports": 1 if payload.notify_reports else 0,
+        "notify_roster": 1 if payload.notify_roster else 0,
+    }
+    if payload.channel_id.strip():
+        updates["channel_id"] = payload.channel_id.strip()
+        updates["channel_name"] = payload.channel_name.strip()[:120]
+    if payload.token.strip():
+        try:
+            discord_bot.me(payload.token.strip())
+        except discord_bot.DiscordError as exc:
+            raise HTTPException(400, f"Token refusé par Discord — {exc}")
+        updates["token"] = payload.token.strip()
+    _bot_save(updates)
+    return {"ok": True}
+
+
+@app.get("/api/admin/bot/guilds")
+def admin_bot_guilds(request: Request):
+    _require_admin(request)
+    cfg = _bot_config()
+    token = (cfg["token"] or "").strip()
+    if not token:
+        raise HTTPException(400, "Token du bot non configuré.")
+    try:
+        gs = discord_bot.guilds(token)
+    except discord_bot.DiscordError as exc:
+        raise HTTPException(502, str(exc))
+    if not gs:
+        raise HTTPException(404, "Le bot n'est encore sur aucun serveur — utilise le lien d'invitation.")
+    return {"guilds": [{"id": str(g.get("id")), "name": g.get("name")} for g in gs]}
+
+
+@app.get("/api/admin/bot/guilds/{guild_id}/channels")
+def admin_bot_channels(guild_id: str, request: Request):
+    _require_admin(request)
+    cfg = _bot_config()
+    token = (cfg["token"] or "").strip()
+    if not token:
+        raise HTTPException(400, "Token du bot non configuré.")
+    try:
+        chans = discord_bot.channels(token, guild_id)
+    except discord_bot.DiscordError as exc:
+        raise HTTPException(502, str(exc))
+    return {"channels": chans}
+
+
+@app.post("/api/admin/bot/test")
+def admin_bot_test(request: Request):
+    _require_admin(request)
+    cfg = _bot_config()
+    token, channel = (cfg["token"] or "").strip(), (cfg["channel_id"] or "").strip()
+    if not token or not channel:
+        raise HTTPException(400, "Configure d'abord le token et le salon (Enregistrer).")
+    try:
+        discord_bot.send(token, channel, embeds=[{
+            "title": "✅ LOTP Simulateur — test",
+            "description": "Le bot est correctement configuré : les annonces de la guilde arriveront dans ce salon.",
+            "color": 0xDFA55A,
+        }])
+    except discord_bot.DiscordError as exc:
+        raise HTTPException(502, str(exc))
+    _bot_save({"last_message": "message de test envoyé"})
     return {"ok": True}
 
 

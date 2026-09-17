@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.012] — 2026-09-17
+
+### Added
+
+- Discord bot (admin tab « 🤖 Bot Discord »): ready-made OAuth2 invite
+  link, token activation, live channel picker, and automatic announcements —
+  new Warcraft Logs raid reports and guild roster changes (joins/leaves).
+  First pass sets a baseline (no retroactive posts); test-message button;
+  the token is validated against Discord before being saved.
+- Account ↔ character links: link your account to your guild characters
+  from the Personnages page (⭐ main + alts), star markers and row highlight
+  in the roster, one-click link/unlink from a character's detail, and the
+  admin account list now shows each account's main character.
+- New API: `/api/me/chars` (GET/POST), `/api/me/chars/{id}` (DELETE),
+  `/api/me/chars/{id}/main` (POST), `/api/admin/bot*` (status, config,
+  guilds, channels, test).
+- `BOT_POLL_S` env var — Discord announcement polling interval (default 300 s).
+
 ## [2026.09.011] — 2026-09-17
 
 ### Added
