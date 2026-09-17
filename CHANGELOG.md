@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.044 - 2026-09-17
+- Theme: new WoW-style background (dark fortress stone, AI-generated locally) applied to logged-in pages only; login/register stay plain.
+
 ## 2026.09.043 - 2026-09-17
 - Music player: play now verifies the track actually starts (deleted file => clear message instead of silent nothing).
 - Music player: status badge shows Paused / Stopped states (feedback on pause/stop clicks).
