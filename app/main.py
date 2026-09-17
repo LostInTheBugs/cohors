@@ -1384,6 +1384,36 @@ class WishlistAdd(BaseModel):
     item: str = Field(..., min_length=4, max_length=300)
 
 
+@app.api_route("/manifest.webmanifest", methods=["GET", "HEAD"])
+def pwa_manifest(request: Request):
+    return FileResponse(STATIC_DIR / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.api_route("/sw.js", methods=["GET", "HEAD"])
+def pwa_sw(request: Request):
+    return FileResponse(STATIC_DIR / "sw.js", media_type="application/javascript",
+                        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
+
+
+@app.api_route("/offline.html", methods=["GET", "HEAD"])
+def pwa_offline(request: Request):
+    return FileResponse(STATIC_DIR / "offline.html")
+
+
+@app.api_route("/voice", methods=["GET", "HEAD"])
+def voice_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "voice.html")
+
+
+@app.api_route("/fun", methods=["GET", "HEAD"])
+def fun_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "fun.html")
+
+
 @app.api_route("/wishlist", methods=["GET", "HEAD"])
 def wishlist_page(request: Request):
     if _get_session_user(request) is None:
@@ -1460,6 +1490,143 @@ def api_wishlist_del(item_id: int, request: Request):
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM wishlist WHERE user_email=? AND item_id=?", (user["email"], item_id))
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Succès fun (palmarès rigolo de la guilde)
+# ---------------------------------------------------------------------------
+_FUN_CACHE: dict = {"ts": 0.0, "data": None}
+FUN_TTL = 1800.0
+
+
+def _build_fun() -> dict:
+    """Agrège le palmarès fun : morts WCL + stats internes (sims, présences, partage)."""
+    out: dict = {
+        "cemetery": [], "massacre": None, "first_blood": [], "cause": None,
+        "intouchables": [], "scholars": [], "pillars": [], "collectors": [], "hearts": [],
+        "built": time.time(),
+    }
+    try:
+        rl, _ts = wcl.reports(limit=6)
+        cemetery: dict = {}
+        firsts: dict = {}
+        participation: dict = {}
+        causes: dict = {}
+        massacre = None
+        for rep in (rl.get("data") or []):
+            code = rep.get("code")
+            try:
+                full, _t = wcl.report_full(code)
+            except wcl.WclError:
+                continue
+            fights = {f["id"]: f for f in (full["report"].get("fights") or [])}
+            if not fights:
+                continue
+            try:
+                death_rows, _t2 = wcl.deaths(code)
+            except wcl.WclError:
+                death_rows = []
+            per_fight: dict = {}
+            first_ts: dict = {}
+            for de in death_rows:
+                nm = de.get("name")
+                if not nm:
+                    continue
+                row = cemetery.setdefault(nm, {"name": nm, "class": de.get("class"),
+                                               "spec": de.get("spec"), "deaths": 0})
+                row["deaths"] += 1
+                fid = de.get("fight")
+                per_fight[fid] = per_fight.get(fid, 0) + 1
+                ts = de.get("timestamp")
+                if ts is not None and (fid not in first_ts or ts < first_ts[fid][1]):
+                    first_ts[fid] = (nm, ts)
+                killer = de.get("killer")
+                if killer:
+                    causes[killer] = causes.get(killer, 0) + 1
+            for nm, _t3 in first_ts.values():
+                firsts[nm] = firsts.get(nm, 0) + 1
+            for fid, n in per_fight.items():
+                if not massacre or n > massacre["deaths"]:
+                    f = fights.get(fid) or {}
+                    massacre = {"boss": f.get("name") or "?", "deaths": n, "kill": bool(f.get("kill")),
+                                "report": code, "date": full["report"].get("startTime")}
+            for _fid, entry in (full.get("rankings") or {}).items():
+                if not entry.get("kill"):
+                    continue
+                for role in ("dps", "tanks", "healers"):
+                    for c in (((entry.get("roles") or {}).get(role) or {}).get("characters") or []):
+                        nm = c.get("name")
+                        if nm:
+                            participation[nm] = participation.get(nm, 0) + 1
+        out["cemetery"] = sorted(cemetery.values(), key=lambda r: -r["deaths"])[:10]
+        out["massacre"] = massacre
+        out["first_blood"] = sorted(
+            ({"name": k, "count": v} for k, v in firsts.items()), key=lambda r: -r["count"]
+        )[:5]
+        if causes:
+            top_cause = max(causes.items(), key=lambda kv: kv[1])
+            out["cause"] = {"name": top_cause[0], "count": top_cause[1]}
+        else:
+            out["cause"] = None
+        tomb = set(cemetery)
+        out["intouchables"] = sorted(
+            ({"name": k, "fights": v} for k, v in participation.items() if v >= 5 and k not in tomb),
+            key=lambda r: -r["fights"],
+        )[:5]
+    except wcl.WclError as exc:
+        out["error"] = str(exc)
+    try:
+        with _db_lock, _db() as conn:
+            out["scholars"] = [dict(r) for r in conn.execute(
+                "SELECT user_name AS name, COUNT(*) AS n FROM sims "
+                "WHERE user_name IS NOT NULL AND user_name<>'' GROUP BY user_name ORDER BY n DESC LIMIT 5"
+            ).fetchall()]
+            out["pillars"] = [dict(r) for r in conn.execute(
+                "SELECT COALESCE(u.name, s.user_email) AS name, COUNT(*) AS n FROM raid_signups s "
+                "LEFT JOIN users u ON u.email = s.user_email WHERE s.status='yes' "
+                "GROUP BY s.user_email ORDER BY n DESC LIMIT 5"
+            ).fetchall()]
+            out["hearts"] = [dict(r) for r in conn.execute(
+                "SELECT COALESCE(u.name, p.user_email) AS name, COUNT(*) AS n FROM profiles p "
+                "LEFT JOIN users u ON u.email = p.user_email WHERE p.shared=1 "
+                "GROUP BY p.user_email ORDER BY n DESC LIMIT 5"
+            ).fetchall()]
+            mains = conn.execute("SELECT realm, name, display FROM char_links WHERE is_main=1").fetchall()
+        coll = []
+        seen: set = set()
+        for m in mains[:30]:
+            k = (m["name"] or "").lower()
+            if not k or k in seen:
+                continue
+            seen.add(k)
+            try:
+                ex, _t = bnet.extras(m["realm"], m["name"])
+            except bnet.BnetError:
+                continue
+            if ex.get("mounts"):
+                coll.append({"name": m["display"] or m["name"], "mounts": ex["mounts"],
+                             "pets": ex.get("pets") or 0, "achv": ex.get("achv_points") or 0})
+        coll.sort(key=lambda r: -r["mounts"])
+        out["collectors"] = coll[:5]
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+@app.get("/api/fun")
+def api_fun(request: Request, refresh: int = 0):
+    _require_user(request)
+    now = time.time()
+    with _db_lock:
+        cached = _FUN_CACHE["data"]
+        age = now - _FUN_CACHE["ts"]
+    if cached is not None and ((not refresh and age < FUN_TTL) or (refresh and age < 60)):
+        return cached
+    data = _build_fun()
+    with _db_lock:
+        _FUN_CACHE["ts"] = time.time()
+        _FUN_CACHE["data"] = data
+    return data
 
 
 # ---------------------------------------------------------------------------

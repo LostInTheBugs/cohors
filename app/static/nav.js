@@ -13,9 +13,11 @@
       { href: "/characters", label: "👥 Personnages" },
       { href: "/raids", label: "📊 Rapports" },
       { href: "/rankings", label: "🏆 Classements" },
+      { href: "/fun", label: "🎉 Succès fun" },
       { href: "/calendar", label: "🗓️ Calendrier" },
       { href: "/guild", label: "🛡️ Infos & liens" }
     ] },
+    { href: "/voice", label: "🎧 Vocal" },
     { href: "/help", label: "📖 Aide" }
   ];
   var nav = document.getElementById("navmain");
@@ -40,7 +42,13 @@
     }
   });
   html += '<a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>';
+  html += '<button class="tab" id="voicepop" type="button" title="Ouvrir le vocal dans une fenêtre">🎧</button>';
   nav.innerHTML = html;
+  var vp = document.getElementById("voicepop");
+  if (vp) vp.addEventListener("click", function () {
+    var w = window.open("https://ts.gensbien.fr", "lotp_voice", "width=460,height=800");
+    if (w) { w.opener = null; w.focus(); }
+  });
 
   var css = document.createElement("style");
   css.textContent = [
@@ -91,4 +99,11 @@
   document.addEventListener("click", function () {
     nav.querySelectorAll(".tab.menu.open").forEach(function (x) { x.classList.remove("open"); });
   });
+  // PWA — service worker (icône mobile, hors-ligne léger).
+  if ("serviceWorker" in navigator &&
+      (location.protocol === "https:" || location.hostname === "127.0.0.1" || location.hostname === "localhost")) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {});
+    });
+  }
 })();

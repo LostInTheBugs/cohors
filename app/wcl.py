@@ -161,6 +161,40 @@ def report_full(code: str, force: bool = False) -> tuple[dict, float]:
     return out, _store(key, out)
 
 
+def deaths(code: str, force: bool = False) -> tuple[list[dict], float]:
+    """Morts d'un rapport (un événement par mort : joueur, fight, tueur) — cache 30 min."""
+    key = f"deaths/{code}"
+    hit = _cached(key, TTL_REPORT, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    full, _ts = report_full(code)
+    fids = [f["id"] for f in (full["report"].get("fights") or [])]
+    rows: list[dict] = []
+    if fids:
+        query = (
+            "query($c: String!, $fids: [Int!]!) { reportData { report(code: $c) { "
+            "deaths: table(dataType: Deaths, hostilityType: Friendlies, fightIDs: $fids) } } }"
+        )
+        try:
+            data = _gql(query, {"c": code, "fids": fids})
+            table = ((data.get("reportData") or {}).get("report") or {}).get("deaths") or {}
+            entries = ((table.get("data") or {}).get("entries")) or []
+        except WclError:
+            entries = []
+        for e in entries:
+            kb = e.get("killingBlow") or {}
+            icon = e.get("icon") or ""
+            rows.append({
+                "name": e.get("name"),
+                "class": e.get("type"),
+                "spec": icon.split("-", 1)[1] if "-" in icon else "",
+                "fight": e.get("fight"),
+                "timestamp": e.get("timestamp"),
+                "killer": (kb.get("name") if isinstance(kb, dict) else None),
+            })
+    return rows, _store(key, rows)
+
+
 def character_rankings(realm: str, name: str, zone_id: int | None = None, force: bool = False) -> tuple[dict, float]:
     """Meilleurs parses d'un personnage sur la zone de raid courante."""
     zone = int(zone_id or RAID_ZONE_ID)

@@ -2,6 +2,45 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.030] — 2026-09-17
+
+### Added
+
+- « 🎧 Vocal » page: embedded TeamSpeak web client (WebSpeak) with a
+  persistent-window button (and a 🎧 quick button in the menu) so voice keeps
+  running while you browse the app.
+
+### Changed
+
+- World-of-Warcraft-flavoured theme applied site-wide via `/static/theme.css`:
+  self-hosted Cinzel font for headings/brand, textured dark background with
+  subtle gold accents, gold card underlines and table headers.
+
+## [2026.09.029] — 2026-09-17
+
+### Added
+
+- PWA: web app manifest + icons (192/512/apple-touch), service worker
+  (static asset cache, offline fallback page), installable from mobile
+  browsers; theme colour set on every page.
+
+### Fixed
+
+- i18n engine: never rewrite a text node with an identical value (an
+  identity dictionary entry plus surrounding whitespace could loop the
+  MutationObserver endlessly and freeze the page in English). Removed
+  12 no-op dictionary entries.
+
+## [2026.09.028] — 2026-09-17
+
+### Added
+
+- Fun achievements page (« 🎉 Succès fun », Guild menu): graveyard (most
+  deaths), bloodiest fight, first-blood leader, n°1 cause of death,
+  untouchables (0 deaths), mad scientists (most sims), raid pillars
+  (attendance), collectors (mounts) and golden hearts (shared profiles).
+  New API `GET /api/fun` (30-min cache) + WCL deaths table integration.
+
 ## [2026.09.027] — 2026-09-17
 
 ### Added

@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LOTP — Connexion</title>
 <link rel="icon" type="image/png" href="/static/crest.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#b1002e">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LOTP">
 <style>
   :root { --bg:#0b0e14; --card:#131a26; --line:#232d42; --fg:#e7ebf5; --mut:#8c96ad; --acc:#b1002e; --acc2:#dfa55a; --err:#f87171; --ok:#34d399; }
   * { box-sizing: border-box; }
@@ -31,6 +37,7 @@
   .langrow a { color:var(--mut); text-decoration:none; margin:0 5px; }
   .langrow a.on { color:var(--acc2); font-weight:700; }
 </style>
+<link rel="stylesheet" href="/static/theme.css">
 </head>
 <body>
 <div class="wrap">
@@ -80,6 +87,12 @@ document.querySelectorAll(".langrow a").forEach(a => {
     try { localStorage.setItem("lotp_lang", a.dataset.lang); } catch (e) {}
     location.reload(); });
 });
+if ("serviceWorker" in navigator &&
+    (location.protocol === "https:" || location.hostname === "127.0.0.1" || location.hostname === "localhost")) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  });
+}
 </script>
 </body>
 </html>

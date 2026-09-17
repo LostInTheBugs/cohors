@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LOTP — Tableau de bord</title>
 <link rel="icon" href="/static/crest.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#b1002e">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LOTP">
 <style>
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
@@ -49,6 +55,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
+<link rel="stylesheet" href="/static/theme.css">
 </head>
 <body>
 <div class="wrap">
@@ -201,7 +208,7 @@ tickCd(); setInterval(tickCd, 20000);
     const top = pars.slice(0, 5);
     $("#raid").innerHTML = `
       <div class="rhead"><span class="t">${esc(rep.title || "(sans titre)")}</span></div>
-      <div class="meta">${esc((rep.zone || {}).name || "Zone inconnue")} · ${dtFmt(rep.startTime)} · ${fights.length} pulls · <b style="color:var(--ok)">${kills} boss tués</b></div>
+      <div class="meta">${esc((rep.zone || {}).name || "Zone inconnue")} · ${dtFmt(rep.startTime)} · ${fights.length} pulls · <b style="color:var(--ok)">${kills} boss tué${kills > 1 ? "s" : ""}</b></div>
       ${top.length ? `<div style="margin-top:8px;font-weight:600;font-size:13px;">Meilleurs parses du raid</div>` + top.map(c => `
         <div class="prow">
           <span class="pname" style="color:${CLASS_COLORS[c.class] || "var(--fg)"}">${esc(c.name)}</span>
