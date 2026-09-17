@@ -86,6 +86,12 @@
       <h2>📊 Dernier raid</h2>
       <div id="raid"><div class="empty">Chargement…</div></div>
     </div>
+    <div class="card">
+      <h2>🎧 Vocal</h2>
+      <div class="cd" id="vcount">…</div>
+      <p class="note">connecté(s) sur TeamSpeak (hors bot)</p>
+      <p class="note" id="vnames"></p>
+    </div>
   </div>
 
   <div class="card">
@@ -161,6 +167,16 @@ tickCd(); setInterval(tickCd, 20000);
     if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
   } catch (e) { location.href = "/login"; return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+
+  // vocal (TeamSpeak) — nombre de connectés, bot exclu
+  const loadVoice = async () => {
+    try {
+      const v = await jget("/api/voice/count");
+      $("#vcount").textContent = String(v.count);
+      $("#vnames").textContent = (v.names || []).join(", ");
+    } catch (e) { $("#vcount").textContent = "—"; $("#vnames").textContent = ""; }
+  };
+  loadVoice(); setInterval(loadVoice, 60000);
 
   // mouvements + taille du roster
   let membersTxt = "";

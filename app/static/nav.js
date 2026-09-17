@@ -15,10 +15,12 @@
       { href: "/rankings", label: "🏆 Classements" },
       { href: "/fun", label: "🎉 Succès fun" },
       { href: "/calendar", label: "🗓️ Calendrier" },
-      { href: "/guild", label: "🛡️ Infos & liens" },
+      { href: "/guild", label: "🛡️ Infos & liens" }
+    ] },
+    { label: "🎧 Vocal", items: [
+      { href: "/voice", label: "🎧 Panneau vocal", vt: true },
       { href: "/music", label: "🎵 Musique", role: "officer" }
     ] },
-    { href: "/voice", label: "🎧 Vocal" },
     { href: "/help", label: "📖 Aide" }
   ];
   var nav = document.getElementById("navmain");
@@ -35,7 +37,7 @@
         '<button class="menubtn" type="button">' + m.label + '<span class="arr">▾</span></button>' +
         '<div class="dropdown">' +
         m.items.map(function (i) {
-          return '<a class="ditem' + (i.href === path ? " active" : "") + '" href="' + i.href + '"' + (i.role ? ' data-role="' + i.role + '"' : "") + '>' + i.label + '</a>';
+          return '<a class="ditem' + (i.href === path ? " active" : "") + '" href="' + i.href + '"' + (i.role ? ' data-role="' + i.role + '"' : "") + (i.vt ? ' data-vt="1"' : "") + '>' + i.label + '</a>';
         }).join("") +
         '</div></div>';
     } else {
@@ -45,14 +47,15 @@
   html += '<a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>';
   nav.innerHTML = html;
   // Vocal : dans le panneau vocal (page encadrée) → bascule le panneau ; sinon → page /voice.
-  var voicelink = nav.querySelector('a.tab[href="/voice"]');
-  if (voicelink) voicelink.addEventListener("click", function (ev) {
-    try {
-      if (window.self !== window.top) {
-        ev.preventDefault();
-        window.top.postMessage({ type: "lotp-voice-toggle" }, "*");
-      }
-    } catch (e) {}
+  nav.querySelectorAll('a[href="/voice"]').forEach(function (voicelink) {
+    voicelink.addEventListener("click", function (ev) {
+      try {
+        if (window.self !== window.top) {
+          ev.preventDefault();
+          window.top.postMessage({ type: "lotp-voice-toggle" }, "*");
+        }
+      } catch (e) {}
+    });
   });
 
   var css = document.createElement("style");

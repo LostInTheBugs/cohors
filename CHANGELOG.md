@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.038 - 2026-09-17
+- Nav: Music page moved into the Voice menu (voice panel + Music).
+- Dashboard: live TeamSpeak user count (music bot excluded).
+
 ## 2026.09.037 - 2026-09-17
 - Music: shuffle mode (random playback of the library) and loop mode (repeat the current track) - toggles on the Music page.
 - Auto-chaining engine runs app-side (background watcher) while modes are on.

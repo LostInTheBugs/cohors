@@ -565,7 +565,9 @@
  "🔁 Boucler": "🔁 Loop",
  "Lecture aléatoire activée ✓": "Shuffle on ✓",
  "Boucle activée ✓": "Loop on ✓",
- "Mode désactivé": "Mode off"
+ "Mode désactivé": "Mode off",
+ "🎧 Panneau vocal": "🎧 Voice panel",
+ "connecté(s) sur TeamSpeak (hors bot)": "connected on TeamSpeak (bot excluded)"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

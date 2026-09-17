@@ -2996,3 +2996,31 @@ def _music_watcher_loop():
 
 
 threading.Thread(target=_music_watcher_loop, daemon=True).start()
+
+
+# --- 🎧 Compteur de connectés TeamSpeak (hors bot) ---
+MUSIC_BOT_UID = os.environ.get("SINUSBOT_CLIENT_UID", "qr2Ym8lUukm/XbbkStGGt+o4g9Q=")
+
+
+@app.get("/api/voice/count")
+def voice_count(request: Request):
+    if _get_session_user(request) is None:
+        raise HTTPException(401, "Connexion requise.")
+    try:
+        r = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/channels")
+        raw = r.json()
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001
+        raise HTTPException(502, "Vocal indisponible.")
+    count = 0
+    names = []
+    for ch in (raw if isinstance(raw, list) else []):
+        for cl in (ch.get("clients") or []):
+            if cl.get("uid") == MUSIC_BOT_UID:
+                continue
+            count += 1
+            nm = cl.get("nick") or ""
+            if nm:
+                names.append(nm)
+    return {"ok": True, "count": count, "names": names[:12]}
