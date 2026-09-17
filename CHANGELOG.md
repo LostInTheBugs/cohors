@@ -16,6 +16,11 @@ All notable changes to this project are documented in this file.
 - HTML pages are served with `Cache-Control: no-cache, must-revalidate`.
 - Login page accepts relative `?next=` targets (same-origin paths only).
 
+### Fixed (post-deploy follow-up)
+
+- Login page script repaired: a stray escape sequence from the v033 edit had
+  broken the inline script, leaving the « Se connecter » button inert.
+
 ## [2026.09.032] — 2026-09-17
 
 ### Added

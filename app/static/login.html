@@ -77,7 +77,8 @@ async function login() {
       let nxt = null;
       try { nxt = new URLSearchParams(location.search).get("next"); } catch (e) {}
       const okHosts = ["https://lotp.gensbien.fr", "https://ts.gensbien.fr"];
-      const okRel = nxt && nxt.startsWith("/") && !nxt.startsWith("//") && !nxt.startsWith("/\");
+      const bs = String.fromCharCode(92);
+      const okRel = nxt && nxt.startsWith("/") && !nxt.startsWith("//") && !nxt.includes(bs);
       if (nxt && (okRel || okHosts.some((h) => nxt === h || nxt.startsWith(h + "/")))) { location.href = nxt; return; }
       location.href = "/"; return;
     }
