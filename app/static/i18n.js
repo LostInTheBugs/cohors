@@ -532,7 +532,28 @@
  "Pseudo dans le vocal": "Voice nickname",
  "Par défaut : le nom de ton personnage principal (fiche 👥 Personnages). Ce pseudo est pré-rempli quand tu rejoins le vocal depuis l'app.": "Default: your main character's name (👥 Characters page). This nickname is pre-filled when you join voice from the app.",
  "Pseudo vocal mis à jour ✓": "Voice nickname updated ✓",
- "📦 Client portable": "📦 Portable client"
+ "📦 Client portable": "📦 Portable client",
+ "🎵 Musique": "🎵 Music",
+ "Musique": "Music",
+ "Le jukebox de la guilde — réservé aux officiers et administrateurs.": "The guild jukebox — officers and administrators only.",
+ "🎵 Lecteur": "🎵 Player",
+ "🔴 Éteint": "🔴 Off",
+ "▶️ En lecture": "▶️ Playing",
+ "🟢 En ligne": "🟢 Online",
+ "⚠️ Bot injoignable": "⚠️ Bot unreachable",
+ "▶ Lire": "▶ Play",
+ "📚 Bibliothèque": "📚 Library",
+ "Aucun titre — ajoute un lien ou envoie un fichier.": "No tracks — add a link or upload a file.",
+ "Bibliothèque indisponible.": "Library unavailable.",
+ "➕ Ajouter un titre": "➕ Add a track",
+ "Ajouter le lien": "Add link",
+ "Envoyer un mp3": "Upload an mp3",
+ "Les fichiers envoyés sont stockés sur le serveur de la guilde et joués par le bot dans le salon TeamSpeak.": "Uploaded files are stored on the guild server and played by the bot in the TeamSpeak channel.",
+ "Lien ajouté ✓": "Link added ✓",
+ "Fichier envoyé ✓": "File uploaded ✓",
+ "Choisis d'abord un fichier.": "Pick a file first.",
+ "Envoi en cours…": "Uploading…",
+ "🎵 Page « Musique » (officiers/admins) : lecteur du bot TeamSpeak — lancer, pause, volume, bibliothèque, liens et envoi de mp3.": "🎵 « Music » page (officers/admins): TeamSpeak bot player — play, pause, volume, library, links and mp3 upload."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

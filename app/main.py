@@ -27,7 +27,7 @@ from urllib.parse import quote
 
 import httpx
 import websockets
-from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -2584,3 +2584,209 @@ def voice_client_download(request: Request):
         raise HTTPException(404, "Client portable pas encore disponible.")
     return FileResponse(VOICE_CLIENT_ZIP, filename="LOTP-TeamSpeak.zip",
                         media_type="application/zip")
+
+
+
+# ---------------------------------------------------------------------------
+# 🎵 Musique (SinusBot) — réservé aux officiers et administrateurs
+# ---------------------------------------------------------------------------
+SINUSBOT_URL = os.environ.get("SINUSBOT_URL", "http://127.0.0.1:8087").rstrip("/")
+SINUSBOT_USER = os.environ.get("SINUSBOT_USER", "")
+SINUSBOT_PASS = os.environ.get("SINUSBOT_PASS", "")
+SINUSBOT_BOTID = os.environ.get("SINUSBOT_BOTID", "")
+SINUSBOT_INSTANCE = os.environ.get("SINUSBOT_INSTANCE", "")
+MUSIC_MEDIA_TOKEN = os.environ.get("MUSIC_MEDIA_TOKEN", "")
+MUSIC_MEDIA_BASE = os.environ.get("MUSIC_MEDIA_BASE", "http://127.0.0.1:8030").rstrip("/")
+MUSIC_DIR = DATA_DIR / "music"
+_MUSIC_SB = {"token": "", "ts": 0.0}
+
+
+def _music_login() -> str:
+    if _MUSIC_SB["token"] and (time.time() - _MUSIC_SB["ts"]) < 3600:
+        return _MUSIC_SB["token"]
+    payload = {"username": SINUSBOT_USER, "password": SINUSBOT_PASS, "botId": SINUSBOT_BOTID}
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            r = client.post(SINUSBOT_URL + "/api/v1/bot/login", json=payload)
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"Bot musique injoignable ({exc.__class__.__name__}).")
+    j = r.json()
+    token = j.get("token", "")
+    if not token:
+        raise HTTPException(502, "Connexion au bot musique impossible.")
+    _MUSIC_SB["token"] = token
+    _MUSIC_SB["ts"] = time.time()
+    return token
+
+
+def _sb_call(method: str, path: str, body=None, timeout: float = 20.0):
+    token = _music_login()
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            r = client.request(method, SINUSBOT_URL + path, json=body,
+                               headers={"Authorization": "Bearer " + token})
+            if r.status_code == 401:
+                _MUSIC_SB["token"] = ""
+                token = _music_login()
+                r = client.request(method, SINUSBOT_URL + path, json=body,
+                                   headers={"Authorization": "Bearer " + token})
+        return r
+    except HTTPException:
+        raise
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"Bot musique injoignable ({exc.__class__.__name__}).")
+
+
+def _require_officer(request: Request):
+    user = _require_user(request)
+    if _user_role(user) not in ("admin", "officer"):
+        raise HTTPException(403, "Réservé aux officiers et aux administrateurs.")
+    return user
+
+
+def _music_payload(j: dict) -> dict:
+    ct = j.get("currentTrack") or {}
+    conn = j.get("connStatus") or {}
+    return {
+        "ok": True,
+        "running": bool(j.get("running")),
+        "connected": bool(conn.get("status") == 4),
+        "playing": bool(j.get("playing")),
+        "position": int(j.get("position") or 0),
+        "volume": int(j.get("volume") or 0),
+        "track": ({"uuid": ct.get("uuid", ""), "title": ct.get("title") or ct.get("filename", "")}
+                  if ct.get("uuid") else None),
+    }
+
+
+@app.get("/music")
+def music_page(request: Request):
+    user = _get_session_user(request)
+    if user is None:
+        return RedirectResponse("/login", status_code=302)
+    if _user_role(user) not in ("admin", "officer"):
+        return RedirectResponse("/dashboard", status_code=302)
+    return FileResponse(STATIC_DIR / "music.html")
+
+
+@app.get("/api/music/status")
+def music_status(request: Request):
+    _require_officer(request)
+    try:
+        r = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/status")
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Bot injoignable ({exc.__class__.__name__})")
+    if r.status_code != 200:
+        raise HTTPException(502, "Bot injoignable.")
+    return _music_payload(r.json())
+
+
+@app.get("/api/music/tracks")
+def music_tracks(request: Request):
+    _require_officer(request)
+    r = _sb_call("GET", "/api/v1/bot/files")
+    try:
+        files = r.json()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(502, "Bibliothèque illisible.")
+    tracks = []
+    for f in (files if isinstance(files, list) else []):
+        title = (f.get("title") or f.get("filename") or "").strip()
+        tracks.append({"uuid": f.get("uuid", ""), "title": title[:120]})
+    tracks.sort(key=lambda t: t["title"].lower())
+    return {"ok": True, "tracks": tracks}
+
+
+class MusicPlay(BaseModel):
+    uuid: str = Field(..., max_length=80)
+
+
+@app.post("/api/music/play")
+def music_play(payload: MusicPlay, request: Request):
+    _require_officer(request)
+    if not re.match(r"^[A-Za-z0-9-]{8,80}$", payload.uuid):
+        raise HTTPException(400, "Identifiant invalide.")
+    r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/play/byId/{payload.uuid}")
+    return {"ok": r.status_code == 200}
+
+
+@app.post("/api/music/pause")
+def music_pause(request: Request):
+    _require_officer(request)
+    r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/pause")
+    return {"ok": r.status_code == 200}
+
+
+@app.post("/api/music/stop")
+def music_stop(request: Request):
+    _require_officer(request)
+    r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/stop")
+    return {"ok": r.status_code == 200}
+
+
+class MusicVolume(BaseModel):
+    volume: int = Field(..., ge=0, le=100)
+
+
+@app.post("/api/music/volume")
+def music_volume(payload: MusicVolume, request: Request):
+    _require_officer(request)
+    r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/volume/set/{payload.volume}")
+    return {"ok": r.status_code == 200}
+
+
+class MusicUrl(BaseModel):
+    url: str = Field(..., max_length=500)
+
+
+@app.post("/api/music/add-url")
+def music_add_url(payload: MusicUrl, request: Request):
+    _require_officer(request)
+    url = payload.url.strip()
+    if not re.match(r"^https?://", url):
+        raise HTTPException(400, "Lien invalide (http/https attendu).")
+    r = _sb_call("POST", "/api/v1/bot/url", {"url": url, "parent": ""})
+    ok = r.status_code == 200 and '"success":true' in r.text
+    return {"ok": ok}
+
+
+@app.post("/api/music/upload")
+async def music_upload(request: Request, file: UploadFile = File(...)):
+    _require_officer(request)
+    raw = await file.read()
+    if len(raw) > 60 * 1024 * 1024:
+        raise HTTPException(400, "Fichier trop lourd (60 Mo max).")
+    name = re.sub(r"[^A-Za-z0-9._ ()-]", "_", (file.filename or "musique.mp3")).strip()[:100] or "musique.mp3"
+    if not re.search(r"\.(mp3|ogg|wav|m4a|flac|opus)$", name, re.I):
+        name += ".mp3"
+    MUSIC_DIR.mkdir(parents=True, exist_ok=True)
+    (MUSIC_DIR / name).write_bytes(raw)
+    media_url = f"{MUSIC_MEDIA_BASE}/musicmedia/{MUSIC_MEDIA_TOKEN}/{quote(name)}"
+    r = _sb_call("POST", "/api/v1/bot/url", {"url": media_url, "parent": ""})
+    ok = r.status_code == 200 and '"success":true' in r.text
+    if not ok:
+        raise HTTPException(502, "Fichier enregistré mais refusé par le bot.")
+    return {"ok": True, "name": name}
+
+
+@app.delete("/api/music/track/{uuid}")
+def music_delete(uuid: str, request: Request):
+    _require_officer(request)
+    if not re.match(r"^[A-Za-z0-9-]{8,80}$", uuid):
+        raise HTTPException(400, "Identifiant invalide.")
+    r = _sb_call("DELETE", f"/api/v1/bot/files/{uuid}")
+    return {"ok": r.status_code == 200}
+
+
+@app.get("/musicmedia/{token}/{name}")
+def music_media(token: str, name: str):
+    if not MUSIC_MEDIA_TOKEN or token != MUSIC_MEDIA_TOKEN:
+        raise HTTPException(404)
+    if "/" in name or chr(92) in name or ".." in name:
+        raise HTTPException(404)
+    path = MUSIC_DIR / name
+    if not path.exists() or not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="audio/mpeg")

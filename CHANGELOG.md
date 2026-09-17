@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.035] — 2026-09-17
+
+### Added
+
+- 🎵 **Music bot**: SinusBot (Docker) connected to the guild TeamSpeak server
+  (client « 🎵 Musique LOTP », server password — no TS restart needed).
+- **Music page** (`/music`, officers & admins only): player controls
+  (play / pause / stop / volume), music library, add-by-URL and mp3 upload
+  (files stored in `data/music/`, served to the bot over the internal network).
+  Backend proxies the SinusBot HTTP API server-side.
+
 ## [2026.09.034] — 2026-09-17
 
 ### Added

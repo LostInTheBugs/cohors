@@ -15,7 +15,8 @@
       { href: "/rankings", label: "🏆 Classements" },
       { href: "/fun", label: "🎉 Succès fun" },
       { href: "/calendar", label: "🗓️ Calendrier" },
-      { href: "/guild", label: "🛡️ Infos & liens" }
+      { href: "/guild", label: "🛡️ Infos & liens" },
+      { href: "/music", label: "🎵 Musique", role: "officer" }
     ] },
     { href: "/voice", label: "🎧 Vocal" },
     { href: "/help", label: "📖 Aide" }
@@ -34,7 +35,7 @@
         '<button class="menubtn" type="button">' + m.label + '<span class="arr">▾</span></button>' +
         '<div class="dropdown">' +
         m.items.map(function (i) {
-          return '<a class="ditem' + (i.href === path ? " active" : "") + '" href="' + i.href + '">' + i.label + '</a>';
+          return '<a class="ditem' + (i.href === path ? " active" : "") + '" href="' + i.href + '"' + (i.role ? ' data-role="' + i.role + '"' : "") + '>' + i.label + '</a>';
         }).join("") +
         '</div></div>';
     } else {
@@ -90,6 +91,12 @@
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
   }
+
+  // Entrées réservées aux rôles (officier/admin) — masquées sinon.
+  fetch("/api/me").then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+    if (me && (me.role === "admin" || me.role === "officer")) return;
+    nav.querySelectorAll('[data-role="officer"]').forEach(function (x) { x.remove(); });
+  }).catch(function () {});
 
   nav.querySelectorAll(".tab.menu > .menubtn").forEach(function (btn) {
     btn.addEventListener("click", function (ev) {

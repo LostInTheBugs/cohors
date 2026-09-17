@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Musique</title>
+<link rel="icon" href="/static/crest.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#b1002e">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LOTP">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .spacer { flex:1; }
+  .plab { color:var(--mut); font-size:13.5px; }
+  input[type=text] { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
+        padding:9px 12px; font-size:14px; flex:1; min-width:240px; }
+  input[type=file] { color:var(--mut); font-size:13px; }
+  input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
+  input[type=range] { accent-color: var(--acc); }
+  button { background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
+           padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  button.gbtn2 { background:transparent; border:1px solid var(--line); color:var(--fg); }
+  button.gbtn2:hover { border-color:#3a4763; }
+  button:disabled { opacity:.55; cursor:default; }
+  .badge { padding:3px 11px; border-radius:999px; font-size:12.5px; font-weight:700; border:1px solid var(--line); color:var(--mut); }
+  .badge.ok { color:var(--ok); border-color:#1f5f46; }
+  .badge.play { color:var(--acc2); border-color:#7a5b2e; }
+  .note { color:var(--mut); font-size:12.5px; margin:10px 0 0; }
+  .msg-ok { color:var(--ok); font-size:13px; }
+  .msg-err { color:var(--err); font-size:13px; }
+  .tracks { display:flex; flex-direction:column; gap:6px; }
+  .trackrow { display:flex; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--line); border-radius:10px; }
+  .trackrow .ttl { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13.5px; }
+  .trackrow button { padding:4px 11px; font-size:13px; }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
+</style>
+<link rel="stylesheet" href="/static/theme.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Musique</span></div>
+        <div class="tagline">Le jukebox de la guilde — réservé aux officiers et administrateurs.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/voice">🎧 Vocal</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+
+  <div class="card">
+    <h2>🎵 Lecteur</h2>
+    <div class="row">
+      <span id="state" class="badge">…</span>
+      <span id="track" class="plab">—</span>
+      <span class="spacer"></span>
+      <span id="pos" class="plab">0:00</span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="btn-play">▶ Lire</button>
+      <button id="btn-pause" class="gbtn2">⏸ Pause</button>
+      <button id="btn-stop" class="gbtn2">⏹ Stop</button>
+      <span class="plab" style="margin-left:10px">Volume</span>
+      <input type="range" id="vol" min="0" max="100" step="5" style="flex:1;min-width:150px">
+      <span id="volval" class="plab">50</span>
+    </div>
+    <p class="note" id="player-msg"></p>
+  </div>
+
+  <div class="card">
+    <h2>📚 Bibliothèque</h2>
+    <div id="tracks" class="tracks"><p class="note">Chargement…</p></div>
+  </div>
+
+  <div class="card">
+    <h2>➕ Ajouter un titre</h2>
+    <div class="row">
+      <input type="text" id="url" placeholder="https://… (lien direct mp3 / flux)">
+      <button id="add-url">Ajouter le lien</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input type="file" id="file" accept=".mp3,.ogg,.wav,.m4a,.flac,.opus,audio/*">
+      <button id="upload">Envoyer un mp3</button>
+      <span id="add-msg"></span>
+    </div>
+    <p class="note">Les fichiers envoyés sont stockés sur le serveur de la guilde et joués par le bot dans le salon TeamSpeak.</p>
+  </div>
+
+  <footer><span id="ver"></span> · Bot : SinusBot · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js"></script>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jpost = async (u, b) => { const r = await fetch(u, { method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur"); return j; };
+const msg = (sel, t, ok) => { const e = $(sel); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; };
+const fmt = (ms) => { const s = Math.max(0, Math.round((ms || 0) / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+
+let lastTrack = null;
+let dragging = false;
+
+$("#logout").addEventListener("click", async (ev) => { ev.preventDefault(); await fetch("/api/logout", { method: "POST" }); location.href = "/login"; });
+
+async function refresh() {
+  try {
+    const st = await jget("/api/music/status");
+    const b = $("#state");
+    if (!st.connected) { b.textContent = "🔴 Éteint"; b.className = "badge"; }
+    else if (st.playing) { b.textContent = "▶️ En lecture"; b.className = "badge play"; }
+    else { b.textContent = "🟢 En ligne"; b.className = "badge ok"; }
+    lastTrack = st.track || null;
+    $("#track").textContent = st.track ? st.track.title : "—";
+    $("#pos").textContent = fmt(st.position);
+    if (!dragging) { $("#vol").value = st.volume; $("#volval").textContent = st.volume; }
+    $("#btn-play").disabled = !st.track;
+  } catch (e) {
+    $("#state").textContent = "⚠️ Bot injoignable"; $("#state").className = "badge";
+  }
+}
+
+async function loadTracks() {
+  try {
+    const d = await jget("/api/music/tracks");
+    const box = $("#tracks");
+    if (!d.tracks.length) { box.innerHTML = '<p class="note">Aucun titre — ajoute un lien ou envoie un fichier.</p>'; return; }
+    box.innerHTML = "";
+    d.tracks.forEach((t) => {
+      const row = document.createElement("div");
+      row.className = "trackrow";
+      const ttl = document.createElement("span"); ttl.className = "ttl"; ttl.textContent = t.title || t.uuid;
+      const bplay = document.createElement("button"); bplay.textContent = "▶"; bplay.title = "Lire";
+      bplay.addEventListener("click", async () => { try { await jpost("/api/music/play", { uuid: t.uuid }); setTimeout(refresh, 800); } catch (e) { msg("#player-msg", e.message, false); } });
+      const bdel = document.createElement("button"); bdel.className = "gbtn2"; bdel.textContent = "🗑"; bdel.title = "Supprimer";
+      bdel.addEventListener("click", async () => {
+        if (!confirm("Supprimer « " + (t.title || t.uuid) + " » ?")) return;
+        try { const r = await fetch("/api/music/track/" + encodeURIComponent(t.uuid), { method: "DELETE" });
+          const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.detail || "Erreur"); loadTracks(); }
+        catch (e) { msg("#player-msg", e.message, false); }
+      });
+      row.appendChild(ttl); row.appendChild(bplay); row.appendChild(bdel);
+      box.appendChild(row);
+    });
+  } catch (e) { $("#tracks").innerHTML = '<p class="note">Bibliothèque indisponible.</p>'; }
+}
+
+$("#btn-play").addEventListener("click", async () => {
+  if (!lastTrack) return;
+  try { await jpost("/api/music/play", { uuid: lastTrack.uuid }); setTimeout(refresh, 800); }
+  catch (e) { msg("#player-msg", e.message, false); }
+});
+$("#btn-pause").addEventListener("click", async () => {
+  try { await jpost("/api/music/pause", {}); setTimeout(refresh, 600); } catch (e) { msg("#player-msg", e.message, false); }
+});
+$("#btn-stop").addEventListener("click", async () => {
+  try { await jpost("/api/music/stop", {}); setTimeout(refresh, 600); } catch (e) { msg("#player-msg", e.message, false); }
+});
+$("#vol").addEventListener("mousedown", () => { dragging = true; });
+$("#vol").addEventListener("touchstart", () => { dragging = true; });
+$("#vol").addEventListener("input", () => { $("#volval").textContent = $("#vol").value; });
+$("#vol").addEventListener("change", async () => {
+  dragging = false;
+  try { await jpost("/api/music/volume", { volume: Number($("#vol").value) }); } catch (e) { msg("#player-msg", e.message, false); }
+});
+$("#add-url").addEventListener("click", async () => {
+  const u = $("#url").value.trim();
+  if (!u) return;
+  $("#add-url").disabled = true;
+  try { await jpost("/api/music/add-url", { url: u }); msg("#add-msg", "Lien ajouté ✓", true); $("#url").value = ""; loadTracks(); }
+  catch (e) { msg("#add-msg", e.message, false); }
+  $("#add-url").disabled = false;
+});
+$("#upload").addEventListener("click", async () => {
+  const f = $("#file").files[0];
+  if (!f) { msg("#add-msg", "Choisis d'abord un fichier.", false); return; }
+  $("#upload").disabled = true; msg("#add-msg", "Envoi en cours…", true);
+  try {
+    const fd = new FormData(); fd.append("file", f);
+    const r = await fetch("/api/music/upload", { method: "POST", body: fd });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || "Erreur d'envoi");
+    msg("#add-msg", "Fichier envoyé ✓", true); $("#file").value = ""; loadTracks();
+  } catch (e) { msg("#add-msg", e.message, false); }
+  $("#upload").disabled = false;
+});
+
+(async () => {
+  try { const me = await jget("/api/me"); $("#who").textContent = me.name || me.email; } catch (e) { return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  refresh(); loadTracks();
+  setInterval(refresh, 6000);
+})();
+</script>
+</body>
+</html>
