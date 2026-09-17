@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.010] — 2026-09-17
+
+### Added
+
+- Invitation e-mails: when creating an invitation with an address, the link can
+  be sent automatically by e-mail (from `noreply@ruban-adhesif.com`, styled
+  French template). Pending invitations with an address get a « ✉️ Renvoyer »
+  action, and the admin panel shows the SMTP status.
+- `POST /api/admin/invites` accepts `send_email`; new
+  `POST /api/admin/invites/{token}/send` endpoint.
+- Configuration: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
+  `SMTP_FROM`.
+
+## [2026.09.010] — 2026-09-17
+
+### Added
+
+- Invitation e-mails: when creating an invitation with an address, the link can
+  be sent automatically by e-mail (from `noreply@ruban-adhesif.com`, styled
+  French template). Pending invitations with an address get a « ✉️ Renvoyer »
+  action, and the admin panel shows the SMTP status.
+- `POST /api/admin/invites` accepts `send_email`; new
+  `POST /api/admin/invites/{token}/send` endpoint.
+- Configuration: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
+  `SMTP_FROM`.
+
 ## [2026.09.009] — 2026-09-17
 
 ### Added

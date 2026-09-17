@@ -55,6 +55,8 @@
   .b-off { color:var(--err); border-color:#5a2626; }
   .linkbox { margin-top:14px; background:var(--card2); border:1px dashed var(--acc); border-radius:10px; padding:12px 14px; }
   .linkbox code { user-select:all; word-break:break-all; font-size:13px; color:var(--acc2); }
+  .chk { display:flex; gap:7px; align-items:center; color:var(--mut); font-size:13.5px; cursor:pointer; }
+  .chk input { accent-color:var(--acc); }
   .empty { color:var(--mut); font-size:14px; }
   #toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--card2);
            border:1px solid var(--acc); color:var(--fg); border-radius:10px; padding:9px 18px; font-size:14px;
@@ -90,6 +92,7 @@
       <div class="row">
         <input type="email" id="inv-email" placeholder="e-mail du membre (vide = lien libre)" style="min-width:300px">
         <input type="text" id="inv-note" placeholder="note (optionnelle)" maxlength="120" style="min-width:180px">
+        <label class="chk" title="Saisis d'abord un e-mail"><input type="checkbox" id="inv-send" checked disabled> ✉️ Envoyer par e-mail</label>
         <button id="inv-create">Créer le lien</button>
       </div>
       <div id="inv-result" class="linkbox hidden"></div>
@@ -118,6 +121,7 @@ const ago = (ts) => { if (!ts) return "jamais"; const s = Math.max(0, Date.now()
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
   if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
 const onDate = (ts) => new Date(ts * 1000).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+let SMTP_OK = false;
 
 let toastTimer = null;
 function toast(msg) {
@@ -145,14 +149,24 @@ function showLink(text) {
 
 async function loadInvites() {
   const d = await api("GET", "/api/admin/invites");
+  SMTP_OK = !!d.smtp_configured;
+  const sendBox = $("#inv-send");
+  if (SMTP_OK) {
+    if (!$("#inv-email").value.trim()) { sendBox.disabled = true; }
+  } else {
+    sendBox.checked = false;
+    sendBox.disabled = true;
+    sendBox.title = "SMTP non configuré sur le serveur";
+  }
   const box = $("#invites");
   if (!d.invites.length) { box.innerHTML = '<div class="empty">Aucune invitation.</div>'; return; }
   const BADGE = { pending: ["En attente", "b-pending"], used: ["Utilisé", "b-used"], expired: ["Expiré", "b-expired"] };
   box.innerHTML = d.invites.map(v => {
     const [txt, cls] = BADGE[v.status];
     const info = v.status === "used" ? `utilisé` : v.status === "expired" ? `expiré le ${onDate(v.expires)}` : `expire le ${onDate(v.expires)}`;
+    const canMail = v.status === "pending" && v.email;
     const actions = v.status === "pending"
-      ? `<button class="small ghost" data-copy="${esc(v.link)}">Copier le lien</button>
+      ? `${canMail ? `<button class="small ghost" data-mail="${esc(v.token)}" title="Renvoyer par e-mail à ${esc(v.email)}">✉️ Renvoyer</button> ` : ""}<button class="small ghost" data-copy="${esc(v.link)}">Copier le lien</button>
          <button class="small danger" data-revoke="${esc(v.token)}">Révoquer</button>` : "";
     return `<div class="item">
       <div class="main"><span class="name">${esc(v.email || "(lien libre)")}</span>
@@ -160,6 +174,10 @@ async function loadInvites() {
       <span class="badge ${cls}">${txt}</span><span class="spacer"></span>${actions}</div>`;
   }).join("");
   box.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => copy(b.dataset.copy)));
+  box.querySelectorAll("[data-mail]").forEach(b => b.addEventListener("click", async () => {
+    try { const r = await api("POST", `/api/admin/invites/${b.dataset.mail}/send`); toast(`Relance envoyée à ${r.sent_to} ✓`); }
+    catch (e) {}
+  }));
   box.querySelectorAll("[data-revoke]").forEach(b => b.addEventListener("click", async () => {
     if (!confirm("Révoquer cette invitation ?")) return;
     await api("DELETE", "/api/admin/invites/" + b.dataset.revoke); toast("Invitation révoquée"); loadInvites();
@@ -200,12 +218,22 @@ document.querySelectorAll("nav.tabs .tab").forEach((tb) => tb.addEventListener("
   $("#sec-comptes").classList.toggle("hidden", tb.id !== "tab-comptes");
 }));
 
+$("#inv-email").addEventListener("input", () => {
+  const has = $("#inv-email").value.trim().length > 0;
+  $("#inv-send").disabled = !has || !SMTP_OK;
+  if (has && SMTP_OK) $("#inv-send").checked = true;
+});
+
 $("#inv-create").addEventListener("click", async () => {
   $("#inv-create").disabled = true;
   try {
-    const d = await api("POST", "/api/admin/invites", { email: $("#inv-email").value.trim(), note: $("#inv-note").value.trim() });
-    showLink(d.link); toast("Invitation créée");
-    $("#inv-email").value = ""; $("#inv-note").value = "";
+    const email = $("#inv-email").value.trim();
+    const d = await api("POST", "/api/admin/invites", { email, note: $("#inv-note").value.trim(), send_email: $("#inv-send").checked && !!email });
+    showLink(d.link);
+    if (d.mail && d.mail.sent) toast(`Invitation envoyée à ${email} ✓`);
+    else if (d.mail && !d.mail.sent) toast("Lien créé — envoi e-mail échoué");
+    else toast("Invitation créée");
+    $("#inv-email").value = ""; $("#inv-note").value = ""; $("#inv-send").disabled = true;
     loadInvites();
   } catch (e) {}
   $("#inv-create").disabled = false;

@@ -26,6 +26,10 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       (per-boss percentile, best/median averages).
 - [x] Sim profiles (« Profils ») — save a `/simc` export once, reload it in one click,
       optionally share it with the guild (max 20 per account).
+- [x] Invitation e-mails — send (and re-send) invite links by e-mail from
+      `noreply@ruban-adhesif.com` (SMTP), with a French HTML template.
+- [x] Invitation e-mails — send (and re-send) invite links by e-mail from
+      `noreply@ruban-adhesif.com` (SMTP), with a French HTML template.
 
 ## Requirements
 
@@ -90,6 +94,14 @@ reverse proxy and small until the simulation worker is split out.
 | `WCL_GUILD_REALM` | `hyjal` | Guild realm slug |
 | `WCL_GUILD_REGION` | `EU` | Region |
 | `WCL_RAID_ZONE_ID` | `53` | Warcraft Logs zone id used for character rankings |
+| `SMTP_HOST` | — | SMTP server for outgoing e-mails (e.g. `mail.ruban-adhesif.com`) |
+| `SMTP_PORT` | `587` | SMTP submission port (STARTTLS) |
+| `SMTP_USER` / `SMTP_PASSWORD` | — | SMTP credentials (mailbox used to send) |
+| `SMTP_FROM` | — | From header (e.g. `LOTP Simulateur <noreply@ruban-adhesif.com>`) |
+| `SMTP_HOST` | — | SMTP server for outgoing e-mails (e.g. `mail.ruban-adhesif.com`) |
+| `SMTP_PORT` | `587` | SMTP submission port (STARTTLS) |
+| `SMTP_USER` / `SMTP_PASSWORD` | — | SMTP credentials (mailbox used to send) |
+| `SMTP_FROM` | — | From header (e.g. `LOTP Simulateur <noreply@ruban-adhesif.com>`) |
 
 ## API
 
@@ -116,7 +128,8 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/compare` | GET | Side-by-side characters `?chars=realm:name,…` (Battle.net + WCL) |
 | `/api/profiles` | GET / POST | List sim profiles / create one (`{name, input, shared}`) |
 | `/api/profiles/{id}` | GET / PATCH / DELETE | Read / update / delete a sim profile |
-| `/api/admin/invites` | GET / POST | List / create invitations |
+| `/api/admin/invites` | GET / POST | List / create invitations (`send_email` to mail the link) |
+| `/api/admin/invites/{token}/send` | POST | Re-send a pending invitation by e-mail |
 | `/api/admin/invites/{token}` | DELETE | Revoke an invitation |
 | `/api/admin/users` | GET | List accounts |
 | `/api/admin/users/{id}/active` | POST | Activate / deactivate an account |
@@ -139,6 +152,8 @@ app/bnet.py             Battle.net API client (roster, characters, 30-min cache)
 app/wcl.py              Warcraft Logs v2 client (raid reports, parses)
 app/static/raids.html   Raid reports page (French)
 app/static/compare.html Member comparison page (French)
+app/mailer.py           Outgoing e-mail (invitations) via SMTP
+app/mailer.py           Outgoing e-mail (invitations) via SMTP
 worker/simrun.py        SimulationCraft engine wrapper (official Docker image)
 Dockerfile              App image (Python + Docker CLI)
 docker-compose.yml      App deployment (Docker socket + data dir, both required)
@@ -148,7 +163,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.009` (see `CHANGELOG.md`).
+Current version: `2026.09.010` (see `CHANGELOG.md`).
 
 ## License
 

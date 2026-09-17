@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 from worker.simrun import run_sim
 
-from app import bnet, wcl
+from app import bnet, mailer, wcl
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -844,6 +844,8 @@ def delete_profile(pid: int, request: Request):
 class InviteRequest(BaseModel):
     email: str = Field("", max_length=200)
     note: str = Field("", max_length=120)
+    send_email: bool = False
+    send_email: bool = False
 
 
 class ActiveRequest(BaseModel):
@@ -929,7 +931,7 @@ def admin_invites(request: Request):
             "expires": r["expires"], "status": status, "used_by": r["used_by"],
             "link": _invite_link(r["token"]),
         })
-    return {"invites": out}
+    return {"invites": out, "smtp_configured": mailer.smtp_configured()}
 
 
 @app.post("/api/admin/invites")
@@ -943,7 +945,53 @@ def admin_create_invite(payload: InviteRequest, request: Request):
             "INSERT INTO invites (token, email, note, created, expires) VALUES (?,?,?,?,?)",
             (token, email, payload.note.strip()[:120], now, now + INVITE_TTL_DAYS * 86400),
         )
-    return {"token": token, "link": _invite_link(token), "expires_in_days": INVITE_TTL_DAYS}
+    mail_result = None
+    if payload.send_email and email:
+        try:
+            text, html = mailer.invite_mail(_invite_link(token), INVITE_TTL_DAYS)
+            mailer.send_mail(email, "Invitation — LOTP Simulateur", text, html)
+            mail_result = {"sent": True, "to": email}
+        except mailer.MailError as exc:
+            mail_result = {"sent": False, "error": str(exc)}
+    return {"token": token, "link": _invite_link(token), "expires_in_days": INVITE_TTL_DAYS, "mail": mail_result}
+
+
+@app.post("/api/admin/invites/{token}/send")
+def admin_send_invite(token: str, request: Request):
+    _require_admin(request)
+    with _db_lock, _db() as conn:
+        r = conn.execute("SELECT * FROM invites WHERE token=?", (token,)).fetchone()
+    if r is None:
+        raise HTTPException(404, "Invitation inconnue.")
+    if r["used"] is not None or r["expires"] < time.time():
+        raise HTTPException(400, "Invitation déjà utilisée ou expirée.")
+    if not r["email"]:
+        raise HTTPException(400, "Cette invitation est un lien libre (sans e-mail).")
+    try:
+        text, html = mailer.invite_mail(_invite_link(token), INVITE_TTL_DAYS)
+        mailer.send_mail(r["email"], "Invitation — LOTP Simulateur", text, html)
+    except mailer.MailError as exc:
+        raise HTTPException(502, str(exc))
+    return {"ok": True, "sent_to": r["email"]}
+
+
+@app.post("/api/admin/invites/{token}/send")
+def admin_send_invite(token: str, request: Request):
+    _require_admin(request)
+    with _db_lock, _db() as conn:
+        r = conn.execute("SELECT * FROM invites WHERE token=?", (token,)).fetchone()
+    if r is None:
+        raise HTTPException(404, "Invitation inconnue.")
+    if r["used"] is not None or r["expires"] < time.time():
+        raise HTTPException(400, "Invitation déjà utilisée ou expirée.")
+    if not r["email"]:
+        raise HTTPException(400, "Cette invitation est un lien libre (sans e-mail).")
+    try:
+        text, html = mailer.invite_mail(_invite_link(token), INVITE_TTL_DAYS)
+        mailer.send_mail(r["email"], "Invitation — LOTP Simulateur", text, html)
+    except mailer.MailError as exc:
+        raise HTTPException(502, str(exc))
+    return {"ok": True, "sent_to": r["email"]}
 
 
 @app.delete("/api/admin/invites/{token}")
