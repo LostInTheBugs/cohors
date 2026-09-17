@@ -23,7 +23,7 @@ import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import httpx
 import websockets
@@ -2821,8 +2821,31 @@ def music_delete(uuid: str, request: Request):
     _require_officer(request)
     if not re.match(r"^[A-Za-z0-9-]{8,80}$", uuid):
         raise HTTPException(400, "Identifiant invalide.")
+    # Retrouver le fichier local correspondant AVANT de supprimer côté bot (ménage disque)
+    local_name = ""
+    try:
+        rl = _sb_call("GET", "/api/v1/bot/files")
+        files = rl.json()
+        for f in (files if isinstance(files, list) else []):
+            if f.get("uuid") == uuid:
+                fname = str(f.get("filename") or f.get("title") or "")
+                base = Path(unquote(fname.rsplit("/", 1)[-1])).name if "/" in fname else Path(unquote(fname)).name
+                if base.lower().endswith((".mp3", ".ogg", ".wav", ".m4a", ".flac", ".opus")):
+                    local_name = base
+                break
+    except Exception:  # noqa: BLE001
+        pass
     r = _sb_call("DELETE", f"/api/v1/bot/files/{uuid}")
-    return {"ok": r.status_code == 200}
+    file_deleted = False
+    if local_name:
+        try:
+            p = MUSIC_DIR / local_name
+            if p.is_file():
+                p.unlink()
+                file_deleted = True
+        except Exception:  # noqa: BLE001
+            pass
+    return {"ok": r.status_code == 200, "file_deleted": file_deleted}
 
 
 @app.get("/musicmedia/{token}/{name}")
