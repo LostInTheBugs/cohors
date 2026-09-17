@@ -256,7 +256,7 @@ def _init_db() -> None:
             )
             """
         )
-        for k in ("intro", "discord_url", "discord_note", "ts_host", "ts_password", "ts_note"):
+        for k in ("intro", "discord_url", "discord_note", "ts_host", "ts_password", "ts_note", "web_url", "web_note"):
             conn.execute("INSERT OR IGNORE INTO guild_info (key, value, updated) VALUES (?, '', 0)", (k,))
         # v2026.09.015 — rôles (membre / officier / administrateur).
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
@@ -1240,7 +1240,7 @@ def submit_group_sim(payload: GroupSimRequest, request: Request):
 # ---------------------------------------------------------------------------
 # Informations de guilde (page 🛡️ Guilde — éditable par les administrateurs)
 # ---------------------------------------------------------------------------
-GUILD_INFO_KEYS = ("intro", "discord_url", "discord_note", "ts_host", "ts_password", "ts_note")
+GUILD_INFO_KEYS = ("intro", "discord_url", "discord_note", "ts_host", "ts_password", "ts_note", "web_url", "web_note")
 
 
 @app.get("/api/guild/info")

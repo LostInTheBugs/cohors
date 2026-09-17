@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.026] — 2026-09-17
+
+### Added
+
+- Guild page: new « Web client » card (editable link + note) pointing to the
+  self-hosted WebSpeak instance (ts.gensbien.fr) that runs TeamSpeak voice
+  directly in the browser.
+
+### Added (infrastructure)
+
+- WebSpeak (browser TeamSpeak client + gateway) deployed on papouille5
+  (Docker, host network, ufw-restricted; Apache reverse proxy + Let's Encrypt
+  on ts.gensbien.fr, WebSocket upgrade enabled). Target locked to the guild
+  TeamSpeak server (127.0.0.1:9987).
+
 ## [2026.09.025] — 2026-09-17
 
 ### Added

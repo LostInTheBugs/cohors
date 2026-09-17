@@ -86,6 +86,13 @@
     <p class="note hidden" id="ts-empty">Adresse non renseignée — un administrateur peut la compléter.</p>
   </div>
 
+  <div class="card">
+    <h2>🎧 Client web (TeamSpeak dans le navigateur)</h2>
+    <p class="txt meta" id="web-note"></p>
+    <p id="web-go" class="hidden"><a class="btn" id="web-link" href="#" target="_blank" rel="noopener">Ouvrir le client web →</a></p>
+    <p class="note hidden" id="web-empty">Client web à venir — un administrateur peut le renseigner.</p>
+  </div>
+
   <p id="edit-bar" class="hidden"><button class="cbtn" id="edit-btn">✏️ Modifier cette page</button></p>
 
   <div class="card hidden" id="edit-card">
@@ -97,6 +104,8 @@
     <label>Adresse TeamSpeak</label><input type="text" id="f-ts-host" placeholder="ts.exemple.fr:9987">
     <label>Mot de passe TeamSpeak</label><input type="text" id="f-ts-pwd">
     <label>Note TeamSpeak</label><input type="text" id="f-ts-note">
+    <label>Lien client web</label><input type="text" id="f-web-url" placeholder="https://…">
+    <label>Note client web</label><input type="text" id="f-web-note">
     <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="btn" id="save">💾 Enregistrer</button>
       <button class="cbtn" id="cancel">Annuler</button>
@@ -151,6 +160,11 @@ function fill() {
   $("#ts-open").classList.toggle("hidden", !link);
   if (link) $("#ts-link").href = link;
   $("#ts-empty").classList.toggle("hidden", !!host);
+  $("#web-note").textContent = it.web_note || "";
+  const wurl = (it.web_url || "").trim();
+  $("#web-go").classList.toggle("hidden", !wurl);
+  $("#web-empty").classList.toggle("hidden", !!wurl);
+  if (wurl) $("#web-link").href = wurl;
   $("#edit-bar").classList.toggle("hidden", !INFO.can_edit);
 }
 
@@ -162,6 +176,8 @@ function toForm() {
   $("#f-ts-host").value = it.ts_host || "";
   $("#f-ts-pwd").value = it.ts_password || "";
   $("#f-ts-note").value = it.ts_note || "";
+  $("#f-web-url").value = it.web_url || "";
+  $("#f-web-note").value = it.web_note || "";
 }
 
 async function copyText(t, btn) {
@@ -193,6 +209,7 @@ $("#save").addEventListener("click", async () => {
       intro: $("#f-intro").value, discord_url: $("#f-discord-url").value,
       discord_note: $("#f-discord-note").value, ts_host: $("#f-ts-host").value,
       ts_password: $("#f-ts-pwd").value, ts_note: $("#f-ts-note").value,
+      web_url: $("#f-web-url").value, web_note: $("#f-web-note").value,
     } });
     const fresh = await jget("/api/guild/info");
     INFO = fresh;

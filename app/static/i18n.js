@@ -472,7 +472,13 @@
  "Joueur": "Player",
  "Montant": "Amount",
  "Les meilleurs parses de la guilde sur les derniers rapports, filtrables par rôle.": "The guild's best parses from recent reports, filterable by role.",
- "Par boss : les trois meilleurs joueurs. Et le rating M+ (clés mythiques) des mains liés.": "Per boss: the top three players. Plus the M+ rating (mythic keys) of linked mains."
+ "Par boss : les trois meilleurs joueurs. Et le rating M+ (clés mythiques) des mains liés.": "Per boss: the top three players. Plus the M+ rating (mythic keys) of linked mains.",
+ "🎧 Client web (TeamSpeak dans le navigateur)": "🎧 Web client (TeamSpeak in your browser)",
+ "Ouvrir le client web →": "Open the web client →",
+ "Lien client web": "Web client link",
+ "Note client web": "Web client note",
+ "Client web à venir — un administrateur peut le renseigner.": "Web client coming soon — an administrator can fill it in.",
+ "🎧 Pas de client installé ? Le client web (lien sur la même page) fait tourner TeamSpeak dans le navigateur — aucun logiciel à installer.": "🎧 No installed client? The web client (link on the same page) runs TeamSpeak in your browser — no software to install."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
