@@ -17,6 +17,11 @@
   header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
   h1 { font-size: 26px; margin: 0; letter-spacing: .3px; }
   h1 span { color: var(--acc2); }
+  .tagline { color: var(--mut); font-size: 13px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
   .sub { color: var(--mut); font-size: 14px; margin: 0 0 22px; }
   details.howto { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin-bottom: 18px; }
   details.howto summary { cursor: pointer; font-weight: 600; color: var(--acc2); }
@@ -43,7 +48,7 @@
   h2 { font-size: 17px; margin: 0 0 12px; }
   .sim { border: 1px solid var(--line); background: var(--card2); border-radius: 11px; padding: 12px 14px;
          margin-bottom: 10px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-  .sim .who { font-weight: 600; min-width: 120px; }
+  .sim .who2 { font-weight: 600; min-width: 120px; }
   .sim .meta { color: var(--mut); font-size: 12.5px; }
   .sim .dps { font-weight: 700; font-variant-numeric: tabular-nums; }
   .sim .dps small { color: var(--mut); font-weight: 400; }
@@ -61,13 +66,18 @@
             font-family: ui-monospace, Consolas, monospace; max-height: 90px; overflow: auto; }
   .spin { display: inline-block; animation: spin 1.2s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>LOTP <span>Simulateur</span></h1>
-    <span class="meta" style="color:var(--mut);font-size:13px">SimulationCraft pour la guilde</span>
+    <span class="tagline">SimulationCraft pour la guilde</span>
+    <span class="spacer"></span>
+    <span class="who" id="who"></span>
+    <a class="hlink hidden" id="admin-link" href="/admin">Administration</a>
+    <a class="hlink" href="#" id="logout">Déconnexion</a>
   </header>
   <p class="sub">Colle ton export <b>/simc</b> (en jeu : tape <b>/simc</b> puis copie tout le texte) et lance la simulation.</p>
 
@@ -117,7 +127,8 @@
 
 <script>
 const $ = (s) => document.querySelector(s);
-const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", {maximumFractionDigits: d}).format(n);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
 const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
   if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
@@ -132,7 +143,8 @@ function render(sims) {
     const [txt, cls] = STATUS[s.status] || [s.status, ""];
     const badge = `<span class="badge ${cls}">${txt}</span>`;
     const cache = s.cached ? ' <span class="badge b-cache">⚡ cache</span>' : "";
-    const who = s.label ? s.label : "Simulation";
+    const who = esc(s.label || "Simulation");
+    const by = s.user_name ? ` · par ${esc(s.user_name)}` : "";
     let right = "";
     if (s.status === "done") {
       right = `<span class="dps">${fmt(s.dps)} DPS <small>± ${s.dps_error_pct != null ? s.dps_error_pct.toFixed(2) : "?"} %</small></span>`;
@@ -142,21 +154,38 @@ function render(sims) {
     } else {
       right = `<span class="spin">⏳</span>`;
     }
-    const err = (s.status === "failed" && s.error) ? `<div class="errbox">${s.error.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</div>` : "";
-    return `<div class="sim"><span class="who">${who.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</span>
+    const err = (s.status === "failed" && s.error) ? `<div class="errbox">${esc(s.error)}</div>` : "";
+    return `<div class="sim"><span class="who2">${who}</span>
       ${badge}${cache}
-      <span class="meta">${fmt(s.iterations)} it · ${ago(s.created)}</span>
-      <span style="flex:1"></span>${right}${err}</div>`;
+      <span class="meta">${fmt(s.iterations)} it · ${ago(s.created)}${by}</span>
+      <span class="spacer"></span>${right}${err}</div>`;
   }).join("");
 }
 
 async function load() {
   try {
-    const r = await fetch("/api/sims"); const d = await r.json();
+    const r = await fetch("/api/sims");
+    if (r.status === 401) { location.href = "/login"; return; }
+    const d = await r.json();
     render(d.sims); $("#ver").textContent = "v" + d.version;
   } catch (e) { /* réseau : on retente au tick suivant */ }
 }
 setInterval(load, 5000); load();
+
+(async () => {
+  try {
+    const r = await fetch("/api/me");
+    if (r.status === 401) { location.href = "/login"; return; }
+    const d = await r.json();
+    $("#who").textContent = d.name || d.email;
+    if (d.is_admin) $("#admin-link").classList.remove("hidden");
+  } catch (e) { /* ignoré */ }
+})();
+$("#logout").addEventListener("click", async (e) => {
+  e.preventDefault();
+  try { await fetch("/api/logout", { method: "POST" }); } catch (e2) { /* ignoré */ }
+  location.href = "/login";
+});
 
 $("#inp").value = localStorage.getItem("lotp_input") || "";
 $("#inp").addEventListener("input", () => localStorage.setItem("lotp_input", $("#inp").value));
@@ -171,6 +200,7 @@ $("#go").addEventListener("click", async () => {
   try {
     const r = await fetch("/api/sim", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input, iterations: parseInt($("#iter").value, 10), label: $("#lbl").value }) });
+    if (r.status === 401) { location.href = "/login"; return; }
     const d = await r.json();
     if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur"; }
     else if (d.cached) { msg.className = "msg-ok"; msg.textContent = "⚡ Résultat déjà en cache — simulation identique trouvée !"; }

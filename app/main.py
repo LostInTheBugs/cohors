@@ -1,27 +1,29 @@
 """LOTP Simulateur — web app (FastAPI).
 
-V1: submit a `/simc` addon export, FIFO queue running one simulation at a
-time, shared result cache (SHA-256 of input + iterations), per-IP anti-abuse
-quotas, French UI. Simulations run in the official SimulationCraft Docker
-image via `worker/simrun.py` (the app container mounts the host Docker socket).
+Accounts: invitation-only registration (admin-generated links), login sessions
+(signed random token in an HttpOnly cookie), admin panel (invites + users).
+Simulations run in the official SimulationCraft Docker image via
+`worker/simrun.py` (the app container mounts the host Docker socket).
 
-Security note: the Docker socket gives root-equivalent power; this deployment
-is meant to stay small and rate-limited until v2 moves sims to a dedicated
-worker service.
+v2026.09.003: accounts + admin.
 """
 from __future__ import annotations
 
 import hashlib
+import hmac
 import os
+import re
+import secrets
 import sqlite3
 import threading
 import time
 import uuid
+from collections import defaultdict
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -39,9 +41,16 @@ SIM_TIMEOUT = int(os.environ.get("SIM_TIMEOUT", "900"))
 QUEUE_MAX = int(os.environ.get("QUEUE_MAX", "20"))
 PER_IP_ACTIVE = int(os.environ.get("PER_IP_ACTIVE", "3"))
 PER_IP_COOLDOWN_S = int(os.environ.get("PER_IP_COOLDOWN_S", "15"))
+PER_USER_ACTIVE = int(os.environ.get("PER_USER_ACTIVE", "3"))
 ITER_CHOICES = (1000, 5000, 10000, 25000, 50000)
 DEFAULT_ITERATIONS = 10000
 MAX_INPUT_CHARS = 200_000
+
+SESSION_COOKIE = "lotp_session"
+SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
+INVITE_TTL_DAYS = int(os.environ.get("INVITE_TTL_DAYS", "7"))
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1") not in ("0", "false", "no", "")
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -51,6 +60,7 @@ VERSION = _version_file.read_text().strip() if _version_file.exists() else os.en
 
 _db_lock = threading.Lock()
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+_login_attempts: dict[str, list[float]] = defaultdict(list)
 
 
 @contextmanager
@@ -86,12 +96,149 @@ def _init_db() -> None:
                 report_html   TEXT,
                 report_json   TEXT,
                 started       REAL,
-                finished      REAL
+                finished      REAL,
+                user_email    TEXT,
+                user_name     TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                email      TEXT UNIQUE NOT NULL,
+                name       TEXT NOT NULL DEFAULT '',
+                pwd        TEXT NOT NULL,
+                is_admin   INTEGER NOT NULL DEFAULT 0,
+                active     INTEGER NOT NULL DEFAULT 1,
+                created    REAL NOT NULL,
+                last_login REAL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sessions (
+                token     TEXT PRIMARY KEY,
+                user_id   INTEGER NOT NULL,
+                created   REAL NOT NULL,
+                last_seen REAL NOT NULL,
+                expires   REAL NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS invites (
+                token   TEXT PRIMARY KEY,
+                email   TEXT,
+                note    TEXT NOT NULL DEFAULT '',
+                created REAL NOT NULL,
+                expires REAL NOT NULL,
+                used    REAL,
+                used_by INTEGER
             )
             """
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_status ON sims(status)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
+        # migrations (idempotent)
+        for table, col in (("sims", "user_email"), ("sims", "user_name")):
+            cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+            if col not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
+
+
+def _hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    n, r, p = 2 ** 14, 8, 1
+    dk = hashlib.scrypt(password.encode(), salt=salt, n=n, r=r, p=p, dklen=32)
+    return f"scrypt${n}${r}${p}${salt.hex()}${dk.hex()}"
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    try:
+        algo, n, r, p, salt_hex, dk_hex = stored.split("$")
+        if algo != "scrypt":
+            return False
+        dk = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt_hex), n=int(n), r=int(r), p=int(p), dklen=32)
+        return hmac.compare_digest(dk.hex(), dk_hex)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _bootstrap_admin() -> None:
+    """Create the first admin account from ADMIN_EMAIL/ADMIN_PASSWORD if none exists."""
+    with _db_lock, _db() as conn:
+        has_admin = conn.execute("SELECT COUNT(*) AS c FROM users WHERE is_admin=1").fetchone()["c"]
+        if has_admin:
+            return
+        email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+        pwd = os.environ.get("ADMIN_PASSWORD", "")
+        if email and pwd:
+            conn.execute(
+                "INSERT INTO users (email, name, pwd, is_admin, active, created) VALUES (?,?,?,1,1,?)",
+                (email, "Admin", _hash_password(pwd), time.time()),
+            )
+            print(f"[bootstrap] compte admin créé : {email}")
+        else:
+            print("[bootstrap] aucun admin et ADMIN_EMAIL/ADMIN_PASSWORD absents — /admin inaccessible")
+
+
+# ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
+def _new_session(conn: sqlite3.Connection, user_id: int) -> str:
+    now = time.time()
+    token = secrets.token_urlsafe(32)
+    conn.execute("DELETE FROM sessions WHERE expires < ?", (now,))
+    conn.execute(
+        "INSERT INTO sessions (token, user_id, created, last_seen, expires) VALUES (?,?,?,?,?)",
+        (token, user_id, now, now, now + SESSION_DAYS * 86400),
+    )
+    return token
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True,
+                        samesite="lax", secure=COOKIE_SECURE, path="/")
+
+
+def _get_session_user(request: Request) -> sqlite3.Row | None:
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        return None
+    with _db_lock, _db() as conn:
+        row = conn.execute(
+            "SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token=? AND s.expires > ?",
+            (token, time.time()),
+        ).fetchone()
+        if row is not None:
+            conn.execute("UPDATE sessions SET last_seen=? WHERE token=?", (time.time(), token))
+    if row is not None and not row["active"]:
+        return None
+    return row
+
+
+def _require_user(request: Request) -> sqlite3.Row:
+    user = _get_session_user(request)
+    if user is None:
+        raise HTTPException(401, "Connexion requise")
+    return user
+
+
+def _require_admin(request: Request) -> sqlite3.Row:
+    user = _require_user(request)
+    if not user["is_admin"]:
+        raise HTTPException(403, "Réservé à l'administrateur")
+    return user
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "?"
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +299,7 @@ def _worker_loop() -> None:
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     _init_db()
+    _bootstrap_admin()
     threading.Thread(target=_worker_loop, daemon=True, name="sim-worker").start()
     yield
 
@@ -161,7 +309,134 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # ---------------------------------------------------------------------------
-# API
+# Pages
+# ---------------------------------------------------------------------------
+@app.api_route("/", methods=["GET", "HEAD"])
+def index(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.api_route("/login", methods=["GET", "HEAD"])
+def login_page(request: Request):
+    if _get_session_user(request) is not None:
+        return RedirectResponse("/", status_code=302)
+    return FileResponse(STATIC_DIR / "login.html")
+
+
+@app.api_route("/invite/{token}", methods=["GET", "HEAD"])
+def invite_page(token: str):
+    return FileResponse(STATIC_DIR / "register.html")
+
+
+@app.api_route("/admin", methods=["GET", "HEAD"])
+def admin_page(request: Request):
+    user = _get_session_user(request)
+    if user is None:
+        return RedirectResponse("/login", status_code=302)
+    if not user["is_admin"]:
+        return RedirectResponse("/", status_code=302)
+    return FileResponse(STATIC_DIR / "admin.html")
+
+
+# ---------------------------------------------------------------------------
+# Auth API
+# ---------------------------------------------------------------------------
+class LoginRequest(BaseModel):
+    email: str = Field(..., max_length=200)
+    password: str = Field(..., max_length=200)
+
+
+class RegisterRequest(BaseModel):
+    token: str = Field(..., max_length=100)
+    name: str = Field("", max_length=60)
+    email: str = Field("", max_length=200)
+    password: str = Field(..., min_length=8, max_length=200)
+
+
+@app.post("/api/login")
+def login(payload: LoginRequest, request: Request, response: Response):
+    ip = _client_ip(request)
+    now = time.time()
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if now - t < 300]
+    if len(_login_attempts[ip]) >= 15:
+        raise HTTPException(429, "Trop de tentatives — réessaie dans quelques minutes.")
+    email = payload.email.strip().lower()
+    with _db_lock, _db() as conn:
+        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if user is None or not _verify_password(payload.password, user["pwd"]):
+            _login_attempts[ip].append(now)
+            raise HTTPException(401, "E-mail ou mot de passe incorrect.")
+        if not user["active"]:
+            raise HTTPException(403, "Ce compte est désactivé.")
+        token = _new_session(conn, user["id"])
+        conn.execute("UPDATE users SET last_login=? WHERE id=?", (now, user["id"]))
+    _login_attempts.pop(ip, None)
+    _set_session_cookie(response, token)
+    return {"ok": True, "name": user["name"], "is_admin": bool(user["is_admin"])}
+
+
+@app.post("/api/logout")
+def logout(request: Request, response: Response):
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        with _db_lock, _db() as conn:
+            conn.execute("DELETE FROM sessions WHERE token=?", (token,))
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return {"ok": True}
+
+
+@app.get("/api/me")
+def me(request: Request):
+    user = _get_session_user(request)
+    if user is None:
+        raise HTTPException(401, "Non connecté")
+    return {"email": user["email"], "name": user["name"], "is_admin": bool(user["is_admin"])}
+
+
+@app.get("/api/invite/{token}")
+def invite_info(token: str):
+    with _db_lock, _db() as conn:
+        inv = conn.execute("SELECT * FROM invites WHERE token=?", (token,)).fetchone()
+    if inv is None or inv["used"] is not None or inv["expires"] < time.time():
+        return {"valid": False}
+    return {"valid": True, "email": inv["email"], "note": inv["note"]}
+
+
+@app.post("/api/register")
+def register(payload: RegisterRequest, request: Request, response: Response):
+    now = time.time()
+    with _db_lock, _db() as conn:
+        inv = conn.execute("SELECT * FROM invites WHERE token=?", (payload.token,)).fetchone()
+        if inv is None or inv["used"] is not None or inv["expires"] < now:
+            raise HTTPException(400, "Lien d'invitation invalide ou expiré.")
+        email = (inv["email"] or payload.email or "").strip().lower()
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            raise HTTPException(400, "Adresse e-mail invalide.")
+        existing = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if existing is not None:
+            if not inv["email"]:
+                raise HTTPException(400, "Un compte existe déjà avec cet e-mail — connecte-toi, ou demande un lien de réinitialisation.")
+            name = payload.name.strip()[:60] or existing["name"] or email.split("@")[0]
+            conn.execute("UPDATE users SET pwd=?, name=?, active=1 WHERE id=?",
+                         (_hash_password(payload.password), name, existing["id"]))
+            user_id = existing["id"]
+        else:
+            name = payload.name.strip()[:60] or email.split("@")[0]
+            cur = conn.execute(
+                "INSERT INTO users (email, name, pwd, is_admin, active, created) VALUES (?,?,?,0,1,?)",
+                (email, name, _hash_password(payload.password), now),
+            )
+            user_id = int(cur.lastrowid or 0)
+        conn.execute("UPDATE invites SET used=?, used_by=? WHERE token=?", (now, user_id, payload.token))
+        token = _new_session(conn, user_id)
+    _set_session_cookie(response, token)
+    return {"ok": True, "name": name}
+
+
+# ---------------------------------------------------------------------------
+# Sim API
 # ---------------------------------------------------------------------------
 class SimRequest(BaseModel):
     input: str = Field(..., min_length=30, max_length=MAX_INPUT_CHARS)
@@ -169,15 +444,9 @@ class SimRequest(BaseModel):
     label: str = ""
 
 
-def _client_ip(request: Request) -> str:
-    xff = request.headers.get("x-forwarded-for", "")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.client.host if request.client else "?"
-
-
 @app.post("/api/sim")
 def submit_sim(payload: SimRequest, request: Request):
+    user = _require_user(request)
     if payload.iterations not in ITER_CHOICES:
         raise HTTPException(400, f"Valeurs d'itérations acceptées : {', '.join(map(str, ITER_CHOICES))}")
     text = payload.input.replace("\r\n", "\n").strip()
@@ -191,6 +460,11 @@ def submit_sim(payload: SimRequest, request: Request):
         ).fetchone()["c"]
         if active >= PER_IP_ACTIVE:
             raise HTTPException(429, f"Tu as déjà {active} simulation(s) en attente — patiente un peu.")
+        user_active = conn.execute(
+            "SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')", (user["email"],)
+        ).fetchone()["c"]
+        if user_active >= PER_USER_ACTIVE:
+            raise HTTPException(429, f"Tu as déjà {user_active} simulation(s) en attente — patiente un peu.")
         last_ts = conn.execute("SELECT MAX(created) AS m FROM sims WHERE ip=?", (ip,)).fetchone()["m"]
         if last_ts and now - last_ts < PER_IP_COOLDOWN_S:
             wait = int(PER_IP_COOLDOWN_S - (now - last_ts)) + 1
@@ -213,17 +487,19 @@ def submit_sim(payload: SimRequest, request: Request):
         if cached:
             conn.execute(
                 """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, cached_from,
-                                     dps, dps_error_pct, wall_s, report_html, report_json, started, finished)
-                   VALUES (?,?,?,?,?, 'done', ?,?,?,?,?,?,?,?,?,?)""",
+                                     dps, dps_error_pct, wall_s, report_html, report_json, started, finished,
+                                     user_email, user_name)
+                   VALUES (?,?,?,?,?, 'done', ?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), cached["id"],
                  cached["dps"], cached["dps_error_pct"], cached["wall_s"], cached["report_html"], cached["report_json"],
-                 now, now),
+                 now, now, user["email"], user["name"]),
             )
             return {"id": sim_id, "status": "done", "cached": True}
 
         conn.execute(
-            "INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file) VALUES (?,?,?,?,?, 'queued', ?, ?)",
-            (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file)),
+            """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, user_email, user_name)
+               VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?)""",
+            (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"]),
         )
         return {"id": sim_id, "status": "queued", "cached": False, "position": queue_len + 1}
 
@@ -233,6 +509,7 @@ def _public_row(r: sqlite3.Row) -> dict:
         "id": r["id"],
         "created": r["created"],
         "label": r["label"],
+        "user_name": r["user_name"],
         "iterations": r["iterations"],
         "status": r["status"],
         "cached": bool(r["cached_from"]),
@@ -245,14 +522,16 @@ def _public_row(r: sqlite3.Row) -> dict:
 
 
 @app.get("/api/sims")
-def list_sims():
+def list_sims(request: Request):
+    _require_user(request)
     with _db_lock, _db() as conn:
         rows = conn.execute("SELECT * FROM sims ORDER BY created DESC LIMIT 50").fetchall()
     return {"sims": [_public_row(r) for r in rows], "version": VERSION}
 
 
 @app.get("/api/sims/{sim_id}")
-def get_sim(sim_id: str):
+def get_sim(sim_id: str, request: Request):
+    _require_user(request)
     with _db_lock, _db() as conn:
         r = conn.execute("SELECT * FROM sims WHERE id=?", (sim_id,)).fetchone()
     if r is None:
@@ -280,14 +559,128 @@ def report_json(sim_id: str):
     return FileResponse(r["report_json"], media_type="application/json")
 
 
+# ---------------------------------------------------------------------------
+# Admin API
+# ---------------------------------------------------------------------------
+class InviteRequest(BaseModel):
+    email: str = Field("", max_length=200)
+    note: str = Field("", max_length=120)
+
+
+class ActiveRequest(BaseModel):
+    active: bool
+
+
+def _invite_link(token: str) -> str:
+    base = PUBLIC_BASE_URL or ""
+    return f"{base}/invite/{token}"
+
+
+@app.get("/api/admin/users")
+def admin_users(request: Request):
+    _require_admin(request)
+    with _db_lock, _db() as conn:
+        rows = conn.execute(
+            """SELECT u.id, u.email, u.name, u.is_admin, u.active, u.created, u.last_login,
+                      (SELECT COUNT(*) FROM sims s WHERE s.user_email = u.email) AS sims_count
+               FROM users u ORDER BY u.created""",
+        ).fetchall()
+    return {"users": [dict(r) for r in rows]}
+
+
+@app.post("/api/admin/users/{uid}/active")
+def admin_set_active(uid: int, payload: ActiveRequest, request: Request):
+    me_row = _require_admin(request)
+    if uid == me_row["id"]:
+        raise HTTPException(400, "Impossible de modifier ton propre compte.")
+    with _db_lock, _db() as conn:
+        if conn.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone() is None:
+            raise HTTPException(404, "Compte inconnu")
+        conn.execute("UPDATE users SET active=? WHERE id=?", (1 if payload.active else 0, uid))
+        if not payload.active:
+            conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+    return {"ok": True}
+
+
+@app.delete("/api/admin/users/{uid}")
+def admin_delete_user(uid: int, request: Request):
+    me_row = _require_admin(request)
+    if uid == me_row["id"]:
+        raise HTTPException(400, "Impossible de supprimer ton propre compte.")
+    with _db_lock, _db() as conn:
+        if conn.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone() is None:
+            raise HTTPException(404, "Compte inconnu")
+        conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+    return {"ok": True}
+
+
+@app.post("/api/admin/users/{uid}/reset-link")
+def admin_reset_link(uid: int, request: Request):
+    _require_admin(request)
+    now = time.time()
+    with _db_lock, _db() as conn:
+        u = conn.execute("SELECT email, name FROM users WHERE id=?", (uid,)).fetchone()
+        if u is None:
+            raise HTTPException(404, "Compte inconnu")
+        token = secrets.token_urlsafe(24)
+        conn.execute(
+            "INSERT INTO invites (token, email, note, created, expires) VALUES (?,?,?,?,?)",
+            (token, u["email"], f"réinitialisation — {u['name']}", now, now + INVITE_TTL_DAYS * 86400),
+        )
+    return {"link": _invite_link(token), "expires_in_days": INVITE_TTL_DAYS}
+
+
+@app.get("/api/admin/invites")
+def admin_invites(request: Request):
+    _require_admin(request)
+    now = time.time()
+    with _db_lock, _db() as conn:
+        rows = conn.execute("SELECT * FROM invites ORDER BY created DESC LIMIT 50").fetchall()
+    out = []
+    for r in rows:
+        if r["used"] is not None:
+            status = "used"
+        elif r["expires"] < now:
+            status = "expired"
+        else:
+            status = "pending"
+        out.append({
+            "token": r["token"], "email": r["email"], "note": r["note"], "created": r["created"],
+            "expires": r["expires"], "status": status, "used_by": r["used_by"],
+            "link": _invite_link(r["token"]),
+        })
+    return {"invites": out}
+
+
+@app.post("/api/admin/invites")
+def admin_create_invite(payload: InviteRequest, request: Request):
+    _require_admin(request)
+    now = time.time()
+    token = secrets.token_urlsafe(24)
+    email = payload.email.strip().lower() or None
+    with _db_lock, _db() as conn:
+        conn.execute(
+            "INSERT INTO invites (token, email, note, created, expires) VALUES (?,?,?,?,?)",
+            (token, email, payload.note.strip()[:120], now, now + INVITE_TTL_DAYS * 86400),
+        )
+    return {"token": token, "link": _invite_link(token), "expires_in_days": INVITE_TTL_DAYS}
+
+
+@app.delete("/api/admin/invites/{token}")
+def admin_revoke_invite(token: str, request: Request):
+    _require_admin(request)
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM invites WHERE token=? AND used IS NULL", (token,))
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Misc
+# ---------------------------------------------------------------------------
 @app.api_route("/api/health", methods=["GET", "HEAD"])
 def health():
     with _db_lock, _db() as conn:
         queued = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status='queued'").fetchone()["c"]
         running = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status='running'").fetchone()["c"]
     return {"ok": True, "version": VERSION, "queued": queued, "running": bool(running), "simc_image": SIMC_IMAGE}
-
-
-@app.api_route("/", methods=["GET", "HEAD"])
-def index():
-    return FileResponse(STATIC_DIR / "index.html")

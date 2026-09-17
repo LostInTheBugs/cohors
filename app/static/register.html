@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Inscription</title>
+<style>
+  :root { --bg:#0b0e14; --card:#131a26; --line:#232d42; --fg:#e7ebf5; --mut:#8c96ad; --acc:#7c6cf6; --acc2:#a78bfa; --err:#f87171; --ok:#34d399; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:420px; margin:0 auto; padding:64px 18px 40px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  h1 span { color:var(--acc2); }
+  h2 { font-size:18px; margin:0 0 10px; }
+  .sub { color:var(--mut); font-size:14px; margin:0 0 24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; }
+  label { display:block; font-size:13px; color:var(--mut); margin:0 0 6px; }
+  input { width:100%; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
+          padding:10px 12px; font-size:14px; margin-bottom:14px; }
+  input:read-only { opacity:.7; }
+  input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
+  button { width:100%; background:linear-gradient(135deg,var(--acc),#5b4bd6); color:#fff; border:0; border-radius:10px;
+           padding:11px 22px; font-size:15px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.55; cursor:default; }
+  #msg { margin-top:12px; font-size:14px; min-height:20px; }
+  .msg-err { color:var(--err); } .msg-ok { color:var(--ok); }
+  a { color:var(--acc2); }
+  .hidden { display:none !important; }
+  footer { color:var(--mut); font-size:12px; border-top:1px solid var(--line); margin-top:28px; padding-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LOTP <span>Simulateur</span></h1>
+  <div id="loading" class="sub">Chargement de l'invitation…</div>
+
+  <div id="invalid" class="card hidden">
+    <h2>Lien invalide ou expiré</h2>
+    <p class="sub" style="margin-bottom:12px">Ce lien d'invitation n'est plus valable. Demande un nouveau lien à un officier de la guilde.</p>
+    <a href="/login">← Aller à la connexion</a>
+  </div>
+
+  <div id="form" class="hidden">
+    <p class="sub" id="who">Crée ton compte pour accéder aux simulations.</p>
+    <div class="card">
+      <label for="name">Nom / perso</label>
+      <input type="text" id="name" maxlength="60" placeholder="ex. Thrall — war fury">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" autocomplete="username">
+      <label for="pwd">Mot de passe (8 caractères minimum)</label>
+      <input type="password" id="pwd" autocomplete="new-password">
+      <label for="pwd2">Confirme le mot de passe</label>
+      <input type="password" id="pwd2" autocomplete="new-password">
+      <button id="go">Créer mon compte</button>
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <footer>Moteur : SimulationCraft · Données de jeu fournies par Blizzard Entertainment · Outil non affilié</footer>
+</div>
+<script>
+const $ = (s) => document.querySelector(s);
+const token = location.pathname.split("/").filter(Boolean).pop();
+function show(id) { for (const x of ["loading", "invalid", "form"]) $("#" + x).classList.toggle("hidden", x !== id); }
+(async () => {
+  try {
+    const r = await fetch(`/api/invite/${encodeURIComponent(token)}`);
+    const d = await r.json();
+    if (!d.valid) { show("invalid"); return; }
+    if (d.email) {
+      $("#email").value = d.email; $("#email").readOnly = true;
+      $("#who").textContent = `Invitation pour ${d.email} — choisis ton mot de passe pour activer ton compte.`;
+    }
+    show("form");
+  } catch (e) { show("invalid"); }
+})();
+async function submit() {
+  const msg = $("#msg");
+  const name = $("#name").value.trim(), email = $("#email").value.trim();
+  const pw = $("#pwd").value, pw2 = $("#pwd2").value;
+  if (pw.length < 8) { msg.className = "msg-err"; msg.textContent = "Le mot de passe doit faire au moins 8 caractères."; return; }
+  if (pw !== pw2) { msg.className = "msg-err"; msg.textContent = "Les deux mots de passe ne correspondent pas."; return; }
+  $("#go").disabled = true; msg.className = ""; msg.textContent = "Création du compte…";
+  try {
+    const r = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, name, email, password: pw }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur."; $("#go").disabled = false; return; }
+    msg.className = "msg-ok"; msg.textContent = "Compte créé — redirection…";
+    location.href = "/";
+  } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; $("#go").disabled = false; }
+}
+$("#go").addEventListener("click", submit);
+</script>
+</body>
+</html>

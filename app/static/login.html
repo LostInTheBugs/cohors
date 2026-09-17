@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Connexion</title>
+<style>
+  :root { --bg:#0b0e14; --card:#131a26; --line:#232d42; --fg:#e7ebf5; --mut:#8c96ad; --acc:#7c6cf6; --acc2:#a78bfa; --err:#f87171; --ok:#34d399; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:420px; margin:0 auto; padding:64px 18px 40px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  h1 span { color:var(--acc2); }
+  .sub { color:var(--mut); font-size:14px; margin:0 0 24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; }
+  label { display:block; font-size:13px; color:var(--mut); margin:0 0 6px; }
+  input { width:100%; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
+          padding:10px 12px; font-size:14px; margin-bottom:14px; }
+  input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
+  button { width:100%; background:linear-gradient(135deg,var(--acc),#5b4bd6); color:#fff; border:0; border-radius:10px;
+           padding:11px 22px; font-size:15px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.55; cursor:default; }
+  #msg { margin-top:12px; font-size:14px; min-height:20px; }
+  .msg-err { color:var(--err); } .msg-ok { color:var(--ok); }
+  .note { color:var(--mut); font-size:13px; margin-top:18px; }
+  footer { color:var(--mut); font-size:12px; border-top:1px solid var(--line); margin-top:28px; padding-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LOTP <span>Simulateur</span></h1>
+  <p class="sub">Connecte-toi pour lancer et consulter les simulations.</p>
+  <div class="card">
+    <label for="email">E-mail</label>
+    <input type="email" id="email" autocomplete="username" autofocus>
+    <label for="pwd">Mot de passe</label>
+    <input type="password" id="pwd" autocomplete="current-password">
+    <button id="go">Se connecter</button>
+    <div id="msg"></div>
+  </div>
+  <p class="note">Pas encore de compte ? L'accès se fait <b>sur invitation</b> — demande un lien à un officier de la guilde.</p>
+  <footer>Moteur : SimulationCraft · Données de jeu fournies par Blizzard Entertainment · Outil non affilié</footer>
+</div>
+<script>
+const $ = (s) => document.querySelector(s);
+async function login() {
+  const msg = $("#msg");
+  const email = $("#email").value.trim(), pwd = $("#pwd").value;
+  if (!email || !pwd) { msg.className = "msg-err"; msg.textContent = "Remplis l'e-mail et le mot de passe."; return; }
+  $("#go").disabled = true; msg.className = ""; msg.textContent = "Connexion…";
+  try {
+    const r = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: pwd }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur de connexion."; }
+    else { location.href = "/"; return; }
+  } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; }
+  $("#go").disabled = false;
+}
+$("#go").addEventListener("click", login);
+document.addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+</script>
+</body>
+</html>

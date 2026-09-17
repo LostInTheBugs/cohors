@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.003] — 2026-09-17
+
+### Added
+
+- Accounts: invitation-only registration (`/invite/<token>` links with expiry,
+  optional e-mail binding), login with sessions (scrypt password hashing,
+  HttpOnly session cookie), logout.
+- Admin panel (`/admin`): create and revoke invitations, list accounts,
+  activate/deactivate, generate password-reset links, delete accounts.
+- Auth guards: the simulator and its API now require a session; simulation
+  reports stay shareable via link; `/api/health` stays public.
+- Simulations are attributed to the member who submitted them; per-user
+  concurrent-sim quota added on top of the per-IP one.
+
+### Changed
+
+- The app creates its first admin account at startup from the `ADMIN_EMAIL` /
+  `ADMIN_PASSWORD` environment variables when no admin exists yet.
+
 ## [2026.09.002] — 2026-09-17
 
 ### Added
