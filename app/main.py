@@ -2353,29 +2353,45 @@ _VOICE_APP_BASE = PUBLIC_BASE_URL or "https://lotp.gensbien.fr"
 _VOICE_EXTRAS_JS = """
 (function () {
   try {
-    var m = String(location.hash || "").match(/[#&]nickname=([^&]+)/);
-    if (!m) return;
+    var hash = String(location.hash || "");
+    var m = hash.match(/[#&]nickname=([^&]+)/);
     var nick = "";
-    try { nick = decodeURIComponent(m[1]); } catch (e) { nick = m[1]; }
+    if (m) { try { nick = decodeURIComponent(m[1]); } catch (e) { nick = m[1]; } }
     nick = (nick || "").trim();
-    if (!nick) return;
-    try { localStorage.setItem("webspeak:nickname", nick); } catch (e) {}
+    var auto = /[#&]autojoin=1/.test(hash);
+    if (nick) { try { localStorage.setItem("webspeak:nickname", nick); } catch (e) {} }
+    if (!nick && !auto) return;
     var tries = 0;
+    var nickDone = false;
+    var clicks = 0;
+    var lastClick = 0;
     var timer = setInterval(function () {
       tries += 1;
       var input = document.querySelector("#nickname");
-      if (input) {
+      if (nick && input && !nickDone) {
         try {
           var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
           setter.call(input, nick);
           input.dispatchEvent(new Event("input", { bubbles: true }));
           input.dispatchEvent(new Event("change", { bubbles: true }));
         } catch (e) {}
-        clearInterval(timer);
-        return;
+        nickDone = true;
       }
-      if (tries > 80) clearInterval(timer);
-    }, 400);
+      if (auto && input && (input.value || "").trim()) {
+        var btn = null;
+        var buttons = document.querySelectorAll("button");
+        for (var i = 0; i < buttons.length; i++) {
+          var t = (buttons[i].innerText || "").trim().toLowerCase();
+          if (t.indexOf("enter voice space") >= 0) { btn = buttons[i]; break; }
+        }
+        if (btn && !btn.disabled && clicks < 2 && (Date.now() - lastClick) > 4000) {
+          clicks += 1;
+          lastClick = Date.now();
+          btn.click();
+        }
+      }
+      if (tries > 120) clearInterval(timer);
+    }, 300);
   } catch (e) {}
 })();
 """

@@ -85,9 +85,9 @@
     return fetch("/api/me").then(function (r) { return r.ok ? r.json() : null; });
   }).then(function (me) {
     var nick = me && (me.voice_nick || "").trim();
-    $("#vframe").src = "https://ts.gensbien.fr/" + (nick ? "#nickname=" + encodeURIComponent(nick) : "");
+    $("#vframe").src = "https://ts.gensbien.fr/" + (nick ? "#nickname=" + encodeURIComponent(nick) + "&autojoin=1" : "#autojoin=1");
   }).catch(function () {
-    $("#vframe").src = "https://ts.gensbien.fr/";
+    $("#vframe").src = "https://ts.gensbien.fr/#autojoin=1";
   });
 })();
 </script>

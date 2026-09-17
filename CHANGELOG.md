@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.034] — 2026-09-17
+
+### Added
+
+- Voice auto-join: opening the 🎧 voice panel now connects to the guild server
+  automatically (nickname pre-filled + the client's join button clicked by the
+  injected helper script — `#autojoin=1` fragment set by the shell only).
+  No more manual « Enter voice space » click; the browser may still ask for
+  microphone permission the first time.
+
 ## [2026.09.033] — 2026-09-17
 
 ### Fixed
