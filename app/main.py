@@ -2790,3 +2790,74 @@ def music_media(token: str, name: str):
     if not path.exists() or not path.is_file():
         raise HTTPException(404)
     return FileResponse(path, media_type="audio/mpeg")
+
+
+@app.get("/api/music/channels")
+def music_channels(request: Request):
+    _require_officer(request)
+    r = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/channels")
+    try:
+        raw = r.json()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(502, "Liste des salons illisible.")
+    by_id = {c.get("id"): c.get("name", "") for c in raw}
+    out = []
+    for c in raw:
+        parent = c.get("parent") or 0
+        path = (by_id.get(parent, "") + "/" + c.get("name", "")) if parent else c.get("name", "")
+        out.append({"id": c.get("id"), "name": c.get("name", ""), "path": path, "hasPassword": bool(c.get("pw"))})
+    out.sort(key=lambda x: (x["path"] or "").lower())
+    return {"ok": True, "channels": out}
+
+
+@app.get("/api/music/bot")
+def music_bot(request: Request):
+    _require_officer(request)
+    r = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/settings")
+    j = r.json()
+    return {"ok": True, "nick": j.get("nick", ""), "channel": j.get("channelName", "")}
+
+
+class MusicBotConfig(BaseModel):
+    nick: str | None = Field(default=None, max_length=40)
+    channel: str | None = Field(default=None, max_length=120)
+
+
+@app.post("/api/music/bot")
+def music_bot_set(payload: MusicBotConfig, request: Request):
+    _require_officer(request)
+    patch = {}
+    if payload.nick is not None:
+        nick = payload.nick.strip()
+        if not (2 <= len(nick) <= 30):
+            raise HTTPException(400, "Nom du bot : 2 à 30 caractères.")
+        if any(ord(ch) < 32 for ch in nick):
+            raise HTTPException(400, "Nom du bot invalide.")
+        patch["nick"] = nick
+    if payload.channel is not None:
+        rc = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/channels")
+        try:
+            raw = rc.json()
+        except Exception:  # noqa: BLE001
+            raise HTTPException(502, "Liste des salons illisible.")
+        by_id = {c.get("id"): c.get("name", "") for c in raw}
+        valid = {}
+        for c in raw:
+            parent = c.get("parent") or 0
+            path = (by_id.get(parent, "") + "/" + c.get("name", "")) if parent else c.get("name", "")
+            valid[path] = bool(c.get("pw"))
+        want = payload.channel.strip()
+        if want not in valid:
+            raise HTTPException(400, "Salon inconnu.")
+        if valid[want]:
+            raise HTTPException(400, "Ce salon a un mot de passe — pas encore géré.")
+        patch["channelName"] = want
+    if not patch:
+        raise HTTPException(400, "Rien à modifier.")
+    r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/settings", patch)
+    if r.status_code != 200 or '"success":true' not in r.text:
+        raise HTTPException(502, "Réglage refusé par le bot.")
+    _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/kill")
+    time.sleep(2)
+    _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/spawn")
+    return {"ok": True}

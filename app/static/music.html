@@ -99,6 +99,22 @@
   </div>
 
   <div class="card">
+    <h2>🤖 Bot</h2>
+    <div class="row">
+      <span class="plab" style="min-width:130px">Nom du bot</span>
+      <input type="text" id="bot-nick" maxlength="30" style="flex:1;min-width:200px">
+      <button id="bot-rename">Renommer</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="plab" style="min-width:130px">Salon</span>
+      <select id="bot-chan" style="flex:1;min-width:240px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px"></select>
+      <button id="bot-move">Déplacer</button>
+    </div>
+    <p class="note">Renommer ou déplacer redémarre le bot (~10 s) — il se reconnecte tout seul.</p>
+    <p class="note" id="bot-msg"></p>
+  </div>
+
+  <div class="card">
     <h2>📚 Bibliothèque</h2>
     <div id="tracks" class="tracks"><p class="note">Chargement…</p></div>
   </div>
@@ -219,10 +235,53 @@ $("#upload").addEventListener("click", async () => {
   $("#upload").disabled = false;
 });
 
+let botCfg = { nick: "", channel: "" };
+
+async function loadBot() {
+  try {
+    botCfg = await jget("/api/music/bot");
+    $("#bot-nick").value = botCfg.nick || "";
+    const c = await jget("/api/music/channels");
+    const sel = $("#bot-chan");
+    sel.innerHTML = "";
+    (c.channels || []).forEach((ch) => {
+      const o = document.createElement("option");
+      o.value = ch.path;
+      o.textContent = ch.name + (ch.hasPassword ? " 🔒" : "");
+      if (ch.path === botCfg.channel) o.selected = true;
+      sel.appendChild(o);
+    });
+  } catch (e) { $("#bot-msg").textContent = e.message; }
+}
+
+$("#bot-rename").addEventListener("click", async () => {
+  const nick = $("#bot-nick").value.trim();
+  if (!nick) return;
+  $("#bot-rename").disabled = true;
+  try {
+    await jpost("/api/music/bot", { nick: nick });
+    $$("#bot-msg", "Nom modifié ✓ — le bot redémarre (~10 s)…", "#38c98e");
+    setTimeout(refresh, 9000); setTimeout(loadBot, 11000);
+  } catch (e) { $$("#bot-msg", e.message, "#ff6b6b"); }
+  $("#bot-rename").disabled = false;
+});
+$("#bot-move").addEventListener("click", async () => {
+  const chan = $("#bot-chan").value;
+  if (!chan) return;
+  $("#bot-move").disabled = true;
+  try {
+    await jpost("/api/music/bot", { channel: chan });
+    $$("#bot-msg", "Salon modifié ✓ — le bot redémarre (~10 s)…", "#38c98e");
+    setTimeout(refresh, 9000); setTimeout(loadBot, 11000);
+  } catch (e) { $$("#bot-msg", e.message, "#ff6b6b"); }
+  $("#bot-move").disabled = false;
+});
+const $$ = (sel, t, color) => { const e = $(sel); e.textContent = t || ""; e.style.color = color || ""; };
+
 (async () => {
   try { const me = await jget("/api/me"); $("#who").textContent = me.name || me.email; } catch (e) { return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-  refresh(); loadTracks();
+  refresh(); loadTracks(); loadBot();
   setInterval(refresh, 6000);
 })();
 </script>

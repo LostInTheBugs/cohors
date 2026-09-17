@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.036 - 2026-09-17
+- Music: rename the bot and change its channel from the page (officers/admins) - the bot restarts itself (~10 s).
+- Bot renamed "DJ Fosse Septique" and moved to "La taverne".
+
 ## [2026.09.035] — 2026-09-17
 
 ### Added

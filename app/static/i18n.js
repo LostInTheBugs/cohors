@@ -553,7 +553,14 @@
  "Fichier envoyé ✓": "File uploaded ✓",
  "Choisis d'abord un fichier.": "Pick a file first.",
  "Envoi en cours…": "Uploading…",
- "🎵 Page « Musique » (officiers/admins) : lecteur du bot TeamSpeak — lancer, pause, volume, bibliothèque, liens et envoi de mp3.": "🎵 « Music » page (officers/admins): TeamSpeak bot player — play, pause, volume, library, links and mp3 upload."
+ "🎵 Page « Musique » (officiers/admins) : lecteur du bot TeamSpeak — lancer, pause, volume, bibliothèque, liens et envoi de mp3.": "🎵 « Music » page (officers/admins): TeamSpeak bot player — play, pause, volume, library, links and mp3 upload.",
+ "Nom du bot": "Bot name",
+ "Renommer": "Rename",
+ "Salon": "Channel",
+ "Déplacer": "Move",
+ "Renommer ou déplacer redémarre le bot (~10 s) — il se reconnecte tout seul.": "Renaming or moving restarts the bot (~10 s) — it reconnects by itself.",
+ "Nom modifié ✓ — le bot redémarre (~10 s)…": "Name updated ✓ — bot restarting (~10 s)…",
+ "Salon modifié ✓ — le bot redémarre (~10 s)…": "Channel updated ✓ — bot restarting (~10 s)…"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
