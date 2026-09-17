@@ -24,6 +24,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
 - [x] Member comparison (« Comparateur ») — 2–6 characters side by side: equipped ilvl
       and last seen (Battle.net) + best Warcraft Logs parses for the current raid
       (per-boss percentile, best/median averages).
+- [x] Sim profiles (« Profils ») — save a `/simc` export once, reload it in one click,
+      optionally share it with the guild (max 20 per account).
 
 ## Requirements
 
@@ -112,6 +114,8 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/wcl/reports` | GET | Recent guild reports (Warcraft Logs) — `?refresh=1` forces |
 | `/api/wcl/report/{code}` | GET | One report: boss pulls + parses (Warcraft Logs) |
 | `/api/compare` | GET | Side-by-side characters `?chars=realm:name,…` (Battle.net + WCL) |
+| `/api/profiles` | GET / POST | List sim profiles / create one (`{name, input, shared}`) |
+| `/api/profiles/{id}` | GET / PATCH / DELETE | Read / update / delete a sim profile |
 | `/api/admin/invites` | GET / POST | List / create invitations |
 | `/api/admin/invites/{token}` | DELETE | Revoke an invitation |
 | `/api/admin/users` | GET | List accounts |
@@ -144,7 +148,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.008` (see `CHANGELOG.md`).
+Current version: `2026.09.009` (see `CHANGELOG.md`).
 
 ## License
 

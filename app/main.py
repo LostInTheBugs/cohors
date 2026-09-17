@@ -143,6 +143,20 @@ def _init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS profiles (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT NOT NULL,
+                user_name  TEXT NOT NULL,
+                name       TEXT NOT NULL,
+                input      TEXT NOT NULL,
+                shared     INTEGER NOT NULL DEFAULT 0,
+                created    REAL NOT NULL,
+                updated    REAL NOT NULL
+            )
+            """
+        )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_status ON sims(status)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
         # migrations (idempotent)
@@ -710,6 +724,118 @@ def api_compare(request: Request, chars: str = "", refresh: int = 0):
             entry["wcl_error"] = str(exc)
         out.append(entry)
     return {"chars": out, "zone_id": wcl.RAID_ZONE_ID, "zone_label": wcl.zone_label()}
+
+
+# ---------------------------------------------------------------------------
+# Profils de simulation (exports /simc sauvegardés, partageables guilde)
+# ---------------------------------------------------------------------------
+MAX_PROFILES = 20
+
+
+class ProfileRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=60)
+    input: str = Field(..., min_length=30, max_length=MAX_INPUT_CHARS)
+    shared: bool = False
+
+
+class ProfilePatch(BaseModel):
+    name: str | None = Field(None, max_length=60)
+    input: str | None = Field(None, min_length=30, max_length=MAX_INPUT_CHARS)
+    shared: bool | None = None
+
+
+def _profile_public(r: sqlite3.Row, mine: bool) -> dict:
+    return {
+        "id": r["id"],
+        "name": r["name"],
+        "user_name": r["user_name"],
+        "shared": bool(r["shared"]),
+        "updated": r["updated"],
+        "size": len(r["input"] or ""),
+        "mine": mine,
+    }
+
+
+@app.get("/api/profiles")
+def list_profiles(request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        mine = conn.execute(
+            "SELECT * FROM profiles WHERE user_email=? ORDER BY updated DESC LIMIT 100", (user["email"],)
+        ).fetchall()
+        shared = conn.execute(
+            "SELECT * FROM profiles WHERE shared=1 AND user_email<>? ORDER BY updated DESC LIMIT 100", (user["email"],)
+        ).fetchall()
+    return {"mine": [_profile_public(r, True) for r in mine], "shared": [_profile_public(r, False) for r in shared]}
+
+
+@app.get("/api/profiles/{pid}")
+def get_profile(pid: int, request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        r = conn.execute("SELECT * FROM profiles WHERE id=?", (pid,)).fetchone()
+    if r is None:
+        raise HTTPException(404, "Profil inconnu.")
+    mine = r["user_email"] == user["email"]
+    if not mine and not r["shared"]:
+        raise HTTPException(403, "Ce profil n'est pas partagé.")
+    d = _profile_public(r, mine)
+    d["input"] = r["input"]
+    return d
+
+
+@app.post("/api/profiles")
+def create_profile(payload: ProfileRequest, request: Request):
+    user = _require_user(request)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(400, "Nom de profil requis.")
+    text = payload.input.replace("\r\n", "\n").strip()
+    now = time.time()
+    with _db_lock, _db() as conn:
+        count = conn.execute("SELECT COUNT(*) AS c FROM profiles WHERE user_email=?", (user["email"],)).fetchone()["c"]
+        if count >= MAX_PROFILES:
+            raise HTTPException(400, f"Limite de {MAX_PROFILES} profils atteinte — supprime-en un d'abord.")
+        cur = conn.execute(
+            "INSERT INTO profiles (user_email, user_name, name, input, shared, created, updated) VALUES (?,?,?,?,?,?,?)",
+            (user["email"], user["name"], name, text, 1 if payload.shared else 0, now, now),
+        )
+        pid = int(cur.lastrowid or 0)
+    return {"id": pid, "ok": True}
+
+
+@app.patch("/api/profiles/{pid}")
+def update_profile(pid: int, payload: ProfilePatch, request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        r = conn.execute("SELECT * FROM profiles WHERE id=?", (pid,)).fetchone()
+        if r is None:
+            raise HTTPException(404, "Profil inconnu.")
+        if r["user_email"] != user["email"]:
+            raise HTTPException(403, "Ce profil n'est pas à toi.")
+        name = payload.name.strip() if payload.name is not None else r["name"]
+        if not name:
+            raise HTTPException(400, "Nom de profil requis.")
+        text = payload.input.replace("\r\n", "\n").strip() if payload.input is not None else r["input"]
+        shared = (1 if payload.shared else 0) if payload.shared is not None else r["shared"]
+        conn.execute(
+            "UPDATE profiles SET name=?, input=?, shared=?, updated=? WHERE id=?",
+            (name, text, shared, time.time(), pid),
+        )
+    return {"ok": True}
+
+
+@app.delete("/api/profiles/{pid}")
+def delete_profile(pid: int, request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        r = conn.execute("SELECT * FROM profiles WHERE id=?", (pid,)).fetchone()
+        if r is None:
+            raise HTTPException(404, "Profil inconnu.")
+        if r["user_email"] != user["email"] and not user["is_admin"]:
+            raise HTTPException(403, "Ce profil n'est pas à toi.")
+        conn.execute("DELETE FROM profiles WHERE id=?", (pid,))
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

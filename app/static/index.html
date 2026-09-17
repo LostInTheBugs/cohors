@@ -58,6 +58,17 @@
            padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer; }
   button:disabled { opacity: .55; cursor: default; }
   #submit-msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
+  .profbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+             border-top: 1px dashed var(--line); margin-top: 14px; padding-top: 12px; }
+  .profbar .plab { color: var(--mut); font-size: 13px; font-weight: 600; }
+  .profbar select { min-width: 210px; }
+  .profbar input[type=text] { min-width: 190px; width: auto; }
+  .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
+  .chkline input { accent-color: var(--acc); }
+  .pbtn { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+          padding: 6px 12px; font-size: 12.5px; border-radius: 8px; cursor: pointer; }
+  .pbtn:hover:not(:disabled) { border-color: var(--acc2); color: var(--acc2); }
+  .pbtn:disabled { opacity: .45; cursor: default; }
   .msg-ok { color: var(--ok); } .msg-err { color: var(--err); } .msg-warn { color: var(--warn); }
   h2 { font-size: 17px; margin: 0 0 12px; }
   .sim { border: 1px solid var(--line); background: var(--card2); border-radius: 11px; padding: 12px 14px;
@@ -149,6 +160,15 @@
         </select>
       </div>
       <button id="go">▶ Lancer la simulation</button>
+    </div>
+    <div class="profbar">
+      <span class="plab">📁 Profil :</span>
+      <select id="profs"><option value="">— charger un profil —</option></select>
+      <span class="spacer"></span>
+      <input type="text" id="pname" maxlength="60" placeholder="nom du profil (pour enregistrer)">
+      <label class="chkline"><input type="checkbox" id="pshared"> Partager avec la guilde</label>
+      <button class="pbtn" id="psave" title="Enregistrer l'export comme profil">💾 Enregistrer</button>
+      <button class="pbtn" id="pdel" title="Supprimer le profil chargé" disabled>🗑</button>
     </div>
     <div id="submit-msg"></div>
   </div>
@@ -248,6 +268,88 @@ $("#logout").addEventListener("click", async (e) => {
 $("#kind").addEventListener("change", () => {
   if ($("#kind").value === "weights") { $("#iter").value = "5000"; }
 });
+
+// ---- Profils (exports /simc sauvegardés) ----
+let profiles = { mine: [], shared: [] };
+let currentProfile = null;
+
+async function jfetch(method, path, body) {
+  const r = await fetch(path, { method, headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body) });
+  if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || "Erreur");
+  return d;
+}
+
+function profMsg(text, cls) {
+  const el = $("#submit-msg");
+  el.className = cls || "";
+  el.textContent = text || "";
+}
+
+function renderProfSelect(keep) {
+  const mine = profiles.mine.map(p => `<option value="${p.id}">${esc(p.name)}${p.shared ? " ⤴" : ""}</option>`).join("");
+  const shared = profiles.shared.map(p => `<option value="${p.id}">${esc(p.name)} — ${esc(p.user_name)}</option>`).join("");
+  $("#profs").innerHTML = `<option value="">— charger un profil —</option>` +
+    (mine ? `<optgroup label="Mes profils">${mine}</optgroup>` : "") +
+    (shared ? `<optgroup label="Partagés par la guilde">${shared}</optgroup>` : "");
+  if (keep != null) $("#profs").value = String(keep);
+}
+
+async function loadProfiles(keep) {
+  try { profiles = await jfetch("GET", "/api/profiles"); renderProfSelect(keep); }
+  catch (e) { /* silencieux */ }
+}
+
+$("#profs").addEventListener("change", async () => {
+  const id = $("#profs").value;
+  if (!id) { currentProfile = null; $("#pdel").disabled = true; return; }
+  try {
+    const p = await jfetch("GET", `/api/profiles/${id}`);
+    $("#inp").value = p.input;
+    localStorage.setItem("lotp_input", p.input);
+    currentProfile = { id: p.id, mine: p.mine, name: p.name };
+    $("#pdel").disabled = !p.mine;
+    if (p.mine) $("#pshared").checked = !!p.shared;
+    profMsg(`Profil « ${p.name} » chargé ✅`, "msg-ok");
+  } catch (e) { profMsg(e.message, "msg-err"); }
+});
+
+$("#psave").addEventListener("click", async () => {
+  const input = $("#inp").value.trim();
+  if (input.length < 30) { profMsg("Colle d'abord un export /simc dans la zone de texte.", "msg-err"); return; }
+  const explicitName = $("#pname").value.trim();
+  const shared = $("#pshared").checked;
+  try {
+    if (currentProfile && currentProfile.mine && !explicitName) {
+      await jfetch("PATCH", `/api/profiles/${currentProfile.id}`, { input, shared });
+      profMsg(`Profil « ${currentProfile.name} » mis à jour ✅`, "msg-ok");
+    } else {
+      const name = explicitName || $("#lbl").value.trim();
+      if (!name) { profMsg("Donne un nom au profil (champ « nom du profil »).", "msg-err"); return; }
+      const d = await jfetch("POST", "/api/profiles", { name, input, shared });
+      currentProfile = { id: d.id, mine: true, name };
+      profMsg(`Profil « ${name} » enregistré ✅`, "msg-ok");
+      $("#pname").value = "";
+    }
+    await loadProfiles(currentProfile.id);
+  } catch (e) { profMsg(e.message, "msg-err"); }
+});
+
+$("#pdel").addEventListener("click", async () => {
+  if (!currentProfile || !currentProfile.mine) return;
+  if (!confirm(`Supprimer le profil « ${currentProfile.name} » ?`)) return;
+  try {
+    await jfetch("DELETE", `/api/profiles/${currentProfile.id}`);
+    currentProfile = null;
+    $("#pdel").disabled = true;
+    await loadProfiles();
+    profMsg("Profil supprimé.", "msg-ok");
+  } catch (e) { profMsg(e.message, "msg-err"); }
+});
+
+loadProfiles();
 
 $("#inp").value = localStorage.getItem("lotp_input") || "";
 $("#inp").addEventListener("input", () => localStorage.setItem("lotp_input", $("#inp").value));

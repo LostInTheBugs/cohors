@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.009] — 2026-09-17
+
+### Added
+
+- Sim profiles (« Profils »): save a `/simc` export as a named profile, reload it in
+  one click on the simulator page, update or delete it, and optionally share it with
+  the whole guild (shared profiles appear under « Partagés par la guilde »).
+- REST API: `GET/POST /api/profiles`, `GET/PATCH/DELETE /api/profiles/{id}` —
+  max 20 profiles per account; only the owner (or an admin) can edit or delete.
+
 ## [2026.09.008] — 2026-09-17
 
 ### Added
