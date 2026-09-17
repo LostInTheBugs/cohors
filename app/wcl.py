@@ -24,6 +24,7 @@ GUILD_REALM = os.environ.get("WCL_GUILD_REALM", "hyjal")
 TTL_LIST = 900.0     # liste des rapports : 15 min
 TTL_REPORT = 1800.0  # rapport + parses : 30 min
 MIN_FORCE_S = 60.0   # rafraîchissement forcé : 1×/min max
+RAID_ZONE_ID = int(os.environ.get("WCL_RAID_ZONE_ID", "53"))  # raid courant (parses perso)
 
 _lock = threading.Lock()
 _token: dict = {"value": None, "expires": 0.0}
@@ -158,3 +159,53 @@ def report_full(code: str, force: bool = False) -> tuple[dict, float]:
 
     out = {"report": rep, "rankings": rankings}
     return out, _store(key, out)
+
+
+def character_rankings(realm: str, name: str, zone_id: int | None = None, force: bool = False) -> tuple[dict, float]:
+    """Meilleurs parses d'un personnage sur la zone de raid courante."""
+    zone = int(zone_id or RAID_ZONE_ID)
+    key = f"zr/{realm.lower()}/{name.lower()}/{zone}"
+    hit = _cached(key, TTL_REPORT, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    query = (
+        "query($n: String!, $s: String!, $r: String!, $z: Int!) { characterData { character("
+        "name: $n, serverSlug: $s, serverRegion: $r) { id name zoneRankings(zoneID: $z) } } }"
+    )
+    data = _gql(query, {"n": name, "s": realm, "r": REGION, "z": zone})
+    ch = (data.get("characterData") or {}).get("character")
+    if not ch:
+        raise WclError(404, "Personnage introuvable sur Warcraft Logs.")
+    zr = ch.get("zoneRankings") or {}
+    out = {
+        "name": ch.get("name") or name,
+        "zone": zr.get("zone") or zone,
+        "difficulty": zr.get("difficulty"),
+        "best_average": zr.get("bestPerformanceAverage"),
+        "median_average": zr.get("medianPerformanceAverage"),
+        "rankings": [
+            {
+                "boss": (r.get("encounter") or {}).get("name"),
+                "rank_percent": r.get("rankPercent"),
+                "median_percent": r.get("medianPercent"),
+                "kills": r.get("totalKills"),
+                "best_amount": r.get("bestAmount"),
+            }
+            for r in (zr.get("rankings") or [])
+        ],
+    }
+    return out, _store(key, out)
+
+
+def zone_label(zone_id: int | None = None) -> str:
+    """Nom lisible de la zone (via les rapports récents, sinon « Zone N »)."""
+    zone = int(zone_id or RAID_ZONE_ID)
+    try:
+        data, _ts = reports(limit=50)
+    except WclError:
+        return f"Zone {zone}"
+    for r in data.get("data", []):
+        z = r.get("zone") or {}
+        if z.get("id") == zone and z.get("name"):
+            return z["name"]
+    return f"Zone {zone}"

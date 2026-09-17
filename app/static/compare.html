@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Comparateur</title>
+<link rel="icon" type="image/png" href="/static/crest.png">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 28px 18px 40px; }
+  header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brandname span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 12.5px; }
+  .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+         color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+         border: 1px solid var(--line); background: transparent;
+         transition: border-color .15s, color .15s, background .15s; }
+  .tab:hover { color: var(--fg); border-color: #3a4763; }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+  .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+  .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input[type=text] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 240px; }
+  input:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+  button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+           padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line);
+          background: var(--card2); border-radius: 999px; padding: 4px 12px; font-size: 13.5px; font-weight: 600; }
+  .chip button { background: none; border: 0; color: var(--mut); font-size: 15px; padding: 0 2px; cursor: pointer; }
+  .chip button:hover { color: var(--err); }
+  .meta { color: var(--mut); font-size: 13px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .ccard { background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 12px; }
+  .ccard .cname { font-size: 18px; font-weight: 700; }
+  .ccard .bigilvl { font-size: 22px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .ccard .bigilvl small { font-size: 12px; color: var(--mut); font-weight: 500; }
+  .pavgs { display: flex; gap: 18px; margin: 10px 0 8px; }
+  .pavg { display: flex; flex-direction: column; }
+  .pavg .pv { font-size: 24px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .pavg .pl { font-size: 11.5px; color: var(--mut); }
+  .blist { border-top: 1px dashed var(--line); padding-top: 6px; }
+  .brow { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; padding: 2px 0; }
+  .brow .bname { color: var(--fg); }
+  .brow .pchip { font-weight: 700; min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--mut); font-size: 14px; padding: 6px 2px; }
+  .err { color: var(--err); font-size: 13px; }
+  .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 24px; padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Comparateur</span></div>
+        <div class="tagline">Personnages côte à côte — ilvl &amp; parses</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs">
+    <a class="tab" href="/">⚔️ Simulateur</a>
+    <a class="tab" href="/characters">👥 Personnages</a>
+    <a class="tab" href="/raids">📊 Rapports</a>
+    <a class="tab active" href="/compare">⚖️ Comparateur</a>
+    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
+  </nav>
+  <p class="sub">Ajoute 2 à 6 personnages de la guilde (royaume Hyjal) pour les comparer : équipement (équipé, dernier jeu) et meilleurs parses Warcraft Logs sur le raid en cours — <b id="zonelabel">chargement…</b>.</p>
+
+  <div class="card">
+    <div class="row">
+      <input type="text" id="newname" list="rosterlist" placeholder="Nom du personnage (ex. Squall)" maxlength="24" autocomplete="off">
+      <datalist id="rosterlist"></datalist>
+      <button id="add">+ Ajouter</button>
+      <span class="spacer"></span>
+      <span class="meta" id="count"></span>
+      <button class="ghost" id="refresh" title="Recharger les données" style="background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:500;padding:6px 12px;font-size:12.5px;border-radius:8px;">⟳ Actualiser</button>
+    </div>
+    <div class="row" id="chips" style="margin-top:10px;"></div>
+  </div>
+
+  <div id="results"><div class="empty">Ajoute des personnages pour lancer la comparaison.</div></div>
+
+  <footer>
+    Données : <b>Battle.net</b> + <b>Warcraft Logs</b> (cache serveur) · Données de jeu fournies par
+    <b>Blizzard Entertainment</b> · Outil non affilié à Blizzard Entertainment ·
+    <span id="ver">…</span>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(n);
+const ago = (ts) => { if (!ts) return "?"; const s = Math.max(0, Date.now()/1000 - ts);
+  if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
+
+const CLASS_COLORS = { "Chevalier de la mort": "#C41E3A", "Chasseur de démons": "#A330C9", "Druide": "#FF7C0A",
+  "Évocateur": "#33937F", "Chasseur": "#AAD372", "Mage": "#3FC7EB", "Moine": "#00FF98",
+  "Paladin": "#F48CBA", "Prêtre": "#FFFFFF", "Voleur": "#FFF468", "Chaman": "#0070DD",
+  "Démoniste": "#8788EE", "Guerrier": "#C69B6D" };
+const DIFF = { 1: "LFR", 2: "Flex", 3: "Normal", 4: "Héroïque", 5: "Mythique", 10: "Défis" };
+const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >= 95 ? "#ff8000" : p >= 75 ? "#a335ee" : p >= 50 ? "#0070dd" : p >= 25 ? "#1eff00" : "#6b6b6b";
+
+const REALM = "hyjal";
+const MAX = 6;
+let sel = [];
+let rosterNames = [];
+
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+
+function renderChips() {
+  $("#chips").innerHTML = sel.map(c => `<span class="chip">${esc(c.name)} <button data-del="${esc(c.name)}" title="Retirer">✕</button></span>`).join("");
+  $("#chips").querySelectorAll("[data-del]").forEach(b =>
+    b.addEventListener("click", () => { sel = sel.filter(c => c.name !== b.dataset.del); save(); renderChips(); load(); }));
+  $("#count").textContent = `${sel.length}/${MAX}`;
+}
+
+function save() { localStorage.setItem("lotp_compare", JSON.stringify(sel.map(c => c.name))); }
+
+function addName(raw) {
+  const name = String(raw || "").trim();
+  if (!name || sel.length >= MAX) return;
+  if (sel.some(c => c.name.toLowerCase() === name.toLowerCase())) return;
+  if (rosterNames.length && !rosterNames.some(n => n.toLowerCase() === name.toLowerCase())) {
+    $("#results").innerHTML = `<div class="card"><div class="err">« ${esc(name)} » n'est pas dans le roster de la guilde (royaume Hyjal).</div></div>`;
+    return;
+  }
+  sel.push({ name });
+  save(); renderChips(); load();
+  $("#newname").value = "";
+}
+
+function colHtml(entry) {
+  const s = entry.summary;
+  const w = entry.wcl;
+  const cls = s && s.class;
+  const col = CLASS_COLORS[cls] || "var(--fg)";
+  let html = `<div class="ccard">
+    <div class="cname" style="color:${col}">${esc(entry.name)}</div>
+    <div class="meta">${s ? esc((cls || "") + (s.spec ? " — " + s.spec : "") + (s.race ? " · " + s.race : "")) : ""}</div>
+    <div class="bigilvl">iLvl ${s && s.ilvl_equipped != null ? fmt(s.ilvl_equipped) : "—"} <small>équipé</small></div>
+    <div class="meta">${s ? "vu " + ago(s.last_login / 1000) : esc(entry.bnet_error || "")}</div>`;
+  if (!w) {
+    return html + `<div class="meta" style="margin-top:8px;">${esc(entry.wcl_error || "Pas de données Warcraft Logs.")}</div></div>`;
+  }
+  const ba = w.best_average, ma = w.median_average;
+  html += `<div class="pavgs">
+      <div class="pavg"><span class="pv" style="color:${parseColor(ba)}">${ba == null ? "—" : Math.round(ba)}</span><span class="pl">Moy. des meilleurs</span></div>
+      <div class="pavg"><span class="pv" style="color:${parseColor(ma)}">${ma == null ? "—" : Math.round(ma)}</span><span class="pl">Médiane</span></div>
+    </div>`;
+  const rows = (w.rankings || []).map(r => `<div class="brow">
+      <span class="bname">${esc(r.boss || "?")}</span>
+      <span class="spacer"></span>
+      <span class="pchip" style="color:${parseColor(r.rank_percent)}" title="meilleur parse (médiane ${r.median_percent == null ? "?" : Math.round(r.median_percent)})">${r.rank_percent == null ? "—" : Math.round(r.rank_percent)}</span>
+    </div>`).join("");
+  html += `<div class="blist">${rows || '<div class="meta">Pas de parses sur ce raid.</div>'}</div>
+    <div class="meta" style="margin-top:8px;">${(w.rankings || []).length} boss · ${DIFF[w.difficulty] || "?"}</div></div>`;
+  return html;
+}
+
+async function load(force = 0) {
+  if (!sel.length) { $("#results").innerHTML = `<div class="empty">Ajoute des personnages pour lancer la comparaison.</div>`; return; }
+  $("#results").innerHTML = `<div class="card"><span class="spin">⏳</span> <span class="meta">Chargement…</span></div>`;
+  try {
+    const q = sel.map(c => `${REALM}:${c.name}`).join(",");
+    const d = await jget(`/api/compare?chars=${encodeURIComponent(q)}${force ? "&refresh=1" : ""}`);
+    $("#zonelabel").textContent = d.zone_label;
+    $("#results").innerHTML = `<div class="cols">${d.chars.map(colHtml).join("")}</div>`;
+  } catch (e) {
+    $("#results").innerHTML = `<div class="card"><div class="err">Erreur : ${esc(e.message)}</div></div>`;
+  }
+}
+
+$("#add").addEventListener("click", () => addName($("#newname").value));
+$("#newname").addEventListener("keydown", (ev) => { if (ev.key === "Enter") addName($("#newname").value); });
+$("#refresh").addEventListener("click", () => load(1));
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin) $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  try {
+    const r = await jget("/api/roster");
+    rosterNames = r.members.map(m => m.name);
+    $("#rosterlist").innerHTML = rosterNames.map(n => `<option value="${esc(n)}">`).join("");
+  } catch (e) {}
+  const saved = JSON.parse(localStorage.getItem("lotp_compare") || "[]");
+  sel = saved.slice(0, MAX).map(n => ({ name: n }));
+  renderChips();
+  if (sel.length) load();
+})();
+</script>
+</body>
+</html>

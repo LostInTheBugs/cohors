@@ -21,6 +21,9 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
 - [x] Raid reports (« Rapports ») — Warcraft Logs v2 API: guild report list, per-report
       boss pulls (kill/wipe, difficulty, item level) and per-fight parses (role tables,
       percentile scores), 15–30 min server cache.
+- [x] Member comparison (« Comparateur ») — 2–6 characters side by side: equipped ilvl
+      and last seen (Battle.net) + best Warcraft Logs parses for the current raid
+      (per-boss percentile, best/median averages).
 
 ## Requirements
 
@@ -84,6 +87,7 @@ reverse proxy and small until the simulation worker is split out.
 | `WCL_GUILD_NAME` | `Lords Of The Pit` | Guild name on Warcraft Logs |
 | `WCL_GUILD_REALM` | `hyjal` | Guild realm slug |
 | `WCL_GUILD_REGION` | `EU` | Region |
+| `WCL_RAID_ZONE_ID` | `53` | Warcraft Logs zone id used for character rankings |
 
 ## API
 
@@ -107,6 +111,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/char/{realm}/{name}/equipment` | GET | Equipped items (Battle.net) |
 | `/api/wcl/reports` | GET | Recent guild reports (Warcraft Logs) — `?refresh=1` forces |
 | `/api/wcl/report/{code}` | GET | One report: boss pulls + parses (Warcraft Logs) |
+| `/api/compare` | GET | Side-by-side characters `?chars=realm:name,…` (Battle.net + WCL) |
 | `/api/admin/invites` | GET / POST | List / create invitations |
 | `/api/admin/invites/{token}` | DELETE | Revoke an invitation |
 | `/api/admin/users` | GET | List accounts |
@@ -129,6 +134,7 @@ app/static/characters.html Guild roster & character pages (French)
 app/bnet.py             Battle.net API client (roster, characters, 30-min cache)
 app/wcl.py              Warcraft Logs v2 client (raid reports, parses)
 app/static/raids.html   Raid reports page (French)
+app/static/compare.html Member comparison page (French)
 worker/simrun.py        SimulationCraft engine wrapper (official Docker image)
 Dockerfile              App image (Python + Docker CLI)
 docker-compose.yml      App deployment (Docker socket + data dir, both required)
@@ -138,7 +144,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.006` (see `CHANGELOG.md`).
+Current version: `2026.09.008` (see `CHANGELOG.md`).
 
 ## License
 

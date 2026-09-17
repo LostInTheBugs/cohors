@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.008] — 2026-09-17
+
+### Added
+
+- « Comparateur » page: put guild characters side by side (2–6) — equipped item
+  level and last seen (Battle.net), plus best Warcraft Logs parses for the
+  current raid: per-boss best percentile and the best/median performance
+  averages (30-min server cache). Selection is kept in the browser.
+- `GET /api/compare?chars=realm:name,…` endpoint.
+- Configuration: `WCL_RAID_ZONE_ID` (default `53`).
+
 ## [2026.09.007] — 2026-09-17
 
 ### Changed

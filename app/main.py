@@ -361,6 +361,13 @@ def raids_page(request: Request):
     return FileResponse(STATIC_DIR / "raids.html")
 
 
+@app.api_route("/compare", methods=["GET", "HEAD"])
+def compare_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "compare.html")
+
+
 # ---------------------------------------------------------------------------
 # Auth API
 # ---------------------------------------------------------------------------
@@ -675,6 +682,34 @@ def api_wcl_report(code: str, request: Request, refresh: int = 0):
     data = dict(data)
     data["fetched_at"] = ts
     return data
+
+
+@app.get("/api/compare")
+def api_compare(request: Request, chars: str = "", refresh: int = 0):
+    _require_user(request)
+    items = [c.strip() for c in chars.split(",") if c.strip()][:6]
+    out = []
+    for item in items:
+        realm, _, name = item.partition(":")
+        realm, name = realm.strip(), name.strip()
+        if not realm or not name:
+            continue
+        _valid_char(realm, name)
+        entry: dict = {"realm": realm.lower(), "name": name}
+        try:
+            summary, _ts = bnet.character(realm, name, force=bool(refresh))
+            entry["summary"] = summary
+        except bnet.BnetError as exc:
+            entry["summary"] = None
+            entry["bnet_error"] = str(exc)
+        try:
+            zr, _ts = wcl.character_rankings(realm, name, force=bool(refresh))
+            entry["wcl"] = zr
+        except wcl.WclError as exc:
+            entry["wcl"] = None
+            entry["wcl_error"] = str(exc)
+        out.append(entry)
+    return {"chars": out, "zone_id": wcl.RAID_ZONE_ID, "zone_label": wcl.zone_label()}
 
 
 # ---------------------------------------------------------------------------
