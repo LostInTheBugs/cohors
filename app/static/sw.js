@@ -1,5 +1,5 @@
 /* LOTP — service worker (PWA) : cache des ressources statiques + page hors-ligne. */
-const CACHE = "lotp-v2026.09.030";
+const CACHE = "lotp-v2026.09.033";
 const CORE = ["/static/crest.png", "/static/icon-192.png", "/static/icon-512.png",
   "/static/nav.js", "/static/i18n.js", "/static/theme.css", "/static/bg-texture.png",
   "/static/fonts/cinzel.woff2", "/offline.html"];
@@ -23,13 +23,9 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (url.pathname.startsWith("/static/")) {
-    e.respondWith(caches.open(CACHE).then(async (c) => {
-      const hit = await c.match(req);
-      const net = fetch(req).then((r) => {
-        if (r.ok) c.put(req, r.clone());
-        return r;
-      }).catch(() => hit);
-      return hit || net;
-    }));
+    e.respondWith(fetch(req).then((r) => {
+      if (r.ok) caches.open(CACHE).then((c) => c.put(req, r.clone()));
+      return r;
+    }).catch(() => caches.match(req)));
   }
 });

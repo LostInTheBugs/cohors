@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.033] — 2026-09-17
+
+### Fixed
+
+- Voice access now self-repairs old/host-only session cookies: the gate sends
+  visitors to `GET /api/voice/handoff`, which re-issues the session cookie with
+  `Domain=.gensbien.fr` and forwards straight to the client — no login detour
+  (and no stray landing on the simulator page).
+- Service worker: static assets are now network-first (cache only as offline
+  fallback) and the cache name is versioned, so updated JS/CSS can no longer be
+  served stale after a deploy.
+- HTML pages are served with `Cache-Control: no-cache, must-revalidate`.
+- Login page accepts relative `?next=` targets (same-origin paths only).
+
 ## [2026.09.032] — 2026-09-17
 
 ### Added

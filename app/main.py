@@ -2402,10 +2402,43 @@ class VoiceGateMiddleware:
 
 app.add_middleware(VoiceGateMiddleware)
 
+
+@app.middleware("http")
+async def html_no_cache(request: Request, call_next):
+    """Les pages HTML doivent toujours être revalidées (évite les vieilles pages en cache)."""
+    response = await call_next(request)
+    ctype = response.headers.get("content-type", "")
+    if ctype.startswith("text/html"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return response
+
 _VOICE_HOP_REQ = {"host", "cookie", "connection", "keep-alive", "transfer-encoding", "upgrade",
                   "proxy-connection", "te", "trailer", "expect", "x-lotp-voice", "content-length"}
 _VOICE_HOP_RESP = {"connection", "keep-alive", "transfer-encoding", "upgrade",
                    "content-encoding", "content-length"}
+
+
+@app.get("/api/voice/handoff")
+def voice_handoff(request: Request, next: str = ""):
+    """Répare la session pour le sous-domaine vocal puis renvoie vers le client.
+
+    Les cookies créés avant la v031 sont host-only (lotp.gensbien.fr) : le portail
+    vocal ne les voit pas. Ici on réémet le cookie avec Domain=.gensbien.fr puis on
+    renvoie vers ts.gensbien.fr — sans passage par la page de connexion.
+    """
+    user = _get_session_user(request)
+    target = next if next.startswith("https://" + VOICE_PUBLIC_HOST + "/") or next == "https://" + VOICE_PUBLIC_HOST else "https://" + VOICE_PUBLIC_HOST + "/"
+    if user is None:
+        return RedirectResponse(f"{_VOICE_APP_BASE}/login?next={quote(_VOICE_APP_BASE + '/api/voice/handoff?next=' + quote(target, safe=''), safe='')}", status_code=302)
+    if request.query_params.get("json"):
+        response = Response(content='{"ok": true}', media_type="application/json")
+    else:
+        response = RedirectResponse(target, status_code=302)
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True,
+                            samesite="lax", secure=COOKIE_SECURE, path="/", domain=COOKIE_DOMAIN)
+    return response
 
 
 @app.api_route("/__voice{rest:path}",
@@ -2417,7 +2450,7 @@ async def voice_portal(request: Request, rest: str):
         nxt = "https://" + VOICE_PUBLIC_HOST + request.scope.get("lotp_voice_orig_path", request.url.path)
         if request.url.query:
             nxt += "?" + request.url.query
-        return RedirectResponse(f"{_VOICE_APP_BASE}/login?next={quote(nxt, safe='')}", status_code=302)
+        return RedirectResponse(f"{_VOICE_APP_BASE}/api/voice/handoff?next={quote(nxt, safe='')}", status_code=302)
     if rest == "/__lotp_extras.js":
         return Response(content=_VOICE_EXTRAS_JS, media_type="application/javascript; charset=utf-8",
                         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})

@@ -81,7 +81,9 @@
       setPanel(document.body.classList.contains("side-hidden"));
     }
   });
-  fetch("/api/me").then(function (r) { return r.ok ? r.json() : null; }).then(function (me) {
+  fetch("/api/voice/handoff?json=1").catch(function () {}).then(function () {
+    return fetch("/api/me").then(function (r) { return r.ok ? r.json() : null; });
+  }).then(function (me) {
     var nick = me && (me.voice_nick || "").trim();
     $("#vframe").src = "https://ts.gensbien.fr/" + (nick ? "#nickname=" + encodeURIComponent(nick) : "");
   }).catch(function () {

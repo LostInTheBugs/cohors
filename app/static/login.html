@@ -77,7 +77,8 @@ async function login() {
       let nxt = null;
       try { nxt = new URLSearchParams(location.search).get("next"); } catch (e) {}
       const okHosts = ["https://lotp.gensbien.fr", "https://ts.gensbien.fr"];
-      if (nxt && okHosts.some((h) => nxt === h || nxt.startsWith(h + "/"))) { location.href = nxt; return; }
+      const okRel = nxt && nxt.startsWith("/") && !nxt.startsWith("//") && !nxt.startsWith("/\");
+      if (nxt && (okRel || okHosts.some((h) => nxt === h || nxt.startsWith(h + "/")))) { location.href = nxt; return; }
       location.href = "/"; return;
     }
   } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; }
