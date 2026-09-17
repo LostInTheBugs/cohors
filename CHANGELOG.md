@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.019] — 2026-09-17
+
+### Added
+
+- Guild dashboard (`/dashboard`, first tab): weekly reset countdown (EU —
+  Wednesday 05:00 Paris time), latest raid summary from Warcraft Logs
+  (kills/pulls + top parses with class colors) and recent guild roster moves
+  (joins/leaves) plus roster size.
+- Roster moves are now tracked continuously (new `guild_events` table, fed by
+  the background tick) whether or not the Discord bot is enabled.
+- New API: `GET /api/dashboard`.
+
 ## [2026.09.018] — 2026-09-17
 
 ### Fixed

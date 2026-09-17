@@ -44,6 +44,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       password change (per-account preference follows you everywhere).
 - [x] One main per account (enforced) — first linked character becomes the main;
       switch it anytime from its chip.
+- [x] Guild dashboard — weekly reset countdown, latest raid summary (top
+      parses), recent roster moves.
 
 ## Requirements
 
@@ -129,6 +131,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me/settings` | POST | Save your account settings (language / display name) |
 | `/api/me/password` | POST | Change your password (other sessions signed out) |
 | `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
+| `/api/dashboard` | GET | Guild activity (roster moves, roster size) |
 | `/api/me/chars` | GET / POST | Linked characters — POST links one (`{name, main?}`) |
 | `/api/me/chars/{id}` | DELETE | Unlink one of your characters |
 | `/api/me/chars/{id}/main` | POST | Set a linked character as your main |
@@ -186,7 +189,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.018` (see `CHANGELOG.md`).
+Current version: `2026.09.019` (see `CHANGELOG.md`).
 
 ## License
 

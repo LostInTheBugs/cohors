@@ -208,6 +208,17 @@ def _init_db() -> None:
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_char_links_one_main ON char_links(user_email) WHERE is_main=1"
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS guild_events (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind    TEXT NOT NULL,
+                member  TEXT NOT NULL,
+                created REAL NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_guild_events_created ON guild_events(created)")
         # v2026.09.015 — rôles (membre / officier / administrateur).
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "role" not in cols:
@@ -491,6 +502,13 @@ def gear_page(request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "gear.html")
+
+
+@app.api_route("/dashboard", methods=["GET", "HEAD"])
+def dashboard_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "dashboard.html")
 
 
 @app.post("/api/login")
@@ -1184,6 +1202,25 @@ def admin_revoke_invite(token: str, request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Tableau de bord (activité de la guilde)
+# ---------------------------------------------------------------------------
+@app.get("/api/dashboard")
+def api_dashboard(request: Request):
+    _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = conn.execute(
+            "SELECT kind, member, created FROM guild_events ORDER BY created DESC, id DESC LIMIT 15"
+        ).fetchall()
+    out: dict = {"events": [dict(r) for r in rows], "members": None}
+    try:
+        data, ts = bnet.roster()
+        out["members"] = {"count": len(data.get("members") or []), "fetched": ts}
+    except bnet.BnetError:
+        pass
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Mes personnages (liaison compte ↔ personnages de guilde)
 # ---------------------------------------------------------------------------
 class CharLinkRequest(BaseModel):
@@ -1293,18 +1330,17 @@ def _bot_save(updates: dict) -> None:
 
 
 def _bot_tick() -> None:
-    """Un passage d'annonces : nouveaux rapports WCL + mouvements de roster."""
+    """Un passage : mouvements de roster (suivi continu) + annonces Discord (si actif)."""
     cfg = _bot_config()
-    if cfg is None or not cfg["enabled"]:
-        return
-    token, channel = (cfg["token"] or "").strip(), (cfg["channel_id"] or "").strip()
-    if not token or not channel:
+    if cfg is None:
         return
     updates: dict = {}
     notes: list[str] = []
     errs: list[str] = []
+    token, channel = (cfg["token"] or "").strip(), (cfg["channel_id"] or "").strip()
+    bot_on = bool(cfg["enabled"]) and bool(token) and bool(channel)
 
-    if cfg["notify_reports"]:
+    if bot_on and cfg["notify_reports"]:
         try:
             data, _ts = wcl.reports(limit=30)
             rows = data.get("data") or []
@@ -1324,25 +1360,36 @@ def _bot_tick() -> None:
         except Exception as exc:  # noqa: BLE001
             errs.append(f"rapports — {exc}")
 
-    if cfg["notify_roster"]:
-        try:
-            data, _ts = bnet.roster()
-            members = {m["name"]: m for m in (data.get("members") or []) if m.get("name")}
-            snap = set(json.loads(cfg["roster_snap"] or "[]"))
-            if not snap:
+    # Mouvements de guilde : suivis en continu (tableau de bord), annoncés si le bot est actif.
+    try:
+        data, _ts = bnet.roster()
+        members = {m["name"]: m for m in (data.get("members") or []) if m.get("name")}
+        snap = set(json.loads(cfg["roster_snap"] or "[]"))
+        if not snap:
+            updates["roster_snap"] = json.dumps(sorted(members))
+        else:
+            added = sorted(set(members) - snap)
+            gone = sorted(snap - set(members))
+            if added or gone:
+                now = time.time()
+                with _db_lock, _db() as conn:
+                    for n in added:
+                        conn.execute(
+                            "INSERT INTO guild_events (kind, member, created) VALUES ('join',?,?)", (n, now)
+                        )
+                    for n in gone:
+                        conn.execute(
+                            "INSERT INTO guild_events (kind, member, created) VALUES ('leave',?,?)", (n, now)
+                        )
                 updates["roster_snap"] = json.dumps(sorted(members))
-            else:
-                added = sorted(set(members) - snap)
-                gone = sorted(snap - set(members))
-                for n in added[:5]:
-                    discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("join", members[n])])
-                for n in gone[:5]:
-                    discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("leave", {"name": n})])
-                if added or gone:
-                    updates["roster_snap"] = json.dumps(sorted(members))
-                    notes.append(f"roster : +{len(added)} / -{len(gone)}")
-        except Exception as exc:  # noqa: BLE001
-            errs.append(f"roster — {exc}")
+                notes.append(f"roster : +{len(added)} / -{len(gone)}")
+                if bot_on and cfg["notify_roster"]:
+                    for n in added[:5]:
+                        discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("join", members[n])])
+                    for n in gone[:5]:
+                        discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("leave", {"name": n})])
+    except Exception as exc:  # noqa: BLE001
+        errs.append(f"roster — {exc}")
 
     if updates or notes or errs or cfg["last_error"]:
         updates["last_message"] = " ; ".join(notes)[:300] if notes else (cfg["last_message"] or "")

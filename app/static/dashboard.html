@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Tableau de bord</title>
+<link rel="icon" href="/static/crest.png">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:18px 18px 34px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; margin-bottom:14px; }
+  .grid .card { margin-bottom:0; }
+  .cd { font-size:34px; font-weight:700; letter-spacing:.5px; color:var(--acc2); margin:6px 0 2px; }
+  .cd small { font-size:14px; color:var(--mut); font-weight:500; margin-left:6px; }
+  .note { color:var(--mut); font-size:12.5px; margin:8px 0 0; }
+  .rhead { display:flex; flex-wrap:wrap; gap:8px; align-items:baseline; margin-bottom:4px; }
+  .rhead .t { font-weight:700; font-size:15.5px; }
+  .meta { color:var(--mut); font-size:12.5px; }
+  .prow { display:flex; gap:10px; align-items:center; padding:6px 2px; border-top:1px solid var(--line); font-size:13.5px; }
+  .prow:first-of-type { border-top:0; }
+  .pname { font-weight:600; }
+  .pspec { color:var(--mut); font-size:12px; }
+  .pchip { font-weight:700; }
+  .bossname { color:var(--mut); font-size:12px; }
+  .erow { display:flex; gap:10px; align-items:center; padding:6px 2px; border-top:1px solid var(--line); font-size:13.5px; }
+  .erow:first-child { border-top:0; }
+  .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Tableau de bord</span></div>
+        <div class="tagline">Vue d'ensemble de la guilde — raids, mouvements et reset.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs">
+    <a class="tab active" href="/dashboard">🏠 Tableau de bord</a>
+    <a class="tab" href="/">⚔️ Simulateur</a>
+    <a class="tab" href="/characters">👥 Personnages</a>
+    <a class="tab" href="/raids">📊 Rapports</a>
+    <a class="tab" href="/compare">⚖️ Comparateur</a>
+    <a class="tab" href="/gear">🧰 Top Stuff</a>
+    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
+  </nav>
+
+  <div class="grid">
+    <div class="card">
+      <h2>⏳ Reset hebdomadaire</h2>
+      <div class="cd" id="cd">…</div>
+      <p class="note">Prochain reset : mercredi 05:00 (heure de Paris)</p>
+      <p class="note" id="stats"></p>
+    </div>
+    <div class="card">
+      <h2>📊 Dernier raid</h2>
+      <div id="raid"><div class="empty">Chargement…</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>👥 Mouvements de guilde</h2>
+    <div id="events"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const dtFmt = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  if (s < 86400 * 30) return `il y a ${Math.floor(s / 86400)} j`;
+  return new Date(ts * 1000).toLocaleDateString("fr-FR"); };
+
+const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+  Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+  Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
+const CLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur de démons", Druid: "Druide",
+  Evoker: "Évocateur", Hunter: "Chasseur", Mage: "Mage", Monk: "Moine", Paladin: "Paladin",
+  Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
+const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >= 95 ? "#ff8000" : p >= 75 ? "#a335ee" : p >= 50 ? "#0070dd" : p >= 25 ? "#1eff00" : "#6b6b6b";
+
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+
+// ---- compte à rebours du reset hebdo (mercredi 05:00 heure de Paris)
+function tzOffsetMs(d) {
+  const dtf = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit",
+    day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  const p = {}; for (const x of dtf.formatToParts(d)) p[x.type] = x.value;
+  return Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second) - d.getTime();
+}
+function parisWeekdayHour(d) {
+  const dtf = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", weekday: "short",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  const p = {}; for (const x of dtf.formatToParts(d)) p[x.type] = x.value;
+  const WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return { day: WD[p.weekday], h: (+p.hour) % 24, m: +p.minute, s: +p.second };
+}
+function nextResetMs(from) {
+  const w = parisWeekdayHour(from);
+  let dayDiff = (3 - w.day + 7) % 7;                       // prochain mercredi
+  let secs = dayDiff * 86400 + (5 * 3600 - (w.h * 3600 + w.m * 60 + w.s));
+  if (secs <= 0) secs += 7 * 86400;
+  const t1 = new Date(from.getTime() + secs * 1000);
+  const corr = (tzOffsetMs(t1) - tzOffsetMs(from)) / 1000;  // passage DST éventuel
+  return from.getTime() + (secs + corr) * 1000;
+}
+function tickCd() {
+  let ms = nextResetMs(new Date()) - Date.now();
+  if (ms < 0) ms = 0;
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  $("#cd").innerHTML = `${d} j ${String(h).padStart(2, "0")} h ${String(m).padStart(2, "0")} min`;
+}
+tickCd(); setInterval(tickCd, 20000);
+
+// ---- données
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+
+  // mouvements + taille du roster
+  let membersTxt = "";
+  try {
+    const d = await jget("/api/dashboard");
+    if (d.members) membersTxt = `${d.members.count} membres`;
+    const box = $("#events");
+    if (!d.events.length) box.innerHTML = `<div class="empty">Aucun mouvement enregistré pour le moment.</div>`;
+    else box.innerHTML = d.events.map(e => `
+      <div class="erow">
+        <span>${e.kind === "join" ? "🍃" : "🕊"}</span>
+        <span class="pname">${esc(e.member)}</span>
+        <span class="meta">${e.kind === "join" ? "Arrivée" : "Départ"} · ${ago(e.created)}</span>
+      </div>`).join("");
+  } catch (e) {
+    $("#events").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+  }
+
+  // dernier raid
+  try {
+    const rl = await jget("/api/wcl/reports?limit=10");
+    if (membersTxt && rl.reports.total != null) membersTxt += ` · ${rl.reports.total} rapports au total`;
+    $("#stats").textContent = membersTxt;
+    const rows = rl.reports.data || [];
+    if (!rows.length) { $("#raid").innerHTML = `<div class="empty">Aucun rapport pour le moment.</div>`; return; }
+    let det = null, rep = null, fights = [];
+    for (const r of rows.slice(0, 4)) {
+      det = await jget(`/api/wcl/report/${encodeURIComponent(r.code)}`);
+      rep = det.report || {};
+      fights = rep.fights || [];
+      if (fights.length) break;          // premier rapport contenant des combats de boss
+    }
+    const kills = fights.filter(f => f.kill).length;
+    const bossOf = {}; for (const f of fights) bossOf[String(f.id)] = f.name;
+    const pars = [];
+    for (const [fid, entry] of Object.entries(det.rankings || {})) {
+      for (const key of ["dps", "tanks", "healers"]) {
+        const chars = (((entry.roles || {})[key]) || {}).characters || [];
+        for (const c of chars) {
+          if (c.rankPercent != null) pars.push({ ...c, boss: bossOf[fid] || "" });
+        }
+      }
+    }
+    pars.sort((a, b) => (b.rankPercent || 0) - (a.rankPercent || 0));
+    const top = pars.slice(0, 5);
+    $("#raid").innerHTML = `
+      <div class="rhead"><span class="t">${esc(rep.title || "(sans titre)")}</span></div>
+      <div class="meta">${esc((rep.zone || {}).name || "Zone inconnue")} · ${dtFmt(rep.startTime)} · ${fights.length} pulls · <b style="color:var(--ok)">${kills} boss tués</b></div>
+      ${top.length ? `<div style="margin-top:8px;font-weight:600;font-size:13px;">Meilleurs parses du raid</div>` + top.map(c => `
+        <div class="prow">
+          <span class="pname" style="color:${CLASS_COLORS[c.class] || "var(--fg)"}">${esc(c.name)}</span>
+          <span class="pspec">${esc(CLASS_FR[c.class] || c.class || "")} ${esc(c.spec || "")}</span>
+          <span class="bossname">${esc(c.boss)}</span>
+          <span style="flex:1"></span>
+          <span class="meta">${fmt(c.amount)}</span>
+          <span class="pchip" style="color:${parseColor(c.rankPercent)}">${c.rankPercent}</span>
+        </div>`).join("") : `<div class="meta" style="margin-top:6px;">Pas de parses.</div>`}
+      <p class="note"><a class="hlink" href="https://www.warcraftlogs.com/reports/${esc(rep.code)}" target="_blank" rel="noopener">Ouvrir le rapport →</a></p>`;
+  } catch (e) {
+    $("#raid").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+  }
+})();
+
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+</script>
+</body>
+</html>
