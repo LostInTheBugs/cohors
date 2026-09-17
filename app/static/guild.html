@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Guilde</title>
+<link rel="icon" href="/static/crest.png">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:18px 18px 34px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .txt { white-space:pre-line; margin:0 0 8px; }
+  .meta { color:var(--mut); font-size:12.5px; }
+  .kv { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:6px 0; }
+  .kv .k { color:var(--mut); font-size:13px; min-width:120px; }
+  .kv .v { font-weight:600; }
+  .btn { display:inline-block; background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; text-decoration:none; border:0; border-radius:10px; padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; }
+  .cbtn { background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:4px 10px; font-size:12.5px; cursor:pointer; }
+  .cbtn:hover { border-color:#3a4763; }
+  textarea, input[type=text] { width:100%; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; font-family:inherit; }
+  textarea:focus, input[type=text]:focus { outline:2px solid var(--acc); border-color:var(--acc); }
+  label { font-size:13px; color:var(--mut); display:block; margin:12px 0 4px; }
+  .note { color:var(--mut); font-size:12.5px; margin:8px 0 0; }
+  .msg-ok { color:var(--ok); font-size:13.5px; }
+  .msg-err { color:var(--err); font-size:13.5px; }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Guilde</span></div>
+        <div class="tagline">Lords Of The Pit — les liens et infos de la communauté.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs">
+    <a class="tab" href="/dashboard">🏠 Tableau de bord</a>
+    <a class="tab active" href="/guild">🛡️ Guilde</a>
+    <a class="tab" href="/">⚔️ Simulateur</a>
+    <a class="tab" href="/characters">👥 Personnages</a>
+    <a class="tab" href="/raids">📊 Rapports</a>
+    <a class="tab" href="/calendar">🗓️ Calendrier</a>
+    <a class="tab" href="/compare">⚖️ Comparateur</a>
+    <a class="tab" href="/gear">🧰 Top Stuff</a>
+    <a class="tab" href="/help">📖 Aide</a>
+    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
+  </nav>
+
+  <div class="card">
+    <h2>🛡️ La guilde</h2>
+    <p class="txt" id="intro">Chargement…</p>
+  </div>
+
+  <div class="card">
+    <h2>📣 Discord</h2>
+    <p class="txt meta" id="discord-note"></p>
+    <p id="discord-go" class="hidden"><a class="btn" id="discord-link" href="#" target="_blank" rel="noopener">Rejoindre le Discord →</a></p>
+    <p class="note hidden" id="discord-empty">Lien à venir — un administrateur peut le renseigner.</p>
+  </div>
+
+  <div class="card">
+    <h2>🎧 TeamSpeak</h2>
+    <div class="kv"><span class="k">Adresse</span><span class="v" id="ts-host">—</span><button class="cbtn hidden" id="ts-copy-host">📋 Copier</button></div>
+    <div class="kv"><span class="k">Mot de passe</span><span class="v" id="ts-pwd">—</span><button class="cbtn hidden" id="ts-copy-pwd">📋 Copier</button></div>
+    <p id="ts-open" class="hidden"><a class="btn" id="ts-link" href="#">🚀 Ouvrir dans TeamSpeak</a></p>
+    <p class="txt meta" id="ts-note" style="margin-top:10px"></p>
+    <p class="note hidden" id="ts-empty">Adresse non renseignée — un administrateur peut la compléter.</p>
+  </div>
+
+  <p id="edit-bar" class="hidden"><button class="cbtn" id="edit-btn">✏️ Modifier cette page</button></p>
+
+  <div class="card hidden" id="edit-card">
+    <h2>✏️ Modifier cette page</h2>
+    <p class="note">Tout champ laissé vide est simplement masqué sur la page.</p>
+    <label>Présentation</label><textarea id="f-intro" rows="4"></textarea>
+    <label>Lien Discord</label><input type="text" id="f-discord-url" placeholder="https://discord.gg/xxxx">
+    <label>Note Discord</label><input type="text" id="f-discord-note">
+    <label>Adresse TeamSpeak</label><input type="text" id="f-ts-host" placeholder="ts.exemple.fr:9987">
+    <label>Mot de passe TeamSpeak</label><input type="text" id="f-ts-pwd">
+    <label>Note TeamSpeak</label><input type="text" id="f-ts-note">
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn" id="save">💾 Enregistrer</button>
+      <button class="cbtn" id="cancel">Annuler</button>
+      <span id="msg"></span>
+    </div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jpost = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur"); return j; };
+
+let INFO = { items: {}, can_edit: false };
+
+function tsLink(host, pwd) {
+  let h = (host || "").trim(), port = "";
+  const m = h.match(/^(.+?):(\d{2,5})$/);
+  if (m) { h = m[1]; port = m[2]; }
+  if (!h) return "";
+  const q = [];
+  if (port) q.push("port=" + port);
+  if (pwd) q.push("password=" + encodeURIComponent(pwd));
+  return "ts3server://" + h + (q.length ? "?" + q.join("&") : "");
+}
+
+function setMsg(t, ok) { const e = $("#msg"); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; }
+
+function fill() {
+  const it = INFO.items || {};
+  $("#intro").textContent = it.intro || "—";
+  $("#discord-note").textContent = it.discord_note || "";
+  const url = (it.discord_url || "").trim();
+  $("#discord-go").classList.toggle("hidden", !url);
+  $("#discord-empty").classList.toggle("hidden", !!url);
+  if (url) $("#discord-link").href = url;
+  $("#ts-note").textContent = it.ts_note || "";
+  const host = (it.ts_host || "").trim(), pwd = it.ts_password || "";
+  $("#ts-host").textContent = host || "—";
+  $("#ts-pwd").textContent = pwd || "—";
+  $("#ts-copy-host").classList.toggle("hidden", !host);
+  $("#ts-copy-pwd").classList.toggle("hidden", !pwd);
+  const link = tsLink(host, pwd);
+  $("#ts-open").classList.toggle("hidden", !link);
+  if (link) $("#ts-link").href = link;
+  $("#ts-empty").classList.toggle("hidden", !!host);
+  $("#edit-bar").classList.toggle("hidden", !INFO.can_edit);
+}
+
+function toForm() {
+  const it = INFO.items || {};
+  $("#f-intro").value = it.intro || "";
+  $("#f-discord-url").value = it.discord_url || "";
+  $("#f-discord-note").value = it.discord_note || "";
+  $("#f-ts-host").value = it.ts_host || "";
+  $("#f-ts-pwd").value = it.ts_password || "";
+  $("#f-ts-note").value = it.ts_note || "";
+}
+
+async function copyText(t, btn) {
+  try {
+    await navigator.clipboard.writeText(t);
+    const old = btn.textContent;
+    btn.textContent = "Copié ✓";
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  } catch (e) { /* silencieux */ }
+}
+
+$("#ts-copy-host").addEventListener("click", () => copyText(($("#ts-host").textContent || "").trim(), $("#ts-copy-host")));
+$("#ts-copy-pwd").addEventListener("click", () => copyText($("#ts-pwd").textContent || "", $("#ts-copy-pwd")));
+
+$("#edit-btn").addEventListener("click", () => {
+  setMsg("");
+  toForm();
+  $("#edit-card").classList.remove("hidden");
+  $("#edit-bar").classList.add("hidden");
+});
+$("#cancel").addEventListener("click", () => {
+  $("#edit-card").classList.add("hidden");
+  $("#edit-bar").classList.toggle("hidden", !INFO.can_edit);
+});
+$("#save").addEventListener("click", async () => {
+  $("#save").disabled = true;
+  try {
+    const d = await jpost("POST", "/api/guild/info", { items: {
+      intro: $("#f-intro").value, discord_url: $("#f-discord-url").value,
+      discord_note: $("#f-discord-note").value, ts_host: $("#f-ts-host").value,
+      ts_password: $("#f-ts-pwd").value, ts_note: $("#f-ts-note").value,
+    } });
+    const fresh = await jget("/api/guild/info");
+    INFO = fresh;
+    fill();
+    $("#edit-card").classList.add("hidden");
+    $("#edit-bar").classList.toggle("hidden", !INFO.can_edit);
+    setMsg("Page mise à jour ✓", true);
+  } catch (e) { setMsg(e.message, false); }
+  $("#save").disabled = false;
+});
+
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  try {
+    INFO = await jget("/api/guild/info");
+    fill();
+  } catch (e) { $("#intro").textContent = e.message; }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Aide</title>
+<link rel="icon" href="/static/crest.png">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:18px 18px 34px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+  h2 { font-size:17px; margin:0 0 10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  ul { margin:6px 0 2px; padding-left:20px; }
+  li { margin:4px 0; }
+  .toc { display:flex; flex-wrap:wrap; gap:6px 14px; }
+  .toc a { color:var(--acc2); text-decoration:none; font-size:13.5px; font-weight:600; }
+  .toc a:hover { text-decoration:underline; }
+  .dot { color:var(--mut); }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Aide</span></div>
+        <div class="tagline">Toutes les fonctionnalités de l'application et comment s'en servir.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs">
+    <a class="tab" href="/dashboard">🏠 Tableau de bord</a>
+    <a class="tab" href="/guild">🛡️ Guilde</a>
+    <a class="tab" href="/">⚔️ Simulateur</a>
+    <a class="tab" href="/characters">👥 Personnages</a>
+    <a class="tab" href="/raids">📊 Rapports</a>
+    <a class="tab" href="/calendar">🗓️ Calendrier</a>
+    <a class="tab" href="/compare">⚖️ Comparateur</a>
+    <a class="tab" href="/gear">🧰 Top Stuff</a>
+    <a class="tab active" href="/help">📖 Aide</a>
+    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
+  </nav>
+
+  <div class="card">
+    <h2>Sommaire</h2>
+    <div class="toc">
+      <a href="#start">Premiers pas</a><span class="dot">·</span>
+      <a href="#simu">⚔️ Le simulateur</a><span class="dot">·</span>
+      <a href="#profils">📁 Profils &amp; sim de groupe</a><span class="dot">·</span>
+      <a href="#persos">👥 Personnages</a><span class="dot">·</span>
+      <a href="#rapports">📊 Rapports Warcraft Logs</a><span class="dot">·</span>
+      <a href="#compare">⚖️ Comparateur</a><span class="dot">·</span>
+      <a href="#topstuff">🧰 Top Stuff</a><span class="dot">·</span>
+      <a href="#calendrier">🗓️ Calendrier des raids</a><span class="dot">·</span>
+      <a href="#accueil">🏠 Tableau de bord</a><span class="dot">·</span>
+      <a href="#guilde">🛡️ Guilde</a><span class="dot">·</span>
+      <a href="#parametres">⚙️ Paramètres du compte</a><span class="dot">·</span>
+      <a href="#bot">🤖 Le bot Discord</a><span class="dot">·</span>
+      <a href="#faq">❓ Bon à savoir (FAQ)</a>
+    </div>
+  </div>
+
+  <section class="card" id="start">
+    <h2>Premiers pas</h2>
+    <ul>
+      <li>L'accès se fait uniquement sur invitation : le lien reçu par e-mail est valable 7 jours.</li>
+      <li>Trois rôles : membre (tout l'outil), officier (gère aussi les invitations et le calendrier), administrateur (tous les droits).</li>
+      <li>La langue (FR/EN) se choisit sur la page de connexion, puis dans ⚙️ Paramètres.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="simu">
+    <h2>⚔️ Le simulateur</h2>
+    <ul>
+      <li>Colle ton export /simc dans la zone de texte, choisis le type de simulation et lance.</li>
+      <li>Trois types : DPS (quel est mon DPS ?), Poids des stats (quelles stats me profitent le plus ?), Comparaison d'items (quelle pièce est la meilleure ?).</li>
+      <li>Itérations = précision : 1 000 rapide, 10 000 précis (par défaut), 50 000 pour les puristes.</li>
+      <li>Addon requis : SimulationCraft — tape /simc en jeu et copie la fenêtre qui s'ouvre.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="profils">
+    <h2>📁 Profils &amp; sim de groupe</h2>
+    <ul>
+      <li>« 💾 Enregistrer » sauvegarde ton export comme profil réutilisable en un clic.</li>
+      <li>Coche « Partager avec la guilde » pour permettre aux autres de te simuler.</li>
+      <li>Pense à mettre à jour ton profil après chaque changement d'équipement.</li>
+      <li>Coche les profils des participants en bas de la page Simulateur, puis « ▶ Lancer la sim de groupe ».</li>
+      <li>Tout le monde est simulé ensemble dans le même combat : les buffs de raid sont pris en compte.</li>
+      <li>Résultat : la guilde classée par DPS, du premier au dernier, avec l'écart au top.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="persos">
+    <h2>👥 Personnages</h2>
+    <ul>
+      <li>Lie tes personnages de la guilde en un clic — ils s'affichent avec leur équipement.</li>
+      <li>Le premier personnage lié devient ton main ; change-le quand tu veux avec « ⭐ définir main ».</li>
+      <li>Un seul main par compte : c'est le personnage principal pour le roster et le calendrier.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="rapports">
+    <h2>📊 Rapports Warcraft Logs</h2>
+    <ul>
+      <li>Tous les rapports Warcraft Logs de la guilde, du plus récent au plus ancien.</li>
+      <li>Un « parse » = ta performance comparée aux autres joueurs de ta spé et de ton niveau d'équipement.</li>
+      <li>Couleurs des parses : gris &lt; 25 · vert &lt; 50 · bleu &lt; 75 · violet &lt; 95 · orange &lt; 100 · doré = 100.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="compare">
+    <h2>⚖️ Comparateur</h2>
+    <ul>
+      <li>Choisis deux personnages et compare-les côte à côte : équipement (ilvl) et parses.</li>
+      <li>Pratique pour préparer un recrutement ou un défi amical.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="topstuff">
+    <h2>🧰 Top Stuff</h2>
+    <ul>
+      <li>Choisis un personnage, colle les liens Wowhead des pièces convoitées, et lance : chaque pièce est chiffrée en DPS.</li>
+      <li>Utilise-le avant un raid pour savoir quoi demander en loot.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="calendrier">
+    <h2>🗓️ Calendrier des raids</h2>
+    <ul>
+      <li>Les officiers créent les raids (date, heure, durée, note).</li>
+      <li>Réponds en un clic : ✅ Présent · ❓ Peut-être · ❌ Absent — re-clique pour annuler ta réponse.</li>
+      <li>Tu vois qui vient d'un coup d'œil, et le bot Discord relance une heure avant le raid (si activé).</li>
+    </ul>
+  </section>
+
+  <section class="card" id="accueil">
+    <h2>🏠 Tableau de bord</h2>
+    <ul>
+      <li>Le récapitulatif : compte à rebours du reset hebdo, dernier raid avec les meilleurs parses, arrivées et départs de la guilde.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="guilde">
+    <h2>🛡️ Guilde</h2>
+    <ul>
+      <li>Les liens Discord et TeamSpeak sont sur la page 🛡️ Guilde (tenue à jour par les administrateurs).</li>
+      <li>« 🚀 Ouvrir dans TeamSpeak » lance ton client installé avec l'adresse et le mot de passe déjà remplis.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="parametres">
+    <h2>⚙️ Paramètres du compte</h2>
+    <ul>
+      <li>Nom affiché, langue et mot de passe — tout se règle dans ⚙️ Paramètres.</li>
+      <li>Changer le mot de passe déconnecte tes autres appareils (sécurité).</li>
+    </ul>
+  </section>
+
+  <section class="card" id="bot">
+    <h2>🤖 Le bot Discord</h2>
+    <ul>
+      <li>Si le bot est activé : chaque nouveau rapport Warcraft Logs, chaque arrivée/départ et chaque raid planifié sont annoncés dans le salon Discord.</li>
+    </ul>
+  </section>
+
+  <section class="card" id="faq">
+    <h2>❓ Bon à savoir (FAQ)</h2>
+    <ul>
+      <li>Mon DPS simulé est plus haut que mes logs : c'est normal — la simulation est un combat parfait (Patchwerk), sans mouvement ni mécaniques.</li>
+      <li>Mon résultat semble faux : vérifie que ton export /simc est complet et récent, puis réessaie.</li>
+      <li>Les simulations identiques sont mises en cache : les relancer est instantané.</li>
+    </ul>
+  </section>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+(async () => {
+  try {
+    const r = await fetch("/api/me");
+    if (!r.ok) { location.href = "/login"; return; }
+    const me = await r.json();
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await fetch("/api/health").then(x => x.json()); $("#ver").textContent = "v" + h.version; } catch (e) {}
+})();
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+</script>
+</body>
+</html>

@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.022] — 2026-09-17
+
+### Added
+
+- Guild page (`/guild`): presentation, Discord invite link and TeamSpeak
+  details (address, password, copy buttons, `ts3server://` one-click join).
+  Editable in place by administrators.
+- Help page (`/help`): full documentation of every app feature with a table
+  of contents (bilingual FR/EN).
+- New API: `GET/POST /api/guild/info` (write: administrator only).
+
 ## [2026.09.021] — 2026-09-17
 
 ### Added

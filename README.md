@@ -50,6 +50,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       Présent/Peut-être/Absent; the Discord bot announces and reminds.
 - [x] Group simulation — combine members' `/simc` profiles into one
       multi-actor run (raid buffs) and rank the guild by DPS.
+- [x] Guild page — Discord invite, TeamSpeak details (one-click join),
+      editable by administrators; plus a full Help page.
 
 ## Requirements
 
@@ -135,6 +137,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me/settings` | POST | Save your account settings (language / display name) |
 | `/api/me/password` | POST | Change your password (other sessions signed out) |
 | `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
+| `/api/guild/info` | GET / POST | Guild info (write: admin only) |
 | `/api/group/sim` | POST | Group sim (profiles combined, multi-actor) |
 | `/api/raids` | GET / POST | Raid calendar (create: officer+) |
 | `/api/raids/{id}` | DELETE | Delete a raid (officer+) |
@@ -197,7 +200,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.021` (see `CHANGELOG.md`).
+Current version: `2026.09.022` (see `CHANGELOG.md`).
 
 ## License
 

@@ -246,6 +246,18 @@ def _init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS guild_info (
+                key        TEXT PRIMARY KEY,
+                value      TEXT NOT NULL DEFAULT '',
+                updated    REAL NOT NULL DEFAULT 0,
+                updated_by TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
+        for k in ("intro", "discord_url", "discord_note", "ts_host", "ts_password", "ts_note"):
+            conn.execute("INSERT OR IGNORE INTO guild_info (key, value, updated) VALUES (?, '', 0)", (k,))
         # v2026.09.015 — rôles (membre / officier / administrateur).
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "role" not in cols:
@@ -549,6 +561,20 @@ def calendar_page(request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "calendar.html")
+
+
+@app.api_route("/guild", methods=["GET", "HEAD"])
+def guild_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "guild.html")
+
+
+@app.api_route("/help", methods=["GET", "HEAD"])
+def help_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "help.html")
 
 
 @app.post("/api/login")
@@ -1196,6 +1222,43 @@ def submit_group_sim(payload: GroupSimRequest, request: Request):
             (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"]),
         )
     return {"id": sim_id, "status": "queued", "position": queue_len + 1, "warnings": warnings, "count": len(allowed)}
+
+
+# ---------------------------------------------------------------------------
+# Informations de guilde (page 🛡️ Guilde — éditable par les administrateurs)
+# ---------------------------------------------------------------------------
+GUILD_INFO_KEYS = ("intro", "discord_url", "discord_note", "ts_host", "ts_password", "ts_note")
+
+
+@app.get("/api/guild/info")
+def api_guild_info(request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = conn.execute("SELECT key, value, updated FROM guild_info").fetchall()
+    items = {r["key"]: r["value"] for r in rows}
+    updated = max(((r["updated"] or 0.0) for r in rows), default=0.0)
+    return {"items": items, "updated": updated, "can_edit": _user_role(user) == "admin"}
+
+
+class GuildInfoRequest(BaseModel):
+    items: dict[str, str]
+
+
+@app.post("/api/guild/info")
+def update_guild_info(payload: GuildInfoRequest, request: Request):
+    user = _require_admin(request)
+    now = time.time()
+    saved = 0
+    with _db_lock, _db() as conn:
+        for k, v in (payload.items or {}).items():
+            if k not in GUILD_INFO_KEYS or not isinstance(v, str):
+                continue
+            conn.execute(
+                "UPDATE guild_info SET value=?, updated=?, updated_by=? WHERE key=?",
+                (v.strip()[:2000], now, user["name"] or user["email"], k),
+            )
+            saved += 1
+    return {"ok": True, "saved": saved}
 
 
 # ---------------------------------------------------------------------------
