@@ -3014,8 +3014,9 @@ def voice_count(request: Request):
     except Exception:  # noqa: BLE001
         raise HTTPException(502, "Vocal indisponible.")
     count = 0
-    names = []
+    groups = []
     for ch in (raw if isinstance(raw, list) else []):
+        names = []
         for cl in (ch.get("clients") or []):
             if cl.get("uid") == MUSIC_BOT_UID:
                 continue
@@ -3023,4 +3024,6 @@ def voice_count(request: Request):
             nm = cl.get("nick") or ""
             if nm:
                 names.append(nm)
-    return {"ok": True, "count": count, "names": names[:12]}
+        if names:
+            groups.append({"channel": ch.get("name", ""), "names": names})
+    return {"ok": True, "count": count, "groups": groups}

@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.039 - 2026-09-17
+- Dashboard: TeamSpeak users grouped by channel (one line per channel, live).
+
 ## 2026.09.038 - 2026-09-17
 - Nav: Music page moved into the Voice menu (voice panel + Music).
 - Dashboard: live TeamSpeak user count (music bot excluded).

@@ -173,7 +173,9 @@ tickCd(); setInterval(tickCd, 20000);
     try {
       const v = await jget("/api/voice/count");
       $("#vcount").textContent = String(v.count);
-      $("#vnames").textContent = (v.names || []).join(", ");
+      $("#vnames").innerHTML = (v.groups || []).map((g) =>
+        '<div style="margin-top:5px;font-size:13px;"><b style="color:var(--fg);">' + esc(g.channel) +
+        '</b> <span style="color:var(--mut);">—</span> ' + esc(g.names.join(", ")) + '</div>').join("");
     } catch (e) { $("#vcount").textContent = "—"; $("#vnames").textContent = ""; }
   };
   loadVoice(); setInterval(loadVoice, 60000);
