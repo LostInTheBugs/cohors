@@ -145,3 +145,47 @@ def roster_embed(kind: str, member: dict) -> dict:
         "color": COLOR_MUTED,
         "footer": {"text": "Lords Of The Pit · roster Battle.net"},
     }
+
+
+# ---------------------------------------------------------------------------
+# Embeds « calendrier des raids » (français)
+# ---------------------------------------------------------------------------
+def raid_embed(raid: dict, link: str = "") -> dict:
+    """Embed « nouveau raid planifié »."""
+    starts = float(raid.get("starts") or 0.0)
+    date_txt = time.strftime("%d/%m/%Y à %H:%M", time.localtime(starts)) if starts else "?"
+    title = str(raid.get("title") or "Raid de guilde")[:200]
+    fields = [{"name": "Début", "value": date_txt, "inline": True}]
+    if raid.get("duration_min"):
+        fields.append({"name": "Durée", "value": f"{int(raid['duration_min'])} min", "inline": True})
+    desc = f"**{title}**"
+    if raid.get("note"):
+        desc += f"\n{str(raid['note'])[:300]}"
+    if link:
+        desc += f"\n\n👉 [Répondre présent sur le site]({link})"
+    return {
+        "title": "🗓️ Nouveau raid planifié",
+        "description": desc,
+        "color": COLOR_GOLD,
+        "fields": fields,
+        "footer": {"text": "Lords Of The Pit · Calendrier"},
+    }
+
+
+def raid_reminder_embed(raid: dict, counts: dict | None = None, link: str = "") -> dict:
+    """Embed « rappel de raid » (moins d'une heure avant le début)."""
+    starts = float(raid.get("starts") or 0.0)
+    date_txt = time.strftime("%d/%m/%Y à %H:%M", time.localtime(starts)) if starts else "?"
+    title = str(raid.get("title") or "Raid de guilde")[:200]
+    desc = f"**{title}** commence bientôt !"
+    if counts:
+        desc += f"\n✅ {counts.get('yes', 0)} · ❓ {counts.get('maybe', 0)} · ❌ {counts.get('no', 0)}"
+    if link:
+        desc += f"\n\n👉 [Répondre sur le site]({link})"
+    return {
+        "title": "⏰ Rappel — raid dans moins d'une heure",
+        "description": desc,
+        "color": COLOR_CRIMSON,
+        "fields": [{"name": "Début", "value": date_txt, "inline": True}],
+        "footer": {"text": "Lords Of The Pit · Calendrier"},
+    }

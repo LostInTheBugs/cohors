@@ -46,6 +46,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       switch it anytime from its chip.
 - [x] Guild dashboard — weekly reset countdown, latest raid summary (top
       parses), recent roster moves.
+- [x] Raid calendar — officers plan raids, members answer
+      Présent/Peut-être/Absent; the Discord bot announces and reminds.
 
 ## Requirements
 
@@ -131,6 +133,9 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me/settings` | POST | Save your account settings (language / display name) |
 | `/api/me/password` | POST | Change your password (other sessions signed out) |
 | `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
+| `/api/raids` | GET / POST | Raid calendar (create: officer+) |
+| `/api/raids/{id}` | DELETE | Delete a raid (officer+) |
+| `/api/raids/{id}/signup` | POST | Answer yes / no / maybe |
 | `/api/dashboard` | GET | Guild activity (roster moves, roster size) |
 | `/api/me/chars` | GET / POST | Linked characters — POST links one (`{name, main?}`) |
 | `/api/me/chars/{id}` | DELETE | Unlink one of your characters |
@@ -189,7 +194,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.019` (see `CHANGELOG.md`).
+Current version: `2026.09.020` (see `CHANGELOG.md`).
 
 ## License
 

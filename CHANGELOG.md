@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.020] — 2026-09-17
+
+### Added
+
+- Raid calendar (`/calendar` tab): officers create raids (date/time, duration,
+  note); every member answers **Présent / Peut-être / Absent** in one click and
+  sees who answered what. Past raids are listed below.
+- Discord bot (when active): new raids are announced automatically and a reminder
+  is posted one hour before the start (with signup counts).
+- New API: `GET/POST /api/raids`, `DELETE /api/raids/{id}`,
+  `POST /api/raids/{id}/signup`.
+
 ## [2026.09.019] — 2026-09-17
 
 ### Added

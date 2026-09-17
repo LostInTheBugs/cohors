@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Calendrier</title>
+<link rel="icon" href="/static/crest.png">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:18px 18px 34px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  input[type=text], input[type=datetime-local], input[type=number] { background:var(--bg); color:var(--fg);
+        border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; }
+  input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
+  button { background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
+           padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.55; cursor:default; }
+  button.small { padding:6px 12px; font-size:12.5px; font-weight:500; border-radius:8px; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
+  button.ghost.act { border-color:var(--acc2); color:var(--acc2); font-weight:700; }
+  button.danger { background:transparent; border:1px solid #5a2626; color:var(--err); }
+  .item { border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:11px 14px;
+          margin-bottom:9px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .item .main { display:flex; flex-direction:column; min-width:240px; gap:1px; }
+  .item .name { font-weight:700; font-size:15px; }
+  .item .meta { color:var(--mut); font-size:12.5px; }
+  .badge { font-size:12.5px; padding:2px 10px; border-radius:999px; border:1px solid var(--line); color:var(--mut); white-space:nowrap; }
+  .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
+  .msg-ok { color:var(--ok); font-size:13.5px; }
+  .msg-err { color:var(--err); font-size:13.5px; }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Calendrier</span></div>
+        <div class="tagline">Prochains raids et présences — réponds en un clic.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs">
+    <a class="tab" href="/dashboard">🏠 Tableau de bord</a>
+    <a class="tab" href="/">⚔️ Simulateur</a>
+    <a class="tab" href="/characters">👥 Personnages</a>
+    <a class="tab" href="/raids">📊 Rapports</a>
+    <a class="tab active" href="/calendar">🗓️ Calendrier</a>
+    <a class="tab" href="/compare">⚖️ Comparateur</a>
+    <a class="tab" href="/gear">🧰 Top Stuff</a>
+    <a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>
+  </nav>
+
+  <div class="card hidden" id="plan-card">
+    <h2>➕ Créer un raid</h2>
+    <div class="row">
+      <input type="text" id="r-title" placeholder="Raid de guilde" maxlength="120" style="min-width:220px">
+      <input type="datetime-local" id="r-start">
+      <input type="number" id="r-dur" value="180" min="15" max="720" step="15" title="Durée (min)" style="width:110px">
+      <input type="text" id="r-note" placeholder="Note (optionnelle)" maxlength="300" style="min-width:220px">
+      <button id="r-create">➕ Créer le raid</button>
+      <span id="r-msg"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🗓️ Prochains raids</h2>
+    <div id="list"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>🕓 Raids passés</h2>
+    <div id="past"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jpost = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur"); return j; };
+
+const dateTxt = (ms) => new Date(ms * 1000).toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" })
+  + " · " + new Date(ms * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+function setMsg(sel, t, ok) { const e = $(sel); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; }
+
+let CAN_PLAN = false;
+
+function renderRaids(d) {
+  const box = $("#list");
+  if (!d.raids.length) { box.innerHTML = `<div class="empty">Aucun raid prévu pour le moment.</div>`; }
+  else box.innerHTML = d.raids.map(r => {
+    const n = r.names;
+    const lines = ["yes", "maybe", "no"]
+      .filter(k => n[k] && n[k].length)
+      .map(k => `<span class="meta">${k === "yes" ? "✅" : k === "maybe" ? "❓" : "❌"} ${n[k].map(esc).join(", ")}</span>`).join("");
+    const btn = (s, label) => `<button class="small ghost${r.mine === s ? " act" : ""}" data-s="${s}" data-id="${r.id}">${label}</button>`;
+    return `<div class="item">
+      <div class="main">
+        <span class="name">${esc(r.title)}</span>
+        <span class="meta">${dateTxt(r.starts)} · ${r.duration_min} min · par ${esc(r.created_by || "—")}</span>
+        ${r.note ? `<span class="meta">${esc(r.note)}</span>` : ""}
+        ${lines}
+      </div>
+      <span class="badge">✅ ${r.counts.yes} · ❓ ${r.counts.maybe} · ❌ ${r.counts.no}</span>
+      <span style="flex:1"></span>
+      ${btn("yes", "✅ Présent")} ${btn("maybe", "❓ Peut-être")} ${btn("no", "❌ Absent")}
+      ${CAN_PLAN ? `<button class="small danger" data-del="${r.id}" title="Supprimer ce raid">🗑</button>` : ""}
+    </div>`;
+  }).join("");
+  box.querySelectorAll("button[data-s]").forEach(b => b.addEventListener("click", async () => {
+    const same = b.classList.contains("act");
+    try { await jpost("POST", `/api/raids/${b.dataset.id}/signup`, { status: same ? "" : b.dataset.s }); load(); }
+    catch (e) { setMsg("#r-msg", e.message, false); }
+  }));
+  box.querySelectorAll("button[data-del]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("Supprimer ce raid ?")) return;
+    try { await jpost("DELETE", `/api/raids/${b.dataset.del}`); load(); }
+    catch (e) { setMsg("#r-msg", e.message, false); }
+  }));
+  const past = $("#past");
+  if (!d.past.length) past.innerHTML = `<div class="empty">Aucun raid passé.</div>`;
+  else past.innerHTML = d.past.map(r =>
+    `<div class="item"><div class="main"><span class="meta">${dateTxt(r.starts)} · <b>${esc(r.title)}</b></span></div></div>`).join("");
+}
+
+async function load() {
+  try {
+    const d = await jget("/api/raids");
+    CAN_PLAN = !!d.can_plan;
+    renderRaids(d);
+  } catch (e) { $("#list").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+function toLocalInput(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+$("#r-create").addEventListener("click", async () => {
+  const start = $("#r-start").value;
+  if (!start) { setMsg("#r-msg", "Choisis une date et une heure.", false); return; }
+  const ms = new Date(start).getTime();
+  if (!ms) { setMsg("#r-msg", "Date invalide.", false); return; }
+  $("#r-create").disabled = true;
+  try {
+    await jpost("POST", "/api/raids", {
+      title: $("#r-title").value.trim(), starts: ms / 1000,
+      duration_min: parseInt($("#r-dur").value || "180", 10), note: $("#r-note").value.trim(),
+    });
+    setMsg("#r-msg", "Raid créé ✓", true);
+    $("#r-title").value = ""; $("#r-note").value = "";
+    load();
+  } catch (e) { setMsg("#r-msg", e.message, false); }
+  $("#r-create").disabled = false;
+});
+
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin || me.role === "officer") {
+      $("#admin-link").classList.remove("hidden");
+      $("#plan-card").classList.remove("hidden");
+    }
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 2);
+  $("#r-start").value = toLocalInput(d);
+  load();
+})();
+</script>
+</body>
+</html>
