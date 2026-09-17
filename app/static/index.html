@@ -18,6 +18,12 @@
   h1 { font-size: 26px; margin: 0; letter-spacing: .3px; }
   h1 span { color: var(--acc2); }
   .sub { color: var(--mut); font-size: 14px; margin: 0 0 22px; }
+  details.howto { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin-bottom: 18px; }
+  details.howto summary { cursor: pointer; font-weight: 600; color: var(--acc2); }
+  details.howto ol { margin: 12px 0 8px; padding-left: 22px; }
+  details.howto li { margin-bottom: 6px; }
+  details.howto a { color: var(--acc2); }
+  details.howto .note { color: var(--mut); font-size: 13px; margin: 8px 0 2px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
   label { display: block; font-size: 13px; color: var(--mut); margin: 0 0 6px; }
   textarea { width: 100%; min-height: 170px; resize: vertical; background: var(--bg); color: var(--fg);
@@ -64,6 +70,16 @@
     <span class="meta" style="color:var(--mut);font-size:13px">SimulationCraft pour la guilde</span>
   </header>
   <p class="sub">Colle ton export <b>/simc</b> (en jeu : tape <b>/simc</b> puis copie tout le texte) et lance la simulation.</p>
+
+  <details class="howto">
+    <summary>❓ Comment obtenir l'export /simc ?</summary>
+    <ol>
+      <li>Installe l'addon <b>SimulationCraft</b> dans WoW (via <a href="https://www.curseforge.com/wow/addons/simulationcraft" target="_blank" rel="noopener">CurseForge</a> ou WowUp, comme tes autres addons).</li>
+      <li>En jeu, tape <b>/simc</b> dans le chat : une fenêtre s'ouvre avec tout ton profil (équipement, talents, sacs et banque).</li>
+      <li>Copie le texte (bouton <b>Copy</b> dans la fenêtre), colle-le dans le champ ci-dessous, puis lance la simulation.</li>
+    </ol>
+    <p class="note">Rien d'autre à installer : le moteur de simulation tourne entièrement sur le serveur.</p>
+  </details>
 
   <div class="card">
     <label for="inp">Export /simc</label>

@@ -17,6 +17,8 @@ All notable changes to this project are documented in this file.
   officially maintained `simulationcraftorg/simc` image; compose + `.env`.
 - Self-hosted deployment documented: reverse proxy + TLS termination on the
   host, DNS record for the app hostname.
+- In-app help panel (collapsible): installing the SimulationCraft addon and
+  getting the `/simc` export.
 
 ## [2026.09.001] — 2026-09-16
 
