@@ -65,3 +65,101 @@ body.wb {
   background-size: auto, auto, cover !important;
   background-position: center top, center bottom, center center !important;
 }
+
+/* ---------------------------------------------------------------------
+   📱 Mobile (<= 760 px) — responsive global (theme.css charge en dernier).
+   --------------------------------------------------------------------- */
+@media (max-width: 760px) {
+  .wrap { padding: 12px 12px 30px !important; max-width: 100% !important; }
+  .card { padding: 14px 13px !important; border-radius: 12px !important; margin-bottom: 13px !important; }
+
+  /* fond : voile renforce + pas d'attachement fixe (bug iOS) */
+  body.wb {
+    background-image:
+      linear-gradient(rgba(9, 8, 7, .62), rgba(9, 8, 7, .80)),
+      radial-gradient(1000px 600px at 50% -10%, rgba(177, 0, 46, .10), transparent 60%),
+      url("/static/bg-wow.jpg") !important;
+    background-repeat: no-repeat, no-repeat, no-repeat !important;
+    background-attachment: scroll, scroll, scroll !important;
+    background-size: auto, auto, cover !important;
+    background-position: center top, center top, center top !important;
+  }
+  body { background-attachment: scroll, scroll, scroll !important; }
+
+  /* entete */
+  .brandname { font-size: 19px !important; }
+  .tagline, .sub { font-size: 12.5px !important; }
+  .userbox { gap: 10px !important; flex-wrap: wrap; }
+  h2 { font-size: 16px !important; }
+  .item .meta, .meta { font-size: 12.5px !important; }
+
+  /* nav : une seule ligne qui defile au doigt */
+  #topwrap { padding: 6px 0 2px !important; }
+  nav.tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 12px 4px !important;
+    margin: 0 0 10px !important;
+  }
+  nav.tabs::-webkit-scrollbar { display: none; }
+  nav.tabs > * { flex: 0 0 auto !important; }
+  .tab, #navmain .tab.menu > .menubtn { padding: 8px 12px !important; font-size: 13px !important; min-height: 38px; white-space: nowrap !important; }
+  #navmain .tab.menu .dropdown { min-width: 0 !important; max-width: calc(100vw - 26px) !important; }
+  #navmain .tab.menu:nth-last-child(-n+2) .dropdown { left: auto !important; right: 0 !important; }
+  #navmain .ditem { white-space: normal !important; }
+
+  /* tableaux : defilement horizontal dans la carte, plus compacts */
+  .card table { display: block !important; overflow-x: auto !important; white-space: nowrap; max-width: 100%; }
+  .card table th, .card table td { padding: 7px 9px !important; font-size: 12.5px !important; }
+
+  /* formulaires : pleine largeur */
+  .row > input[type="text"], .row > input[type="email"], .row > input[type="password"], .row > input[type="number"],
+  .row > select, .row > textarea { flex: 1 1 100% !important; min-width: 0 !important; width: 100%; }
+
+  /* listes : cibles tactiles confortables */
+  .item { padding: 11px 12px !important; gap: 9px !important; }
+  .item .main { min-width: 0 !important; }
+  button.small { padding: 8px 13px !important; font-size: 12.5px !important; }
+  .badge { font-size: 11.5px; }
+  .rolesel { min-width: 0 !important; flex: 1 1 40% !important; }
+  footer { font-size: 12px !important; }
+}
+
+/* 📱 Finitions mobile (v047) */
+@media (max-width: 760px) {
+  /* pills plus compactes : plus d'items visibles sans scroll */
+  .tab, #navmain .tab.menu > .menubtn { padding: 7px 10px !important; font-size: 12.5px !important; gap: 5px !important; }
+  nav.tabs { gap: 6px !important; }
+
+  /* champs pleine largeur dans les cartes (hors range/checkbox) */
+  .card input[type="text"], .card input[type="email"], .card input[type="password"], .card input[type="number"],
+  .card select, .card textarea { width: 100% !important; max-width: 100% !important; }
+  .card .row { gap: 8px !important; }
+
+  /* listes .item : actions toujours sous le contenu (alignement constant) */
+  .item .spacer { display: none !important; }
+  .item { align-items: flex-start !important; }
+
+  /* liens d'entete : zone tactile confortable */
+  .userbox a, .userbox .hlink { padding: 6px 4px !important; font-size: 13px !important; }
+
+  /* boutons d'action pleine ligne si besoin */
+  .item button.small { flex: 0 0 auto; }
+}
+
+/* 📱 Indice de defilement de la nav (mobile) */
+@media (max-width: 760px) {
+  #topwrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 26px;
+    background: linear-gradient(to right, rgba(11, 15, 23, 0), var(--bg, #0b0f17) 85%);
+    pointer-events: none;
+    z-index: 5;
+  }
+}

@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.048 - 2026-09-17
+- Mobile: right-edge fade on the scrollable nav (scroll affordance).
+
+## 2026.09.047 - 2026-09-17
+- Mobile polish: more compact nav pills, full-width form controls in cards, consistent list action alignment.
+
+## 2026.09.046 - 2026-09-17
+- Mobile: global responsive layer (nav as one scrollable row, full-width form fields, scrollable compact tables, touch-friendly buttons, darker background veil, no fixed backgrounds on iOS).
+- PWA hygiene: service worker cache bumped + background asset pre-cached, viewport-fit=cover on all pages.
+
 ## 2026.09.045 - 2026-09-17
 - Invitations: a used code is now deleted (no more "Used" rows cluttering the list); consumed codes are purged.
 

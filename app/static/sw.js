@@ -1,8 +1,8 @@
 /* LOTP — service worker (PWA) : cache des ressources statiques + page hors-ligne. */
-const CACHE = "lotp-v2026.09.033";
+const CACHE = "lotp-v2026.09.046";
 const CORE = ["/static/crest.png", "/static/icon-192.png", "/static/icon-512.png",
   "/static/nav.js", "/static/i18n.js", "/static/theme.css", "/static/bg-texture.png",
-  "/static/fonts/cinzel.woff2", "/offline.html"];
+  "/static/fonts/cinzel.woff2", "/static/bg-wow.jpg", "/offline.html"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
