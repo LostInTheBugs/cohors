@@ -2743,8 +2743,9 @@ def music_play(payload: MusicPlay, request: Request):
         raise HTTPException(400, "Identifiant invalide.")
     r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/play/byId/{payload.uuid}")
     st = _music_state_load()
-    if st.get("paused"):
+    if st.get("paused") or st.get("stopped"):
         st.pop("paused", None)
+        st.pop("stopped", None)
         _music_state_save(st)
     return {"ok": r.status_code == 200}
 
@@ -2764,9 +2765,9 @@ def music_stop(request: Request):
     _require_officer(request)
     r = _sb_call("POST", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/stop")
     st = _music_state_load()
-    if st.get("paused"):
-        st.pop("paused", None)
-        _music_state_save(st)
+    st["stopped"] = True  # Stop volontaire ≠ fin de piste : le moteur d'enchaînement doit l'ignorer
+    st.pop("paused", None)
+    _music_state_save(st)
     return {"ok": r.status_code == 200}
 
 
@@ -2964,6 +2965,7 @@ def music_modes_set(payload: MusicModes, request: Request):
     if payload.loop is not None:
         st["loop"] = bool(payload.loop)
     st.pop("paused", None)
+    st.pop("stopped", None)
     _music_state_save(st)
     started = ""
     if payload.shuffle:
@@ -2980,7 +2982,8 @@ def music_modes_set(payload: MusicModes, request: Request):
     return {"ok": True, "shuffle": bool(st.get("shuffle")), "loop": bool(st.get("loop")), "started": started}
 
 
-_MUSIC_WATCH = {"prev_playing": False, "prev_uuid": "", "prev_pos": 0, "max_pos": 0}
+_MUSIC_WATCH = {"prev_playing": False, "prev_uuid": "", "prev_pos": 0, "max_pos": 0,
+                "ticks": 0, "last_tick": 0.0, "last_ended": "", "last_error": ""}
 
 
 def _music_watch_tick():
@@ -2994,7 +2997,7 @@ def _music_watch_tick():
     if playing and uuid:
         P["max_pos"] = max(P["max_pos"], pos) if P["prev_uuid"] == uuid else pos
     ended = False
-    if P["prev_playing"] and not playing and uuid and uuid == P["prev_uuid"] and not st.get("paused"):
+    if P["prev_playing"] and not playing and uuid and uuid == P["prev_uuid"] and not st.get("paused") and not st.get("stopped"):
         if pos > 0 and pos >= P["prev_pos"] and pos > 2500:
             dur = (st.get("durations") or {}).get(uuid)
             if dur:
@@ -3006,6 +3009,9 @@ def _music_watch_tick():
             st["durations"] = {}
         st["durations"][uuid] = max(pos, P["max_pos"])
         _music_state_save(st)
+        mode = "shuffle" if st.get("shuffle") else ("loop" if st.get("loop") else "none")
+        P["last_ended"] = f"{uuid[:8]}@{pos}ms ({mode})"
+        print(f"[music] fin de piste detectee : {P['last_ended']}", flush=True)
         if st.get("shuffle"):
             nxt = _music_pick_random(uuid)
             if nxt:
@@ -3022,12 +3028,27 @@ def _music_watcher_loop():
     while True:
         try:
             _music_watch_tick()
-        except Exception:  # noqa: BLE001
-            pass
+            _MUSIC_WATCH["ticks"] += 1
+            _MUSIC_WATCH["last_tick"] = time.time()
+            _MUSIC_WATCH["last_error"] = ""
+        except Exception as exc:  # noqa: BLE001
+            _MUSIC_WATCH["last_error"] = f"{exc.__class__.__name__}: {exc}"[:200]
         time.sleep(3)
 
 
 threading.Thread(target=_music_watcher_loop, daemon=True).start()
+
+
+@app.get("/api/music/watch")
+def music_watch_state(request: Request):
+    """Diagnostic du moteur d'enchaînement (ticks, dernier événement)."""
+    _require_officer(request)
+    st = _music_state_load()
+    keys = ("ticks", "last_tick", "last_ended", "last_error", "prev_playing", "prev_uuid", "prev_pos", "max_pos")
+    return {"ok": True, "watch": {k: _MUSIC_WATCH.get(k) for k in keys},
+            "state": {"stopped": bool(st.get("stopped")), "paused": bool(st.get("paused")),
+                      "shuffle": bool(st.get("shuffle")), "loop": bool(st.get("loop")),
+                      "durations": len(st.get("durations") or {})}}
 
 
 # --- 🎧 Compteur de connectés TeamSpeak (hors bot) ---

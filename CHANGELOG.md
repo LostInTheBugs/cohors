@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.041 - 2026-09-17
+- Music: the Stop button no longer doubles as "end of track" for the auto-advance engine (SinusBot freezes the position on stop, which made the v037 engine restart the track - especially with loop mode on).
+- Music: watcher diagnostics - /api/music/watch (ticks, last event, last error) + log line on each detected track end.
+
 ## 2026.09.040 - 2026-09-17
 - Sim engine: safety net for SimC segfaults - items known to crash the engine (Réceptacle rituel de l'Entortillâme, id 270162) are auto-stripped and the sim is retried with a visible warning.
 - Clearer failure hint when the engine segfaults.
