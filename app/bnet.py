@@ -192,6 +192,40 @@ def equipment(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
     return data, _store(key, data)
 
 
+def extras(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
+    """Fiche enrichie : hauts faits, collections (montures / mascottes) et rating M+."""
+    realm, name = realm.lower(), name.lower()
+    key = f"extras/{realm}/{name}"
+    hit = _cached(key, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    base = f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}"
+    ns = f"profile-{REGION}"
+    data: dict = {"achv_points": None, "mounts": None, "pets": None, "mplus_rating": None}
+    try:
+        ach = _get(f"{base}/achievements", {"namespace": ns, "locale": LOCALE})
+        data["achv_points"] = ach.get("total_points")
+    except BnetError:
+        pass
+    try:
+        mo = _get(f"{base}/collections/mounts", {"namespace": ns})
+        data["mounts"] = len(mo.get("mounts") or [])
+    except BnetError:
+        pass
+    try:
+        pe = _get(f"{base}/collections/pets", {"namespace": ns})
+        data["pets"] = len(pe.get("pets") or [])
+    except BnetError:
+        pass
+    try:
+        mk = _get(f"{base}/mythic-keystone-profile", {"namespace": ns})
+        cur = mk.get("current_mythic_rating") or {}
+        data["mplus_rating"] = cur.get("rating") if isinstance(cur, dict) else None
+    except BnetError:
+        pass
+    return data, _store(key, data)
+
+
 # ---------------------------------------------------------------------------
 # Objets (comparateur de pièces — Top Stuff)
 # ---------------------------------------------------------------------------

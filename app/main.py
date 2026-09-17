@@ -921,6 +921,12 @@ def api_char_summary(realm: str, name: str, request: Request, refresh: int = 0):
     return _bnet_call(bnet.character, realm, name, refresh)
 
 
+@app.get("/api/char/{realm}/{name}/extras")
+def api_char_extras(realm: str, name: str, request: Request, refresh: int = 0):
+    _require_user(request)
+    return _bnet_call(bnet.extras, realm, name, refresh)
+
+
 @app.get("/api/char/{realm}/{name}/equipment")
 def api_char_equipment(realm: str, name: str, request: Request, refresh: int = 0):
     _require_user(request)

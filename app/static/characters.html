@@ -89,6 +89,8 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none !important; }
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 24px; padding-top: 14px; }
+  .extras { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 4px; }
+  .xchip { border:1px solid var(--line); border-radius:999px; padding:3px 12px; font-size:12.5px; background:var(--card2,#182130); }
 </style>
 </head>
 <body>
@@ -241,7 +243,7 @@ async function loadSummary(tr) {
   }
 }
 
-function renderDetail(s, g) {
+function renderDetail(s, g, x) {
   const cclass = CLASS_COLORS[s.class] || "var(--fg)";
   const head = `<div class="det-top">
     <span class="spec" style="color:${cclass}">${esc(s.spec || "?")} — ${esc(s.class || "")}</span>
@@ -260,7 +262,12 @@ function renderDetail(s, g) {
       : `<span style="color:${col}">${esc(it.name)}</span>`;
     return `<div class="gi"><span class="gs">${esc(it.slot)}</span>${nm}<span class="gl">${fmt(it.ilvl)}</span></div>`;
   }).join("");
-  return head + `<div class="gear">${items}</div>`;
+  const ex = x ? `<div class="extras">
+    ${x.mounts != null ? `<span class="xchip">🐎 ${fmt(x.mounts)} montures</span>` : ""}
+    ${x.pets != null ? `<span class="xchip">🐾 ${fmt(x.pets)} mascottes</span>` : ""}
+    ${x.mplus_rating ? `<span class="xchip">⚔️ M+ ${Math.round(x.mplus_rating)}</span>` : ""}
+  </div>` : "";
+  return head + ex + `<div class="gear">${items}</div>`;
 }
 
 async function toggleDetail(tr) {
@@ -273,8 +280,11 @@ async function toggleDetail(tr) {
   tr.after(det);
   try {
     const s = SUMS.get(tr.dataset.key) || await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/summary`);
-    const g = await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/equipment`);
-    det.querySelector("td").innerHTML = renderDetail(s, g);
+    const [g, x] = await Promise.all([
+      jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/equipment`),
+      jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/extras`).catch(() => null),
+    ]);
+    det.querySelector("td").innerHTML = renderDetail(s, g, x);
     const btn = document.createElement("button");
     btn.className = "ghost";
     bindLinkBtn(btn, tr.dataset.name);

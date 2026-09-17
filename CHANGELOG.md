@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.023] — 2026-09-17
+
+### Added
+
+- Enriched character profile: the roster « Détails » panel now shows mounts and
+  pets collected and the current Mythic+ rating (Battle.net profile API,
+  30-minute cache), alongside the existing equipment list.
+- New API: `GET /api/char/{realm}/{name}/extras`.
+
 ## [2026.09.022] — 2026-09-17
 
 ### Added
