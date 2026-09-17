@@ -730,7 +730,7 @@ def register(payload: RegisterRequest, request: Request, response: Response):
                 (email, name, _hash_password(payload.password), now, lang_val),
             )
             user_id = int(cur.lastrowid or 0)
-        conn.execute("UPDATE invites SET used=?, used_by=? WHERE token=?", (now, user_id, payload.token))
+        conn.execute("DELETE FROM invites WHERE token=?", (payload.token,))  # code consommé = supprimé (fin de vie)
         token = _new_session(conn, user_id)
     _set_session_cookie(response, token)
     return {"ok": True, "name": name}

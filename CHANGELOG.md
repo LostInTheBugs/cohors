@@ -2,6 +2,9 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.045 - 2026-09-17
+- Invitations: a used code is now deleted (no more "Used" rows cluttering the list); consumed codes are purged.
+
 ## 2026.09.044 - 2026-09-17
 - Theme: new WoW-style background (dark fortress stone, AI-generated locally) applied to logged-in pages only; login/register stay plain.
 
