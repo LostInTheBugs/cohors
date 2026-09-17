@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.013] — 2026-09-17
+
+### Changed
+
+- Discord bot admin tab: the invite link is generated and shown
+  automatically as soon as the Application ID is set (copy / open buttons),
+  with a note that the « Manage Server » permission is required to add the bot.
+
 ## [2026.09.012] — 2026-09-17
 
 ### Added

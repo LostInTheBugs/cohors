@@ -124,7 +124,7 @@
           <li>Ouvre le <a class="hlink" href="https://discord.com/developers/applications" target="_blank" rel="noopener">Portail développeurs Discord</a> → <b>New Application</b> (nom : « LOTP Simulateur »).</li>
           <li>Copie l'<b>Application ID</b> (General Information) → colle-le ci-dessous.</li>
           <li>Onglet <b>Bot</b> → <b>Reset Token</b> → copie le <b>token</b> → colle-le ci-dessous (secret).</li>
-          <li>Clique <b>📎 Lien d'invitation</b>, ouvre-le et ajoute le bot à ton serveur.</li>
+          <li>Clique <b>📎 Lien d'invitation</b>, ouvre-le et ajoute le bot à ton serveur — il faut la permission « Gérer le serveur » sur le serveur visé (sinon, transmets le lien à un administrateur du serveur).</li>
           <li><b>🔄 Charger les salons</b>, choisis le salon, <b>💾 Enregistrer</b> puis <b>📨 Message de test</b>.</li>
         </ol>
         <p style="color:var(--mut); font-size:12.5px; margin:6px 0 2px;">Au premier passage, le bot pose ses références (aucune annonce rétroactive) : les annonces démarrent à partir de l'activation.</p>
@@ -315,6 +315,14 @@ async function loadBot() {
   if (d.last_error) bits.push(`<span style="color:var(--err)">⚠ ${esc(d.last_error)}</span>`);
   if (d.status_error) bits.push(`<span style="color:var(--err)">${esc(d.status_error)}</span>`);
   $("#bot-info").innerHTML = bits.join("<br>");
+  const bx = $("#bot-invite-box");
+  if (d.invite_url) {
+    bx.classList.remove("hidden");
+    bx.innerHTML = `📎 Lien d'invitation — ouvre-le, choisis ton serveur et autorise (permission « Gérer le serveur » requise) :<br><code>${esc(d.invite_url)}</code>
+      <button class="small" id="bot-invite-copy">Copier</button>
+      <a class="hlink" style="margin-left:10px" href="${esc(d.invite_url)}" target="_blank" rel="noopener">Ouvrir →</a>`;
+    $("#bot-invite-copy").addEventListener("click", () => copy(d.invite_url));
+  }
 }
 
 $("#bot-invite").addEventListener("click", () => {
