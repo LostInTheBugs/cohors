@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.007] — 2026-09-17
+
+### Changed
+
+- New navigation: pill tabs (Simulateur / Personnages / Rapports) with a highlighted
+  active page, shared across the app.
+- The admin area is now clearly separated from the app: gold banner, its own header,
+  sub-tabs (Invitations / Comptes) and an explicit « Retour à l'application » link.
+  App pages only keep a discreet gold admin entry (visible to admins).
+
 ## [2026.09.006] — 2026-09-17
 
 ### Added

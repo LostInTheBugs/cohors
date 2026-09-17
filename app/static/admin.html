@@ -11,10 +11,21 @@
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   .wrap { max-width:960px; margin:0 auto; padding:28px 18px 40px; }
-  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
-  h1 { font-size:24px; margin:0; }
-  h1 span { color:var(--acc2); }
-  .crest { width: 40px; height: 40px; border-radius: 9px; align-self: center; flex-shrink: 0; }
+  header.topbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brandname { font-size:22px; font-weight:700; letter-spacing:.3px; line-height:1.2; }
+  .brandname span { color:var(--acc2); }
+  .crest { width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0; }
+  .userbox { margin-left:auto; display:flex; align-items:center; gap:14px; }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 18px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; cursor:pointer;
+         transition:border-color .15s, color .15s, background .15s; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+  .adminband { height:4px; background:linear-gradient(90deg, var(--acc2), var(--acc) 60%, #7d0020); }
   h2 { font-size:17px; margin:0 0 12px; }
   .sub { color:var(--mut); font-size:14px; margin:0 0 20px; }
   .spacer { flex:1; }
@@ -54,35 +65,47 @@
 </style>
 </head>
 <body>
+<div class="adminband"></div>
 <div class="wrap">
-  <header>
-    <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
-    <h1>LOTP <span>Administration</span></h1>
-    <span class="spacer"></span>
-    <a class="hlink" href="/characters">Personnages</a>
-    <a class="hlink" href="/raids">Rapports</a>
-    <a class="hlink" href="/">← Retour au simulateur</a>
-  </header>
-  <p class="sub">Invitations et gestion des comptes.</p>
-
-  <div class="card">
-    <h2>Créer une invitation</h2>
-    <div class="row">
-      <input type="email" id="inv-email" placeholder="e-mail du membre (vide = lien libre)" style="min-width:300px">
-      <input type="text" id="inv-note" placeholder="note (optionnelle)" maxlength="120" style="min-width:180px">
-      <button id="inv-create">Créer le lien</button>
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Administration</span></div>
+        <div class="tagline">Gestion des invitations et des comptes — zone réservée</div>
+      </div>
     </div>
-    <div id="inv-result" class="linkbox hidden"></div>
+    <div class="userbox">
+      <a class="hlink" href="/">← Retour à l'application</a>
+    </div>
+  </header>
+  <nav class="tabs">
+    <button class="tab active" id="tab-invitations" type="button">✉️ Invitations</button>
+    <button class="tab" id="tab-comptes" type="button">👤 Comptes</button>
+  </nav>
+
+  <div id="sec-invitations">
+    <div class="card">
+      <h2>Créer une invitation</h2>
+      <div class="row">
+        <input type="email" id="inv-email" placeholder="e-mail du membre (vide = lien libre)" style="min-width:300px">
+        <input type="text" id="inv-note" placeholder="note (optionnelle)" maxlength="120" style="min-width:180px">
+        <button id="inv-create">Créer le lien</button>
+      </div>
+      <div id="inv-result" class="linkbox hidden"></div>
+    </div>
+
+    <div class="card">
+      <h2>Invitations</h2>
+      <div id="invites"><div class="empty">Chargement…</div></div>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Invitations</h2>
-    <div id="invites"><div class="empty">Chargement…</div></div>
-  </div>
-
-  <div class="card">
-    <h2>Comptes</h2>
-    <div id="users"><div class="empty">Chargement…</div></div>
+  <div id="sec-comptes" class="hidden">
+    <div class="card">
+      <h2>Comptes</h2>
+      <div id="users"><div class="empty">Chargement…</div></div>
+    </div>
   </div>
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
@@ -170,6 +193,12 @@ async function loadUsers() {
     await api("DELETE", "/api/admin/users/" + b.dataset.del); toast("Compte supprimé"); loadUsers();
   }));
 }
+
+document.querySelectorAll("nav.tabs .tab").forEach((tb) => tb.addEventListener("click", () => {
+  document.querySelectorAll("nav.tabs .tab").forEach((o) => o.classList.toggle("active", o === tb));
+  $("#sec-invitations").classList.toggle("hidden", tb.id !== "tab-invitations");
+  $("#sec-comptes").classList.toggle("hidden", tb.id !== "tab-comptes");
+}));
 
 $("#inv-create").addEventListener("click", async () => {
   $("#inv-create").disabled = true;
