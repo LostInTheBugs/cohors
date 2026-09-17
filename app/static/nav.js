@@ -11,6 +11,7 @@
     { label: "👥 Guilde", items: [
       { href: "/characters", label: "👥 Personnages" },
       { href: "/raids", label: "📊 Rapports" },
+      { href: "/rankings", label: "🏆 Classements" },
       { href: "/calendar", label: "🗓️ Calendrier" },
       { href: "/guild", label: "🛡️ Infos & liens" }
     ] },
@@ -58,9 +59,24 @@
     "#navmain .ditem { display:block; padding:9px 12px; border-radius:8px; color:var(--fg,#e8edf7);",
     "  text-decoration:none; font-size:14px; font-weight:500; white-space:nowrap; }",
     "#navmain .ditem:hover { background:rgba(255,255,255,.07); }",
-    "#navmain .ditem.active { color:var(--acc2,#dfa55a); font-weight:700; }"
+    "#navmain .ditem.active { color:var(--acc2,#dfa55a); font-weight:700; }",
+    "#topwrap { position:sticky; top:0; z-index:90; background:var(--bg,#0b0f17); padding-top:8px; margin-bottom:4px; }",
+    "#topwrap.stuck { box-shadow:0 12px 26px rgba(0,0,0,.45); }"
   ].join("\n");
   document.head.appendChild(css);
+
+  // En-tête + menu collants (« fixes ») et identiques sur toutes les pages.
+  var top = document.querySelector(".topbar");
+  if (top && top.parentElement && !document.getElementById("topwrap")) {
+    var wrap = document.createElement("div");
+    wrap.id = "topwrap";
+    top.parentElement.insertBefore(wrap, top);
+    wrap.appendChild(top);
+    wrap.appendChild(nav);
+    var onScroll = function () { wrap.classList.toggle("stuck", window.scrollY > 8); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  }
 
   nav.querySelectorAll(".tab.menu > .menubtn").forEach(function (btn) {
     btn.addEventListener("click", function (ev) {

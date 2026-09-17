@@ -456,7 +456,23 @@
  "Si le bot est activé : chaque nouveau rapport Warcraft Logs, chaque arrivée/départ et chaque raid planifié sont annoncés dans le salon Discord.": "If the bot is enabled: every new Warcraft Logs report, every join/leave and every scheduled raid is announced in the Discord channel.",
  "Mon DPS simulé est plus haut que mes logs : c'est normal — la simulation est un combat parfait (Patchwerk), sans mouvement ni mécaniques.": "My simulated DPS is higher than my logs: that's normal — the simulation is a perfect fight (Patchwerk), no movement or mechanics.",
  "Mon résultat semble faux : vérifie que ton export /simc est complet et récent, puis réessaie.": "My result looks wrong: check that your /simc export is complete and recent, then try again.",
- "Les simulations identiques sont mises en cache : les relancer est instantané.": "Identical simulations are cached: relaunching them is instant."
+ "Les simulations identiques sont mises en cache : les relancer est instantané.": "Identical simulations are cached: relaunching them is instant.",
+ "🏆 Classements": "🏆 Rankings",
+ "LOTP — Classements": "LOTP — Rankings",
+ "Classements": "Rankings",
+ "Le tableau des champions de la guilde — parses récents, boss et clés M+.": "The guild's champions board — recent parses, bosses and M+ keys.",
+ "🧙 Tous": "🧙 All",
+ "💚 Soigneurs": "💚 Healers",
+ "🏆 Meilleurs parses": "🏆 Top parses",
+ "👹 Par boss": "👹 By boss",
+ "⚔️ Clés M+ (mains)": "⚔️ M+ keys (mains)",
+ "🔄 Actualiser": "🔄 Refresh",
+ "Aucun parse sur les derniers rapports.": "No parses in the recent reports.",
+ "Aucun main lié avec un rating M+ pour le moment.": "No linked main with an M+ rating yet.",
+ "Joueur": "Player",
+ "Montant": "Amount",
+ "Les meilleurs parses de la guilde sur les derniers rapports, filtrables par rôle.": "The guild's best parses from recent reports, filterable by role.",
+ "Par boss : les trois meilleurs joueurs. Et le rating M+ (clés mythiques) des mains liés.": "Per boss: the top three players. Plus the M+ rating (mythic keys) of linked mains."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -522,6 +538,8 @@
     [/Chaman/g, "Shaman"],
     [/Démoniste/g, "Warlock"],
     [/Guerrier/g, "Warrior"],
+    [/Actualisé /g, "Updated "],
+    [/rapports analysés/g, "reports analysed"],
     [/ montures/g, " mounts"],
     [/ mascottes/g, " pets"],
     [/Sim de groupe \(/g, "Group sim ("],

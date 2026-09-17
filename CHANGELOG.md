@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.025] — 2026-09-17
+
+### Added
+
+- Rankings page (`/rankings`, inside the Guild menu): best recent parses
+  (role filter: all / DPS / tanks / healers), top-3 by boss and current Mythic+
+  key ratings of linked mains. New API `GET /api/leaderboard` (30-min cache).
+
+### Changed
+
+- Sticky header + menu (`#topwrap`) that stays visible while scrolling; every
+  page now uses the same column width (1060 px) so the menu no longer shifts
+  between pages.
+
 ## [2026.09.024] — 2026-09-17
 
 ### Changed

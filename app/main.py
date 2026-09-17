@@ -577,6 +577,13 @@ def help_page(request: Request):
     return FileResponse(STATIC_DIR / "help.html")
 
 
+@app.api_route("/rankings", methods=["GET", "HEAD"])
+def rankings_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "rankings.html")
+
+
 @app.post("/api/login")
 def login(payload: LoginRequest, request: Request, response: Response):
     ip = _client_ip(request)
@@ -1265,6 +1272,93 @@ def update_guild_info(payload: GuildInfoRequest, request: Request):
             )
             saved += 1
     return {"ok": True, "saved": saved}
+
+
+# ---------------------------------------------------------------------------
+# Classements de guilde (parses récents + clés M+ des mains liés)
+# ---------------------------------------------------------------------------
+_LB_CACHE: dict = {"ts": 0.0, "data": None}
+LB_TTL = 1800.0
+
+
+def _build_leaderboard() -> dict:
+    """Agrège les parses des derniers rapports WCL + le rating M+ des mains liés."""
+    data: dict = {"parses": [], "mplus": [], "reports": 0, "built": time.time()}
+    try:
+        rl, _ts = wcl.reports(limit=8)
+        rows: list[dict] = []
+        count = 0
+        for rep in (rl.get("data") or []):
+            code = rep.get("code")
+            try:
+                full, _t = wcl.report_full(code)
+            except wcl.WclError:
+                continue
+            ranks = full.get("rankings") or {}
+            if not ranks:
+                continue
+            count += 1
+            fights = {str(f.get("id")): f for f in (full["report"].get("fights") or [])}
+            for fid, entry in ranks.items():
+                if not entry.get("kill"):
+                    continue
+                f = fights.get(str(fid)) or {}
+                boss = (entry.get("encounter") or {}).get("name") or f.get("name") or "?"
+                diff = entry.get("difficulty") or f.get("difficulty") or 0
+                for role in ("dps", "tanks", "healers"):
+                    for c in (((entry.get("roles") or {}).get(role) or {}).get("characters") or []):
+                        if c.get("rankPercent") is None or not c.get("name"):
+                            continue
+                        rows.append({
+                            "name": c.get("name"), "class": c.get("class"), "spec": c.get("spec"),
+                            "amount": c.get("amount"), "percent": c.get("rankPercent"),
+                            "boss": boss, "role": role, "difficulty": diff,
+                            "report": code, "date": full["report"].get("startTime"),
+                        })
+        rows.sort(key=lambda r: (r.get("percent") or 0), reverse=True)
+        data["parses"] = rows[:500]
+        data["reports"] = count
+    except wcl.WclError as exc:
+        data["error"] = str(exc)
+    try:
+        with _db_lock, _db() as conn:
+            mains = conn.execute(
+                "SELECT realm, name, display FROM char_links WHERE is_main=1"
+            ).fetchall()
+        mplus = []
+        seen_names: set = set()
+        for m in mains[:40]:
+            key = (m["name"] or "").lower()
+            if not key or key in seen_names:
+                continue
+            seen_names.add(key)
+            try:
+                mk, _t = bnet.mystic_rating(m["realm"], m["name"])
+            except bnet.BnetError:
+                continue
+            if mk.get("rating"):
+                mplus.append({"name": m["display"] or m["name"], "rating": mk["rating"]})
+        mplus.sort(key=lambda r: r["rating"], reverse=True)
+        data["mplus"] = mplus
+    except Exception:  # noqa: BLE001
+        pass
+    return data
+
+
+@app.get("/api/leaderboard")
+def api_leaderboard(request: Request, refresh: int = 0):
+    _require_user(request)
+    now = time.time()
+    with _db_lock:
+        cached = _LB_CACHE["data"]
+        age = now - _LB_CACHE["ts"]
+    if cached is not None and ((not refresh and age < LB_TTL) or (refresh and age < 60)):
+        return cached
+    data = _build_leaderboard()
+    with _db_lock:
+        _LB_CACHE["ts"] = time.time()
+        _LB_CACHE["data"] = data
+    return data
 
 
 # ---------------------------------------------------------------------------

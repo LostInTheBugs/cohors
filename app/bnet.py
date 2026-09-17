@@ -226,6 +226,25 @@ def extras(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
     return data, _store(key, data)
 
 
+def mystic_rating(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
+    """Rating Mythique+ courant d'un personnage (léger : 1 seul appel API)."""
+    realm, name = realm.lower(), name.lower()
+    key = f"mk/{realm}/{name}"
+    hit = _cached(key, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    base = f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}"
+    rating = None
+    try:
+        mk = _get(f"{base}/mythic-keystone-profile", {"namespace": f"profile-{REGION}"})
+        cur = mk.get("current_mythic_rating") or {}
+        rating = cur.get("rating") if isinstance(cur, dict) else None
+    except BnetError:
+        pass
+    data = {"name": name, "rating": rating}
+    return data, _store(key, data)
+
+
 # ---------------------------------------------------------------------------
 # Objets (comparateur de pièces — Top Stuff)
 # ---------------------------------------------------------------------------

@@ -52,6 +52,8 @@ by the Battle.net API and raid reports (parses) from Warcraft Logs.
       multi-actor run (raid buffs) and rank the guild by DPS.
 - [x] Guild page — Discord invite, TeamSpeak details (one-click join),
       editable by administrators; plus a full Help page.
+- [x] Rankings — best parses (role filter), top-3 by boss and
+      Mythic+ ratings of linked mains.
 
 ## Requirements
 
@@ -137,6 +139,7 @@ All endpoints require a signed-in session, except `/api/health`,
 | `/api/me/settings` | POST | Save your account settings (language / display name) |
 | `/api/me/password` | POST | Change your password (other sessions signed out) |
 | `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
+| `/api/leaderboard` | GET | Rankings (parses + M+ mains) |
 | `/api/guild/info` | GET / POST | Guild info (write: admin only) |
 | `/api/group/sim` | POST | Group sim (profiles combined, multi-actor) |
 | `/api/raids` | GET / POST | Raid calendar (create: officer+) |
@@ -200,7 +203,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.024` (see `CHANGELOG.md`).
+Current version: `2026.09.025` (see `CHANGELOG.md`).
 
 ## License
 

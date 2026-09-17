@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Classements</title>
+<link rel="icon" href="/static/crest.png">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  .topbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { margin-left:auto; display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+         color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+         border:1px solid var(--line); background:transparent; }
+  .tab:hover { color:var(--fg); border-color:#3a4763; }
+  .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .chipbtn { border:1px solid var(--line); background:transparent; color:var(--mut); border-radius:999px;
+             padding:7px 14px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .chipbtn:hover { color:var(--fg); border-color:#3a4763; }
+  .chipbtn.act { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+  .spacer { flex:1; }
+  .gbtn { background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:10px;
+          padding:7px 14px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .gbtn:hover { border-color:#3a4763; }
+  .gbtn:disabled { opacity:.55; cursor:default; }
+  .meta { color:var(--mut); font-size:12.5px; }
+  table.rtab { width:100%; border-collapse:collapse; margin-top:6px; }
+  table.rtab th, table.rtab td { padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; font-size:13.5px; }
+  table.rtab th { color:var(--mut); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
+  .pct { font-weight:700; }
+  .diffchip { display:inline-block; margin-left:6px; font-size:10.5px; font-weight:700; color:var(--mut);
+              border:1px solid var(--line); border-radius:6px; padding:0 5px; vertical-align:1px; }
+  .bblock { border-top:1px solid var(--line); padding:10px 2px 6px; }
+  .bblock:first-child { border-top:0; }
+  .bname { font-weight:700; font-size:14.5px; margin-bottom:4px; }
+  .brow { display:flex; gap:10px; align-items:center; padding:3px 0; font-size:13.5px; }
+  .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
+  .err { color:var(--err); font-size:13.5px; padding:6px 2px; }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Classements</span></div>
+        <div class="tagline">Le tableau des champions de la guilde — parses récents, boss et clés M+.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+
+  <div class="card">
+    <div class="row">
+      <button class="chipbtn act" data-f="all">🧙 Tous</button>
+      <button class="chipbtn" data-f="dps">⚔️ DPS</button>
+      <button class="chipbtn" data-f="tanks">🛡️ Tanks</button>
+      <button class="chipbtn" data-f="healers">💚 Soigneurs</button>
+      <span class="spacer"></span>
+      <span class="meta" id="status"></span>
+      <button class="gbtn" id="ref">🔄 Actualiser</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🏆 Meilleurs parses</h2>
+    <div id="top"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>👹 Par boss</h2>
+    <div id="bosses"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>⚔️ Clés M+ (mains)</h2>
+    <div id="mplus"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment · Données Warcraft Logs</footer>
+</div>
+<script src="/static/nav.js"></script>
+<script src="/static/i18n.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const dtFmt = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  return `il y a ${Math.floor(s / 86400)} j`; };
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+
+const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+  Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+  Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
+const CLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur de démons", Druid: "Druide",
+  Evoker: "Évocateur", Hunter: "Chasseur", Mage: "Mage", Monk: "Moine", Paladin: "Paladin",
+  Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
+const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >= 95 ? "#ff8000" : p >= 75 ? "#a335ee" : p >= 50 ? "#0070dd" : p >= 25 ? "#1eff00" : "#6b6b6b";
+const DIFFCHIP = { 3: "N", 4: "H", 5: "M" };
+
+let DATA = null, FILTER = "all";
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+function nameCell(r) {
+  const col = CLASS_COLORS[r.class] || "var(--fg)";
+  return `<b style="color:${col}">${esc(r.name)}</b> <span class="meta">${esc(CLASS_FR[r.class] || r.class || "")} ${esc(r.spec || "")}</span>`;
+}
+
+function render() {
+  if (!DATA) return;
+  const rows = (DATA.parses || []).filter(r => FILTER === "all" || r.role === FILTER);
+
+  const top = rows.slice(0, 12);
+  $("#top").innerHTML = top.length ? `<table class="rtab">
+    <thead><tr><th>#</th><th>Joueur</th><th>Boss</th><th style="text-align:right">Montant</th><th style="text-align:right">%</th><th>Date</th></tr></thead>
+    <tbody>${top.map((r, i) => `<tr>
+      <td><b>${i < 3 && FILTER === "all" ? MEDALS[i] : i + 1}</b></td>
+      <td>${nameCell(r)}</td>
+      <td>${esc(r.boss)}${DIFFCHIP[r.difficulty] ? `<span class="diffchip">${DIFFCHIP[r.difficulty]}</span>` : ""}</td>
+      <td style="text-align:right">${fmt(r.amount)} ${r.role === "healers" ? "HPS" : "DPS"}</td>
+      <td style="text-align:right"><span class="pct" style="color:${parseColor(r.percent)}">${r.percent}</span></td>
+      <td class="meta">${r.date ? dtFmt(r.date) : ""}</td>
+    </tr>`).join("")}</tbody></table>` : `<div class="empty">Aucun parse sur les derniers rapports.</div>`;
+
+  const groups = {};
+  rows.forEach(r => { (groups[r.boss] = groups[r.boss] || []).push(r); });
+  const bosses = Object.entries(groups).map(([boss, rs]) => {
+    rs.sort((a, b) => (b.percent || 0) - (a.percent || 0));
+    const seen = new Set(); const best = [];
+    for (const r of rs) {
+      const k = (r.name || "").toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k); best.push(r);
+      if (best.length >= 3) break;
+    }
+    return { boss, best };
+  });
+  bosses.sort((a, b) => ((b.best[0] || {}).percent || 0) - ((a.best[0] || {}).percent || 0));
+  $("#bosses").innerHTML = bosses.length ? bosses.map(b => `<div class="bblock">
+      <div class="bname">${esc(b.boss)}</div>
+      ${b.best.map((r, i) => `<div class="brow"><span>${MEDALS[i]}</span>${nameCell(r)}
+        <span class="spacer"></span>
+        <span class="meta">${fmt(r.amount)} ${r.role === "healers" ? "HPS" : "DPS"}</span>
+        <span class="pct" style="color:${parseColor(r.percent)}">${r.percent}</span></div>`).join("")}
+    </div>`).join("") : `<div class="empty">Aucun parse sur les derniers rapports.</div>`;
+
+  const mp = DATA.mplus || [];
+  $("#mplus").innerHTML = mp.length ? mp.map((r, i) => `<div class="brow">
+      <span style="min-width:26px">${i < 3 ? MEDALS[i] : `<b>${i + 1}</b>`}</span>
+      <b>${esc(r.name)}</b>
+      <span class="spacer"></span>
+      <span class="pct" style="color:var(--acc2)">${Math.round(r.rating)}</span>
+    </div>`).join("") : `<div class="empty">Aucun main lié avec un rating M+ pour le moment.</div>`;
+
+  $("#status").textContent = `Actualisé ${ago(DATA.built)} · ${DATA.reports || 0} rapports analysés`;
+}
+
+async function load(refresh = 0) {
+  const btn = $("#ref");
+  btn.disabled = true;
+  try {
+    DATA = await jget("/api/leaderboard" + (refresh ? "?refresh=1" : ""));
+    if (DATA.error) { $("#top").innerHTML = `<div class="err">${esc(DATA.error)}</div>`; }
+    render();
+  } catch (e) {
+    $("#top").innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  }
+  btn.disabled = false;
+}
+
+document.querySelectorAll(".chipbtn").forEach(b => b.addEventListener("click", () => {
+  FILTER = b.dataset.f;
+  document.querySelectorAll(".chipbtn").forEach(x => x.classList.toggle("act", x === b));
+  render();
+}));
+$("#ref").addEventListener("click", () => load(1));
+
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  load();
+})();
+</script>
+</body>
+</html>
