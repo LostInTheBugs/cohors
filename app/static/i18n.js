@@ -527,11 +527,15 @@
  "🎧 Ouvrir en fenêtre": "🎧 Open in a window",
  "↗️ Ouvrir dans un onglet": "↗️ Open in a tab",
  "Astuce : « Ouvrir en fenêtre » garde le vocal pendant que tu navigues dans l'app.": "Tip: « Open in a window » keeps voice running while you browse the app.",
- "Connecte-toi avec ton pseudo et le mot de passe du TeamSpeak (sur la page 🛡️ Infos & liens). Le micro peut être refusé par le navigateur — autorise-le pour parler.": "Sign in with your nickname and the TeamSpeak password (on the 🛡️ Info & links page). The browser may ask for your microphone — allow it to talk.",
+ "🔒 Accès réservé aux membres connectés. Choisis ton pseudo et entre dans le vocal — le micro peut être refusé par le navigateur : autorise-le pour parler.": "🔒 Access is for signed-in members only. Pick your nickname and enter voice — the browser may ask for your microphone: allow it to talk.",
  "Ouvrir le vocal dans une fenêtre": "Open voice in a window",
  "Si le client ne s'affiche pas ici, ouvre-le en fenêtre ou dans un onglet.": "If the client does not show here, open it in a window or a tab.",
  "Client web : WebSpeak": "Web client: WebSpeak",
- "🎧 Page « Vocal » : le client web TeamSpeak intégré. « Ouvrir en fenêtre » (ou le bouton 🎧 du menu) garde le vocal pendant que tu navigues dans l'app.": "🎧 « Voice » page: the embedded TeamSpeak web client. « Open in a window » (or the 🎧 menu button) keeps voice running while you browse the app."
+ "🎧 Page « Vocal » : le client web TeamSpeak intégré. « Ouvrir en fenêtre » (ou le bouton 🎧 du menu) garde le vocal pendant que tu navigues dans l'app.": "🎧 « Voice » page: the embedded TeamSpeak web client. « Open in a window » (or the 🎧 menu button) keeps voice running while you browse the app.",
+ "📦 Client portable (Windows)": "📦 Portable client (Windows)",
+ "Meilleure qualité audio, aucun installateur requis.": "Better audio quality, no installer required.",
+ "Le client web ci-dessous fonctionne partout, sans rien installer. Pour encore mieux (micro, qualité), télécharge le client portable préconfiguré — réservé aux membres connectés.": "The web client below works everywhere with nothing to install. For even better (mic, quality), download the preconfigured portable client — signed-in members only.",
+ "📦 Le client portable Windows (préconfiguré avec l'adresse et le mot de passe) se télécharge depuis la page 🎧 Vocal — réservé aux membres connectés.": "📦 The Windows portable client (preconfigured with address and password) downloads from the 🎧 Voice page — signed-in members only."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

@@ -9,6 +9,7 @@ v2026.09.003: accounts + admin.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -22,9 +23,12 @@ import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
+from urllib.parse import quote
 
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, RedirectResponse
+import httpx
+import websockets
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -54,6 +58,7 @@ SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
 INVITE_TTL_DAYS = int(os.environ.get("INVITE_TTL_DAYS", "7"))
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1") not in ("0", "false", "no", "")
+COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "").strip() or None
 BOT_POLL_S = int(os.environ.get("BOT_POLL_S", "300"))  # intervalle du bot Discord (secondes)
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -343,7 +348,7 @@ def _new_session(conn: sqlite3.Connection, user_id: int) -> str:
 
 def _set_session_cookie(response: Response, token: str) -> None:
     response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True,
-                        samesite="lax", secure=COOKIE_SECURE, path="/")
+                        samesite="lax", secure=COOKIE_SECURE, path="/", domain=COOKIE_DOMAIN)
 
 
 def _get_session_user(request: Request) -> sqlite3.Row | None:
@@ -629,7 +634,7 @@ def logout(request: Request, response: Response):
     if token:
         with _db_lock, _db() as conn:
             conn.execute("DELETE FROM sessions WHERE token=?", (token,))
-    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(SESSION_COOKIE, path="/", domain=COOKIE_DOMAIN)
     return {"ok": True}
 
 
@@ -2311,3 +2316,157 @@ def health():
         queued = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status='queued'").fetchone()["c"]
         running = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status='running'").fetchone()["c"]
     return {"ok": True, "version": VERSION, "queued": queued, "running": bool(running), "simc_image": SIMC_IMAGE}
+
+
+# ---------------------------------------------------------------------------
+# Portail vocal (ts.gensbien.fr) — réservé aux membres connectés
+# ---------------------------------------------------------------------------
+# Le vhost Apache de ts.gensbien.fr pose l'en-tête X-LOTP-Voice puis proxyfie
+# vers cette app : les requêtes marquées sont réécrites vers /__voice* où la
+# session est vérifiée avant tout relais vers le client web interne (WebSpeak).
+VOICE_BACKEND = os.environ.get("VOICE_BACKEND", "http://127.0.0.1:3040").rstrip("/")
+VOICE_BACKEND_WS = VOICE_BACKEND.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
+VOICE_PUBLIC_HOST = os.environ.get("VOICE_PUBLIC_HOST", "ts.gensbien.fr")
+VOICE_CLIENT_ZIP = DATA_DIR / "voice" / "LOTP-TeamSpeak.zip"
+_VOICE_APP_BASE = PUBLIC_BASE_URL or "https://lotp.gensbien.fr"
+
+
+class VoiceGateMiddleware:
+    """Réécrit les requêtes du vhost vocal (en-tête X-LOTP-Voice) vers /__voice*."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") in ("http", "websocket"):
+            headers = dict(scope.get("headers") or [])
+            if headers.get(b"x-lotp-voice"):
+                scope = dict(scope)
+                scope["lotp_voice"] = True
+                path = scope.get("path") or "/"
+                scope["lotp_voice_orig_path"] = path
+                scope["path"] = "/__voice" + path
+                scope["raw_path"] = scope["path"].encode()
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(VoiceGateMiddleware)
+
+_VOICE_HOP_REQ = {"host", "cookie", "connection", "keep-alive", "transfer-encoding", "upgrade",
+                  "proxy-connection", "te", "trailer", "expect", "x-lotp-voice", "content-length"}
+_VOICE_HOP_RESP = {"connection", "keep-alive", "transfer-encoding", "upgrade",
+                   "content-encoding", "content-length"}
+
+
+@app.api_route("/__voice{rest:path}",
+               methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
+async def voice_portal(request: Request, rest: str):
+    if not request.scope.get("lotp_voice"):
+        raise HTTPException(404)
+    if _get_session_user(request) is None:
+        nxt = "https://" + VOICE_PUBLIC_HOST + request.scope.get("lotp_voice_orig_path", request.url.path)
+        if request.url.query:
+            nxt += "?" + request.url.query
+        return RedirectResponse(f"{_VOICE_APP_BASE}/login?next={quote(nxt, safe='')}", status_code=302)
+    url = VOICE_BACKEND + rest
+    if request.url.query:
+        url += "?" + request.url.query
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in _VOICE_HOP_REQ}
+    headers["host"] = request.headers.get("host", VOICE_PUBLIC_HOST)
+    headers["accept-encoding"] = "identity"
+    try:
+        body = await request.body()
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            upstream = await client.request(request.method, url, headers=headers, content=body)
+    except httpx.HTTPError as exc:
+        return PlainTextResponse(f"Vocal indisponible ({exc.__class__.__name__})", status_code=502)
+    out = Response(content=upstream.content, status_code=upstream.status_code)
+    for key, value in upstream.headers.multi_items():
+        lk = key.lower()
+        if lk in _VOICE_HOP_RESP:
+            continue
+        if lk == "set-cookie":
+            out.headers.append(key, value)
+        else:
+            out.headers[key] = value
+    return out
+
+
+@app.websocket("/__voice{rest:path}")
+async def voice_portal_ws(websocket: WebSocket, rest: str):
+    if not websocket.scope.get("lotp_voice"):
+        await websocket.close(code=4404)
+        return
+    if _get_session_user(websocket) is None:
+        await websocket.close(code=4401)
+        return
+    subprotocols = websocket.scope.get("subprotocols") or []
+    qs = websocket.scope.get("query_string", b"").decode("utf-8", "replace")
+    url = VOICE_BACKEND_WS + rest + (("?" + qs) if qs else "")
+    up_headers = {}
+    origin = websocket.headers.get("origin")
+    if origin:
+        up_headers["Origin"] = origin
+    user_agent = websocket.headers.get("user-agent")
+    if user_agent:
+        up_headers["User-Agent"] = user_agent
+    host_header = websocket.headers.get("host")
+    if host_header:
+        up_headers["Host"] = host_header
+    forwarded_for = websocket.headers.get("x-forwarded-for")
+    if forwarded_for:
+        up_headers["X-Forwarded-For"] = forwarded_for
+    try:
+        try:
+            upstream_cm = websockets.connect(url, subprotocols=subprotocols or None, max_size=None,
+                                             open_timeout=15, ping_interval=None, close_timeout=5,
+                                             additional_headers=up_headers or None)
+        except TypeError:  # websockets < 14 : autre nom du paramètre
+            upstream_cm = websockets.connect(url, subprotocols=subprotocols or None, max_size=None,
+                                             open_timeout=15, ping_interval=None, close_timeout=5,
+                                             extra_headers=up_headers or None)
+        async with upstream_cm as upstream:
+            chosen = upstream.subprotocol
+            await websocket.accept(subprotocol=chosen if chosen in subprotocols else None)
+
+            async def client_to_upstream():
+                while True:
+                    msg = await websocket.receive()
+                    if msg.get("type") == "websocket.disconnect":
+                        raise WebSocketDisconnect(msg.get("code", 1000))
+                    if msg.get("text") is not None:
+                        await upstream.send(msg["text"])
+                    elif msg.get("bytes") is not None:
+                        await upstream.send(msg["bytes"])
+
+            async def upstream_to_client():
+                async for message in upstream:
+                    if isinstance(message, (bytes, bytearray)):
+                        await websocket.send_bytes(bytes(message))
+                    else:
+                        await websocket.send_text(message)
+
+            tasks = [asyncio.create_task(client_to_upstream()),
+                     asyncio.create_task(upstream_to_client())]
+            try:
+                await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            finally:
+                for task in tasks:
+                    task.cancel()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[voice] session web fermée : {exc!r}")
+    finally:
+        try:
+            await websocket.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+@app.get("/api/voice/client")
+def voice_client_download(request: Request):
+    """Client TeamSpeak portable préconfiguré (réservé aux membres connectés)."""
+    _require_user(request)
+    if not VOICE_CLIENT_ZIP.exists():
+        raise HTTPException(404, "Client portable pas encore disponible.")
+    return FileResponse(VOICE_CLIENT_ZIP, filename="LOTP-TeamSpeak.zip",
+                        media_type="application/zip")

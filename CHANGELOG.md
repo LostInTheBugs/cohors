@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## [2026.09.031] — 2026-09-17
+
+### Changed
+
+- Voice access is now **members-only**: ts.gensbien.fr sits behind the app
+  login (anonymous visitors are redirected to the sign-in page). The web
+  client is proxied by the app itself (HTTP + WebSocket) after session
+  validation — no more open access.
+- Session cookie is shared on `.gensbien.fr` (production) so the voice
+  subdomain is covered by the same login.
+
+### Added
+
+- 🎧 Voice page: « 📦 Portable client (Windows) » download — a preconfigured
+  TeamSpeak client (address + password + bookmark, one-click launcher) served
+  to signed-in members only (`GET /api/voice/client`).
+
+### Fixed
+
+- Voice proxy now forwards the original `Host`/`Origin` headers to WebSpeak
+  (its `/api/join-ticket` same-origin check compares both — 403 ORIGIN_REJECTED
+  otherwise), and the app container reaches the host gateway via
+  `host.docker.internal` (`extra_hosts: host-gateway` + ufw rule for the
+  Docker subnet, since 127.0.0.1 is not the host inside the container).
+
 ## [2026.09.030] — 2026-09-17
 
 ### Added

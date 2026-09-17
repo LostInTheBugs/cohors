@@ -72,7 +72,14 @@ async function login() {
       body: JSON.stringify({ email, password: pwd }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur de connexion."; }
-    else { try { if (d.lang) localStorage.setItem("lotp_lang", d.lang); } catch (e) {} location.href = "/"; return; }
+    else {
+      try { if (d.lang) localStorage.setItem("lotp_lang", d.lang); } catch (e) {}
+      let nxt = null;
+      try { nxt = new URLSearchParams(location.search).get("next"); } catch (e) {}
+      const okHosts = ["https://lotp.gensbien.fr", "https://ts.gensbien.fr"];
+      if (nxt && okHosts.some((h) => nxt === h || nxt.startsWith(h + "/"))) { location.href = nxt; return; }
+      location.href = "/"; return;
+    }
   } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; }
   $("#go").disabled = false;
 }
