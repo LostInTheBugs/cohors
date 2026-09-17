@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LOTP — Simulateur</title>
+<link rel="icon" type="image/png" href="/static/crest.png">
 <style>
   :root {
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
-    --fg: #e7ebf5; --mut: #8c96ad; --acc: #7c6cf6; --acc2: #a78bfa;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
   }
   * { box-sizing: border-box; }
@@ -17,6 +18,7 @@
   header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
   h1 { font-size: 26px; margin: 0; letter-spacing: .3px; }
   h1 span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; align-self: center; flex-shrink: 0; }
   .tagline { color: var(--mut); font-size: 13px; }
   .spacer { flex: 1; }
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
@@ -40,7 +42,7 @@
             border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 170px; }
   .grow { flex: 1; }
   input[type=text] { width: 100%; }
-  button { background: linear-gradient(135deg, var(--acc), #5b4bd6); color: #fff; border: 0; border-radius: 10px;
+  button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
            padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer; }
   button:disabled { opacity: .55; cursor: default; }
   #submit-msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
@@ -54,7 +56,7 @@
   .sim .dps small { color: var(--mut); font-weight: 400; }
   .badge { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); }
   .b-queued { color: var(--warn); border-color: #5a4a12; }
-  .b-running { color: var(--acc2); border-color: #3d3470; }
+  .b-running { color: var(--acc2); border-color: #6b4a17; }
   .b-done { color: var(--ok); border-color: #1d4a3a; }
   .b-failed { color: var(--err); border-color: #5a2626; }
   .b-cache { color: #6cc7f6; border-color: #1d3f52; }
@@ -72,6 +74,7 @@
 <body>
 <div class="wrap">
   <header>
+    <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
     <h1>LOTP <span>Simulateur</span></h1>
     <span class="tagline">SimulationCraft pour la guilde</span>
     <span class="spacer"></span>

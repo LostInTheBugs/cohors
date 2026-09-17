@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LOTP — Inscription</title>
+<link rel="icon" type="image/png" href="/static/crest.png">
 <style>
-  :root { --bg:#0b0e14; --card:#131a26; --line:#232d42; --fg:#e7ebf5; --mut:#8c96ad; --acc:#7c6cf6; --acc2:#a78bfa; --err:#f87171; --ok:#34d399; }
+  :root { --bg:#0b0e14; --card:#131a26; --line:#232d42; --fg:#e7ebf5; --mut:#8c96ad; --acc:#b1002e; --acc2:#dfa55a; --err:#f87171; --ok:#34d399; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   .wrap { max-width:420px; margin:0 auto; padding:64px 18px 40px; }
   h1 { font-size:26px; margin:0 0 4px; }
   h1 span { color:var(--acc2); }
+  .crest-big { width:56px; height:56px; border-radius:12px; display:block; margin-bottom:16px; }
   h2 { font-size:18px; margin:0 0 10px; }
   .sub { color:var(--mut); font-size:14px; margin:0 0 24px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; }
@@ -19,7 +21,7 @@
           padding:10px 12px; font-size:14px; margin-bottom:14px; }
   input:read-only { opacity:.7; }
   input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
-  button { width:100%; background:linear-gradient(135deg,var(--acc),#5b4bd6); color:#fff; border:0; border-radius:10px;
+  button { width:100%; background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
            padding:11px 22px; font-size:15px; font-weight:600; cursor:pointer; }
   button:disabled { opacity:.55; cursor:default; }
   #msg { margin-top:12px; font-size:14px; min-height:20px; }
@@ -31,6 +33,7 @@
 </head>
 <body>
 <div class="wrap">
+  <img src="/static/crest.png" alt="Lords of the Pit" class="crest-big">
   <h1>LOTP <span>Simulateur</span></h1>
   <div id="loading" class="sub">Chargement de l'invitation…</div>
 
