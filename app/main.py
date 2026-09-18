@@ -299,6 +299,15 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_char_snapshots_lookup ON char_snapshots(realm, name, day)")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS meta (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
         # v2026.09.015 — rôles (membre / officier / administrateur).
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "role" not in cols:
@@ -2150,13 +2159,14 @@ def _char_snapshot(realm: str, name: str) -> dict:
     }
 
 
-def _snap_store(realm: str, name: str, data: dict) -> None:
-    """Enregistre (ou remplace) le relevé du jour pour ce personnage."""
+def _snap_store(realm: str, name: str, data: dict, day: str | None = None, ts: float | None = None) -> None:
+    """Enregistre (ou remplace) le relevé d'un jour (défaut : aujourd'hui)."""
     with _db_lock, _db() as conn:
         conn.execute(
             "INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES (?,?,?,?,?) "
             "ON CONFLICT(realm, name, day) DO UPDATE SET ts=excluded.ts, data=excluded.data",
-            (realm.lower(), name.lower(), _snap_day(), time.time(), json.dumps(data, ensure_ascii=False)),
+            (realm.lower(), name.lower(), day or _snap_day(), time.time() if ts is None else ts,
+             json.dumps(data, ensure_ascii=False)),
         )
 
 
@@ -2166,6 +2176,77 @@ def _snap_capture(realm: str, name: str) -> None:
         _snap_store(realm, name, _char_snapshot(realm, name))
     except Exception as exc:  # noqa: BLE001
         print(f"[snap] {name}: {exc}")
+
+
+# Emplacements Blizzard (ordre des tableaux CombatantInfo WCL, index 0-17).
+WCL_SLOTS = ["Tête", "Cou", "Épaules", "Chemise", "Torse", "Taille", "Jambes", "Pieds",
+             "Poignets", "Mains", "1er anneau", "2e anneau", "1er bijou", "2e bijou",
+             "Dos", "Main droite", "Main gauche", "Tabard"]
+
+
+def _snap_backfill(days: int = 30, force: bool = False) -> dict:
+    """Rétro-remplit les relevés depuis les logs de raid (WCL) — uniquement les jours manquants.
+
+    Blizzard ne fournit AUCUN historique : l'équipement passé ne peut venir que des
+    rapports de combat (CombatantInfo), qui donnent l'état exact au moment du raid.
+    """
+    try:
+        rep_list, _ts = wcl.reports(limit=50, force=force)
+    except wcl.WclError as exc:
+        return {"ok": False, "error": str(exc)}
+    cutoff_ms = (time.time() - days * 86400) * 1000
+    reports = sorted(
+        [r for r in (rep_list.get("data") or []) if (r.get("startTime") or 0) >= cutoff_ms],
+        key=lambda r: r.get("startTime") or 0,
+    )
+    with _db_lock, _db() as conn:
+        linked = [dict(r) for r in conn.execute("SELECT DISTINCT realm, name FROM char_links").fetchall()]
+        have = {(r["realm"], r["name"], r["day"]) for r in conn.execute(
+            "SELECT realm, name, day FROM char_snapshots").fetchall()}
+    linked_by_name = {r["name"].lower(): r for r in linked}
+    per: dict[tuple, dict] = {}
+    for rep in reports:
+        code = rep.get("code")
+        day = _snap_day((rep.get("startTime") or 0) / 1000)
+        try:
+            comb, _ts2 = wcl.report_combatants(code)
+        except wcl.WclError as exc:
+            print(f"[snap] WCL {code}: {exc}")
+            continue
+        for pname, gear in (comb.get("players") or {}).items():
+            link = linked_by_name.get(pname.lower())
+            if link is None:
+                continue
+            k = (link["realm"], link["name"], day)
+            if k in have:
+                continue
+            items = [
+                {"slot": WCL_SLOTS[i], "id": g.get("id"), "ilvl": g.get("itemLevel")}
+                for i, g in enumerate(gear)
+                if g and g.get("id") and i < len(WCL_SLOTS)
+            ]
+            if items:
+                per[k] = {"ts": (rep.get("startTime") or 0) / 1000, "items": items}
+    added = 0
+    for (realm, name, day), entry in per.items():
+        items = []
+        for it in entry["items"]:
+            try:
+                meta = bnet.item(it["id"])
+                nm, q = meta.get("name"), meta.get("quality")
+            except bnet.BnetError:
+                nm, q = f"Objet {it['id']}", None
+            items.append({"slot": it["slot"], "name": nm, "ilvl": it["ilvl"], "q": q, "id": it["id"]})
+        ilvls = [it["ilvl"] for it in items if it.get("ilvl") and it["ilvl"] > 1]
+        data = {
+            "level": None, "spec": None, "class": None,
+            "ilvl": round(sum(ilvls) / len(ilvls)) if ilvls else None, "ilvl_avg": None,
+            "achv": None, "mounts": None, "pets": None, "mplus": None,
+            "items": items, "src": "wcl",
+        }
+        _snap_store(realm, name, data, day=day, ts=entry["ts"])
+        added += 1
+    return {"ok": True, "added": added, "reports": len(reports)}
 
 
 def _snap_tick() -> None:
@@ -2210,9 +2291,23 @@ def _snap_tick() -> None:
 
 def _snap_loop() -> None:
     time.sleep(20)
+    first = True
     while True:
         try:
             _snap_tick()
+            if first:
+                first = False
+                with _db_lock, _db() as conn:
+                    done_row = conn.execute("SELECT value FROM meta WHERE key='snap_backfill_v1'").fetchone()
+                if done_row is None:
+                    res = _snap_backfill()
+                    print(f"[snap] backfill WCL : {res}")
+                    if res.get("ok"):
+                        with _db_lock, _db() as conn:
+                            conn.execute(
+                                "INSERT OR REPLACE INTO meta (key, value) VALUES ('snap_backfill_v1', ?)",
+                                (str(int(time.time())),),
+                            )
         except Exception as exc:  # noqa: BLE001
             print(f"[snap] tick: {exc}")
         time.sleep(SNAP_POLL_S)
@@ -2222,7 +2317,7 @@ def _snap_summary(day: str, ts: float, d: dict) -> dict:
     return {"day": day, "ts": ts, "level": d.get("level"), "spec": d.get("spec"),
             "class": d.get("class"), "ilvl": d.get("ilvl"), "ilvl_avg": d.get("ilvl_avg"),
             "achv": d.get("achv"), "mounts": d.get("mounts"), "pets": d.get("pets"),
-            "mplus": d.get("mplus")}
+            "mplus": d.get("mplus"), "src": d.get("src")}
 
 
 @app.get("/api/char/{realm}/{name}/history")
@@ -2250,6 +2345,13 @@ def api_char_history(realm: str, name: str, request: Request):
         if linked is not None:
             threading.Thread(target=_snap_capture, args=(realm, name), daemon=True).start()
     return {"ok": True, "days": days, "keep_days": SNAP_KEEP_DAYS}
+
+
+@app.post("/api/admin/snap-backfill")
+def admin_snap_backfill(request: Request, days: int = 30):
+    """Relance manuelle du rétro-remplissage WCL (admin)."""
+    _require_admin(request)
+    return _snap_backfill(days=max(1, min(90, days)), force=True)
 
 
 @app.get("/api/char/{realm}/{name}/snapdiff")

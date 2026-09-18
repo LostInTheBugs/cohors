@@ -599,7 +599,8 @@
  "Mascottes": "Pets",
  "Nouveau": "New",
  "Retiré": "Removed",
- "Comparaison du stuff": "Gear comparison"
+ "Comparaison du stuff": "Gear comparison",
+ "° relevé d'après les logs de raid (Warcraft Logs)": "° snapshot from raid logs (Warcraft Logs)"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

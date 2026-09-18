@@ -88,9 +88,10 @@
   .stufftab tr.chg td:first-child { box-shadow:inset 3px 0 0 var(--acc2); }
   .stufftab td:first-child { color:var(--mut); font-size:12.5px; white-space:nowrap; }
   .gli { color:var(--mut); font-size:12px; margin-left:5px; font-variant-numeric:tabular-nums; }
+  .evtab .wcl { color:var(--acc2); font-size:11px; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.055">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.056">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -123,8 +124,8 @@
 
   <footer>Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment · <span id="ver"></span></footer>
 </div>
-<script src="/static/nav.js?v=2026.09.055"></script>
-<script src="/static/i18n.js?v=2026.09.055"></script>
+<script src="/static/nav.js?v=2026.09.056"></script>
+<script src="/static/i18n.js?v=2026.09.056"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -265,7 +266,7 @@ function renderEvo(d) {
     const p = list[i - 1] || {};
     const dv = (k) => (x[k] != null && p[k] != null) ? x[k] - p[k] : null;
     return `<tr>
-      <td class="rk">${shortDay(x.day)}</td>
+      <td class="rk">${shortDay(x.day)}${x.src === "wcl" ? '<span class="wcl">°</span>' : ""}</td>
       <td>${fmt(x.ilvl)}${fmtDelta(dv("ilvl"))}</td>
       <td>${fmt(x.achv)}${fmtDelta(dv("achv"))}</td>
       <td>${fmt(x.mounts)}${fmtDelta(dv("mounts"))}</td>
@@ -275,7 +276,8 @@ function renderEvo(d) {
   }).join("");
   const table = (list) => `<div class="evwrap"><table class="evtab"><thead><tr>
       <th>Date</th><th>iLvl</th><th>Hauts faits</th><th>Montures</th><th>Mascottes</th><th>M+</th>
-    </tr></thead><tbody>${rowsOf(list)}</tbody></table></div>`;
+    </tr></thead><tbody>${rowsOf(list)}</tbody></table></div>`
+    + (list.some(x => x.src === "wcl") ? `<div class="meta" style="margin-top:4px">° relevé d'après les logs de raid (Warcraft Logs)</div>` : "");
   if (!days.length) {
     $("#evo-count").textContent = "";
     box.innerHTML = desc + `<div class="empty">Les relevés quotidiens démarrent — le premier d'aujourd'hui est enregistré. Reviens demain pour voir l'évolution.</div>`;

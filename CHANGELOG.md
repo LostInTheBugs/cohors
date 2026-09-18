@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.056 - 2026-09-18
+
+### Added
+- Character snapshots backfilled from Warcraft Logs raid nights (last 30 days): gear per combat comes from CombatantInfo events; only days without a Blizzard snapshot are filled. Runs once automatically at startup; re-run via `POST /api/admin/snap-backfill`. Backfilled days are marked with ° in the Evolution table.
+
 ## 2026.09.055 - 2026-09-18
 
 ### Changed

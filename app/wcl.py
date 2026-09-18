@@ -161,6 +161,45 @@ def report_full(code: str, force: bool = False) -> tuple[dict, float]:
     return out, _store(key, out)
 
 
+def report_combatants(code: str, force: bool = False) -> tuple[dict, float]:
+    """Équipement des joueurs d'un rapport (CombatantInfo) — dernier état de chaque joueur.
+
+    Renvoie {"players": {nom: [gear par emplacement (index = ordre Blizzard 0-17)]}}.
+    """
+    key = f"combat/{code}"
+    hit = _cached(key, TTL_REPORT, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    full, _ts = report_full(code)
+    fights = full["report"].get("fights") or []
+    players: dict[str, list] = {}
+    if fights:
+        aq = ("query($c: String!) { reportData { report(code: $c) { "
+              "masterData { actors { id name type } } } } }")
+        actors = (((_gql(aq, {"c": code}).get("reportData") or {}).get("report") or {})
+                  .get("masterData") or {}).get("actors") or []
+        names = {a.get("id"): a.get("name") for a in actors if a.get("type") == "Player"}
+        fids = [f["id"] for f in fights]
+        q = ("query($c: String!, $fids: [Int!]!) { reportData { report(code: $c) { "
+             "events(fightIDs: $fids, dataType: CombatantInfo, limit: 500) { data } } } }")
+        try:
+            evs = ((((_gql(q, {"c": code, "fids": fids}).get("reportData") or {}).get("report") or {})
+                    .get("events") or {}).get("data")) or []
+        except WclError:
+            evs = []
+        seen: dict[str, float] = {}
+        for e in evs:
+            if e.get("type") != "combatantinfo":
+                continue
+            nm = names.get(e.get("sourceID"))
+            ts = e.get("timestamp") or 0
+            if nm and ts >= seen.get(nm, -1):
+                seen[nm] = ts
+                players[nm] = e.get("gear") or []
+    out = {"players": players}
+    return out, _store(key, out)
+
+
 def deaths(code: str, force: bool = False) -> tuple[list[dict], float]:
     """Morts d'un rapport (un événement par mort : joueur, fight, tueur) — cache 30 min."""
     key = f"deaths/{code}"
