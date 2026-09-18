@@ -50,6 +50,9 @@
   table.rtab th, table.rtab td { padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; font-size:13.5px; }
   table.rtab th { color:var(--mut); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
   .pct { font-weight:700; }
+  .gain { color:var(--ok); font-weight:700; }
+  .loss { color:var(--err); font-weight:700; }
+  .spark { width:100%; height:56px; display:block; margin:2px 0 0; }
   .diffchip { display:inline-block; margin-left:6px; font-size:10.5px; font-weight:700; color:var(--mut);
               border:1px solid var(--line); border-radius:6px; padding:0 5px; vertical-align:1px; }
   .bblock { border-top:1px solid var(--line); padding:10px 2px 6px; }
@@ -61,7 +64,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.057">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.058">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -70,7 +73,7 @@
       <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
       <div>
         <div class="brandname">LOTP <span>Classements</span></div>
-        <div class="tagline">Le tableau des champions de la guilde — parses récents, boss et clés M+.</div>
+        <div class="tagline">Le tableau des champions de la guilde — progression, parses, boss et clés M+.</div>
       </div>
     </div>
     <div class="userbox">
@@ -99,6 +102,16 @@
   </div>
 
   <div class="card">
+    <div class="row">
+      <h2 style="margin:0">📈 Progression</h2>
+      <span class="spacer"></span>
+      <button class="chipbtn pchip" data-pd="7">7 j</button>
+      <button class="chipbtn pchip act" data-pd="30">30 j</button>
+    </div>
+    <div id="prog"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card">
     <h2>👹 Par boss</h2>
     <div id="bosses"><div class="empty">Chargement…</div></div>
   </div>
@@ -110,8 +123,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment · Données Warcraft Logs</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.057"></script>
-<script src="/static/i18n.js?v=2026.09.057"></script>
+<script src="/static/nav.js?v=2026.09.058"></script>
+<script src="/static/i18n.js?v=2026.09.058"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -134,6 +147,7 @@ const CLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur d
   Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
 const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >= 95 ? "#ff8000" : p >= 75 ? "#a335ee" : p >= 50 ? "#0070dd" : p >= 25 ? "#1eff00" : "#6b6b6b";
 const DIFFCHIP = { 3: "N", 4: "H", 5: "M" };
+const shortDay = (s) => s.slice(8, 10) + "/" + s.slice(5, 7);
 
 let DATA = null, FILTER = "all";
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -141,6 +155,54 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 function nameCell(r) {
   const col = CLASS_COLORS[r.class] || "var(--fg)";
   return `<b style="color:${col}">${esc(r.name)}</b> <span class="meta">${esc(CLASS_FR[r.class] || r.class || "")} ${esc(r.spec || "")}</span>`;
+}
+
+// ---- Progression (relevés quotidiens)
+let PROG = null, PDAY = 30;
+
+function progSpark(curve) {
+  const pts = (curve || []).filter(x => x.avg != null);
+  if (pts.length < 2) return "";
+  const w = 660, h = 56, pad = 5;
+  const vals = pts.map(x => x.avg);
+  const mn = Math.min(...vals), mx = Math.max(...vals), span = Math.max(1, mx - mn);
+  const xs = (i) => pad + i * (w - 2 * pad) / (pts.length - 1);
+  const ys = (v) => h - pad - (v - mn) * (h - 2 * pad) / span;
+  const path = pts.map((x, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)},${ys(x.avg).toFixed(1)}`).join(" ");
+  const dots = pts.map((x, i) => `<circle cx="${xs(i).toFixed(1)}" cy="${ys(x.avg).toFixed(1)}" r="2.4" fill="#b1002e" stroke="#dfa55a" stroke-width="1"/>`).join("");
+  const pop = (PROG && PROG.curve_pop) ? ` (${fmt(PROG.curve_pop)} persos)` : "";
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="#dfa55a" stroke-width="2"/>${dots}</svg>
+    <div class="meta">iLvl moyen de la guilde${pop} : ${fmt(vals[0], 1)} (${shortDay(pts[0].day)}) → ${fmt(vals[vals.length - 1], 1)} (${shortDay(pts[pts.length - 1].day)})</div>`;
+}
+
+function gainCell(v, dec = 0) {
+  if (v == null) return `<span class="meta">—</span>`;
+  if (!v) return `<span class="meta">0</span>`;
+  return `<span class="${v > 0 ? "gain" : "loss"}">${v > 0 ? "+" : ""}${fmt(v, dec)}</span>`;
+}
+
+function renderProg() {
+  if (!PROG) return;
+  const rows = (PROG.rows || []).slice(0, 15);
+  const cols = [["Hauts faits", "d_achv"], ["Montures", "d_mounts"], ["Mascottes", "d_pets"]];
+  const shown = cols.filter(([, k]) => rows.some(r => r[k] != null));
+  const head = progSpark(PROG.curve || []);
+  const table = rows.length ? `<table class="rtab">
+    <thead><tr><th>#</th><th>Joueur</th><th>iLvl</th>${shown.map(([h]) => `<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map((r, i) => `<tr>
+      <td><b>${i < 3 ? MEDALS[i] : i + 1}</b></td>
+      <td>${nameCell(r)}</td>
+      <td>${fmt(r.ilvl0)} → ${fmt(r.ilvl1)} ${gainCell(r.d_ilvl)}</td>
+      ${shown.map(([, k]) => `<td>${gainCell(r[k])}</td>`).join("")}
+    </tr>`).join("")}</tbody></table>`
+    : `<div class="empty">Aucune progression mesurée pour le moment — les relevés quotidiens l'alimentent au fil des jours.</div>`;
+  $("#prog").innerHTML = head + table +
+    `<div class="meta" style="margin-top:8px">${fmt(PROG.progressed)} ont progressé · ${fmt(PROG.measured)} personnages suivis</div>`;
+}
+
+async function loadProg() {
+  try { PROG = await jget(`/api/progression?days=${PDAY}`); renderProg(); }
+  catch (e) { $("#prog").innerHTML = `<div class="err">${esc(e.message)}</div>`; }
 }
 
 function render() {
@@ -205,10 +267,16 @@ async function load(refresh = 0) {
   btn.disabled = false;
 }
 
-document.querySelectorAll(".chipbtn").forEach(b => b.addEventListener("click", () => {
+document.querySelectorAll(".chipbtn[data-f]").forEach(b => b.addEventListener("click", () => {
   FILTER = b.dataset.f;
-  document.querySelectorAll(".chipbtn").forEach(x => x.classList.toggle("act", x === b));
+  document.querySelectorAll(".chipbtn[data-f]").forEach(x => x.classList.toggle("act", x === b));
   render();
+}));
+document.querySelectorAll(".pchip").forEach(b => b.addEventListener("click", () => {
+  PDAY = +b.dataset.pd;
+  document.querySelectorAll(".pchip").forEach(x => x.classList.toggle("act", x === b));
+  $("#prog").innerHTML = `<div class="empty">Chargement…</div>`;
+  loadProg();
 }));
 $("#ref").addEventListener("click", () => load(1));
 
@@ -226,6 +294,7 @@ $("#logout").addEventListener("click", async (ev) => {
   } catch (e) { location.href = "/login"; return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   load();
+  loadProg();
 })();
 </script>
 </body>

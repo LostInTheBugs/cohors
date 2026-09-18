@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.058 - 2026-09-18
+
+### Added
+- Classements page: new "Progression" card — gains over 7 / 30 days per character (iLvl, achievements, mounts, pets) from the daily snapshots, plus a guild average-iLvl curve (constant population). API: `GET /api/progression?days=7|30`.
+
 ## 2026.09.057 - 2026-09-18
 
 ### Changed

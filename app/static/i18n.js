@@ -451,7 +451,6 @@
  "🏆 Classements": "🏆 Rankings",
  "LOTP — Classements": "LOTP — Rankings",
  "Classements": "Rankings",
- "Le tableau des champions de la guilde — parses récents, boss et clés M+.": "The guild's champions board — recent parses, bosses and M+ keys.",
  "🧙 Tous": "🧙 All",
  "💚 Soigneurs": "💚 Healers",
  "🏆 Meilleurs parses": "🏆 Top parses",
@@ -601,7 +600,9 @@
  "Retiré": "Removed",
  "Comparaison du stuff": "Gear comparison",
  "° relevé d'après les logs de raid (Warcraft Logs)": "° snapshot from raid logs (Warcraft Logs)",
- "Fiche": "Profile"
+ "Fiche": "Profile",
+ "Aucune progression mesurée pour le moment — les relevés quotidiens l'alimentent au fil des jours.": "No progression measured yet — daily snapshots feed this ranking over time.",
+ "Le tableau des champions de la guilde — progression, parses, boss et clés M+.": "The guild's champions board — progression, recent parses, bosses and M+ keys."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -684,6 +685,10 @@
     [/utilisé(?![eé])/g, "used"],
     [/Moteur :/g, "Engine:"],
     [/Outil non affilié à Blizzard Entertainment/g, "Not affiliated with Blizzard Entertainment"],
+    [/iLvl moyen de la guilde/g, "Guild average iLvl"],
+    [/(\d+) personnages suivis/g, "$1 characters tracked"],
+    [/(\d+) ont progressé/g, "$1 improved"],
+    [/(\d+) persos(?![\w])/g, "$1 characters"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
