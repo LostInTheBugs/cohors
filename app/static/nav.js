@@ -28,15 +28,16 @@
   var nav = document.getElementById("navmain");
   if (!nav) return;
   var path = location.pathname.replace(/\/+$/, "") || "/";
-  var inItems = function (items) {
-    return items.some(function (i) { return i.href === path; });
+  var isHere = function (i) {
+    return i.href === path || (i.href === "/mains" && path.indexOf("/char/") === 0);
   };
+  var inItems = function (items) { return items.some(isHere); };
   var MQ = window.matchMedia("(max-width: 760px)");
   var ROLE_OK = false;      // true si officier/admin (fixé par /api/me)
   var ROLE_KNOWN = false;
 
   var itemHTML = function (i, cls) {
-    return '<a class="' + cls + (i.href === path ? " active" : "") + '" href="' + i.href + '"' +
+    return '<a class="' + cls + (isHere(i) ? " active" : "") + '" href="' + i.href + '"' +
       (i.role ? ' data-role="' + i.role + '"' : "") + (i.vt ? ' data-vt="1"' : "") + '>' + i.label + '</a>';
   };
 

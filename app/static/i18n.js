@@ -574,7 +574,18 @@
  "Tous les personnages de la guilde, regroupés sous leur main.": "All guild characters, grouped under their main.",
  "Rechercher un personnage ou un joueur…": "Search a character or player…",
  "Aucun personnage lié pour le moment.": "No characters linked yet.",
- "aucun main défini": "no main set"
+ "aucun main défini": "no main set",
+ "LOTP — Personnage": "LOTP — Character",
+ "Personnages de": "Characters of",
+ "Niveau": "Level",
+ "Niveau max (90) uniquement": "Max level (90) only",
+ "Chargement de la fiche…": "Loading profile…",
+ "Détails d'un personnage de la guilde — équipement, succès, collections.": "Details of a guild character — gear, achievements, collections.",
+ "🛡️ Équipement porté": "🛡️ Equipped gear",
+ "Clique sur le cadre d'un compte pour ouvrir la fiche de son main, ou sur un personnage pour la sienne.": "Click an account frame to open its main's profile, or a character for their own.",
+ "Personnage introuvable.": "Character not found.",
+ "Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment": "Character profile — Battle.net API (30 min cache) · Game data provided by Blizzard Entertainment · Not affiliated with Blizzard Entertainment",
+ "Personnage introuvable sur ce royaume.": "Character not found on this realm."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

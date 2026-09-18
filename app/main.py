@@ -572,6 +572,19 @@ def mains_page(request: Request):
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "mains.html")
 
+@app.api_route("/char", methods=["GET", "HEAD"])
+def char_redirect():
+    """Sans personnage précisé → retour à la liste Mains & alts."""
+    return RedirectResponse("/mains", status_code=302)
+
+
+@app.api_route("/char/{realm}/{name}", methods=["GET", "HEAD"])
+def char_detail_page(realm: str, name: str, request: Request):
+    """Fiche personnage — détails du perso + bascule entre les persos du compte."""
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "char.html")
+
 
 
 @app.api_route("/raids", methods=["GET", "HEAD"])

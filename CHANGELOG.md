@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.053 - 2026-09-18
+
+### Added
+- Character profile page (`/char/<realm>/<name>`): full sheet (level, ilvl, achievements, mounts/pets, M+ rating, equipped gear) with a switcher to jump between the linked characters of the same account.
+- "Mains & alts": clicking an account frame opens its main's profile; clicking a character chip opens that character's profile.
+
+### Changed
+- i18n dictionary extended (new strings; "Niveau max (90) uniquement" translated).
+
 ## 2026.09.052 - 2026-09-17
 - New page "⭐ Mains & alts" (Guild menu): all linked characters grouped per account under their main, with search.
 
