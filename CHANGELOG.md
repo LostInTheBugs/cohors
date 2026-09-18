@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.068 - 2026-09-18
+
+### Fixed
+- Addon 1.3.0: calendar collection now uses Blizzard's own UI method — set the displayed month (`SetAbsMonth`/`SetMonth`), then read day events (`GetNumDayEvents`/`GetDayEvent`) and open each event with the correct `OpenEvent(0, day, index)`; the addon opens the calendar frame while collecting and restores the previous view afterwards.
+- Addon 1.3.0: `/lotp diag` now writes the report into SavedVariables (send the LOTP.lua file instead of screenshots).
+
 ## 2026.09.067 - 2026-09-18
 
 ### Fixed
