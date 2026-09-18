@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.4.4"
+local ADDON_VER = "1.4.5"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -58,8 +58,29 @@ local function jsonEsc(s)
 end
 
 local function dateStr(t)
-    local ok, s = pcall(os.date, "%Y-%m-%d %H:%M", t)
+    local ok, s = pcall(date, "%Y-%m-%d %H:%M", t)  -- date() natif du client WoW (os absent en jeu)
     return ok and s or "?"
+end
+
+-- conversion (annee, mois, jour, h, min) -> epoch sans os.time (absent du client WoW) :
+-- algorithme jours-depuis-civil + decalage par rapport a l'heure courante
+local function toEpoch(f)
+    if not (f and f.year and f.month and (f.monthDay or f.day)) then return 0 end
+    local nowT = date("*t", time())
+    local function daysFromCivil(y, m, d)
+        y = (m <= 2) and (y - 1) or y
+        local era = math.floor(y / 400)
+        local yoe = y - era * 400
+        local mp = (m + 9) % 12
+        local doy = math.floor((153 * mp + 2) / 5) + d - 1
+        local doe = yoe * 365 + math.floor(yoe / 4) - math.floor(yoe / 100) + doy
+        return era * 146097 + doe - 719468
+    end
+    local dNow = daysFromCivil(nowT.year, nowT.month, nowT.day)
+    local dEv = daysFromCivil(f.year, f.month, f.monthDay or f.day)
+    local secNow = (nowT.hour or 0) * 3600 + (nowT.min or 0) * 60 + (nowT.sec or 0)
+    local secEv = (f.hour or 0) * 3600 + (f.minute or 0) * 60
+    return time() - secNow + (dEv - dNow) * 86400 + secEv
 end
 
 local function timeFields(st)
@@ -73,7 +94,7 @@ local function timeFields(st)
     local okf, date = pcall(string.format, "%04d-%02d-%02d %02d:%02d", y, mo, d, h, mi)
     if not okf then return "?", 0 end
     local ts = 0
-    local ok, t = pcall(os.time, { year = y, month = mo, day = d, hour = h, min = mi })
+    local ok, t = pcall(toEpoch, { year = y, month = mo, monthDay = d, hour = h, minute = mi })
     if ok and t then ts = t end
     return date, ts
 end

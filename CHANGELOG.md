@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.076 - 2026-09-18
+
+### Fixed
+- Addon 1.4.5: root cause found — the WoW client's Lua sandbox has no `os` library; the addon used `os.date`/`os.time`, so every slash command and collection crashed at the first date call (invisible: BugGrabber was swallowing the errors). All date handling now uses the client's native `date()` plus a pure-Lua civil-to-epoch conversion. The offline test harness now removes `os` to simulate the sandbox, so this class of bug can no longer slip through.
+
 ## 2026.09.075 - 2026-09-18
 
 ### Fixed
