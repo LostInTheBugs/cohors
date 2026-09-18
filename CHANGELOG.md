@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.055 - 2026-09-18
+
+### Changed
+- Character page "Evolution": the date comparison now shows the full gear side by side (slot, item at date A, item at date B, iLvl delta), with changed rows highlighted — replaces the changed-items-only list.
+
 ## 2026.09.054 - 2026-09-18
 
 ### Added

@@ -598,7 +598,8 @@
  "Montures": "Mounts",
  "Mascottes": "Pets",
  "Nouveau": "New",
- "Retiré": "Removed"
+ "Retiré": "Removed",
+ "Comparaison du stuff": "Gear comparison"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -609,6 +610,8 @@
     [/(\d[\d\u00a0 ]*) membres\b/g, "$1 members"],
     [/(\d+) relevés/g, "$1 snapshots"],
     [/(\d+) relevé\b/g, "$1 snapshot"],
+    [/(\d+) pièces changées/g, "$1 items changed"],
+    [/(\d+) pièce changée/g, "$1 item changed"],
     [/actualisé/g, "refreshed"],
     [/à l'instant/g, "just now"],
     [/rapports au total/g, "reports total"],

@@ -83,9 +83,14 @@
   .change { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; font-size:13.5px; padding:2px 0; }
   .change .gs { color:var(--mut); min-width:92px; flex-shrink:0; font-size:12.5px; }
   .tag { font-size:11.5px; border:1px solid var(--line); border-radius:999px; padding:1px 8px; color:var(--mut); }
+  .stufftab td { vertical-align:top; }
+  .stufftab tr.chg td { background:rgba(223,165,90,.10); }
+  .stufftab tr.chg td:first-child { box-shadow:inset 3px 0 0 var(--acc2); }
+  .stufftab td:first-child { color:var(--mut); font-size:12.5px; white-space:nowrap; }
+  .gli { color:var(--mut); font-size:12px; margin-left:5px; font-variant-numeric:tabular-nums; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.054">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.055">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -118,8 +123,8 @@
 
   <footer>Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment · <span id="ver"></span></footer>
 </div>
-<script src="/static/nav.js?v=2026.09.054"></script>
-<script src="/static/i18n.js?v=2026.09.054"></script>
+<script src="/static/nav.js?v=2026.09.055"></script>
+<script src="/static/i18n.js?v=2026.09.055"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -313,15 +318,23 @@ async function loadDiff(fromDay, toDay) {
   }
 }
 
-function itemLine(it) {
-  const col = (q) => QUA[q] || "#e7ebf5";
-  const nm = (x) => !x ? "—" : (x.id
-    ? `<a href="https://www.wowhead.com/item=${x.id}" target="_blank" rel="noopener" style="color:${col(x.q)}">${esc(x.name)}</a>`
-    : esc(x.name));
-  const delta = (it.from && it.to) ? ((it.to.ilvl || 0) - (it.from.ilvl || 0)) : null;
-  const tag = !it.from ? '<span class="tag">Nouveau</span>' : (!it.to ? '<span class="tag">Retiré</span>' : "");
-  const dl = (delta != null && delta !== 0) ? `<span class="d ${delta > 0 ? "up" : "down"}">${delta > 0 ? "+" : ""}${fmt(delta)} iLvl</span>` : "";
-  return `<div class="change"><span class="gs">${esc(it.slot)}</span>${nm(it.from)} <span class="meta">→</span> ${nm(it.to)} ${dl}${tag}</div>`;
+function stuffRows(d) {
+  return (d.items || []).map(it => {
+    const cell = (x) => {
+      if (!x) return `<span class="meta">—</span>`;
+      const col = QUA[x.q] || "#e7ebf5";
+      const nm = x.id
+        ? `<a href="https://www.wowhead.com/item=${x.id}" target="_blank" rel="noopener" style="color:${col}">${esc(x.name)}</a>`
+        : esc(x.name);
+      return `${nm}<span class="gli">${fmt(x.ilvl)}</span>`;
+    };
+    const delta = (it.from && it.to) ? ((it.to.ilvl || 0) - (it.from.ilvl || 0)) : null;
+    let dcell = "";
+    if (!it.from) dcell = '<span class="tag">Nouveau</span>';
+    else if (!it.to) dcell = '<span class="tag">Retiré</span>';
+    else if (delta) dcell = `<span class="d ${delta > 0 ? "up" : "down"}">${delta > 0 ? "+" : ""}${fmt(delta)}</span>`;
+    return `<tr class="${it.changed ? "chg" : ""}"><td>${esc(it.slot)}</td><td>${cell(it.from)}</td><td>${cell(it.to)}</td><td>${dcell}</td></tr>`;
+  }).join("");
 }
 
 function renderDiff(d) {
@@ -329,12 +342,15 @@ function renderDiff(d) {
   const chip = (label, v) => (v == null || v === 0) ? "" :
     `<span class="xchip">${label} <b>${v > 0 ? "+" : ""}${fmt(Math.round(v * 10) / 10)}</b></span>`;
   const items = d.items || [];
-  const changes = items.length ? items.map(itemLine).join("")
-    : `<div class="empty">Aucun changement d'équipement sur la période.</div>`;
+  const nchg = items.filter(x => x.changed).length;
+  const note = nchg ? ` <span class="meta">· ${nchg} ${nchg > 1 ? "pièces changées" : "pièce changée"}</span>` : "";
   return `<div class="extras" style="margin:2px 0 4px">
       ${chip("iLvl", dl.ilvl)}${chip("Hauts faits", dl.achv)}${chip("Montures", dl.mounts)}${chip("Mascottes", dl.pets)}${chip("M+", dl.mplus)}
     </div>
-    <h3 class="sect">Changements d'équipement</h3>${changes}`;
+    <h3 class="sect">Comparaison du stuff${note}</h3>
+    <div class="evwrap"><table class="evtab stufftab"><thead><tr>
+      <th>Emplacement</th><th>${shortDay(d.from.day)}</th><th>${shortDay(d.to.day)}</th><th>Δ iLvl</th>
+    </tr></thead><tbody>${stuffRows(d)}</tbody></table></div>`;
 }
 
 document.addEventListener("click", (ev) => {

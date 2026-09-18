@@ -2293,9 +2293,8 @@ def api_char_snapdiff(realm: str, name: str, request: Request):
     items = []
     for slot in list(dict.fromkeys(list(a_items.keys()) + list(b_items.keys()))):
         fa, fb = a_items.get(slot), b_items.get(slot)
-        if fa and fb and fa.get("id") == fb.get("id") and fa.get("ilvl") == fb.get("ilvl"):
-            continue
-        items.append({"slot": slot, "from": fa, "to": fb})
+        changed = not (fa and fb and fa.get("id") == fb.get("id") and fa.get("ilvl") == fb.get("ilvl"))
+        items.append({"slot": slot, "from": fa, "to": fb, "changed": changed})
     return {
         "ok": True,
         "from": _snap_summary(a_day, a_ts, a),
