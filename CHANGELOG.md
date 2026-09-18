@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.067 - 2026-09-18
+
+### Fixed
+- Addon 1.2.0: guild calendar reading reworked — primary source is now `C_Calendar.GetClubCalendarEvents` (guild club events over the next 21 days), with the guild invitation list as fallback; events are now opened with the correct `OpenEvent(offsetMonths, monthDay, index)` signature (the previous call passed the event ID, which fails silently, so answers could never be read); richer `/lotp diag` (guild club id, both sources, displayed month).
+
 ## 2026.09.066 - 2026-09-18
 
 ### Fixed

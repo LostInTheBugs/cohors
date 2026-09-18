@@ -2,22 +2,23 @@
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
 -- une chaîne à coller sur le site (page Calendrier → « Importer »).
 -- Commandes : /lotp · /lotp collect · /lotp export · /lotp diag
-local ADDON_VER = "1.1.0"
-local MAX_READ_TRIES = 12   -- tentatives de lecture de la liste (~30 s)
-local EVENT_TIMEOUT = 4     -- délai max par événement ouvert (s)
-local MAX_EVENTS = 60
+local ADDON_VER = "1.2.0"
+local WINDOW_DAYS = 21       -- fenêtre d'export : aujourd'hui → +21 j
+local MAX_READ_TRIES = 12    -- tentatives de lecture (~30 s)
+local EVENT_TIMEOUT = 4      -- délai max par événement ouvert (s)
+local MAX_EVENTS = 40
 
 LOTP_DB = LOTP_DB or {}
 
 local f = CreateFrame("Frame")
 
 local collecting = false
-local started = false        -- la liste a été lue et la file démarrée
-local current = nil          -- événement en cours d'ouverture
-local queue = {}             -- événements à ouvrir
-local results = {}           -- événements collectés
+local started = false
+local current = nil
+local queue = {}
+local results = {}
 local readTries = 0
-local listSeen = false       -- CALENDAR_UPDATE_EVENT_LIST reçu
+local source = nil -- "club" | "guild"
 
 -- ---------------------------------------------------------------- utilitaires
 local function msg(text)
@@ -30,19 +31,6 @@ local function clientIface()
     return iface
 end
 
-local function statusText(s)
-    if s == 0 or s == nil then return "en attente" end
-    if s == 1 then return "dispo" end
-    if s == 2 then return "non" end
-    if s == 3 then return "confirmé" end
-    if s == 4 then return "sorti" end
-    if s == 5 then return "standby" end
-    if s == 6 then return "inscrit" end
-    if s == 7 then return "pas inscrit" end
-    if s == 8 then return "incertain" end
-    return "?"
-end
-
 local function jsonEsc(s)
     s = tostring(s or "")
     s = s:gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t")
@@ -52,6 +40,23 @@ end
 local function dateStr(t)
     local ok, s = pcall(os.date, "%Y-%m-%d %H:%M", t)
     return ok and s or "?"
+end
+
+local function calTime(epoch)
+    local ok, tt = pcall(date, "*t", epoch)
+    if not ok or type(tt) ~= "table" then return nil end
+    return { year = tt.year, month = tt.month, monthDay = tt.day, hour = tt.hour, minute = tt.min, weekday = tt.wday }
+end
+
+local function timeFields(st)
+    -- st = CalendarTime (table) → date "YYYY-MM-DD HH:MM" + epoch si possible
+    if type(st) ~= "table" or not st.year then return "?", 0 end
+    local day = st.monthDay or st.day or 0
+    local date = ("%04d-%02d-%02d %02d:%02d"):format(st.year, st.month or 0, day, st.hour or 0, st.minute or 0)
+    local ts = 0
+    local ok, t = pcall(os.time, { year = st.year, month = st.month, day = day, hour = st.hour or 0, min = st.minute or 0 })
+    if ok and t then ts = t end
+    return date, ts
 end
 
 -- ------------------------------------------------------------------- collecte
@@ -90,21 +95,20 @@ local function readInvites()
     for j = 1, n do
         local ok2, inv = pcall(C_Calendar.EventGetInvite, j)
         if ok2 and type(inv) == "table" then
-            local name = inv.name or inv.invitee or inv.characterName
-            local st = inv.status
-            if st == nil then st = inv.inviteStatus end
-            if name then
-                local rt = nil
+            local okn, name = pcall(function() return inv.name or inv.invitee or inv.characterName end)
+            local okS, st = pcall(function() return inv.inviteStatus or inv.status end)
+            if okn and name and tostring(name) ~= "" then
+                local entry = { n = tostring(name), s = (okS and tonumber(st)) or -1 }
                 local ok3, r = pcall(C_Calendar.EventGetInviteResponseTime, j)
-                if ok3 and type(r) == "number" and r > 0 then rt = r end
-                invs[#invs + 1] = { n = name, s = st or -1, t = rt }
+                if ok3 and type(r) == "number" and r > 0 then entry.t = r end
+                invs[#invs + 1] = entry
             end
         end
     end
     return invs
 end
 
-local function finishCollect(quiet)
+local function finishCollect()
     collecting = false
     current = nil
     LOTP_DB.export = buildExport()
@@ -115,19 +119,50 @@ local function finishCollect(quiet)
         nresp = nresp + #(e.invites or {})
     end
     if #results == 0 then
-        msg("aucun événement trouvé. Vérifie dans le calendrier du jeu (bouton Calendrier, touche C) "
-            .. "que la guilde a bien des raids à venir, puis /lotp pour réessayer. (/lotp diag pour le détail)")
-    elseif not quiet then
+        msg("aucun événement trouvé. Vérifie dans le calendrier du jeu (bouton Calendrier) que la guilde "
+            .. "a bien des raids à venir, puis /lotp pour réessayer. (/lotp diag pour le détail)")
+    else
         msg(("%d raid(s) collecté(s), %d réponse(s). • /lotp export pour la chaîne à coller sur le site.")
             :format(#results, nresp))
     end
     if LOTP_Refresh then LOTP_Refresh() end
 end
 
+-- Résout (offsetMois, jour, index) pour pouvoir ouvrir un événement.
+local function resolveIndex(ev)
+    if ev.listIndex then
+        local ok, info = pcall(C_Calendar.GetGuildEventSelectionInfo, ev.listIndex)
+        if ok and type(info) == "table" and info.monthDay then return info end
+    end
+    if ev.eventID and ev.eventID > 0 then
+        local ok, info = pcall(C_Calendar.GetEventIndexInfo, ev.eventID)
+        if ok and type(info) == "table" and info.monthDay then return info end
+        -- repli : chercher par jour dans les mois proches
+        local y, m, d = (ev.date or ""):match("^(%d+)%-(%d+)%-(%d+)")
+        local ok2, mi = pcall(C_Calendar.GetMonthInfo, 0)
+        if y and m and d and ok2 and type(mi) == "table" and mi.month and mi.year then
+            local off = (tonumber(y) * 12 + tonumber(m)) - (mi.year * 12 + mi.month)
+            if off >= 0 and off <= 4 then
+                local day = tonumber(d)
+                local ok3, info2 = pcall(C_Calendar.GetEventIndexInfo, ev.eventID, off, day)
+                if ok3 and type(info2) == "table" and info2.eventIndex then return info2 end
+                local ok4, nde = pcall(C_Calendar.GetNumDayEvents, off, day)
+                for idx = 1, (ok4 and nde or 0) do
+                    local ok5, de = pcall(C_Calendar.GetDayEvent, off, day, idx)
+                    if ok5 and type(de) == "table" and de.eventID == ev.eventID then
+                        return { offsetMonths = off, monthDay = day, eventIndex = idx }
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
 local function readOpenEvent()
     local e = current
     local invs = readInvites()
-    results[#results + 1] = { id = e.id, title = e.title, date = e.date, ts = e.ts,
+    results[#results + 1] = { id = e.eventID, title = e.title, date = e.date, ts = e.ts,
                               etype = e.etype, invites = invs }
     pcall(C_Calendar.CloseEvent)
     current = nil
@@ -141,15 +176,25 @@ function LOTP_OpenNext()
         return
     end
     local e = table.remove(queue, 1)
+    local info = resolveIndex(e)
+    if not info or not info.monthDay or not info.eventIndex then
+        results[#results + 1] = { id = e.eventID, title = e.title, date = e.date, ts = e.ts,
+                                  etype = e.etype, invites = {} }
+        C_Timer.After(0.1, function() LOTP_OpenNext() end)
+        return
+    end
     current = e
-    local ok = pcall(C_Calendar.OpenEvent, e.id)
-    if not ok and e.idx then
-        pcall(C_Calendar.OpenEvent, e.idx)
+    local ok = pcall(C_Calendar.OpenEvent, info.offsetMonths or 0, info.monthDay, info.eventIndex)
+    if not ok then
+        results[#results + 1] = { id = e.eventID, title = e.title, date = e.date, ts = e.ts,
+                                  etype = e.etype, invites = {} }
+        current = nil
+        C_Timer.After(0.1, function() LOTP_OpenNext() end)
+        return
     end
     C_Timer.After(EVENT_TIMEOUT, function()
         if collecting and current == e then
-            -- pas de réponse : on note l'événement sans détails et on continue
-            results[#results + 1] = { id = e.id, title = e.title, date = e.date, ts = e.ts,
+            results[#results + 1] = { id = e.eventID, title = e.title, date = e.date, ts = e.ts,
                                       etype = e.etype, invites = {} }
             current = nil
             LOTP_OpenNext()
@@ -157,51 +202,107 @@ function LOTP_OpenNext()
     end)
 end
 
--- Lecture de la liste des événements de guilde ; renvoie true si non vide.
-local function readList()
+-- Source 1 : événements du club de guilde (C_Calendar.GetClubCalendarEvents).
+local function guildClubId()
+    local ok, id = pcall(C_Club.GetGuildClubId)
+    if ok and id then return id end
+    local ok2, clubs = pcall(C_Club.GetSubscribedClubs)
+    if ok2 and type(clubs) == "table" then
+        for _, c in ipairs(clubs) do
+            if c.clubId and c.clubType and Enum and Enum.ClubType and c.clubType == Enum.ClubType.Guild then
+                return c.clubId
+            end
+        end
+        if clubs[1] and clubs[1].clubId then return clubs[1].clubId end
+    end
+    return nil
+end
+
+local function gatherClub()
+    local clubId = guildClubId()
+    if not clubId then return nil end
+    local t0, t1 = calTime(time() - 86400), calTime(time() + WINDOW_DAYS * 86400)
+    if not t0 or not t1 then return nil end
+    local ok, evs = pcall(C_Calendar.GetClubCalendarEvents, clubId, t0, t1)
+    if not ok or type(evs) ~= "table" or #evs == 0 then return nil end
+    local out = {}
+    for _, e in ipairs(evs) do
+        if type(e) == "table" then
+            local date, ts = timeFields(e.startTime)
+            out[#out + 1] = { eventID = e.eventID or 0, title = e.title or "?", date = date,
+                              ts = ts, etype = e.eventType or 0 }
+            if #out >= MAX_EVENTS then break end
+        end
+    end
+    return #out > 0 and out or nil
+end
+
+-- Source 2 : liste des invitations de guilde (C_Calendar.GetNumGuildEvents).
+local function gatherGuildList()
     local ok, cnt = pcall(C_Calendar.GetNumGuildEvents)
     local n = (ok and type(cnt) == "number") and cnt or 0
-    if n <= 0 then return false end
-    queue = {}
-    local now = time()
-    local okd, minDay = pcall(os.date, "%Y-%m-%d", now - 86400)
-    minDay = okd and minDay or nil
+    if n <= 0 then return nil end
+    local out = {}
     for i = 1, n do
         local ok2, e = pcall(C_Calendar.GetGuildEventInfo, i)
         if ok2 and type(e) == "table" then
             local day = e.monthDay or e.day
             local mi = e.minute or e.min or 0
             local hh = e.hour or 0
-            local date, ts
+            local date, ts = "?", 0
             if day and e.year and e.month then
                 date = ("%04d-%02d-%02d %02d:%02d"):format(e.year, e.month, day, hh, mi)
-                local ok3, tt = pcall(os.time, { year = e.year, month = e.month, day = day, hour = hh, min = mi })
-                if ok3 and tt then ts = tt end
+                local ok3, t = pcall(os.time, { year = e.year, month = e.month, day = day, hour = hh, min = mi })
+                if ok3 and t then ts = t end
             end
-            local fresh = true
-            if date and minDay then
-                fresh = date:sub(1, 10) >= minDay
-            elseif ts then
-                fresh = ts >= now - 86400
-            end
-            if fresh then
-                queue[#queue + 1] = { id = e.eventID or 0, idx = i, title = e.title or "?",
-                                      date = date or "?", ts = ts or 0, etype = e.eventType or 0 }
-                if #queue >= MAX_EVENTS then break end
-            end
+            out[#out + 1] = { eventID = e.eventID or 0, title = e.title or "?", date = date,
+                              ts = ts, etype = e.eventType or 0, listIndex = i }
+            if #out >= MAX_EVENTS then break end
         end
     end
-    return #queue > 0
+    return #out > 0 and out or nil
 end
 
--- Démarre la collecte des événements dès que la liste est disponible.
+local function gatherAny()
+    local out = gatherClub()
+    if out then
+        source = "club"
+        return out
+    end
+    out = gatherGuildList()
+    if out then
+        source = "guild"
+        return out
+    end
+    return nil
+end
+
 local function tryStart()
     if not collecting or started or current ~= nil or #queue > 0 then return end
-    if readList() then
-        started = true
-        msg(("%d événement(s) à collecter…"):format(#queue))
-        LOTP_OpenNext()
+    local list = gatherAny()
+    if not list then return end
+    -- filtre : événements d'hier ou plus récents (garde ceux sans date exploitable)
+    local now = time()
+    local okd, minDay = pcall(os.date, "%Y-%m-%d", now - 86400)
+    minDay = okd and minDay or nil
+    queue = {}
+    for _, e in ipairs(list) do
+        local fresh = true
+        if e.date and e.date ~= "?" and minDay then
+            fresh = e.date:sub(1, 10) >= minDay
+        elseif e.ts and e.ts > 0 then
+            fresh = e.ts >= now - 86400
+        end
+        if fresh then queue[#queue + 1] = e end
     end
+    if #queue == 0 then
+        -- la liste existe mais tout est passé : on garde tout de même les 3 derniers
+        for i = 1, math.min(3, #list) do queue[i] = list[i] end
+    end
+    if #queue == 0 then return end
+    started = true
+    msg(("%d événement(s) à collecter (%s)…"):format(#queue, source or "?"))
+    LOTP_OpenNext()
 end
 
 local function poll()
@@ -210,13 +311,12 @@ local function poll()
     tryStart()
     if started then return end
     if readTries > MAX_READ_TRIES then
-        -- dernier essai puis conclusion
         tryStart()
         if not started then finishCollect() end
         return
     end
     if readTries == 4 or readTries == 8 then
-        pcall(C_Calendar.OpenCalendar)  -- relance la requête serveur si besoin
+        pcall(C_Calendar.OpenCalendar)
     end
     C_Timer.After(2.5, poll)
 end
@@ -232,7 +332,7 @@ function LOTP_Collect()
     queue = {}
     results = {}
     readTries = 0
-    listSeen = false
+    source = nil
     msg("interrogation du calendrier de guilde…")
     pcall(C_Calendar.OpenCalendar)
     C_Timer.After(1.0, poll)
@@ -250,7 +350,6 @@ f:SetScript("OnEvent", function(_, event, arg1)
             end
         end
     elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
-        listSeen = true
         if collecting then tryStart() end
     elseif event == "CALENDAR_OPEN_EVENT" then
         if collecting and current ~= nil then
@@ -268,14 +367,26 @@ f:RegisterEvent("CALENDAR_OPEN_EVENT")
 local function dumpDiag()
     msg(("LOTP v%s · client %s · collecte %s"):format(ADDON_VER, tostring(clientIface()),
         collecting and "en cours" or "au repos"))
+    local okC, clubId = pcall(guildClubId)
+    msg("clubId guilde = " .. tostring(okC and clubId or "erreur"))
     local ok, cnt = pcall(C_Calendar.GetNumGuildEvents)
     msg("GetNumGuildEvents = " .. tostring(ok and cnt or "erreur"))
-    local n = (ok and type(cnt) == "number") and cnt or 0
-    if n == 0 then
-        msg("→ le calendrier de guilde est vide ou pas encore chargé. Ouvre le calendrier (touche C), "
-            .. "attends qu'il s'affiche, puis /lotp collect.")
+    if okC and clubId then
+        local t0, t1 = calTime(time() - 86400), calTime(time() + WINDOW_DAYS * 86400)
+        local ok2, evs = pcall(C_Calendar.GetClubCalendarEvents, clubId, t0, t1)
+        local n2 = (ok2 and type(evs) == "table") and #evs or nil
+        msg("GetClubCalendarEvents = " .. tostring(n2 or (ok2 and "vide" or "erreur")))
+        if n2 and n2 > 0 then
+            for i = 1, math.min(2, n2) do
+                local e = evs[i]
+                local date = timeFields(e.startTime)
+                msg(("#%d %s | %s | eventID=%s"):format(i, tostring(e.title), tostring(date),
+                    tostring(e.eventID)))
+            end
+        end
     end
-    for i = 1, math.min(3, n) do
+    local n = (ok and type(cnt) == "number") and cnt or 0
+    for i = 1, math.min(2, n) do
         local ok2, e = pcall(C_Calendar.GetGuildEventInfo, i)
         if ok2 and type(e) == "table" then
             local parts = {}
@@ -283,11 +394,15 @@ local function dumpDiag()
                 parts[#parts + 1] = k .. "=" .. tostring(v)
             end
             table.sort(parts)
-            msg(("#%d %s"):format(i, table.concat(parts, " ")))
+            msg(("#g%d %s"):format(i, table.concat(parts, " ")))
         end
     end
     local ok3, ni = pcall(C_Calendar.GetNumInvites)
     msg("GetNumInvites (événement ouvert) = " .. tostring(ok3 and ni or "erreur"))
+    local ok4, mi = pcall(C_Calendar.GetMonthInfo, 0)
+    if ok4 and type(mi) == "table" then
+        msg(("mois affiché : %s/%s (%s jours)"):format(tostring(mi.month), tostring(mi.year), tostring(mi.numDays)))
+    end
 end
 
 -- ------------------------------------------------------------------------ UI
