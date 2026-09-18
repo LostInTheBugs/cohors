@@ -3355,6 +3355,7 @@ def api_prep_get(request: Request):
             "SELECT crafter, profession, item, item_id, expansion, exp_rank, mats FROM craft_recipes").fetchall()]
         game = [dict(r) for r in conn.execute(
             "SELECT prof, tier, exp_rank, item, item_id, rank_no, mats FROM game_recipes").fetchall()]
+        gts_row = conn.execute("SELECT MAX(updated) AS ts FROM game_recipes").fetchone()
     for r in recipes:
         try:
             r["mats"] = json.loads(r["mats"] or "[]")
@@ -3435,7 +3436,7 @@ def api_prep_get(request: Request):
     game_list = sorted(game_cat.values(), key=lambda e: (str(e["prof"]), str(e["item"]).casefold()))
     return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
             "catalog": cat_list, "exps": exps_list, "crafters": sorted({c["crafter"] for c in crafts}),
-            "game": game_list, "game_sync": dict(_game_sync_state),
+            "game": game_list, "game_sync": _game_sync_report(float(gts_row["ts"] or 0)),
             "me": {"name": user["name"] if "name" in user.keys() else user["email"]},
             "can_edit": can}
 
@@ -3535,6 +3536,14 @@ GAME_PREP_PROFS = ((185, "Cuisine"), (171, "Alchimie"), (773, "Calligraphie"),
                    (164, "Forge"), (165, "Travail du cuir"), (202, "Ingénierie"))
 GAME_SYNC_TTL = 6 * 86400.0  # rafraîchi bien avant le TTL de 30 j des API Blizzard
 _game_sync_state = {"state": "idle", "prof": "", "done": 0, "total": 0, "error": "", "ts": 0.0}
+
+
+def _game_sync_report(db_ts: float = 0.0) -> dict:
+    """État de synchro exposé à l'UI (le ts est repris de la base après redémarrage)."""
+    gs = dict(_game_sync_state)
+    if not gs.get("ts"):
+        gs["ts"] = db_ts
+    return gs
 
 
 def _game_sync(profs=None) -> None:
