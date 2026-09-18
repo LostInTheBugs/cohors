@@ -411,6 +411,14 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_craft_recipes ON craft_recipes(crafter, item)")
+        for _stmt in (
+            "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",
+        ):
+            try:
+                conn.execute(_stmt)
+            except Exception:
+                pass
 
 
 def _hash_password(password: str) -> str:
@@ -3327,7 +3335,7 @@ def api_prep_get(request: Request):
         claims = [dict(r) for r in conn.execute(
             "SELECT mat, qty, user, name FROM prep_claims").fetchall()]
         crafts = [dict(r) for r in conn.execute(
-            "SELECT crafter, profession, item, item_id, mats FROM craft_recipes").fetchall()]
+            "SELECT crafter, profession, item, item_id, expansion, exp_rank, mats FROM craft_recipes").fetchall()]
     for r in recipes:
         try:
             r["mats"] = json.loads(r["mats"] or "[]")
@@ -3364,13 +3372,30 @@ def api_prep_get(request: Request):
             except ValueError:
                 cmats = []
             ent = {"item": c["item"], "item_id": c["item_id"] or 0, "prof": c["profession"],
+                   "exp": c["expansion"] or "", "exp_rank": c["exp_rank"] or 0,
                    "mats": cmats, "crafters": []}
             catalog[key] = ent
+        else:
+            # même objet dans plusieurs paliers : garder le plus récent (rang mini)
+            if (c["exp_rank"] or 0) < (ent["exp_rank"] or 0):
+                try:
+                    ent["mats"] = json.loads(c["mats"] or "[]")
+                except ValueError:
+                    pass
+                ent["exp"] = c["expansion"] or ""
+                ent["exp_rank"] = c["exp_rank"] or 0
         if c["crafter"] not in ent["crafters"]:
             ent["crafters"].append(c["crafter"])
     cat_list = sorted(catalog.values(), key=lambda e: str(e["item"]).casefold())
+    exps: dict = {}
+    for c in crafts:
+        nm = str(c["expansion"] or "").strip()
+        rk = c["exp_rank"] or 0
+        if nm and (nm not in exps or rk < exps[nm]):
+            exps[nm] = rk
+    exps_list = [{"name": n, "rank": r} for n, r in sorted(exps.items(), key=lambda kv: kv[1])]
     return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
-            "catalog": cat_list, "crafters": sorted({c["crafter"] for c in crafts}),
+            "catalog": cat_list, "exps": exps_list, "crafters": sorted({c["crafter"] for c in crafts}),
             "me": {"name": user["name"] if "name" in user.keys() else user["email"]},
             "can_edit": can}
 
@@ -3521,7 +3546,12 @@ def api_prep_import_recipes(body: PrepRecipesImportRequest, request: Request):
                     except (TypeError, ValueError):
                         q = 0.0
                     mats.append({"id": _int_any(m[0]), "name": str(m[1] or "")[:120], "qty": q})
-            rows.append((crafter, realm, pname, item, _int_any((rec or {}).get("i")),
+            exp = str((rec or {}).get("e") or "").strip()[:60]
+            try:
+                trank = max(0, min(99, int((rec or {}).get("t") or 0)))
+            except (TypeError, ValueError):
+                trank = 0
+            rows.append((crafter, realm, pname, item, _int_any((rec or {}).get("i")), exp, trank,
                          json.dumps(mats, ensure_ascii=False)))
     if not rows:
         raise HTTPException(400, "Aucune recette exploitable dans cet export.")
@@ -3529,9 +3559,9 @@ def api_prep_import_recipes(body: PrepRecipesImportRequest, request: Request):
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM craft_recipes WHERE crafter=?", (crafter,))
         conn.executemany(
-            "INSERT OR REPLACE INTO craft_recipes (crafter, realm, profession, item, item_id, mats, updated) "
-            "VALUES (?,?,?,?,?,?,?)",
-            [(c, r, p, i, iid, mm, now) for (c, r, p, i, iid, mm) in rows],
+            "INSERT OR REPLACE INTO craft_recipes (crafter, realm, profession, item, item_id, expansion, exp_rank, mats, updated) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            [(c, r, p, i, iid, e, tk, mm, now) for (c, r, p, i, iid, e, tk, mm) in rows],
         )
     return {"ok": True, "crafter": crafter, "recipes": len(rows),
             "professions": len(data.get("professions") or [])}

@@ -687,7 +687,10 @@
  "📥 Importer un export d'artisan": "📥 Import a crafter export",
  "＋ recette": "＋ recipe",
  "Compos pré-remplies — vérifie puis « Ajouter / MAJ ».": "Materials pre-filled — check then « Add / update ».",
- "Aucun objet ne correspond.": "No matching item."
+ "Aucun objet ne correspond.": "No matching item.",
+ "2 dernières extensions": "Last 2 expansions",
+ "Toutes les extensions": "All expansions",
+ "Vos recettes de préparation (reprises dans le plan) :": "Your prep recipes (used in the plan):"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -712,6 +715,8 @@
     [/\bobjet\(s\)/g, "item(s)"],
     [/\bartisan\(s\)/g, "crafter(s)"],
     [/qui : /g, "who: "],
+    [/2 dernières : /g, "Last 2: "],
+    [/ affiché\(s\)/g, " shown"],
     [/recette\(s\) importée\(s\) de (.*?) ✓/g, "recipe(s) imported from $1 ✓"],
     [/\bcomplets?\b/g, "complete"],
     [/Recette enregistrée : (.*?) ✓/g, "Recipe saved: $1 ✓"],

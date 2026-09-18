@@ -75,8 +75,11 @@
   #msg.err { color: var(--err); }
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
   .hidden { display: none !important; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px;
+          border: 1px solid var(--line); color: var(--mut); }
+  .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.080">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.081">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -133,12 +136,14 @@
     <h2>📚 Recettes <span class="pc">officiers — objet fabriqué → compos</span></h2>
     <div class="row" style="margin-bottom:8px">
       <input id="catq" placeholder="Rechercher un objet connu des artisans…" style="min-width:240px">
+      <select id="catexp"><option value="2">2 dernières extensions</option><option value="all">Toutes les extensions</option></select>
       <button class="btn ghost" id="rimpbtn">📥 Importer un export d'artisan</button>
       <input type="file" id="rfile" accept=".lua,.txt,.json" class="hidden">
       <span class="meta" id="catmeta"></span>
     </div>
     <div id="catlist"></div>
-    <div id="reclistbox" style="margin-top:8px"></div>
+    <div class="meta" id="reclbl" style="margin-top:10px">Vos recettes de préparation (reprises dans le plan) :</div>
+    <div id="reclistbox" style="margin-top:4px"></div>
     <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
       <div class="row" style="align-items:flex-start">
         <input id="rname" placeholder="Objet fabriqué (ex : Festin)" style="min-width:200px">
@@ -150,8 +155,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.080"></script>
-<script src="/static/i18n.js?v=2026.09.080"></script>
+<script src="/static/nav.js?v=2026.09.081"></script>
+<script src="/static/i18n.js?v=2026.09.081"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -269,14 +274,24 @@ function renderCatalog() {
   const cat = DATA.catalog || [];
   const crafters = DATA.crafters || [];
   $("#catmeta").textContent = cat.length
-    ? `${cat.length} objet(s) connus · ${crafters.length} artisan(s) : ${crafters.join(", ")}` : "";
+    ? `${cat.length} objet(s) connus · ${crafters.length} artisan${crafters.length > 1 ? "s" : ""} : ${crafters.join(", ")}` : "";
+  const sel = $("#catexp");
+  const exps = (DATA.exps || []).slice(0, 2).map(x => x.name).filter(Boolean);
+  sel.options[0].textContent = exps.length ? `2 dernières : ${exps.join(" · ")}` : "2 dernières extensions";
   const q = ($("#catq").value || "").trim().toLowerCase();
   if (!cat.length) { box.innerHTML = ""; return; }
-  const list = (q ? cat.filter(x => x.item.toLowerCase().includes(q)) : cat).slice(0, 12);
+  const mode = sel.value || "2";
+  let src = cat;
+  if (mode === "2") src = src.filter(x => (+x.exp_rank || 0) <= 2);
+  const shown = src.length;
+  if (shown !== cat.length) {
+    $("#catmeta").textContent += ` · ${shown} affiché(s)`;
+  }
+  const list = (q ? src.filter(x => x.item.toLowerCase().includes(q)) : src).slice(0, 12);
   if (!list.length) { box.innerHTML = `<div class="empty">Aucun objet ne correspond.</div>`; return; }
   box.innerHTML = list.map(x => `<div class="irow">
     <span class="iname">${esc(x.item)}</span>
-    <span class="meta">${esc(x.prof)} · ${(x.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "aucune compos"}</span>
+    <span class="meta">${x.exp ? `<span class="chip${(+x.exp_rank || 0) === 1 ? " chip-new" : ""}">${esc(x.exp)}</span> · ` : ""}${esc(x.prof)} · ${(x.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "aucune compos"}</span>
     <span class="nclaims">qui : ${(x.crafters || []).map(esc).join(", ")}</span>
     <button class="btn ghost" data-cat="${esc(x.item)}" style="margin-left:auto">＋ recette</button>
   </div>`).join("");
@@ -295,6 +310,7 @@ function renderRecipes() {
   renderCatalog();
   const rl = DATA.recipes || [];
   const box = $("#reclistbox");
+  $("#reclbl").style.display = rl.length ? "" : "none";
   if (!rl.length) {
     box.innerHTML = `<div class="empty">Aucune recette — ajoute la première ci-dessous (objet fabriqué → compos).</div>`;
     return;
@@ -374,6 +390,7 @@ $("#rsave").addEventListener("click", async () => {
   } catch (e) { setMsg(e.message, false); }
 });
 $("#catq").addEventListener("input", () => { if (CAN) renderCatalog(); });
+$("#catexp").addEventListener("change", () => { if (CAN) renderCatalog(); });
 $("#rimpbtn").addEventListener("click", () => $("#rfile").click());
 $("#rfile").addEventListener("change", async () => {
   const f = $("#rfile").files[0];

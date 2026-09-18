@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.081 - 2026-09-19
+
+### Added
+- Known recipes: expansion filter. The addon (v1.5.1, `/lotp recettes`) now walks every expansion tier of each profession (`GetChildProfessionInfos`, newest first, `SetProfessionChildSkillLineID`) and tags every recipe with its expansion and tier rank. The site stores the expansion per recipe and the prep catalog gains a filter (default: last 2 expansions, option: all) with expansion badges, plus a clearer split between the known-recipe catalog and your prep recipes.
+
 ## 2026.09.080 - 2026-09-18
 
 ### Added

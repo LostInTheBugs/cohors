@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.5.0"
+local ADDON_VER = "1.5.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -623,11 +623,12 @@ local function dumpDiag(writeFile)
 end
 
 -- ------------------------------------------------- recettes des artisans (export)
--- Lit les recettes connues du personnage (comme l'interface des métiers) et les
+-- Lit les recettes connues du personnage, PAR MÉTIER ET PAR EXTENSION
+-- (paliers GetChildProfessionInfos, comme l'interface des métiers), et les
 -- écrit dans LOTP_DB.recipes pour l'import sur le site (Préparation de raid).
 local recEngine = nil
 local recResults = {}
-local REC_TOTAL_TIMEOUT = 150
+local REC_TOTAL_TIMEOUT = 240
 
 local function itemName(id)
     if not id or id <= 0 then return "" end
@@ -655,7 +656,7 @@ local function recProfs()
     return out
 end
 
-local function collectProfession()
+local function collectProfession(eName, eRank)
     local out = {}
     local seen = {}
     local ok, ids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
@@ -678,7 +679,8 @@ local function collectProfession()
                     end
                 end
             end
-            out[#out + 1] = { n = tostring(info.name), i = info.recipeID or rid, m = mats }
+            out[#out + 1] = { n = tostring(info.name), i = info.recipeID or rid,
+                              e = eName or "", t = eRank or 0, m = mats }
         end
     end
     return out
@@ -698,7 +700,8 @@ local function recSave()
         for _, r in ipairs(prof.recipes or {}) do
             if not firstR then parts[#parts + 1] = "," end
             firstR = false
-            parts[#parts + 1] = '{"n":"' .. jsonEsc(r.n) .. '","i":' .. jsonNum(r.i) .. ',"m":['
+            parts[#parts + 1] = '{"n":"' .. jsonEsc(r.n) .. '","i":' .. jsonNum(r.i)
+                .. ',"e":"' .. jsonEsc(r.e or "") .. '","t":' .. jsonNum(r.t or 0) .. ',"m":['
             local firstM = true
             for _, m in ipairs(r.m or {}) do
                 if not firstM then parts[#parts + 1] = "," end
@@ -718,16 +721,21 @@ local function recFinish(note)
     if not recEngine then return end
     recEngine = nil
     pcall(C_TradeSkillUI.CloseTradeSkill)
-    local okS = pcall(recSave)
-    local total = 0
-    for _, prof in ipairs(recResults) do total = total + #(prof.recipes or {}) end
+    pcall(recSave)
+    local total, exts = 0, {}
+    for _, prof in ipairs(recResults) do
+        for _, r in ipairs(prof.recipes or {}) do
+            total = total + 1
+            if r.e and r.e ~= "" and not exts[r.e] then exts[r.e] = true end
+        end
+    end
     LOTP_DB.recipes_total = total
     msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/LOTP.lua au site (Préparation de raid → 📥 importer).")
         :format(total, note and (" (" .. tostring(note) .. ")") or ""))
     if statusText then statusText:SetText("prêt (v" .. ADDON_VER .. ")") end
 end
 
-local function recTick(now, force)
+recTick = function(now, force)
     local e = recEngine
     if not e then return end
     if now > e.deadline then
@@ -741,44 +749,94 @@ local function recTick(now, force)
         recFinish(nil)
         return
     end
+    local wait = (not force) and now < (e.await or 0)
+
     if e.phase == "open" then
-        if not force and now < e.await then return end
+        if wait then return end
         pcall(C_TradeSkillUI.OpenTradeSkill, prof.skillLine)
-        e.phase = "waitList"
-        e.attempts = 0
-        e.await = now + 0.8
+        e.phase = "ready"; e.attempts = 0; e.await = now + 0.9
         dtrace(("métier %d/%d : %s"):format(e.pi, #e.progs, prof.name))
         return
+    elseif e.phase == "ready" then
+        if wait then return end
+        local oki, ready = pcall(C_TradeSkillUI.IsTradeSkillReady)
+        local okc, childs = pcall(C_TradeSkillUI.GetChildProfessionInfos)
+        if (oki and ready) or (e.attempts or 0) > 12 then
+            e.childs = (okc and type(childs) == "table" and #childs > 0) and childs or {}
+            e.ci = 1
+            if #e.childs > 0 then
+                e.phase = "switch"; e.await = now + 0.2
+            else
+                e.phase = "waitList"; e.attempts = 0; e.await = now + 1.0
+            end
+            return
+        end
+        e.attempts = (e.attempts or 0) + 1; e.await = now + 0.6
+        return
+    elseif e.phase == "switch" then
+        if wait then return end
+        local child = e.childs[e.ci]
+        if not child then
+            pcall(C_TradeSkillUI.CloseTradeSkill)
+            e.pi = e.pi + 1; e.phase = "open"; e.await = now + 0.5
+            return
+        end
+        pcall(C_TradeSkillUI.SetProfessionChildSkillLineID, child.professionID)
+        e.attempts = 0; e.phase = "waitChild"; e.await = now + 0.4
+        return
+    elseif e.phase == "waitChild" then
+        if wait then return end
+        local child = e.childs[e.ci]
+        local okg, cur = pcall(C_TradeSkillUI.GetChildProfessionInfo)
+        if okg and type(cur) == "table" and cur.professionID == child.professionID then
+            e.phase = "settle"; e.settleUntil = now + 0.9
+        elseif (e.attempts or 0) > 10 then
+            dtrace(("%s · %s : palier non chargé — passé"):format(prof.name, tostring(child.expansionName)))
+            e.ci = e.ci + 1; e.phase = "switch"; e.await = now + 0.2
+        else
+            e.attempts = (e.attempts or 0) + 1; e.await = now + 0.4
+        end
+        return
+    elseif e.phase == "settle" then
+        if not force and now < (e.settleUntil or 0) then return end
+        e.phase = "collect"; e.await = now + 0.05
+        return
+    elseif e.phase == "collect" then
+        if wait then return end
+        local child = e.childs[e.ci]
+        local eName, eRank = "", 0
+        if child then
+            eName = tostring(child.expansionName or "")
+            eRank = e.ci
+        end
+        local okc2, list = pcall(collectProfession, eName, eRank)
+        list = (okc2 and type(list) == "table") and list or {}
+        recResults[#recResults + 1] = { name = prof.name, recipes = list }
+        local tag = eName ~= "" and (" · " .. eName) or ""
+        dtrace(("%s%s : %d recette(s)"):format(prof.name, tag, #list))
+        msg(("• %s%s : %d recette(s)"):format(prof.name, tag, #list))
+        if child then
+            e.ci = e.ci + 1; e.phase = "switch"; e.await = now + 0.3
+        else
+            pcall(C_TradeSkillUI.CloseTradeSkill)
+            e.pi = e.pi + 1; e.phase = "open"; e.await = now + 0.5
+        end
+        return
     elseif e.phase == "waitList" then
-        if not force and now < e.await then return end
-        local ok, ids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
-        if ok and type(ids) == "table" and #ids > 0 then
-            e.phase = "collect"
-            e.await = now + 0.05
+        if wait then return end
+        local okL, ids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
+        if okL and type(ids) == "table" and #ids > 0 then
+            e.phase = "collect"; e.await = now + 0.05
             return
         end
         e.attempts = (e.attempts or 0) + 1
         if e.attempts > 20 then
             dtrace(("%s : aucune recette lue — métier suivant"):format(prof.name))
             pcall(C_TradeSkillUI.CloseTradeSkill)
-            e.pi = e.pi + 1
-            e.phase = "open"
-            e.await = now + 0.4
+            e.pi = e.pi + 1; e.phase = "open"; e.await = now + 0.4
             return
         end
         e.await = now + 1.0
-        return
-    elseif e.phase == "collect" then
-        if not force and now < e.await then return end
-        local okc, list = pcall(collectProfession)
-        list = (okc and type(list) == "table") and list or {}
-        recResults[#recResults + 1] = { name = prof.name, recipes = list }
-        dtrace(("%s : %d recette(s)"):format(prof.name, #list))
-        msg(("• %s : %d recette(s)"):format(prof.name, #list))
-        pcall(C_TradeSkillUI.CloseTradeSkill)
-        e.pi = e.pi + 1
-        e.phase = "open"
-        e.await = now + 0.5
         return
     end
 end
@@ -801,7 +859,7 @@ end
 function LOTP_Recipes()
     if recEngine then
         local age = GetTime() - (recEngine.started or 0)
-        if age > 90 then
+        if age > 150 then
             msg("export précédent bloqué — réinitialisation…")
             recEngine = nil
         else
@@ -820,11 +878,12 @@ function LOTP_Recipes()
     end
     recResults = {}
     recEngine = {
-        progs = profs, pi = 1, phase = "open", attempts = 0,
-        started = GetTime(), await = GetTime() + 0.4, deadline = GetTime() + REC_TOTAL_TIMEOUT,
+        progs = profs, pi = 1, phase = "open", attempts = 0, ci = 0,
+        started = GetTime(), await = GetTime() + 0.4, settleUntil = 0,
+        deadline = GetTime() + REC_TOTAL_TIMEOUT,
     }
     dtrace(("recettes : %d métier(s) — %s"):format(#profs, profs[1] and profs[1].name or "?"))
-    msg(("lecture des recettes (%d métier(s))… garde le jeu au premier plan quelques secondes."):format(#profs))
+    msg(("lecture des recettes (%d métier(s), tous paliers d'extension)… garde le jeu au premier plan quelques secondes."):format(#profs))
     if statusText then statusText:SetText("… recettes") end
 end
 
