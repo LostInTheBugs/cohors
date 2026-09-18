@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.075 - 2026-09-18
+
+### Fixed
+- Addon 1.4.4: bisect fix — the only code executed during loading that was new versus the working 1.4.0 (a backup timer and per-frame counters) has been removed; nothing runs at load anymore beyond what 1.4.0 already did (lazy panel, click-driven steps and version display are all kept, none executed at load); a startup handshake message now proves whether the file executes to its end on the client.
+
 ## 2026.09.074 - 2026-09-18
 
 ### Fixed

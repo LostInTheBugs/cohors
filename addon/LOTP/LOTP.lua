@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.4.3"
+local ADDON_VER = "1.4.4"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -402,16 +402,10 @@ local function engineTickSafe(force)
 end
 
 f:SetScript("OnUpdate", function()
-    LOTP_DB.beat_ou = (LOTP_DB.beat_ou or 0) + 1   -- pulsation : preuve que OnUpdate tourne
     engineTickSafe()
 end)
--- second moteur de secours : si OnUpdate ne tourne pas, ce minuteur fait avancer la collecte
-pcall(function()
-    C_Timer.NewTicker(0.5, function()
-        LOTP_DB.beat_timer = (LOTP_DB.beat_timer or 0) + 1  -- pulsation : preuve que les minuteurs tournent
-        engineTickSafe()
-    end)
-end)
+-- pas de minuteur créé au chargement : la collecte avance par l'affichage (OnUpdate) et par les clics
+-- (chaque clic sur « Collecter » force une étape, même si l'affichage ne tourne pas)
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == (ADDON_NAME or "LOTP") then
@@ -508,8 +502,6 @@ diagLines = function()
         ("en cours depuis " .. dateStr(collectStartAt) .. " · phase " .. tostring(engine and engine.phase)) or "au repos")
     local copies = lotpCopies()
     L[#L + 1] = "dossiers LOTP : " .. (#copies > 0 and table.concat(copies, ", ") or "?")
-    L[#L + 1] = ("pulsations : OnUpdate=%s · minuteur=%s"):format(tostring(LOTP_DB.beat_ou or 0),
-        tostring(LOTP_DB.beat_timer or 0))
     if LOTP_DB.last_error then
         L[#L + 1] = "dernière erreur : " .. tostring(LOTP_DB.last_error)
     end
@@ -737,6 +729,8 @@ function LOTP_Refresh()
 end
 
 -- commande unique et toujours disponible
+msg("v" .. ADDON_VER .. " — fichier execute jusqu au bout (dossier " .. tostring(ADDON_NAME or "?") .. "). Si aucun autre message LOTP n apparait ensuite, le probleme est cote client.")
+
 SLASH_LOTP1 = "/lotp"
 SlashCmdList["LOTP"] = function(arg)
     arg = (arg or ""):lower()
