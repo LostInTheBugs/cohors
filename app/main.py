@@ -2903,11 +2903,25 @@ def _lua_unescape(t: str) -> str:
     return "".join(out)
 
 
+def _int_any(v) -> int:
+    """Entier depuis un nombre ou une chaîne (y compris hexadécimal « 0x… » écrit par le client WoW)."""
+    try:
+        if isinstance(v, str):
+            s = v.strip()
+            if s.lower().startswith("0x"):
+                return int(s, 16)
+            return int(float(s))
+        return int(v if v is not None else 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _gcal_parse(text: str) -> dict:
     """Extrait les données d'un import : JSON brut (chaîne collée) ou fichier SavedVariables (LOTP.lua)."""
     t = (text or "").strip()
     if not t:
         raise HTTPException(400, "Contenu vide.")
+    raw = None
     if t.startswith("{"):
         raw = t
     else:
@@ -2918,11 +2932,23 @@ def _gcal_parse(text: str) -> dict:
         elif st:
             raw = _lua_unescape(st.group(1))
         else:
-            raise HTTPException(400, "Format non reconnu — colle la chaîne exportée ou choisis le fichier LOTP.lua.")
+            # tolérance : chaîne d'export noyée dans du texte copié avec (résumé, etc.)
+            j = t.find('{"v":')
+            k = t.rfind("}")
+            if j >= 0 and k > j:
+                raw = t[j:k + 1]
+    if raw is None:
+        snippet = " ".join(t[:90].split())
+        raise HTTPException(400, "Format non reconnu (reçu : %d caractères — « %s… »). Copie la chaîne qui commence par "
+                                 "{\"v\":1 avec le bouton « Exporter » de l'addon (Ctrl+A puis Ctrl+C), ou choisis le "
+                                 "fichier WTF/Account/<compte>/SavedVariables/LOTP.lua." % (len(t), snippet))
+    # tolérance : le client WoW écrit certains ids 64 bits en hexadécimal (0x1F45…), invalide en JSON strict
+    raw = re.sub(r"(\s*:\s*)0x([0-9A-Fa-f]+)", r'\1"0x\2"', raw)
     try:
         data = json.loads(raw)
     except ValueError:
-        raise HTTPException(400, "Données illisibles (JSON invalide).")
+        raise HTTPException(400, "Données illisibles (JSON invalide) — recopie la chaîne avec « Exporter » "
+                                 "(Ctrl+A puis Ctrl+C) ou importe le fichier LOTP.lua.")
     if not isinstance(data, dict) or not isinstance(data.get("events"), list):
         raise HTTPException(400, "Données inattendues (aucun événement).")
     return data
@@ -3177,11 +3203,11 @@ def api_gcal_import(payload: GcalImportRequest, request: Request):
         except (TypeError, ValueError):
             ts = 0.0
         events.append({
-            "id": int(e.get("id") or 0),
+            "id": _int_any(e.get("id")),
             "title": str(e.get("title") or "?")[:200],
             "date": str(e.get("date") or "")[:20],
             "ts": ts,
-            "type": int(e.get("type") or 0),
+            "type": _int_any(e.get("type")),
             "inv": inv,
         })
     blob = json.dumps({"events": events}, ensure_ascii=False)
@@ -3210,7 +3236,7 @@ def api_gcal_relance(event_id: int, request: Request):
         events = (json.loads(row["data"]) or {}).get("events") or []
     except ValueError:
         events = []
-    ev = next((e for e in events if int(e.get("id") or 0) == event_id), None)
+    ev = next((e for e in events if _int_any(e.get("id")) == event_id), None)
     if ev is None:
         raise HTTPException(404, "Événement introuvable dans le dernier import.")
     waiting = [i.get("n") for i in (ev.get("inv") or []) if int(i.get("s", -1)) not in (1, 2, 3, 8)]

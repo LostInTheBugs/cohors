@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.077 - 2026-09-18
+
+### Fixed
+- Calendar import: the site now accepts the WoW client's hexadecimal event ids (64-bit world events, e.g. `0x1F45...`) — they are quoted before JSON parsing and converted to integers on import; the import is also tolerant of an export string pasted together with other text, error messages now show what was received, and the Discord reminder endpoint handles all id forms.
+- Addon 1.4.6: exports always emit valid JSON (non-decimal ids are emitted as strings).
+
 ## 2026.09.076 - 2026-09-18
 
 ### Fixed

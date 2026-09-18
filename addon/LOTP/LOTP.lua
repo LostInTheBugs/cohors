@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.4.5"
+local ADDON_VER = "1.4.6"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -55,6 +55,13 @@ local function jsonEsc(s)
     s = tostring(s or "")
     s = s:gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t")
     return s
+end
+
+-- nombre JSON sûr : le client WoW écrit certains ids 64 bits en hexadécimal (0x1F45…) — invalide en JSON strict
+local function jsonNum(v)
+    local s = tostring(v == nil and 0 or v)
+    if s:match("^%-?%d+$") then return s end
+    return '"' .. jsonEsc(s) .. '"'
 end
 
 local function dateStr(t)
@@ -175,19 +182,19 @@ local function buildExport()
     parts[#parts + 1] = '{"v":1,"ver":"' .. jsonEsc(ADDON_VER) .. '"'
     parts[#parts + 1] = ',"player":"' .. jsonEsc(UnitName("player") or "?") .. '"'
     parts[#parts + 1] = ',"realm":"' .. jsonEsc(GetRealmName() or "?") .. '"'
-    parts[#parts + 1] = ',"at":' .. tostring(time()) .. ',"events":['
+    parts[#parts + 1] = ',"at":' .. jsonNum(time()) .. ',"events":['
     for i, e in ipairs(results) do
         local ev = {}
-        ev[#ev + 1] = '{"id":' .. tostring(e.id or 0)
+        ev[#ev + 1] = '{"id":' .. jsonNum(e.id)
         ev[#ev + 1] = ',"title":"' .. jsonEsc(e.title) .. '"'
         ev[#ev + 1] = ',"date":"' .. jsonEsc(e.date) .. '"'
-        ev[#ev + 1] = ',"ts":' .. tostring(e.ts or 0)
-        ev[#ev + 1] = ',"type":' .. tostring(e.etype or 0)
+        ev[#ev + 1] = ',"ts":' .. jsonNum(e.ts)
+        ev[#ev + 1] = ',"type":' .. jsonNum(e.etype)
         ev[#ev + 1] = ',"inv":['
         for j, inv in ipairs(e.invites or {}) do
             if j > 1 then ev[#ev + 1] = "," end
-            ev[#ev + 1] = '{"n":"' .. jsonEsc(inv.n) .. '","s":' .. tostring(inv.s or -1)
-            if inv.t then ev[#ev + 1] = ',"t":' .. tostring(inv.t) end
+            ev[#ev + 1] = '{"n":"' .. jsonEsc(inv.n) .. '","s":' .. jsonNum(inv.s or -1)
+            if inv.t then ev[#ev + 1] = ',"t":' .. jsonNum(inv.t) end
             ev[#ev + 1] = "}"
         end
         ev[#ev + 1] = "]}"
