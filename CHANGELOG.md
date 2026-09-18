@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.074 - 2026-09-18
+
+### Fixed
+- Addon 1.4.3: the panel is now built on demand (never during loading) — a failing UI can no longer break the addon: `/lotp collect`, `export`, `diag` and `reset` keep working without a window, a frame-name collision (leftover duplicate) automatically falls back to an unnamed frame instead of crashing the load, the load line and `/lotp` show the addon version + folder + TOC version, and any panel error is saved in the report.
+
 ## 2026.09.073 - 2026-09-18
 
 ### Fixed

@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.4.2"
+local ADDON_VER = "1.4.3"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -28,7 +28,7 @@ local results = {}
 local openedFrame = false
 local watchMonth = nil
 local collectStartAt = 0
-local ui, statusText      -- créés plus bas (UI)
+local ui, statusText, eb, showSummary  -- créés plus bas (panneau à la demande)
 
 -- ---------------------------------------------------------------- utilitaires
 local function msg(text)
@@ -39,6 +39,16 @@ local function clientIface()
     local ok, _, _, _, iface = pcall(GetBuildInfo)
     if not ok or type(iface) ~= "number" then return "?" end
     return iface
+end
+
+local function tocVersion()
+    local ok, v = pcall(function()
+        if C_AddOns and C_AddOns.GetAddOnMetadata then
+            return C_AddOns.GetAddOnMetadata(ADDON_NAME or "LOTP", "Version")
+        end
+        return GetAddOnMetadata and GetAddOnMetadata(ADDON_NAME or "LOTP", "Version")
+    end)
+    return (ok and v and tostring(v)) or "?"
 end
 
 local function jsonEsc(s)
@@ -489,8 +499,11 @@ end
 diagLines = function()
     local L = {}
     L[#L + 1] = "LOTP diag — " .. dateStr(time())
-    L[#L + 1] = ("addon v%s · client %s · dossier « %s »"):format(ADDON_VER, tostring(clientIface()),
-        tostring(ADDON_NAME or "?"))
+    L[#L + 1] = ("addon v%s (TOC %s) · client %s · dossier « %s »"):format(ADDON_VER, tostring(tocVersion()),
+        tostring(clientIface()), tostring(ADDON_NAME or "?"))
+    if LOTP_DB.ui_error then
+        L[#L + 1] = "erreur fenêtre : " .. tostring(LOTP_DB.ui_error)
+    end
     L[#L + 1] = ("collecte : %s"):format(collecting and
         ("en cours depuis " .. dateStr(collectStartAt) .. " · phase " .. tostring(engine and engine.phase)) or "au repos")
     local copies = lotpCopies()
@@ -585,146 +598,172 @@ local function dumpDiag(writeFile)
     end
 end
 
--- ------------------------------------------------------------------------ UI
-ui = CreateFrame("Frame", "LOTPFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-ui:SetSize(720, 500)
-ui:SetPoint("CENTER")
-ui:SetFrameStrata("DIALOG")
-ui:SetMovable(true)
-ui:EnableMouse(true)
-ui:SetClampedToScreen(true)
-ui:RegisterForDrag("LeftButton")
-ui:SetScript("OnDragStart", ui.StartMoving)
-ui:SetScript("OnDragStop", ui.StopMovingOrSizing)
-if ui.SetBackdrop then
-    ui:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 16, edgeSize = 24,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 },
-    })
-end
-ui:Hide()
-
-local title = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-title:SetPoint("TOP", 0, -14)
-title:SetText("LOTP v" .. ADDON_VER .. " — Calendrier de guilde")
-
-local sub = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-sub:SetPoint("TOP", 0, -36)
-sub:SetText("Collecte les raids + réponses, puis colle la chaîne exportée sur lotp.gensbien.fr (page Calendrier).")
-
-local eb = CreateFrame("EditBox", nil, ui)
-eb:SetMultiLine(true)
-eb:SetSize(680, 350)
-eb:SetPoint("TOPLEFT", 20, -60)
-eb:SetFontObject(ChatFontNormal)
-eb:SetAutoFocus(false)
-eb:SetTextInsets(6, 6, 6, 6)
-eb:SetText("")
-eb:SetScript("OnEscapePressed", function() eb:ClearFocus() end)
-
-statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-statusText:SetPoint("BOTTOMRIGHT", -256, 23)
-statusText:SetText("prêt (v" .. ADDON_VER .. ")")
-
-local function mkButton(text, x, w, fn)
-    local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
-    b:SetSize(w, 26)
-    b:SetPoint("BOTTOMLEFT", x, 16)
-    b:SetText(text)
-    b:SetScript("OnClick", function()
-        dtrace("clic « " .. text .. " »")
-        local ok, err = pcall(fn)
-        if not ok then
-            local t = tostring(err)
-            LOTP_DB.last_error = "clic " .. text .. " : " .. t
-            msg("ERREUR (clic « " .. text .. " ») — " .. t)
+-- ------------------------------------------------------------------- panneau
+-- La fenêtre est construite À LA DEMANDE (jamais au chargement) : si sa
+-- construction échoue, l'addon continue de fonctionner sans fenêtre.
+local function buildPanel()
+    if ui then return true end
+    local okB, errB = pcall(function()
+        local okF, frame = pcall(CreateFrame, "Frame", "LOTPFrame", UIParent,
+            BackdropTemplateMixin and "BackdropTemplate" or nil)
+        if not okF or not frame then
+            -- nom déjà pris (vieille copie ?) : fenêtre sans nom, on ne plante jamais
+            frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
         end
-    end)
-    return b
-end
+        ui = frame
+        ui:SetSize(720, 500)
+        ui:SetPoint("CENTER")
+        ui:SetFrameStrata("DIALOG")
+        ui:SetMovable(true)
+        ui:EnableMouse(true)
+        ui:SetClampedToScreen(true)
+        ui:RegisterForDrag("LeftButton")
+        ui:SetScript("OnDragStart", ui.StartMoving)
+        ui:SetScript("OnDragStop", ui.StopMovingOrSizing)
+        if ui.SetBackdrop then
+            ui:SetBackdrop({
+                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                tile = true, tileSize = 16, edgeSize = 24,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 },
+            })
+        end
+        ui:Hide()
 
-local function showSummary()
-    local lines = {}
-    if not LOTP_DB.export then
-        lines[#lines + 1] = "Aucune collecte pour le moment — clique « Collecter »."
-    else
-        local nresp = 0
-        for _, e in ipairs(results) do nresp = nresp + #(e.invites or {}) end
-        lines[#lines + 1] = ("Dernière collecte : %s · %d réponse(s).")
-            :format(LOTP_DB.export_at and dateStr(LOTP_DB.export_at) or "?", nresp)
-        for _, e in ipairs(results) do
-            local c = { ok = 0, maybe = 0, no = 0, wait = 0 }
-            local waiting = {}
-            for _, inv in ipairs(e.invites or {}) do
-                if inv.s == 1 or inv.s == 3 then c.ok = c.ok + 1
-                elseif inv.s == 8 then c.maybe = c.maybe + 1
-                elseif inv.s == 2 then c.no = c.no + 1
-                else
-                    c.wait = c.wait + 1
-                    if #waiting < 25 then waiting[#waiting + 1] = inv.n end
+        local title = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        title:SetPoint("TOP", 0, -14)
+        title:SetText("LOTP v" .. ADDON_VER .. " — Calendrier de guilde")
+
+        local sub = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        sub:SetPoint("TOP", 0, -36)
+        sub:SetText("Collecte les raids + réponses, puis colle la chaîne exportée sur lotp.gensbien.fr (page Calendrier).")
+
+        eb = CreateFrame("EditBox", nil, ui)
+        eb:SetMultiLine(true)
+        eb:SetSize(680, 350)
+        eb:SetPoint("TOPLEFT", 20, -60)
+        eb:SetFontObject(ChatFontNormal)
+        eb:SetAutoFocus(false)
+        eb:SetTextInsets(6, 6, 6, 6)
+        eb:SetText("")
+        eb:SetScript("OnEscapePressed", function() eb:ClearFocus() end)
+
+        statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        statusText:SetPoint("BOTTOMRIGHT", -256, 23)
+        statusText:SetText("prêt (v" .. ADDON_VER .. ")")
+
+        local function mkButton(text, x, w, fn)
+            local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
+            b:SetSize(w, 26)
+            b:SetPoint("BOTTOMLEFT", x, 16)
+            b:SetText(text)
+            b:SetScript("OnClick", function()
+                dtrace("clic « " .. text .. " »")
+                local ok, err = pcall(fn)
+                if not ok then
+                    local t = tostring(err)
+                    LOTP_DB.last_error = "clic " .. text .. " : " .. t
+                    msg("ERREUR (clic « " .. text .. " ») — " .. t)
                 end
-            end
-            lines[#lines + 1] = ("%s  %s  —  %d dispo · %d incertain · %d non · %d sans réponse")
-                :format(e.date or "?", e.title or "?", c.ok, c.maybe, c.no, c.wait)
-            if #waiting > 0 then
-                lines[#lines + 1] = "   en attente : " .. table.concat(waiting, ", ")
-            end
+            end)
+            return b
         end
-        lines[#lines + 1] = ""
-        lines[#lines + 1] = "Clique « Exporter » puis Ctrl+A / Ctrl+C pour copier la chaîne à coller sur le site."
+
+        showSummary = function()
+            local lines = {}
+            if not LOTP_DB.export then
+                lines[#lines + 1] = "Aucune collecte pour le moment — clique « Collecter »."
+            else
+                local nresp = 0
+                for _, e in ipairs(results) do nresp = nresp + #(e.invites or {}) end
+                lines[#lines + 1] = ("Dernière collecte : %s · %d réponse(s).")
+                    :format(LOTP_DB.export_at and dateStr(LOTP_DB.export_at) or "?", nresp)
+                for _, e in ipairs(results) do
+                    local c = { ok = 0, maybe = 0, no = 0, wait = 0 }
+                    local waiting = {}
+                    for _, inv in ipairs(e.invites or {}) do
+                        if inv.s == 1 or inv.s == 3 then c.ok = c.ok + 1
+                        elseif inv.s == 8 then c.maybe = c.maybe + 1
+                        elseif inv.s == 2 then c.no = c.no + 1
+                        else
+                            c.wait = c.wait + 1
+                            if #waiting < 25 then waiting[#waiting + 1] = inv.n end
+                        end
+                    end
+                    lines[#lines + 1] = ("%s  %s  —  %d dispo · %d incertain · %d non · %d sans réponse")
+                        :format(e.date or "?", e.title or "?", c.ok, c.maybe, c.no, c.wait)
+                    if #waiting > 0 then
+                        lines[#lines + 1] = "   en attente : " .. table.concat(waiting, ", ")
+                    end
+                end
+                lines[#lines + 1] = ""
+                lines[#lines + 1] = "Clique « Exporter » puis Ctrl+A / Ctrl+C pour copier la chaîne à coller sur le site."
+            end
+            eb:SetText(table.concat(lines, "\n"))
+            eb:HighlightText()
+            eb:SetFocus()
+        end
+
+        mkButton("Collecter", 20, 100, function() LOTP_Collect() end)
+        mkButton("Réinitialiser", 128, 110, function() LOTP_Reset() end)
+        mkButton("Exporter", 246, 100, function()
+            if not LOTP_DB.export then
+                msg("rien à exporter pour le moment — clique « Collecter ».")
+                return
+            end
+            eb:SetText(LOTP_DB.export)
+            eb:HighlightText()
+            eb:SetFocus()
+            msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur lotp.gensbien.fr (page Calendrier).")
+        end)
+        mkButton("Diag → fichier", 354, 120, function()
+            dumpDiag(true)
+        end)
+        mkButton("Fermer", 482, 90, function() ui:Hide() end)
+    end)
+    if not okB then
+        LOTP_DB.ui_error = tostring(errB)
+        msg("interface impossible : " .. tostring(errB) .. " — mode sans fenêtre (/lotp diag → fichier)")
+        ui = nil
+        return false
     end
-    eb:SetText(table.concat(lines, "\n"))
-    eb:HighlightText()
-    eb:SetFocus()
+    return true
 end
 
 function LOTP_Refresh()
-    if ui:IsShown() and not collecting then
-        showSummary()
+    if ui and ui:IsShown() and not collecting and showSummary then
+        pcall(showSummary)
     end
 end
 
-mkButton("Collecter", 20, 100, function() LOTP_Collect() end)
-mkButton("Réinitialiser", 128, 110, function() LOTP_Reset() end)
-mkButton("Exporter", 246, 100, function()
-    if not LOTP_DB.export then
-        msg("rien à exporter pour le moment — clique « Collecter ».")
-        return
-    end
-    eb:SetText(LOTP_DB.export)
-    eb:HighlightText()
-    eb:SetFocus()
-    msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur lotp.gensbien.fr (page Calendrier).")
-end)
-mkButton("Diag → fichier", 354, 120, function()
-    dumpDiag(true)
-end)
-mkButton("Fermer", 482, 90, function() ui:Hide() end)
-
+-- commande unique et toujours disponible
 SLASH_LOTP1 = "/lotp"
 SlashCmdList["LOTP"] = function(arg)
     arg = (arg or ""):lower()
     dtrace("commande : /lotp " .. arg)
     local okAll, errAll = pcall(function()
         if arg == "" then
-            ui:Show()
-            msg(("v%s · dossier « %s » — « Collecter » lance la collecte (ou /lotp collect).")
-                :format(ADDON_VER, tostring(ADDON_NAME or "?")))
-            if LOTP_DB.export then pcall(showSummary) end
+            buildPanel()
+            if ui then ui:Show() end
+            msg(("v%s · dossier « %s » (TOC %s) — « Collecter » lance la collecte (ou /lotp collect).")
+                :format(ADDON_VER, tostring(ADDON_NAME or "?"), tostring(tocVersion())))
+            if LOTP_DB.export and showSummary then pcall(showSummary) end
             if not engine and (time() - (LOTP_DB.export_at or 0)) > 120 then
                 LOTP_Collect()
             end
         elseif arg == "collect" then
-            ui:Show()
+            buildPanel()
+            if ui then ui:Show() end
             LOTP_Collect()
         elseif arg == "export" then
-            ui:Show()
-            if LOTP_DB.export then
+            buildPanel()
+            if ui and eb and LOTP_DB.export then
+                ui:Show()
                 eb:SetText(LOTP_DB.export)
                 eb:HighlightText()
                 eb:SetFocus()
+            elseif LOTP_DB.export then
+                msg("pas de fenêtre — utilise /lotp diag puis envoie le fichier.")
             else
                 msg("aucune donnée — /lotp collect d'abord.")
             end
