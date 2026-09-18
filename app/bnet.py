@@ -192,6 +192,49 @@ def equipment(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
     return data, _store(key, data)
 
 
+# Libellés FR des métiers (l'API professions renvoie les noms en anglais).
+# Repli sûr : si un nom inconnu arrive, il est conservé tel quel.
+PROF_FR = {
+    "Alchemy": "Alchimie", "Blacksmithing": "Forge", "Enchanting": "Enchantement",
+    "Engineering": "Ingénierie", "Herbalism": "Herboristerie", "Inscription": "Calligraphie",
+    "Jewelcrafting": "Joaillerie", "Leatherworking": "Travail du cuir", "Mining": "Minéralogie",
+    "Skinning": "Dépeçage", "Tailoring": "Couture", "Archaeology": "Archéologie",
+    "Cooking": "Cuisine", "Fishing": "Pêche", "First Aid": "Secourisme",
+}
+
+
+def professions(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
+    """Métiers du personnage (primaires + secondaires) — palier le plus récent."""
+    realm, name = realm.lower(), name.lower()
+    key = f"prof/{realm}/{name}"
+    hit = _cached(key, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    raw = _get(
+        f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}/professions",
+        {"namespace": f"profile-{REGION}", "locale": LOCALE},
+    )
+    profs = []
+    for p in (raw.get("primaries") or []) + (raw.get("secondaries") or []):
+        prof = p.get("profession") or {}
+        tiers = p.get("tiers") or []
+        tier = tiers[-1] if tiers else {}
+        points = tier.get("skill_points")
+        maxp = tier.get("max_skill_points")
+        if points is None and maxp is None:
+            # métiers sans paliers (ex. Archéologie) : points au niveau racine
+            points, maxp = p.get("skill_points"), p.get("max_skill_points")
+        profs.append({
+            "name": PROF_FR.get(prof.get("name") or "", prof.get("name") or "?"),
+            "id": prof.get("id"),
+            "tier": (tier.get("tier") or {}).get("name"),
+            "points": points,
+            "max": maxp,
+        })
+    data = {"profs": profs}
+    return data, _store(key, data)
+
+
 def extras(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
     """Fiche enrichie : hauts faits, collections (montures / mascottes) et rating M+."""
     realm, name = realm.lower(), name.lower()

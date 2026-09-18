@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.060 - 2026-09-18
+
+### Added
+- "Artisanat" page (/craft): who can craft what in the guild — professions of every roster character grouped by trade (skill of the latest tier), search by profession or character, links to profiles. Professions are refreshed weekly alongside the daily snapshots (table `char_professions`). API: `GET /api/craft`.
+- Nav: new "🔨 Artisanat" entry in the Guilde menu.
+
 ## 2026.09.059 - 2026-09-18
 
 ### Added

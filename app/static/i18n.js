@@ -609,7 +609,28 @@
  "Dernier raid": "Last raid",
  "· invité": "· guest",
  "Aucune soirée de raid loggée sur la période.": "No raid night logged for this period.",
- "Soirées loggées sur Warcraft Logs — clique sur une date pour ouvrir le rapport.": "Nights logged on Warcraft Logs — click a date to open the report."
+ "Soirées loggées sur Warcraft Logs — clique sur une date pour ouvrir le rapport.": "Nights logged on Warcraft Logs — click a date to open the report.",
+ "LOTP — Artisanat": "LOTP — Crafting",
+ "🔨 Artisanat": "🔨 Crafting",
+ "Artisanat": "Crafting",
+ "Qui peut crafter quoi dans la guilde — métiers et niveaux.": "Who can craft what in the guild — professions and skill levels.",
+ "Rechercher un métier ou un personnage…": "Search a profession or a character…",
+ "Aucun artisan trouvé.": "No crafter found.",
+ "Aucun métier enregistré pour le moment — les données arrivent au fil des relevés quotidiens.": "No profession recorded yet — data arrives with the daily snapshots.",
+ "Alchimie": "Alchemy",
+ "Calligraphie": "Inscription",
+ "Couture": "Tailoring",
+ "Dépeçage": "Skinning",
+ "Enchantement": "Enchanting",
+ "Forge": "Blacksmithing",
+ "Herboristerie": "Herbalism",
+ "Ingénierie": "Engineering",
+ "Joaillerie": "Jewelcrafting",
+ "Minéralogie": "Mining",
+ "Travail du cuir": "Leatherworking",
+ "Archéologie": "Archaeology",
+ "Cuisine": "Cooking",
+ "Pêche": "Fishing"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -698,6 +719,7 @@
     [/(\d+) persos(?![\w])/g, "$1 characters"],
     [/(\d+) soirées loggées/g, "$1 logged evenings"],
     [/sur les (\d+) derniers jours/g, "over the last $1 days"],
+    [/(\d+) personnages avec métier/g, "$1 characters with a profession"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();

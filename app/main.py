@@ -68,6 +68,7 @@ SNAP_REFRESH_MIN = float(os.environ.get("SNAPSHOT_REFRESH_MIN", "360"))  # re-re
 SNAP_KEEP_DAYS = min(30, max(2, int(os.environ.get("SNAPSHOT_KEEP_DAYS", "30"))))
 SNAP_REFRESH_MIN_OTHER = float(os.environ.get("SNAPSHOT_REFRESH_MIN_OTHER", "1200"))  # roster : 20 h
 SNAP_MAX_PER_TICK = int(os.environ.get("SNAPSHOT_MAX_PER_TICK", "60"))  # borne le temps du passage
+PROF_REFRESH_DAYS = float(os.environ.get("PROFESSIONS_REFRESH_DAYS", "7"))  # métiers : 7 j
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -307,6 +308,18 @@ def _init_db() -> None:
             CREATE TABLE IF NOT EXISTS meta (
                 key   TEXT PRIMARY KEY,
                 value TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS char_professions (
+                realm TEXT NOT NULL,
+                name  TEXT NOT NULL,
+                ts    REAL NOT NULL,
+                data  TEXT NOT NULL,
+                PRIMARY KEY (realm, name)
             )
             """
         )
@@ -596,6 +609,14 @@ def characters_page(request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "characters.html")
+
+@app.api_route("/craft", methods=["GET", "HEAD"])
+def craft_page(request: Request):
+    """Page 🔨 Artisanat — annuaire des métiers de la guilde."""
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "craft.html")
+
 
 @app.api_route("/mains", methods=["GET", "HEAD"])
 def mains_page(request: Request):
@@ -1635,6 +1656,66 @@ def api_attendance(request: Request, days: int = 30, refresh: int = 0):
     return data
 
 
+PROF_ORDER = ["Alchimie", "Calligraphie", "Couture", "Dépeçage", "Enchantement", "Forge",
+              "Herboristerie", "Ingénierie", "Joaillerie", "Minéralogie", "Travail du cuir",
+              "Archéologie", "Cuisine", "Pêche"]
+
+
+@app.get("/api/craft")
+def api_craft(request: Request):
+    """Annuaire d'artisanat : qui peut crafter quoi (métiers de tout le roster)."""
+    _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT realm, name, ts, data FROM char_professions").fetchall()]
+        cls_by_name: dict[str, str] = {}
+        for row in conn.execute("SELECT name, data FROM char_snapshots WHERE day = ?", (_snap_day(),)).fetchall():
+            try:
+                c = (json.loads(row["data"]) or {}).get("class")
+            except (ValueError, TypeError):
+                c = None
+            if c:
+                cls_by_name[row["name"]] = c
+    disp: dict[str, str] = {}
+    realms: dict[str, str] = {}
+    try:
+        roster, _t = bnet.roster()
+        for m in (roster.get("members") or []):
+            k = (m.get("name") or "").lower()
+            if k:
+                disp[k] = m.get("name") or k
+                realms[k] = m.get("realm") or bnet.GUILD_REALM
+    except bnet.BnetError:
+        pass
+    groups: dict[str, list] = {}
+    with_profs = 0
+    for r in rows:
+        try:
+            d = json.loads(r["data"]) or {}
+        except (ValueError, TypeError):
+            continue
+        profs = d.get("profs") or []
+        if not profs:
+            continue
+        with_profs += 1
+        k = r["name"]
+        for p in profs:
+            nm = p.get("name") or "?"
+            groups.setdefault(nm, []).append({
+                "name": disp.get(k) or k, "key": k,
+                "realm": realms.get(k) or r["realm"],
+                "class_key": CLASS_KEY_FR.get(cls_by_name.get(k) or ""),
+                "points": p.get("points"), "max": p.get("max"), "tier": p.get("tier"),
+            })
+    order = {n: i for i, n in enumerate(PROF_ORDER)}
+    profs_out = []
+    for nm, lst in groups.items():
+        lst.sort(key=lambda x: (-(x.get("points") or 0), (x["name"] or "").lower()))
+        profs_out.append({"name": nm, "members": lst})
+    profs_out.sort(key=lambda g: (order.get(g["name"], 99), g["name"]))
+    return {"built": time.time(), "chars": len(rows), "with_profs": with_profs, "professions": profs_out}
+
+
 @app.get("/api/leaderboard")
 def api_leaderboard(request: Request, refresh: int = 0):
     _require_user(request)
@@ -2312,6 +2393,17 @@ def _snap_day(ts: float | None = None) -> str:
         return time.strftime("%Y-%m-%d", time.gmtime(moment))
 
 
+def _prof_store(realm: str, name: str) -> None:
+    """Enregistre (ou remplace) les métiers d'un personnage."""
+    data, ts = bnet.professions(realm, name)
+    with _db_lock, _db() as conn:
+        conn.execute(
+            "INSERT INTO char_professions (realm, name, ts, data) VALUES (?,?,?,?) "
+            "ON CONFLICT(realm, name) DO UPDATE SET ts=excluded.ts, data=excluded.data",
+            (realm.lower(), name.lower(), ts, json.dumps(data, ensure_ascii=False)),
+        )
+
+
 def _char_snapshot(realm: str, name: str) -> dict:
     """État d'un personnage (résumé + équipement + collections) pour un relevé quotidien."""
     s, _ = bnet.character(realm, name)
@@ -2442,6 +2534,12 @@ def _snap_tick() -> None:
                 "SELECT realm || '|' || name AS k, MAX(ts) AS ts FROM char_snapshots GROUP BY realm, name"
             ).fetchall()
         }
+        prof_latest = {
+            r["k"]: r["ts"]
+            for r in conn.execute(
+                "SELECT realm || '|' || name AS k, MAX(ts) AS ts FROM char_professions GROUP BY realm, name"
+            ).fetchall()
+        }
     try:
         roster, _ts = bnet.roster()
         members = [(m.get("realm") or bnet.GUILD_REALM, m.get("name") or "")
@@ -2461,22 +2559,31 @@ def _snap_tick() -> None:
         k = f"{realm}|{name.lower()}"
         last = latest.get(k)
         limit_min = SNAP_REFRESH_MIN if is_linked else SNAP_REFRESH_MIN_OTHER
-        if last and now - last < limit_min * 60:
+        need_snap = not (last and now - last < limit_min * 60)
+        plast = prof_latest.get(k)
+        need_prof = not (plast and now - plast < PROF_REFRESH_DAYS * 86400)
+        if not need_snap and not need_prof:
             continue
         if done_this_tick >= SNAP_MAX_PER_TICK:
             break  # borne le temps du passage ; le reste au tick suivant
         done_this_tick += 1
-        try:
-            _snap_store(realm, name, _char_snapshot(realm, name))
-        except bnet.BnetError as exc:
-            if getattr(exc, "status", None) == 404 and roster_ok:
-                # personnage inexistant côté API : purge des relevés s'il a quitté le roster (ToU §18)
-                if name.lower() not in {n.lower() for _r, n in members}:
-                    with _db_lock, _db() as conn:
-                        conn.execute("DELETE FROM char_snapshots WHERE realm=? AND name=?", (realm, name.lower()))
-                    print(f"[snap] {name} absent du roster → relevés supprimés")
-            else:
-                print(f"[snap] {name}: {exc}")
+        if need_snap:
+            try:
+                _snap_store(realm, name, _char_snapshot(realm, name))
+            except bnet.BnetError as exc:
+                if getattr(exc, "status", None) == 404 and roster_ok:
+                    # personnage inexistant côté API : purge des relevés s'il a quitté le roster (ToU §18)
+                    if name.lower() not in {n.lower() for _r, n in members}:
+                        with _db_lock, _db() as conn:
+                            conn.execute("DELETE FROM char_snapshots WHERE realm=? AND name=?", (realm, name.lower()))
+                        print(f"[snap] {name} absent du roster → relevés supprimés")
+                else:
+                    print(f"[snap] {name}: {exc}")
+        if need_prof:
+            try:
+                _prof_store(realm, name)
+            except bnet.BnetError as exc:
+                print(f"[snap] prof {name}: {exc}")
     cutoff = _snap_day(now - (SNAP_KEEP_DAYS - 1) * 86400)
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM char_snapshots WHERE day < ?", (cutoff,))

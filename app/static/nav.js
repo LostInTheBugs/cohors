@@ -17,6 +17,7 @@
       { href: "/rankings", label: "🏆 Classements" },
       { href: "/fun", label: "🎉 Succès fun" },
       { href: "/calendar", label: "🗓️ Calendrier" },
+      { href: "/craft", label: "🔨 Artisanat" },
       { href: "/guild", label: "🛡️ Infos & liens" }
     ] },
     { label: "🎧 Vocal", items: [
