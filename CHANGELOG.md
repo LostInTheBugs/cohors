@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.065 - 2026-09-18
+
+### Fixed
+- Addon: TOC interface corrected from `120105` (PTR) to `120100` (live 12.1.0) — the addon appeared as "incompatible" in the in-game addon list and `/lotp` was unavailable.
+- Addon: prints the client's interface version in the login message (debug aid); safer `GetBuildInfo` handling.
+
 ## 2026.09.064 - 2026-09-18
 
 ### Added

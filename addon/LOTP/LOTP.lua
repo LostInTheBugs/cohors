@@ -2,7 +2,7 @@
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
 -- une chaîne à coller sur le site (page Calendrier → « Importer »).
 -- Commandes : /lotp  (collecter + fenêtre) · /lotp export · /lotp collect
-local ADDON_VER = "1.0.0"
+local ADDON_VER = "1.0.1"
 local WINDOW_DAYS = 21 -- fenêtre d'export : aujourd'hui → +21 j
 
 LOTP_DB = LOTP_DB or {}
@@ -178,8 +178,14 @@ end
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == "LOTP" then
+            local ok, _, _, _, iface = pcall(GetBuildInfo)
+            if not ok or type(iface) ~= "number" then iface = "?" end
             if not LOTP_DB.export then
-                msg(("v%s chargée — /lotp pour collecter le calendrier de guilde."):format(ADDON_VER))
+                msg(("v%s chargée (client %s) — /lotp pour collecter le calendrier de guilde.")
+                    :format(ADDON_VER, tostring(iface)))
+            else
+                msg(("v%s chargée (client %s) — dernier export : %s • /lotp pour ouvrir.")
+                    :format(ADDON_VER, tostring(iface), dateStr(LOTP_DB.export_at or 0)))
             end
         end
     elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
