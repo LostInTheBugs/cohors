@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.057 - 2026-09-18
+
+### Changed
+- Daily snapshots and the Warcraft Logs backfill now cover the entire guild roster (all members), not only linked characters. Linked characters are refreshed more often (6 h vs 20 h); roster sweep is capped per pass.
+- Roster page: every character row now links to its profile page (/char).
+
+### Added
+- `GET /api/char/{realm}/{name}/history|snapdiff` now serves any guild member.
+
 ## 2026.09.056 - 2026-09-18
 
 ### Added

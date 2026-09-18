@@ -66,6 +66,8 @@ BOT_POLL_S = int(os.environ.get("BOT_POLL_S", "300"))  # intervalle du bot Disco
 SNAP_POLL_S = float(os.environ.get("SNAPSHOT_POLL_S", "900"))       # tick de la boucle (s)
 SNAP_REFRESH_MIN = float(os.environ.get("SNAPSHOT_REFRESH_MIN", "360"))  # re-relevé si dernier > 6 h
 SNAP_KEEP_DAYS = min(30, max(2, int(os.environ.get("SNAPSHOT_KEEP_DAYS", "30"))))
+SNAP_REFRESH_MIN_OTHER = float(os.environ.get("SNAPSHOT_REFRESH_MIN_OTHER", "1200"))  # roster : 20 h
+SNAP_MAX_PER_TICK = int(os.environ.get("SNAPSHOT_MAX_PER_TICK", "60"))  # borne le temps du passage
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -2200,10 +2202,22 @@ def _snap_backfill(days: int = 30, force: bool = False) -> dict:
         key=lambda r: r.get("startTime") or 0,
     )
     with _db_lock, _db() as conn:
-        linked = [dict(r) for r in conn.execute("SELECT DISTINCT realm, name FROM char_links").fetchall()]
         have = {(r["realm"], r["name"], r["day"]) for r in conn.execute(
             "SELECT realm, name, day FROM char_snapshots").fetchall()}
-    linked_by_name = {r["name"].lower(): r for r in linked}
+    # cible : tout le roster de la guilde (+ les persos liés par sécurité)
+    candidates: dict[str, tuple] = {}
+    try:
+        roster, _ts = bnet.roster()
+        for m in roster.get("members") or []:
+            nm = (m.get("name") or "").lower()
+            if nm:
+                candidates[nm] = ((m.get("realm") or bnet.GUILD_REALM), nm)
+    except bnet.BnetError as exc:
+        print(f"[snap] backfill : roster indisponible ({exc})")
+    with _db_lock, _db() as conn:
+        for r in conn.execute("SELECT DISTINCT realm, name FROM char_links").fetchall():
+            candidates.setdefault(r["name"].lower(), (r["realm"], r["name"]))
+    linked_by_name = candidates
     per: dict[tuple, dict] = {}
     for rep in reports:
         code = rep.get("code")
@@ -2217,7 +2231,7 @@ def _snap_backfill(days: int = 30, force: bool = False) -> dict:
             link = linked_by_name.get(pname.lower())
             if link is None:
                 continue
-            k = (link["realm"], link["name"], day)
+            k = (link[0], link[1], day)
             if k in have:
                 continue
             items = [
@@ -2250,40 +2264,50 @@ def _snap_backfill(days: int = 30, force: bool = False) -> dict:
 
 
 def _snap_tick() -> None:
-    """Un passage : relevés des personnages liés (si dernier > SNAP_REFRESH_MIN) + purge de rétention."""
+    """Un passage : relevés de TOUS les personnages du roster (liés rafraîchis plus souvent) + purge."""
     with _db_lock, _db() as conn:
-        chars = [dict(r) for r in conn.execute("SELECT DISTINCT realm, name FROM char_links").fetchall()]
+        linked = {r["name"] for r in conn.execute("SELECT DISTINCT name FROM char_links").fetchall()}
         latest = {
             r["k"]: r["ts"]
             for r in conn.execute(
                 "SELECT realm || '|' || name AS k, MAX(ts) AS ts FROM char_snapshots GROUP BY realm, name"
             ).fetchall()
         }
+    try:
+        roster, _ts = bnet.roster()
+        members = [(m.get("realm") or bnet.GUILD_REALM, m.get("name") or "")
+                   for m in (roster.get("members") or [])]
+        roster_ok = True
+    except bnet.BnetError as exc:
+        print(f"[snap] roster indisponible ({exc}) — repli sur les personnages liés")
+        with _db_lock, _db() as conn:
+            members = [(r["realm"], r["name"]) for r in conn.execute(
+                "SELECT DISTINCT realm, name FROM char_links").fetchall()]
+        roster_ok = False
+    targets = sorted(((realm, name, name.lower() in linked) for realm, name in members if name),
+                     key=lambda t: not t[2])  # persos liés d'abord
     now = time.time()
-    for ch in chars:
-        k = f"{ch['realm']}|{ch['name']}"
+    done_this_tick = 0
+    for realm, name, is_linked in targets:
+        k = f"{realm}|{name.lower()}"
         last = latest.get(k)
-        if last and now - last < SNAP_REFRESH_MIN * 60:
+        limit_min = SNAP_REFRESH_MIN if is_linked else SNAP_REFRESH_MIN_OTHER
+        if last and now - last < limit_min * 60:
             continue
+        if done_this_tick >= SNAP_MAX_PER_TICK:
+            break  # borne le temps du passage ; le reste au tick suivant
+        done_this_tick += 1
         try:
-            _snap_store(ch["realm"], ch["name"], _char_snapshot(ch["realm"], ch["name"]))
+            _snap_store(realm, name, _char_snapshot(realm, name))
         except bnet.BnetError as exc:
-            if getattr(exc, "status", None) == 404:
-                # personnage inexistant : purge des relevés s'il ne figure plus au roster (ToU §18)
-                try:
-                    roster, _ts = bnet.roster()
-                    names = {(m.get("name") or "").lower() for m in (roster.get("members") or [])}
-                except bnet.BnetError:
-                    names = None
-                if names is not None and ch["name"].lower() not in names:
+            if getattr(exc, "status", None) == 404 and roster_ok:
+                # personnage inexistant côté API : purge des relevés s'il a quitté le roster (ToU §18)
+                if name.lower() not in {n.lower() for _r, n in members}:
                     with _db_lock, _db() as conn:
-                        conn.execute(
-                            "DELETE FROM char_snapshots WHERE realm=? AND name=?",
-                            (ch["realm"], ch["name"]),
-                        )
-                    print(f"[snap] {ch['name']} absent du roster → relevés supprimés")
+                        conn.execute("DELETE FROM char_snapshots WHERE realm=? AND name=?", (realm, name.lower()))
+                    print(f"[snap] {name} absent du roster → relevés supprimés")
             else:
-                print(f"[snap] {ch['name']}: {exc}")
+                print(f"[snap] {name}: {exc}")
     cutoff = _snap_day(now - (SNAP_KEEP_DAYS - 1) * 86400)
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM char_snapshots WHERE day < ?", (cutoff,))
@@ -2313,6 +2337,19 @@ def _snap_loop() -> None:
         time.sleep(SNAP_POLL_S)
 
 
+def _is_tracked_char(realm: str, name: str) -> bool:
+    """Le personnage est-il suivi (lié au compte ou membre du roster de guilde) ?"""
+    with _db_lock, _db() as conn:
+        row = conn.execute("SELECT 1 FROM char_links WHERE realm=? AND name=? LIMIT 1", (realm, name)).fetchone()
+    if row is not None:
+        return True
+    try:
+        roster, _ts = bnet.roster()
+    except bnet.BnetError:
+        return False
+    return any((m.get("name") or "").lower() == name for m in (roster.get("members") or []))
+
+
 def _snap_summary(day: str, ts: float, d: dict) -> dict:
     return {"day": day, "ts": ts, "level": d.get("level"), "spec": d.get("spec"),
             "class": d.get("class"), "ilvl": d.get("ilvl"), "ilvl_avg": d.get("ilvl_avg"),
@@ -2337,13 +2374,8 @@ def api_char_history(realm: str, name: str, request: Request):
         except ValueError:
             continue
     # personnage suivi et relevé du jour manquant → capture à la volée (sans bloquer la réponse)
-    if (not days or days[-1]["day"] != _snap_day()):
-        with _db_lock, _db() as conn:
-            linked = conn.execute(
-                "SELECT 1 FROM char_links WHERE realm=? AND name=? LIMIT 1", (realm, name)
-            ).fetchone()
-        if linked is not None:
-            threading.Thread(target=_snap_capture, args=(realm, name), daemon=True).start()
+    if (not days or days[-1]["day"] != _snap_day()) and _is_tracked_char(realm, name):
+        threading.Thread(target=_snap_capture, args=(realm, name), daemon=True).start()
     return {"ok": True, "days": days, "keep_days": SNAP_KEEP_DAYS}
 
 

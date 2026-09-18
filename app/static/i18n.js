@@ -600,7 +600,8 @@
  "Nouveau": "New",
  "Retiré": "Removed",
  "Comparaison du stuff": "Gear comparison",
- "° relevé d'après les logs de raid (Warcraft Logs)": "° snapshot from raid logs (Warcraft Logs)"
+ "° relevé d'après les logs de raid (Warcraft Logs)": "° snapshot from raid logs (Warcraft Logs)",
+ "Fiche": "Profile"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
