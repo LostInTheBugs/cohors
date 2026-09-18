@@ -1656,6 +1656,63 @@ def api_attendance(request: Request, days: int = 30, refresh: int = 0):
     return data
 
 
+# Spécialisations (noms FR renvoyés par l'API) → rôle : tank / heal / dps.
+SPEC_ROLE = {
+    "Sang": "tank", "Vengeance": "tank", "Gardien": "tank", "Maître brasseur": "tank", "Protection": "tank",
+    "Restauration": "heal", "Sacré": "heal", "Discipline": "heal", "Tisse-brume": "heal", "Préservation": "heal",
+    "Givre": "dps", "Impie": "dps", "Dévastation": "dps", "Équilibre": "dps", "Farouche": "dps",
+    "Augmentation": "dps", "Maîtrise des bêtes": "dps", "Précision": "dps", "Survie": "dps",
+    "Arcanes": "dps", "Feu": "dps", "Marche-vent": "dps", "Vindicte": "dps", "Ombre": "dps",
+    "Assassinat": "dps", "Hors-la-loi": "dps", "Finesse": "dps", "Élémentaire": "dps",
+    "Amélioration": "dps", "Affliction": "dps", "Démonologie": "dps", "Destruction": "dps",
+    "Armes": "dps", "Fureur": "dps", "Dévoration": "dps",
+}
+
+
+@app.get("/api/avail")
+def api_avail(request: Request, hours: int = 24):
+    """Dispo pour jouer : persos niveau max vus récemment (relevé du jour), groupés par rôle."""
+    _require_user(request)
+    hours = hours if hours in (24, 48, 168) else 24
+    cutoff = time.time() - hours * 3600
+    with _db_lock, _db() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT realm, name, data FROM char_snapshots WHERE day = ?", (_snap_day(),)).fetchall()]
+    disp: dict[str, str] = {}
+    try:
+        roster, _t = bnet.roster()
+        for m in (roster.get("members") or []):
+            k = (m.get("name") or "").lower()
+            if k:
+                disp[k] = m.get("name") or k
+    except bnet.BnetError:
+        pass
+    out = []
+    for r in rows:
+        try:
+            d = json.loads(r["data"]) or {}
+        except (ValueError, TypeError):
+            continue
+        lvl = d.get("level")
+        if lvl is not None and lvl < 90:
+            continue
+        if d.get("ilvl") is None:
+            continue
+        seen = d.get("last_login")
+        seen_s = (seen / 1000) if seen else None
+        if seen_s is not None and seen_s < cutoff:
+            continue
+        k = r["name"]
+        out.append({
+            "name": disp.get(k) or k, "key": k, "realm": r["realm"],
+            "class_key": CLASS_KEY_FR.get(d.get("class") or ""),
+            "spec": d.get("spec"), "role": SPEC_ROLE.get(d.get("spec") or ""),
+            "ilvl": d.get("ilvl"), "level": lvl, "seen": seen_s,
+        })
+    out.sort(key=lambda x: -(x.get("ilvl") or 0))
+    return {"hours": hours, "built": time.time(), "rows": out}
+
+
 PROF_ORDER = ["Alchimie", "Calligraphie", "Couture", "Dépeçage", "Enchantement", "Forge",
               "Herboristerie", "Ingénierie", "Joaillerie", "Minéralogie", "Travail du cuir",
               "Archéologie", "Cuisine", "Pêche"]
@@ -2412,6 +2469,7 @@ def _char_snapshot(realm: str, name: str) -> dict:
     return {
         "level": s.get("level"), "spec": s.get("spec"), "class": s.get("class"),
         "ilvl": s.get("ilvl_equipped"), "ilvl_avg": s.get("ilvl_avg"),
+        "last_login": s.get("last_login"),
         "achv": s.get("achievement_points"),
         "mounts": x.get("mounts"), "pets": x.get("pets"), "mplus": x.get("mplus_rating"),
         "items": [

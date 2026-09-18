@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.061 - 2026-09-18
+
+### Added
+- Characters page: "Dispo pour jouer" card — max-level members seen within 24 h / 48 h / 7 days, grouped by role (tanks / healers / DPS) with spec, item level and last seen (links to profiles). API: `GET /api/avail`.
+- Snapshots now record `last_login` (used by the finder); past rows are enriched on next capture.
+
 ## 2026.09.060 - 2026-09-18
 
 ### Added

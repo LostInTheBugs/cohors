@@ -54,6 +54,17 @@
   button.ghost, a.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
                  padding: 4px 10px; font-size: 12.5px; border-radius: 8px; text-decoration: none; }
   button.ghost:hover, a.ghost:hover { border-color: var(--acc2); color: var(--acc2); }
+  button.ghost.act { border-color: var(--acc2); color: var(--acc2); font-weight: 700; }
+  .avsec { border-top: 1px solid var(--line); padding: 8px 0 2px; }
+  .avsec:first-child { border-top: 0; padding-top: 2px; }
+  .avsec h3 { font-size: 14px; margin: 0 0 5px; }
+  .avgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 20px; }
+  .av { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; padding: 1.5px 0; }
+  .av a { font-weight: 600; text-decoration: none; }
+  .av a:hover { text-decoration: underline; }
+  .av .avi { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .av .avs { color: var(--mut); font-size: 12.5px; min-width: 92px; }
+  .av .avv { color: var(--mut); font-size: 12.5px; min-width: 76px; text-align: right; white-space: nowrap; }
   .meta { color: var(--mut); font-size: 13px; }
   .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
   .chkline input { accent-color: var(--acc); }
@@ -98,7 +109,7 @@
   .extras { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 4px; }
   .xchip { border:1px solid var(--line); border-radius:999px; padding:3px 12px; font-size:12.5px; background:var(--card2,#182130); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.060">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.061">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -118,6 +129,24 @@
   </header>
   <nav class="tabs" id="navmain"></nav>
   <p class="sub">Roster de la guilde (données live de l'API Battle.net). Clique sur un personnage pour voir son équipement.</p>
+
+  <div class="card">
+    <div class="row">
+      <h2 style="margin:0">🎯 Dispo pour jouer</h2>
+      <span class="spacer"></span>
+      <span class="meta" id="ameta"></span>
+      <button class="ghost act" data-avh="24">Vu &lt; 24 h</button>
+      <button class="ghost" data-avh="48">Vu &lt; 48 h</button>
+      <button class="ghost" data-avh="168">Vu &lt; 7 j</button>
+    </div>
+    <div class="row" style="margin-top:8px" id="achips">
+      <button class="ghost act" data-avr="all">Tous</button>
+      <button class="ghost" data-avr="tank">🛡️ Tanks</button>
+      <button class="ghost" data-avr="heal">💚 Soigneurs</button>
+      <button class="ghost" data-avr="dps">⚔️ DPS</button>
+    </div>
+    <div id="avail" style="margin-top:6px"><div class="empty">Chargement…</div></div>
+  </div>
 
   <div class="card">
     <div class="row" style="justify-content:space-between">
@@ -161,8 +190,8 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.060"></script>
-<script src="/static/i18n.js?v=2026.09.060"></script>
+<script src="/static/nav.js?v=2026.09.061"></script>
+<script src="/static/i18n.js?v=2026.09.061"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -223,6 +252,44 @@ function renderRoster(data) {
   applyFilters();
   applyMyMarkers();
 }
+
+// ---- Dispo pour jouer (relevé du jour)
+let AVAIL = null, AHOURS = 24, AROLE = "all";
+const AVAIL_ROLES = [["tank", "🛡️ Tanks"], ["heal", "💚 Soigneurs"], ["dps", "⚔️ DPS"]];
+
+async function loadAvail(h) {
+  if (h) AHOURS = h;
+  try { AVAIL = await jget(`/api/avail?hours=${AHOURS}`); renderAvail(); }
+  catch (e) { $("#avail").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`; }
+}
+
+function renderAvail() {
+  if (!AVAIL) return;
+  const rows = AVAIL.rows || [];
+  $("#ameta").textContent = `${fmt(rows.length)} persos disponibles`;
+  const secs = AVAIL_ROLES.filter(([r]) => AROLE === "all" || AROLE === r).map(([r, label]) => {
+    const list = rows.filter(x => x.role === r);
+    if (!list.length) return "";
+    return `<div class="avsec"><h3>${label} <span class="meta">· ${list.length}</span></h3>
+      <div class="avgrid">${list.map(x => `<div class="av">
+        <a style="color:${CLASS_COLORS[x.class_key] || "var(--fg)"}" href="/char/${esc(x.realm)}/${esc(x.key)}">${esc(x.name)}</a>
+        <span class="avs">${esc(x.spec || "")}</span>
+        <span class="avi">${fmt(x.ilvl)}</span>
+        <span class="avv">${x.seen ? "vu " + ago(x.seen) : "?"}</span>
+      </div>`).join("")}</div></div>`;
+  }).filter(Boolean).join("");
+  $("#avail").innerHTML = secs || `<div class="empty">Personne dans cette catégorie.</div>`;
+}
+
+document.querySelectorAll("[data-avh]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-avh]").forEach(x => x.classList.toggle("act", x === b));
+  loadAvail(+b.dataset.avh);
+}));
+document.querySelectorAll("[data-avr]").forEach(b => b.addEventListener("click", () => {
+  AROLE = b.dataset.avr;
+  document.querySelectorAll("[data-avr]").forEach(x => x.classList.toggle("act", x === b));
+  renderAvail();
+}));
 
 async function loadSummary(tr) {
   const [realm, name] = tr.dataset.key.split("|");
@@ -415,7 +482,7 @@ $("#myadd").addEventListener("click", async () => {
     if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
   } catch (e) { location.href = "/login"; return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-  load(0); loadMyChars();
+  load(0); loadMyChars(); loadAvail(24);
 })();
 </script>
 </body>

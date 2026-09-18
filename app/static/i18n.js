@@ -630,7 +630,12 @@
  "Travail du cuir": "Leatherworking",
  "Archéologie": "Archaeology",
  "Cuisine": "Cooking",
- "Pêche": "Fishing"
+ "Pêche": "Fishing",
+ "🎯 Dispo pour jouer": "🎯 Available to play",
+ "Vu < 24 h": "Seen < 24 h",
+ "Vu < 48 h": "Seen < 48 h",
+ "Vu < 7 j": "Seen < 7 d",
+ "Personne dans cette catégorie.": "Nobody in this category."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -716,6 +721,7 @@
     [/iLvl moyen de la guilde/g, "Guild average iLvl"],
     [/(\d+) personnages suivis/g, "$1 characters tracked"],
     [/(\d+) ont progressé/g, "$1 improved"],
+    [/(\d+) persos disponibles/g, "$1 characters available"],
     [/(\d+) persos(?![\w])/g, "$1 characters"],
     [/(\d+) soirées loggées/g, "$1 logged evenings"],
     [/sur les (\d+) derniers jours/g, "over the last $1 days"],
