@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.070 - 2026-09-18
+
+### Fixed
+- Addon 1.3.2: hardened calendar collection — every step is error-guarded (errors are surfaced in chat, saved to the report, and end the collection cleanly instead of leaving it stuck), a 75-second watchdog aborts a stuck collection, a blocked collection older than 60 seconds can be relaunched, and a progressive trace is saved (`LOTP_DB.trace`) showing exactly which step stopped. Fixes the permanent "collecte déjà en cours…" lock.
+
 ## 2026.09.069 - 2026-09-18
 
 ### Fixed
