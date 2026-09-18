@@ -1,21 +1,33 @@
 -- LOTP — Calendrier de guilde → lotp.gensbien.fr
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
 -- une chaîne à coller sur le site (page Calendrier → « Importer »).
--- Commandes : /lotp  (collecter + fenêtre) · /lotp export · /lotp collect
-local ADDON_VER = "1.0.1"
-local WINDOW_DAYS = 21 -- fenêtre d'export : aujourd'hui → +21 j
+-- Commandes : /lotp · /lotp collect · /lotp export · /lotp diag
+local ADDON_VER = "1.1.0"
+local MAX_READ_TRIES = 12   -- tentatives de lecture de la liste (~30 s)
+local EVENT_TIMEOUT = 4     -- délai max par événement ouvert (s)
+local MAX_EVENTS = 60
 
 LOTP_DB = LOTP_DB or {}
 
 local f = CreateFrame("Frame")
 
 local collecting = false
-local queue, current = {}, nil -- événements à ouvrir, événement en cours
-local results = {}             -- événements collectés
+local started = false        -- la liste a été lue et la file démarrée
+local current = nil          -- événement en cours d'ouverture
+local queue = {}             -- événements à ouvrir
+local results = {}           -- événements collectés
+local readTries = 0
+local listSeen = false       -- CALENDAR_UPDATE_EVENT_LIST reçu
 
 -- ---------------------------------------------------------------- utilitaires
 local function msg(text)
     DEFAULT_CHAT_FRAME:AddMessage("|cffdfa55aLOTP|r " .. tostring(text))
+end
+
+local function clientIface()
+    local ok, _, _, _, iface = pcall(GetBuildInfo)
+    if not ok or type(iface) ~= "number" then return "?" end
+    return iface
 end
 
 local function statusText(s)
@@ -71,10 +83,10 @@ local function buildExport()
     return table.concat(parts)
 end
 
-local function readOpenEvent()
+local function readInvites()
+    local invs = {}
     local ok, num = pcall(C_Calendar.GetNumInvites)
     local n = (ok and num) or 0
-    local invs = {}
     for j = 1, n do
         local ok2, inv = pcall(C_Calendar.EventGetInvite, j)
         if ok2 and type(inv) == "table" then
@@ -92,7 +104,7 @@ local function readOpenEvent()
     return invs
 end
 
-local function finishCollect()
+local function finishCollect(quiet)
     collecting = false
     current = nil
     LOTP_DB.export = buildExport()
@@ -102,12 +114,28 @@ local function finishCollect()
     for _, e in ipairs(results) do
         nresp = nresp + #(e.invites or {})
     end
-    msg(("%d raid(s) collecté(s), %d réponse(s). • /lotp export pour la chaîne à coller sur le site.")
-        :format(#results, nresp))
+    if #results == 0 then
+        msg("aucun événement trouvé. Vérifie dans le calendrier du jeu (bouton Calendrier, touche C) "
+            .. "que la guilde a bien des raids à venir, puis /lotp pour réessayer. (/lotp diag pour le détail)")
+    elseif not quiet then
+        msg(("%d raid(s) collecté(s), %d réponse(s). • /lotp export pour la chaîne à coller sur le site.")
+            :format(#results, nresp))
+    end
     if LOTP_Refresh then LOTP_Refresh() end
 end
 
-local function openNext()
+local function readOpenEvent()
+    local e = current
+    local invs = readInvites()
+    results[#results + 1] = { id = e.id, title = e.title, date = e.date, ts = e.ts,
+                              etype = e.etype, invites = invs }
+    pcall(C_Calendar.CloseEvent)
+    current = nil
+    C_Timer.After(0.2, function() LOTP_OpenNext() end)
+end
+
+function LOTP_OpenNext()
+    if not collecting then return end
     if #queue == 0 then
         finishCollect()
         return
@@ -115,45 +143,82 @@ local function openNext()
     local e = table.remove(queue, 1)
     current = e
     local ok = pcall(C_Calendar.OpenEvent, e.id)
-    if not ok then
-        -- repli : certains clients attendent (index) plutôt que (eventID)
-        pcall(C_Calendar.OpenEvent, e.idx or 1)
+    if not ok and e.idx then
+        pcall(C_Calendar.OpenEvent, e.idx)
     end
-    C_Timer.After(3, function()
+    C_Timer.After(EVENT_TIMEOUT, function()
         if collecting and current == e then
-            -- échec ou pas de réponse : on passe au suivant
+            -- pas de réponse : on note l'événement sans détails et on continue
             results[#results + 1] = { id = e.id, title = e.title, date = e.date, ts = e.ts,
                                       etype = e.etype, invites = {} }
             current = nil
-            openNext()
+            LOTP_OpenNext()
         end
     end)
 end
 
-local function onEventList()
-    if not collecting or current ~= nil then return end
+-- Lecture de la liste des événements de guilde ; renvoie true si non vide.
+local function readList()
+    local ok, cnt = pcall(C_Calendar.GetNumGuildEvents)
+    local n = (ok and type(cnt) == "number") and cnt or 0
+    if n <= 0 then return false end
     queue = {}
     local now = time()
-    local maxT = now + WINDOW_DAYS * 86400
-    local ok, n = pcall(C_Calendar.GetNumGuildEvents)
-    n = (ok and n) or 0
+    local okd, minDay = pcall(os.date, "%Y-%m-%d", now - 86400)
+    minDay = okd and minDay or nil
     for i = 1, n do
         local ok2, e = pcall(C_Calendar.GetGuildEventInfo, i)
         if ok2 and type(e) == "table" then
-            local ok3, t = pcall(os.time, { year = e.year, month = e.month, day = e.monthDay,
-                                            hour = e.hour, min = e.minute })
-            if ok3 and t and t >= now - 86400 and t <= maxT then
+            local day = e.monthDay or e.day
+            local mi = e.minute or e.min or 0
+            local hh = e.hour or 0
+            local date, ts
+            if day and e.year and e.month then
+                date = ("%04d-%02d-%02d %02d:%02d"):format(e.year, e.month, day, hh, mi)
+                local ok3, tt = pcall(os.time, { year = e.year, month = e.month, day = day, hour = hh, min = mi })
+                if ok3 and tt then ts = tt end
+            end
+            local fresh = true
+            if date and minDay then
+                fresh = date:sub(1, 10) >= minDay
+            elseif ts then
+                fresh = ts >= now - 86400
+            end
+            if fresh then
                 queue[#queue + 1] = { id = e.eventID or 0, idx = i, title = e.title or "?",
-                                      date = dateStr(t), ts = t, etype = e.eventType or 0 }
+                                      date = date or "?", ts = ts or 0, etype = e.eventType or 0 }
+                if #queue >= MAX_EVENTS then break end
             end
         end
     end
-    if #queue == 0 then
-        finishCollect()
+    return #queue > 0
+end
+
+-- Démarre la collecte des événements dès que la liste est disponible.
+local function tryStart()
+    if not collecting or started or current ~= nil or #queue > 0 then return end
+    if readList() then
+        started = true
+        msg(("%d événement(s) à collecter…"):format(#queue))
+        LOTP_OpenNext()
+    end
+end
+
+local function poll()
+    if not collecting or started then return end
+    readTries = readTries + 1
+    tryStart()
+    if started then return end
+    if readTries > MAX_READ_TRIES then
+        -- dernier essai puis conclusion
+        tryStart()
+        if not started then finishCollect() end
         return
     end
-    msg(("%d événement(s) à collecter…"):format(#queue))
-    openNext()
+    if readTries == 4 or readTries == 8 then
+        pcall(C_Calendar.OpenCalendar)  -- relance la requête serveur si besoin
+    end
+    C_Timer.After(2.5, poll)
 end
 
 function LOTP_Collect()
@@ -162,49 +227,68 @@ function LOTP_Collect()
         return
     end
     collecting = true
+    started = false
     current = nil
     queue = {}
     results = {}
-    msg("lecture du calendrier de guilde…")
+    readTries = 0
+    listSeen = false
+    msg("interrogation du calendrier de guilde…")
     pcall(C_Calendar.OpenCalendar)
-    -- la liste arrive via CALENDAR_UPDATE_EVENT_LIST ; repli si l'événement ne vient pas
-    C_Timer.After(1.5, function()
-        if collecting and current == nil and #queue == 0 then
-            onEventList()
-        end
-    end)
+    C_Timer.After(1.0, poll)
 end
 
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == "LOTP" then
-            local ok, _, _, _, iface = pcall(GetBuildInfo)
-            if not ok or type(iface) ~= "number" then iface = "?" end
             if not LOTP_DB.export then
                 msg(("v%s chargée (client %s) — /lotp pour collecter le calendrier de guilde.")
-                    :format(ADDON_VER, tostring(iface)))
+                    :format(ADDON_VER, tostring(clientIface())))
             else
                 msg(("v%s chargée (client %s) — dernier export : %s • /lotp pour ouvrir.")
-                    :format(ADDON_VER, tostring(iface), dateStr(LOTP_DB.export_at or 0)))
+                    :format(ADDON_VER, tostring(clientIface()), dateStr(LOTP_DB.export_at or 0)))
             end
         end
     elseif event == "CALENDAR_UPDATE_EVENT_LIST" then
-        onEventList()
+        listSeen = true
+        if collecting then tryStart() end
     elseif event == "CALENDAR_OPEN_EVENT" then
         if collecting and current ~= nil then
-            local e = current
-            local invs = readOpenEvent()
-            results[#results + 1] = { id = e.id, title = e.title, date = e.date, ts = e.ts,
-                                      etype = e.etype, invites = invs }
-            pcall(C_Calendar.CloseEvent)
-            current = nil
-            C_Timer.After(0.2, openNext)
+            C_Timer.After(0.4, function()
+                if collecting and current ~= nil then readOpenEvent() end
+            end)
         end
     end
 end)
 f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CALENDAR_UPDATE_EVENT_LIST")
 f:RegisterEvent("CALENDAR_OPEN_EVENT")
+
+-- ------------------------------------------------------------------ diagnostic
+local function dumpDiag()
+    msg(("LOTP v%s · client %s · collecte %s"):format(ADDON_VER, tostring(clientIface()),
+        collecting and "en cours" or "au repos"))
+    local ok, cnt = pcall(C_Calendar.GetNumGuildEvents)
+    msg("GetNumGuildEvents = " .. tostring(ok and cnt or "erreur"))
+    local n = (ok and type(cnt) == "number") and cnt or 0
+    if n == 0 then
+        msg("→ le calendrier de guilde est vide ou pas encore chargé. Ouvre le calendrier (touche C), "
+            .. "attends qu'il s'affiche, puis /lotp collect.")
+    end
+    for i = 1, math.min(3, n) do
+        local ok2, e = pcall(C_Calendar.GetGuildEventInfo, i)
+        if ok2 and type(e) == "table" then
+            local parts = {}
+            for k, v in pairs(e) do
+                parts[#parts + 1] = k .. "=" .. tostring(v)
+            end
+            table.sort(parts)
+            msg(("#%d %s"):format(i, table.concat(parts, " ")))
+        end
+    end
+    local ok3, ni = pcall(C_Calendar.GetNumInvites)
+    msg("GetNumInvites (événement ouvert) = " .. tostring(ok3 and ni or "erreur"))
+end
 
 -- ------------------------------------------------------------------------ UI
 local ui = CreateFrame("Frame", "LOTPFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
@@ -306,7 +390,10 @@ mkButton("Exporter", 128, 100, function()
     eb:SetFocus()
     msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur lotp.gensbien.fr (page Calendrier).")
 end)
-mkButton("Fermer", 236, 100, function() ui:Hide() end)
+mkButton("Diag", 236, 80, function()
+    dumpDiag()
+end)
+mkButton("Fermer", 324, 100, function() ui:Hide() end)
 
 SLASH_LOTP1 = "/lotp"
 SlashCmdList["LOTP"] = function(arg)
@@ -329,7 +416,9 @@ SlashCmdList["LOTP"] = function(arg)
         else
             msg("aucune donnée — /lotp collect d'abord.")
         end
+    elseif arg == "diag" then
+        dumpDiag()
     else
-        msg("commandes : /lotp · /lotp collect · /lotp export")
+        msg("commandes : /lotp · /lotp collect · /lotp export · /lotp diag")
     end
 end

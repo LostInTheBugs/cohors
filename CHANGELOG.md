@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.066 - 2026-09-18
+
+### Fixed
+- Addon 1.1.0: the calendar collection no longer gives up after 1.5 s when the server's answer is slow — it retries for up to ~30 s (this caused "0 raids" reports). Events are kept even when the date can't be parsed, invites get a retry, and a new `/lotp diag` command dumps what the client actually sees (raw fields) for troubleshooting.
+
 ## 2026.09.065 - 2026-09-18
 
 ### Fixed
