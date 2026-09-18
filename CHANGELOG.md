@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.073 - 2026-09-18
+
+### Fixed
+- Addon 1.4.2: the version is now visible everywhere (window title, status line, `/lotp` message) and each load records `loaded_ver` / `loaded_at` / `loaded_dossier` into SavedVariables — so a simple reload + file check proves exactly which version the game actually executes; every click of "Collecter" now advances the collection one step synchronously (works even if the game blocks timers and frame updates), and `/reload` after any collection leaves a report with heartbeat counters.
+
 ## 2026.09.072 - 2026-09-18
 
 ### Fixed

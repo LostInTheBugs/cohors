@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.4.1"
+local ADDON_VER = "1.4.2"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -265,7 +265,7 @@ local function filterWindow(list)
 end
 
 -- ------------------------------------------------- moteur piloté par OnUpdate
-local function engineTick(now)
+local function engineTick(now, force)
     local e = engine
     if not e then return end
     if now > e.deadline then
@@ -276,14 +276,14 @@ local function engineTick(now)
     end
     local ph = e.phase
     if ph == "scanPos" then
-        if now < e.await then return end
+        if not force and now < e.await then return end
         positionView(e.shift)
         e.phase = "scanRead"
         e.await = now + (e.shift == 0 and 0.6 or MONTH_WAIT)
         e.status = ("balayage du mois +%d…"):format(e.shift)
         return
     elseif ph == "scanRead" then
-        if now < e.await then return end
+        if not force and now < e.await then return end
         local found = scanViewedMonth(e.shift)
         dtrace(("mois +%d : %d événement(s)"):format(e.shift, #found))
         msg(("• mois +%d : %d événement(s)"):format(e.shift, #found))
@@ -312,7 +312,7 @@ local function engineTick(now)
         end
         return
     elseif ph == "rescanPos" then
-        if now < e.await then return end
+        if not force and now < e.await then return end
         e.scanned = {}
         e.shift = 0
         e.phase = "scanPos"
@@ -324,7 +324,7 @@ local function engineTick(now)
             finishCollect()
             return
         end
-        if now < e.await then return end
+        if not force and now < e.await then return end
         local ev = e.queue[e.qi]
         e.current = ev
         positionView(ev.shift)
@@ -333,7 +333,7 @@ local function engineTick(now)
         e.status = ("ouverture %d/%d…"):format(e.qi, #e.queue)
         return
     elseif ph == "openFire" then
-        if now < e.await then return end
+        if not force and now < e.await then return end
         local ev = e.current
         dtrace(("ouverture #%d : %s (%s)"):format(e.qi, tostring(ev.title), tostring(ev.date)))
         e.eventAt = nil
@@ -352,7 +352,7 @@ local function engineTick(now)
         return
     elseif ph == "openWait" then
         local ev = e.current
-        if e.eventAt and now >= e.eventAt + 0.3 then
+        if (e.eventAt and now >= e.eventAt + 0.3) or force then
             local invs = readInvites()
             dtrace(("  → %d réponse(s)"):format(#invs))
             msg(("• %s — %d réponse(s)"):format(tostring(ev.title), #invs))
@@ -376,9 +376,9 @@ local function engineTick(now)
     end
 end
 
-local function engineTickSafe()
+local function engineTickSafe(force)
     if not engine then return end
-    local ok, err = pcall(engineTick, GetTime())
+    local ok, err = pcall(engineTick, GetTime(), force)
     if not ok then
         local t = tostring(err)
         LOTP_DB.last_error = "moteur : " .. t
@@ -405,6 +405,9 @@ end)
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == (ADDON_NAME or "LOTP") then
+            LOTP_DB.loaded_ver = ADDON_VER
+            LOTP_DB.loaded_at = time()
+            LOTP_DB.loaded_dossier = tostring(ADDON_NAME or "?")
             local copies = lotpCopies()
             if #copies > 1 then
                 msg("|cffff5555ATTENTION : plusieurs dossiers LOTP détectés (" ..
@@ -433,10 +436,13 @@ function LOTP_Collect()
             engine = nil
             collecting = false
         else
-            dtrace("clic : avance manuelle (phase " .. tostring(engine.phase) .. ")")
-            if engine.phase ~= "openWait" then engine.await = 0 end
-            engineTickSafe()
-            msg("collecte en cours — étape forcée à la main (" .. tostring(engine.phase) .. ").")
+            dtrace("clic : étape forcée (phase " .. tostring(engine.phase) .. ")")
+            engineTickSafe(true)
+            if engine then
+                msg("étape forcée (« " .. tostring(engine.phase) .. " ») — reclique « Collecter » pour continuer.")
+            else
+                msg("étape forcée — collecte terminée.")
+            end
             return
         end
     end
@@ -602,7 +608,7 @@ ui:Hide()
 
 local title = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOP", 0, -14)
-title:SetText("LOTP — Calendrier de guilde")
+title:SetText("LOTP v" .. ADDON_VER .. " — Calendrier de guilde")
 
 local sub = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 sub:SetPoint("TOP", 0, -36)
@@ -620,7 +626,7 @@ eb:SetScript("OnEscapePressed", function() eb:ClearFocus() end)
 
 statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 statusText:SetPoint("BOTTOMRIGHT", -256, 23)
-statusText:SetText("prêt")
+statusText:SetText("prêt (v" .. ADDON_VER .. ")")
 
 local function mkButton(text, x, w, fn)
     local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
@@ -704,6 +710,8 @@ SlashCmdList["LOTP"] = function(arg)
     local okAll, errAll = pcall(function()
         if arg == "" then
             ui:Show()
+            msg(("v%s · dossier « %s » — « Collecter » lance la collecte (ou /lotp collect).")
+                :format(ADDON_VER, tostring(ADDON_NAME or "?")))
             if LOTP_DB.export then pcall(showSummary) end
             if not engine and (time() - (LOTP_DB.export_at or 0)) > 120 then
                 LOTP_Collect()
