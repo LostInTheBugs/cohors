@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.078 - 2026-09-18
+
+### Added
+- Dashboard: new "Next raid" tile — shows the next upcoming guild raid from the in-game calendar import (date, attendance counters, import freshness); `/api/dashboard` now returns a `next_raid` object (raid-type events preferred over world events).
+
 ## 2026.09.077 - 2026-09-18
 
 ### Fixed

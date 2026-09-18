@@ -55,7 +55,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.077">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.078">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -82,6 +82,12 @@
       <p class="note">Prochain reset : mercredi 05:00 (heure de Paris)</p>
       <p class="note" id="stats"></p>
     </div>
+    <div class="card" id="nrcard" style="display:none">
+      <h2>🗓️ Prochain raid</h2>
+      <div class="cd" id="nrdate"></div>
+      <p class="note" id="nrresp"></p>
+      <p class="note" id="nrimport"></p>
+    </div>
     <div class="card">
       <h2>📊 Dernier raid</h2>
       <div id="raid"><div class="empty">Chargement…</div></div>
@@ -101,8 +107,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.077"></script>
-<script src="/static/i18n.js?v=2026.09.077"></script>
+<script src="/static/nav.js?v=2026.09.078"></script>
+<script src="/static/i18n.js?v=2026.09.078"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -193,6 +199,18 @@ tickCd(); setInterval(tickCd, 20000);
         <span class="pname">${esc(e.member)}</span>
         <span class="meta">${e.kind === "join" ? "Arrivée" : "Départ"} · ${ago(e.created)}</span>
       </div>`).join("");
+
+    // prochain raid du calendrier in-game (import de l'addon)
+    const nr = d.next_raid;
+    if (nr) {
+      $("#nrcard").style.display = "";
+      const nd = new Date((nr.date || "").replace(" ", "T"));
+      $("#nrdate").textContent = isNaN(nd.getTime()) ? (nr.date || "—")
+        : nd.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }) +
+          " · " + nd.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      $("#nrresp").textContent = `${nr.ok} dispo · ${nr.no} non · ${nr.wait} sans réponse`;
+      $("#nrimport").textContent = "via le calendrier du jeu · importé " + ago(nr.imported_at);
+    }
   } catch (e) {
     $("#events").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
   }
