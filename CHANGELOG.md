@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.071 - 2026-09-18
+
+### Fixed
+- Addon 1.4.0: collection engine rebuilt to run frame-by-frame from OnUpdate instead of timer chains (a lost timer froze the collection forever, leaving "collecte déjà en cours…" even after a reload). Hard 90-second cap, per-step chat progress ("mois +0 : N événement(s)", "ouverture 1/2…"), live status line in the panel, new « Réinitialiser » button and `/lotp reset` command; duplicate LOTP addon folders are detected and reported (chat warning + report); the startup line now shows the folder the addon was loaded from.
+
 ## 2026.09.070 - 2026-09-18
 
 ### Fixed

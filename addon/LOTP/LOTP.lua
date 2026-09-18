@@ -1,30 +1,34 @@
 -- LOTP — Calendrier de guilde → lotp.gensbien.fr
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
 -- une chaîne à coller sur le site (page Calendrier → « Importer »).
--- Commandes : /lotp · /lotp collect · /lotp export · /lotp diag
+-- Commandes : /lotp · /lotp collect · /lotp export · /lotp diag · /lotp reset
 --
 -- Lecture du calendrier : même méthode que l'UI Blizzard — on affiche le mois
 -- (SetAbsMonth/SetMonth) puis on lit les jours (GetNumDayEvents/GetDayEvent),
 -- et on ouvre chaque événement (OpenEvent(0, jour, index)) pour les réponses.
-local ADDON_VER = "1.3.2"
+-- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
+-- une étape échoue, la collecte se termine et écrit son rapport.
+local ADDON_NAME = ...
+local ADDON_VER = "1.4.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
-local STEP_WAIT = 1.0    -- attente avant lecture d'un mois (s)
-local EVENT_WAIT = 0.6   -- attente avant ouverture d'un événement (s)
-local COLLECT_TIMEOUT = 75
+local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
+local OPEN_WAIT = 0.5           -- attente après positionnement avant OpenEvent
+local EVENT_TIMEOUT = 3.0       -- attente maximale de CALENDAR_OPEN_EVENT
+local GLOBAL_TIMEOUT = 90       -- durée maximale d'une collecte
 
 LOTP_DB = LOTP_DB or {}
 
 local f = CreateFrame("Frame")
+f:Show()
 
 local collecting = false
-local queue = {}
+local engine = nil        -- machine à états pilotée par OnUpdate
 local results = {}
 local openedFrame = false
-local watchMonth = nil    -- mois affiché pendant la collecte (pour restaurer)
-local current = nil
-local collectSeq = 0      -- identifiant de collecte (anti-vieux-timers)
+local watchMonth = nil
 local collectStartAt = 0
+local ui, statusText      -- créés plus bas (UI)
 
 -- ---------------------------------------------------------------- utilitaires
 local function msg(text)
@@ -48,7 +52,6 @@ local function dateStr(t)
     return ok and s or "?"
 end
 
--- étiquette de date depuis un CalendarTime (table) du client
 local function timeFields(st)
     if type(st) ~= "table" then return "?", 0 end
     local y = st.year or st.y
@@ -91,32 +94,51 @@ local function restoreCalendar()
     end
 end
 
--- trace progressive : visible dans LOTP_DB.trace (fichier SavedVariables)
 local function dtrace(s)
     LOTP_DB.trace = tostring(LOTP_DB.trace or ("trace — " .. dateStr(time()))) .. "\n- " .. tostring(s)
 end
 
-local diagLines   -- définie plus bas (section diagnostic)
-local finishCollect -- définie plus bas (section collecte)
-
--- garde-fou : capture les erreurs d'une étape, les rend visibles et termine proprement
-local function guard(name, fn)
-    local seq0 = collectSeq
-    return function(...)
-        local ok, err = pcall(fn, ...)
-        if not ok then
-            local e = tostring(err)
-            LOTP_DB.last_error = name .. " : " .. e
-            dtrace("ERREUR " .. name .. " : " .. e)
-            msg("erreur (" .. name .. ") — " .. e)
-            if collecting and collectSeq == seq0 then
-                pcall(finishCollect)
-            end
-        end
+local function positionView(shift)
+    local now = nowCalendarTime()
+    pcall(C_Calendar.SetAbsMonth, now.month, now.year)
+    if (shift or 0) > 0 then
+        pcall(C_Calendar.SetMonth, shift)
     end
 end
 
--- ------------------------------------------------------------------- collecte
+local function recordEvent(ev, invs)
+    results[#results + 1] = { id = ev.id, title = ev.title, date = ev.date, ts = ev.ts,
+                              etype = ev.etype, invites = invs or {} }
+end
+
+-- liste des dossiers d'addon « LOTP* » chargés (détection de doublons)
+local function lotpCopies()
+    local out = {}
+    local ok, n = pcall(function()
+        if C_AddOns and C_AddOns.GetNumAddOns then return C_AddOns.GetNumAddOns() end
+        return GetNumAddOns and GetNumAddOns() or 0
+    end)
+    if not ok or type(n) ~= "number" then return out end
+    for i = 1, n do
+        local okn, name = pcall(function()
+            if C_AddOns and C_AddOns.GetAddOnInfo then return select(1, C_AddOns.GetAddOnInfo(i)) end
+            return select(1, GetAddOnInfo(i))
+        end)
+        if okn and type(name) == "string" and name:upper():find("^LOTP") then
+            local okv, ver = pcall(function()
+                if C_AddOns and C_AddOns.GetAddOnMetadata then return C_AddOns.GetAddOnMetadata(name, "Version") end
+                return GetAddOnMetadata(name, "Version")
+            end)
+            out[#out + 1] = name .. " v" .. tostring(okv and ver or "?")
+        end
+    end
+    return out
+end
+
+local diagLines    -- définies plus bas
+local finishCollect
+
+-- ------------------------------------------------------------------- export
 local function buildExport()
     local parts = {}
     parts[#parts + 1] = '{"v":1,"ver":"' .. jsonEsc(ADDON_VER) .. '"'
@@ -148,7 +170,7 @@ end
 local function readInvites()
     local invs = {}
     local ok, num = pcall(C_Calendar.GetNumInvites)
-    local n = (ok and num) or 0
+    local n = tonumber(ok and num or 0) or 0
     for j = 1, n do
         local ok2, inv = pcall(C_Calendar.EventGetInvite, j)
         if ok2 and type(inv) == "table" then
@@ -166,12 +188,11 @@ end
 finishCollect = function()
     if not collecting then return end
     collecting = false
-    current = nil
+    engine = nil
     restoreCalendar()
     LOTP_DB.export = buildExport()
     LOTP_DB.export_at = time()
     LOTP_DB.player = UnitName("player")
-    -- rapport de diagnostic : écrit automatiquement à chaque collecte
     local okd, lines = pcall(diagLines)
     if okd and type(lines) == "table" then
         lines[#lines + 1] = ("résultat : %d événement(s) collecté(s)"):format(#results)
@@ -192,13 +213,13 @@ finishCollect = function()
         nresp = nresp + #(e.invites or {})
     end
     if #results == 0 then
-        msg("aucun événement trouvé dans le calendrier. Ouvre le calendrier du jeu (touche C) pour vérifier "
-            .. "que la guilde a bien des raids, puis /lotp. (le rapport a été enregistré : /reload puis "
-            .. "envoie le fichier LOTP.lua)")
+        msg("aucun événement trouvé. Ouvre le calendrier du jeu (touche C) pour vérifier, puis /lotp. "
+            .. "(rapport enregistré : /reload puis envoie le fichier LOTP.lua)")
     else
         msg(("%d raid(s) collecté(s), %d réponse(s). • /lotp export pour la chaîne à coller sur le site.")
             :format(#results, nresp))
     end
+    if statusText then statusText:SetText("prêt") end
     if LOTP_Refresh then LOTP_Refresh() end
 end
 
@@ -243,190 +264,222 @@ local function filterWindow(list)
     return out
 end
 
--- Positionne la vue du calendrier sur le mois voulu puis ouvre les événements un par un.
-local function positionView(shift)
-    local now = nowCalendarTime()
-    pcall(C_Calendar.SetAbsMonth, now.month, now.year)
-    if (shift or 0) > 0 then
-        pcall(C_Calendar.SetMonth, shift)
-    end
-end
-
-local function openNext()
-    if not collecting then return end
-    if #queue == 0 then
-        dtrace("ouvertures terminées")
+-- ------------------------------------------------- moteur piloté par OnUpdate
+local function engineTick(now)
+    local e = engine
+    if not e then return end
+    if now > e.deadline then
+        dtrace("délai global dépassé")
+        msg("collecte interrompue (délai global) — le rapport a été enregistré.")
         finishCollect()
         return
     end
-    local e = table.remove(queue, 1)
-    positionView(e.shift)
-    C_Timer.After(EVENT_WAIT, guard("ouverture", function()
-        if not collecting then return end
-        current = e
-        dtrace(("ouverture #%s : jour %s idx %s (%s)"):format(tostring(e.id), tostring(e.day),
-            tostring(e.idx), tostring(e.title)))
-        local okc, opened = pcall(C_Calendar.OpenEvent, 0, e.day, e.idx)
-        if (not okc) or opened == false then
-            dtrace("  → ouverture impossible (" .. tostring(okc and "refusée" or opened) .. ")")
-            results[#results + 1] = { id = e.id, title = e.title, date = e.date, ts = e.ts,
-                                      etype = e.etype, invites = {} }
-            current = nil
-            C_Timer.After(0.1, function() if collecting then openNext() end end)
-            return
-        end
-        C_Timer.After(2.5, guard("ouverture (délai)", function()
-            if collecting and current == e then
-                dtrace("  → pas de réponse du calendrier (délai)")
-                results[#results + 1] = { id = e.id, title = e.title, date = e.date, ts = e.ts,
-                                          etype = e.etype, invites = {} }
-                current = nil
-                C_Timer.After(0.1, function() if collecting then openNext() end end)
-            end
-        end))
-    end))
-end
-
--- Phase 1 : balayage des mois (courant → +21 j). Phase 2 : ouverture des événements.
-local function startCollect()
-    local now = nowCalendarTime()
-    watchMonth = { month = now.month, year = now.year }
-    dtrace(("vue calendrier : mois %s/%s"):format(tostring(now.month), tostring(now.year)))
-    openCalendarFrame()
-    pcall(C_Calendar.OpenCalendar)
-    pcall(C_Calendar.SetAbsMonth, now.month, now.year)
-    local maxShift = 2
-    local endT = time() + WINDOW_DAYS * 86400
-    local okA, ctEnd = pcall(C_DateAndTime.GetCalendarTimeFromEpoch, endT)
-    if okA and type(ctEnd) == "table" and ctEnd.month and ctEnd.year then
-        maxShift = math.max(0, math.min(3, (ctEnd.year * 12 + ctEnd.month) - (now.year * 12 + now.month)))
-    end
-    C_Timer.After(STEP_WAIT, guard("balayage", function()
-        if not collecting then return end
-        local scanned = {}
-        local shift = 0
-        local function scanNext()
-            if not collecting then return end
-            if shift > maxShift then
-                dtrace(("balayage fini : %d événement(s) brut(s)"):format(#scanned))
-                local list = filterWindow(scanned)
-                if #list == 0 then
-                    dtrace("aucun événement — nouvelle tentative après chargement")
-                    C_Timer.After(2.0, guard("balayage (relance)", function()
-                        if not collecting then return end
-                        local again = {}
-                        for s = 0, maxShift do
-                            positionView(s)
-                            for _, e in ipairs(scanViewedMonth(s)) do again[#again + 1] = e end
-                        end
-                        queue = filterWindow(again)
-                        if #queue == 0 then
-                            finishCollect()
-                        else
-                            dtrace(("relance : %d à ouvrir"):format(#queue))
-                            msg(("%d événement(s) à collecter…"):format(#queue))
-                            openNext()
-                        end
-                    end))
-                    return
-                end
-                queue = list
-                dtrace(("%d événement(s) à ouvrir"):format(#queue))
-                msg(("%d événement(s) à collecter…"):format(#queue))
-                openNext()
-                return
-            end
-            positionView(shift)
-            C_Timer.After(shift == 0 and 0.6 or STEP_WAIT, guard("balayage (mois " .. tostring(shift) .. ")", function()
-                if not collecting then return end
-                local found = scanViewedMonth(shift)
-                dtrace(("mois +%d : %d événement(s)"):format(shift, #found))
-                for _, e in ipairs(found) do scanned[#scanned + 1] = e end
-                shift = shift + 1
-                scanNext()
-            end))
-        end
-        scanNext()
-    end))
-end
-
-function LOTP_Collect()
-    if collecting then
-        if (time() - (collectStartAt or 0)) > 60 then
-            msg("collecte précédente bloquée — réinitialisation…")
-            dtrace("réinitialisation (collecte bloquée)")
-            collecting = false
+    local ph = e.phase
+    if ph == "scanPos" then
+        if now < e.await then return end
+        positionView(e.shift)
+        e.phase = "scanRead"
+        e.await = now + (e.shift == 0 and 0.6 or MONTH_WAIT)
+        e.status = ("balayage du mois +%d…"):format(e.shift)
+        return
+    elseif ph == "scanRead" then
+        if now < e.await then return end
+        local found = scanViewedMonth(e.shift)
+        dtrace(("mois +%d : %d événement(s)"):format(e.shift, #found))
+        msg(("• mois +%d : %d événement(s)"):format(e.shift, #found))
+        for _, ev in ipairs(found) do e.scanned[#e.scanned + 1] = ev end
+        e.shift = e.shift + 1
+        if e.shift <= e.maxShift then
+            e.phase = "scanPos"
+            e.await = 0
         else
-            msg("collecte déjà en cours…")
+            local list = filterWindow(e.scanned)
+            if #list > 0 then
+                e.queue = list
+                e.qi = 1
+                e.phase = "openPos"
+                e.await = 0
+                dtrace(("%d événement(s) à ouvrir"):format(#list))
+                msg(("%d événement(s) à collecter…"):format(#list))
+            elseif not e.rescan then
+                e.rescan = true
+                e.phase = "rescanPos"
+                e.await = now + 2.0
+                e.status = "nouvelle tentative…"
+            else
+                finishCollect()
+            end
+        end
+        return
+    elseif ph == "rescanPos" then
+        if now < e.await then return end
+        e.scanned = {}
+        e.shift = 0
+        e.phase = "scanPos"
+        e.await = 0
+        return
+    elseif ph == "openPos" then
+        if e.qi > #e.queue then
+            dtrace("ouvertures terminées")
+            finishCollect()
             return
         end
-    end
-    collectSeq = collectSeq + 1
-    collecting = true
-    collectStartAt = time()
-    queue = {}
-    results = {}
-    current = nil
-    openedFrame = false
-    watchMonth = nil
-    LOTP_DB.last_error = nil
-    LOTP_DB.trace = ("trace — %s (addon v%s · client %s)"):format(dateStr(time()), ADDON_VER,
-        tostring(clientIface()))
-    dtrace("collecte démarrée")
-    local mySeq = collectSeq
-    C_Timer.After(COLLECT_TIMEOUT, guard("chien de garde", function()
-        if collecting and collectSeq == mySeq then
-            dtrace("chien de garde : délai dépassé")
-            msg("collecte interrompue (délai dépassé) — le rapport a été enregistré.")
-            finishCollect()
+        if now < e.await then return end
+        local ev = e.queue[e.qi]
+        e.current = ev
+        positionView(ev.shift)
+        e.phase = "openFire"
+        e.await = now + OPEN_WAIT
+        e.status = ("ouverture %d/%d…"):format(e.qi, #e.queue)
+        return
+    elseif ph == "openFire" then
+        if now < e.await then return end
+        local ev = e.current
+        dtrace(("ouverture #%d : %s (%s)"):format(e.qi, tostring(ev.title), tostring(ev.date)))
+        e.eventAt = nil
+        local okc, opened = pcall(C_Calendar.OpenEvent, 0, ev.day, ev.idx)
+        if (not okc) or opened == false then
+            dtrace("  → ouverture impossible")
+            recordEvent(ev, {})
+            e.current = nil
+            e.qi = e.qi + 1
+            e.phase = "openPos"
+            e.await = now + 0.1
+            return
         end
-    end))
-    msg("lecture du calendrier de guilde…")
-    startCollect()
+        e.phase = "openWait"
+        e.await = now + EVENT_TIMEOUT
+        return
+    elseif ph == "openWait" then
+        local ev = e.current
+        if e.eventAt and now >= e.eventAt + 0.3 then
+            local invs = readInvites()
+            dtrace(("  → %d réponse(s)"):format(#invs))
+            msg(("• %s — %d réponse(s)"):format(tostring(ev.title), #invs))
+            recordEvent(ev, invs)
+            pcall(C_Calendar.CloseEvent)
+            e.current = nil
+            e.qi = e.qi + 1
+            e.phase = "openPos"
+            e.await = now + 0.2
+            return
+        end
+        if now >= e.await then
+            dtrace("  → pas de réponse du calendrier (délai)")
+            recordEvent(ev, {})
+            e.current = nil
+            e.qi = e.qi + 1
+            e.phase = "openPos"
+            e.await = now + 0.2
+        end
+        return
+    end
 end
 
+f:SetScript("OnUpdate", function()
+    if not engine then return end
+    local ok, err = pcall(engineTick, GetTime())
+    if not ok then
+        local t = tostring(err)
+        LOTP_DB.last_error = "moteur : " .. t
+        dtrace("ERREUR moteur : " .. t)
+        msg("erreur (moteur) — " .. t)
+        pcall(finishCollect)
+    end
+    if engine and ui and ui:IsShown() and statusText then
+        statusText:SetText("⏳ " .. tostring(engine.status or "…"))
+    end
+end)
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
-        if arg1 == "LOTP" then
-            if not LOTP_DB.export then
-                msg(("v%s chargée (client %s) — /lotp pour collecter le calendrier de guilde.")
-                    :format(ADDON_VER, tostring(clientIface())))
-            else
-                msg(("v%s chargée (client %s) — dernier export : %s • /lotp pour ouvrir.")
-                    :format(ADDON_VER, tostring(clientIface()), dateStr(LOTP_DB.export_at or 0)))
+        if arg1 == (ADDON_NAME or "LOTP") then
+            local copies = lotpCopies()
+            if #copies > 1 then
+                msg("|cffff5555ATTENTION : plusieurs dossiers LOTP détectés (" ..
+                    table.concat(copies, ", ") .. ") — supprime les doublons !|r")
             end
+            msg(("v%s chargée (client %s · dossier « %s ») — %s"):format(ADDON_VER, tostring(clientIface()),
+                tostring(ADDON_NAME or "?"),
+                LOTP_DB.export and ("dernier export : " .. dateStr(LOTP_DB.export_at or 0) ..
+                    " • /lotp pour ouvrir") or "/lotp pour collecter le calendrier de guilde"))
         end
     elseif event == "CALENDAR_OPEN_EVENT" then
-        if collecting and current ~= nil then
-            C_Timer.After(0.4, guard("lecture des réponses", function()
-                if collecting and current ~= nil then
-                    local e = current
-                    local invs = readInvites()
-                    dtrace(("  → %d réponse(s) lue(s)"):format(#invs))
-                    results[#results + 1] = { id = e.id, title = e.title, date = e.date, ts = e.ts,
-                                              etype = e.etype, invites = invs }
-                    pcall(C_Calendar.CloseEvent)
-                    current = nil
-                    C_Timer.After(0.2, function() if collecting then openNext() end end)
-                end
-            end))
+        if engine and engine.current then
+            engine.eventAt = GetTime()
         end
     end
 end)
 f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CALENDAR_OPEN_EVENT")
 
+function LOTP_Collect()
+    if engine then
+        local age = GetTime() - (engine.startedAt or 0)
+        if age > 60 then
+            msg(("collecte précédente bloquée (%d s) — réinitialisation…"):format(math.floor(age)))
+            dtrace("réinitialisation forcée")
+            engine = nil
+            collecting = false
+        else
+            msg("collecte déjà en cours… (tape /lotp reset si elle semble bloquée)")
+            return
+        end
+    end
+    collecting = true
+    results = {}
+    collectStartAt = time()
+    LOTP_DB.last_error = nil
+    LOTP_DB.trace = ("trace — %s (addon v%s · client %s · dossier « %s »)"):format(dateStr(time()),
+        ADDON_VER, tostring(clientIface()), tostring(ADDON_NAME or "?"))
+    dtrace("collecte démarrée")
+    local now = GetTime()
+    engine = {
+        startedAt = now, deadline = now + GLOBAL_TIMEOUT,
+        phase = "scanPos", shift = 0, maxShift = 2, await = now + 0.5,
+        scanned = {}, queue = {}, qi = 1, rescan = false, status = "préparation…",
+    }
+    local cnow = nowCalendarTime()
+    watchMonth = { month = cnow.month, year = cnow.year }
+    openCalendarFrame()
+    pcall(C_Calendar.OpenCalendar)
+    pcall(C_Calendar.SetAbsMonth, cnow.month, cnow.year)
+    local okA, ctEnd = pcall(C_DateAndTime.GetCalendarTimeFromEpoch, time() + WINDOW_DAYS * 86400)
+    if okA and type(ctEnd) == "table" and ctEnd.month and ctEnd.year then
+        engine.maxShift = math.max(0, math.min(3, (ctEnd.year * 12 + ctEnd.month) - (cnow.year * 12 + cnow.month)))
+    end
+    dtrace(("vue : mois +0 à +%d"):format(engine.maxShift))
+    msg("lecture du calendrier de guilde…")
+    if statusText then statusText:SetText("⏳ préparation…") end
+end
+
+function LOTP_Reset()
+    if engine or collecting then
+        engine = nil
+        collecting = false
+        pcall(restoreCalendar)
+        if statusText then statusText:SetText("prêt") end
+        msg("collecte réinitialisée — tu peux relancer.")
+    else
+        msg("rien à réinitialiser.")
+    end
+end
+
 -- ------------------------------------------------------------------ diagnostic
 diagLines = function()
     local L = {}
     L[#L + 1] = "LOTP diag — " .. dateStr(time())
-    L[#L + 1] = ("addon v%s · client %s · collecte %s"):format(ADDON_VER, tostring(clientIface()),
-        collecting and ("en cours depuis " .. dateStr(collectStartAt)) or "au repos")
-    L[#L + 1] = ("joueur %s — %s"):format(tostring(UnitName("player")), tostring(GetRealmName()))
-    L[#L + 1] = ("CalendarFrame : %s"):format(CalendarFrame and (CalendarFrame:IsShown() and "affiché" or "existe (fermé)") or "absent")
+    L[#L + 1] = ("addon v%s · client %s · dossier « %s »"):format(ADDON_VER, tostring(clientIface()),
+        tostring(ADDON_NAME or "?"))
+    L[#L + 1] = ("collecte : %s"):format(collecting and
+        ("en cours depuis " .. dateStr(collectStartAt) .. " · phase " .. tostring(engine and engine.phase)) or "au repos")
+    local copies = lotpCopies()
+    L[#L + 1] = "dossiers LOTP : " .. (#copies > 0 and table.concat(copies, ", ") or "?")
     if LOTP_DB.last_error then
         L[#L + 1] = "dernière erreur : " .. tostring(LOTP_DB.last_error)
     end
+    L[#L + 1] = ("joueur %s — %s"):format(tostring(UnitName("player")), tostring(GetRealmName()))
+    local okS, shown = pcall(function() return CalendarFrame and (CalendarFrame:IsShown() and "affiché" or "existe (fermé)") end)
+    L[#L + 1] = "CalendarFrame : " .. tostring(okS and shown or "absent")
     local okQ, gt = pcall(C_DateAndTime.GetCurrentCalendarTime)
     if okQ and type(gt) == "table" then
         L[#L + 1] = ("heure calendrier : %s-%s-%s %s:%s"):format(tostring(gt.year), tostring(gt.month),
@@ -447,15 +500,10 @@ diagLines = function()
     local ok1, n1 = pcall(C_Calendar.GetNumGuildEvents)
     L[#L + 1] = "GetNumGuildEvents : " .. tostring(ok1 and n1 or "erreur")
     if okG and gid then
-        local ct0, ct1
         local okT, ct = pcall(C_DateAndTime.GetCurrentCalendarTime)
-        if okT then
-            ct0 = ct
-            local okT2, ct2 = pcall(C_DateAndTime.AdjustTimeByDays, ct, WINDOW_DAYS)
-            ct1 = okT2 and ct2 or nil
-        end
-        if ct0 and ct1 then
-            local ok2, evs = pcall(C_Calendar.GetClubCalendarEvents, gid, ct0, ct1)
+        local okT2, ct2 = pcall(C_DateAndTime.AdjustTimeByDays, okT and ct or nil, WINDOW_DAYS)
+        if okT and okT2 and type(ct) == "table" and type(ct2) == "table" then
+            local ok2, evs = pcall(C_Calendar.GetClubCalendarEvents, gid, ct, ct2)
             L[#L + 1] = "GetClubCalendarEvents : " .. tostring(ok2 and (type(evs) == "table" and #evs or "?") or "erreur")
             if ok2 and type(evs) == "table" then
                 for i = 1, math.min(2, #evs) do
@@ -468,7 +516,6 @@ diagLines = function()
             L[#L + 1] = "GetClubCalendarEvents : dates indisponibles"
         end
     end
-    -- état du mois affiché + balayage jour par jour (offsets 0 à 2, lecture seule)
     local okM, mi = pcall(C_Calendar.GetMonthInfo, 0)
     if okM and type(mi) == "table" then
         L[#L + 1] = ("mois affiché : %s/%s (%s jours)"):format(tostring(mi.month), tostring(mi.year), tostring(mi.numDays))
@@ -516,7 +563,7 @@ local function dumpDiag(writeFile)
 end
 
 -- ------------------------------------------------------------------------ UI
-local ui = CreateFrame("Frame", "LOTPFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+ui = CreateFrame("Frame", "LOTPFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 ui:SetSize(720, 500)
 ui:SetPoint("CENTER")
 ui:SetFrameStrata("DIALOG")
@@ -546,13 +593,17 @@ sub:SetText("Collecte les raids + réponses, puis colle la chaîne exportée sur
 
 local eb = CreateFrame("EditBox", nil, ui)
 eb:SetMultiLine(true)
-eb:SetSize(680, 360)
+eb:SetSize(680, 350)
 eb:SetPoint("TOPLEFT", 20, -60)
 eb:SetFontObject(ChatFontNormal)
 eb:SetAutoFocus(false)
 eb:SetTextInsets(6, 6, 6, 6)
 eb:SetText("")
 eb:SetScript("OnEscapePressed", function() eb:ClearFocus() end)
+
+statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+statusText:SetPoint("BOTTOMRIGHT", -256, 23)
+statusText:SetText("prêt")
 
 local function mkButton(text, x, w, fn)
     local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
@@ -605,7 +656,8 @@ function LOTP_Refresh()
 end
 
 mkButton("Collecter", 20, 100, function() LOTP_Collect() end)
-mkButton("Exporter", 128, 100, function()
+mkButton("Réinitialiser", 128, 110, function() LOTP_Reset() end)
+mkButton("Exporter", 246, 100, function()
     if not LOTP_DB.export then
         msg("rien à exporter pour le moment — clique « Collecter ».")
         return
@@ -615,10 +667,10 @@ mkButton("Exporter", 128, 100, function()
     eb:SetFocus()
     msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur lotp.gensbien.fr (page Calendrier).")
 end)
-mkButton("Diag → fichier", 236, 130, function()
+mkButton("Diag → fichier", 354, 120, function()
     dumpDiag(true)
 end)
-mkButton("Fermer", 374, 100, function() ui:Hide() end)
+mkButton("Fermer", 482, 90, function() ui:Hide() end)
 
 SLASH_LOTP1 = "/lotp"
 SlashCmdList["LOTP"] = function(arg)
@@ -626,8 +678,7 @@ SlashCmdList["LOTP"] = function(arg)
     if arg == "" then
         ui:Show()
         if LOTP_DB.export then pcall(showSummary) end
-        -- toujours relancer une collecte (sauf si une vient de finir il y a < 2 min)
-        if not collecting and (time() - (LOTP_DB.export_at or 0)) > 120 then
+        if not engine and (time() - (LOTP_DB.export_at or 0)) > 120 then
             LOTP_Collect()
         end
     elseif arg == "collect" then
@@ -644,7 +695,9 @@ SlashCmdList["LOTP"] = function(arg)
         end
     elseif arg == "diag" then
         dumpDiag(true)
+    elseif arg == "reset" then
+        LOTP_Reset()
     else
-        msg("commandes : /lotp · /lotp collect · /lotp export · /lotp diag")
+        msg("commandes : /lotp · /lotp collect · /lotp export · /lotp diag · /lotp reset")
     end
 end
