@@ -638,7 +638,8 @@
  "Personne dans cette catégorie.": "Nobody in this category.",
  "📈 Paliers des personnages liés": "📈 Linked characters milestones",
  "📰 Récap hebdo (lundi matin)": "📰 Weekly recap (Monday morning)",
- "📰 Tester le récap": "📰 Test the recap"
+ "📰 Tester le récap": "📰 Test the recap",
+ "À améliorer (sous la moyenne)": "To upgrade (below average)"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -653,6 +654,9 @@
     [/(\d+) pièce changée/g, "$1 item changed"],
     [/actualisé/g, "refreshed"],
     [/à l'instant/g, "just now"],
+    [/(\d+) emplacements faibles/g, "$1 weak slots"],
+    [/(\d+) emplacement faible/g, "$1 weak slot"],
+    [/— à améliorer en priorité/g, "— upgrade these first"],
     [/rapports au total/g, "reports total"],
     [/points de hauts faits/g, "achievement points"],
     [/(\d+) tué\(s\)/g, "$1 killed"],

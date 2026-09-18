@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.063 - 2026-09-18
+
+### Added
+- Character page: interactive iLvl curve — hovering a point on the Évolution chart shows a tooltip (date, item level, change vs previous snapshot) and highlights the point.
+- Character page: weak gear slots — slots at least 5 iLvl below the character's average are highlighted (amber marker + "upgrade first" line under the equipment).
+
 ## 2026.09.062 - 2026-09-18
 
 ### Added
