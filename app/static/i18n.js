@@ -690,7 +690,13 @@
  "Aucun objet ne correspond.": "No matching item.",
  "2 dernières extensions": "Last 2 expansions",
  "Toutes les extensions": "All expansions",
- "Vos recettes de préparation (reprises dans le plan) :": "Your prep recipes (used in the plan):"
+ "Vos recettes de préparation (reprises dans le plan) :": "Your prep recipes (used in the plan):",
+ "🎮 Jeu · 2 dernières extensions": "🎮 Game · last 2 expansions",
+ "👥 Artisans de la guilde": "👥 Guild crafters",
+ "🔄 Synchroniser": "🔄 Sync",
+ "Aucune recette du jeu pour le moment.": "No game recipe yet.",
+ "Aucune recette d'artisan importée pour le moment.": "No crafter recipe imported yet.",
+ "Aucune recette du jeu pour le moment — la synchro se fait toute seule, ou clique « 🔄 Synchroniser ».": "No game recipe yet — sync runs on its own, or click « 🔄 Sync »."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -716,6 +722,12 @@
     [/\bartisan\(s\)/g, "crafter(s)"],
     [/qui : /g, "who: "],
     [/2 dernières : /g, "Last 2: "],
+    [/recettes du jeu/g, "game recipes"],
+    [/synchronisation en cours…/g, "sync in progress…"],
+    [/pas encore synchronisé/g, "not synced yet"],
+    [/erreur de synchro : /g, "sync error: "],
+    [/Synchronisation des recettes du jeu lancée…/g, "Game recipe sync started…"],
+    [/maj il y a /g, "updated "],
     [/ affiché\(s\)/g, " shown"],
     [/recette\(s\) importée\(s\) de (.*?) ✓/g, "recipe(s) imported from $1 ✓"],
     [/\bcomplets?\b/g, "complete"],

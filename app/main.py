@@ -411,6 +411,22 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_craft_recipes ON craft_recipes(crafter, item)")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS game_recipes (
+                id       INTEGER PRIMARY KEY,
+                prof     TEXT NOT NULL,
+                tier     TEXT NOT NULL DEFAULT '',
+                exp_rank INTEGER NOT NULL DEFAULT 0,
+                item     TEXT NOT NULL,
+                item_id  INTEGER NOT NULL DEFAULT 0,
+                rank_no  INTEGER NOT NULL DEFAULT 1,
+                mats     TEXT NOT NULL DEFAULT '[]',
+                updated  REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_game_recipes_prof ON game_recipes(prof)")
         for _stmt in (
             "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",
@@ -644,6 +660,7 @@ async def _lifespan(_app: FastAPI):
     threading.Thread(target=_worker_loop, daemon=True, name="sim-worker").start()
     threading.Thread(target=_bot_loop, daemon=True, name="discord-bot").start()
     threading.Thread(target=_snap_loop, daemon=True, name="char-snap").start()
+    threading.Thread(target=_game_recipes_loop, daemon=True, name="game-recipes").start()
     yield
 
 
@@ -3336,6 +3353,8 @@ def api_prep_get(request: Request):
             "SELECT mat, qty, user, name FROM prep_claims").fetchall()]
         crafts = [dict(r) for r in conn.execute(
             "SELECT crafter, profession, item, item_id, expansion, exp_rank, mats FROM craft_recipes").fetchall()]
+        game = [dict(r) for r in conn.execute(
+            "SELECT prof, tier, exp_rank, item, item_id, rank_no, mats FROM game_recipes").fetchall()]
     for r in recipes:
         try:
             r["mats"] = json.loads(r["mats"] or "[]")
@@ -3394,8 +3413,29 @@ def api_prep_get(request: Request):
         if nm and (nm not in exps or rk < exps[nm]):
             exps[nm] = rk
     exps_list = [{"name": n, "rank": r} for n, r in sorted(exps.items(), key=lambda kv: kv[1])]
+    # Recettes du jeu : une entrée par objet et par métier (on garde le rang le plus bas),
+    # enrichies de « qui peut la fabriquer » depuis les exports des artisans.
+    known_by_item: dict = {}
+    for ent_g in catalog.values():
+        known_by_item.setdefault(str(ent_g["item"]).casefold(), []).extend(ent_g["crafters"])
+    game_cat: dict = {}
+    for c in game:
+        key = (str(c["item"]).casefold(), c["prof"])
+        try:
+            gmats = json.loads(c["mats"] or "[]")
+        except ValueError:
+            gmats = []
+        ent = game_cat.get(key)
+        if ent is None or int(c["rank_no"] or 1) < int(ent["rank"] or 1):
+            game_cat[key] = {"item": c["item"], "item_id": c["item_id"] or 0, "prof": c["prof"],
+                             "exp": c["tier"] or "", "exp_rank": c["exp_rank"] or 0,
+                             "rank": c["rank_no"] or 1, "mats": gmats}
+    for ent in game_cat.values():
+        ent["crafters"] = known_by_item.get(str(ent["item"]).casefold(), [])
+    game_list = sorted(game_cat.values(), key=lambda e: (str(e["prof"]), str(e["item"]).casefold()))
     return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
             "catalog": cat_list, "exps": exps_list, "crafters": sorted({c["crafter"] for c in crafts}),
+            "game": game_list, "game_sync": dict(_game_sync_state),
             "me": {"name": user["name"] if "name" in user.keys() else user["email"]},
             "can_edit": can}
 
@@ -3490,6 +3530,84 @@ def api_prep_reset(request: Request):
     return {"ok": True}
 
 
+# ---- Recettes du jeu (API Game Data Blizzard) --------------------------------
+GAME_PREP_PROFS = ((185, "Cuisine"), (171, "Alchimie"), (773, "Calligraphie"),
+                   (164, "Forge"), (165, "Travail du cuir"), (202, "Ingénierie"))
+GAME_SYNC_TTL = 6 * 86400.0  # rafraîchi bien avant le TTL de 30 j des API Blizzard
+_game_sync_state = {"state": "idle", "prof": "", "done": 0, "total": 0, "error": "", "ts": 0.0}
+
+
+def _game_sync(profs=None) -> None:
+    """Synchronise les recettes des paliers « 2 dernières extensions » des métiers utiles."""
+    st = _game_sync_state
+    if st["state"] == "running":
+        return
+    st.update({"state": "running", "prof": "", "done": 0, "total": 0, "error": ""})
+    wanted = {str(p).casefold() for p in (profs or [])}
+    cibles = [p for p in GAME_PREP_PROFS if not wanted or p[1].casefold() in wanted]
+    total_written = 0
+    try:
+        for pid, nom in cibles:
+            prof = bnet.game_profession(pid)
+            tiers = (prof.get("skill_tiers") or [])[-2:]  # les 2 paliers les plus récents
+            st["prof"] = nom
+            rows_all = []
+            for rank, tier in enumerate(reversed(tiers)):  # rang 0 = la plus récente extension
+                recs = bnet.game_tier_recipes(pid, tier["id"])
+                st["total"] = (st["total"] or 0) + len(recs)
+                for r in recs:
+                    try:
+                        d = bnet.game_recipe(r["id"])
+                    except bnet.BnetError:
+                        continue  # recette non exposée — ignorée
+                    ci = d.get("crafted_item") or {}
+                    mats = []
+                    for m in d.get("reagents") or []:
+                        rr = m.get("reagent") or {}
+                        mats.append({"id": rr.get("id") or 0, "name": rr.get("name") or "",
+                                     "qty": float(m.get("quantity") or 0)})
+                    try:
+                        rrank = int(d.get("rank") or 1)
+                    except (TypeError, ValueError):
+                        rrank = 1
+                    rows_all.append((int(d.get("id") or r["id"]), nom, tier.get("name") or "", rank,
+                                     ci.get("name") or d.get("name") or "", ci.get("id") or 0, rrank,
+                                     json.dumps(mats, ensure_ascii=False), time.time()))
+                    st["done"] += 1
+                    if st["done"] % 4 == 0:
+                        time.sleep(0.02)  # politesse (limite Blizzard : 100 req/s)
+            with _db_lock, _db() as conn:
+                conn.execute("DELETE FROM game_recipes WHERE prof=?", (nom,))
+                conn.executemany(
+                    "INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats, updated) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)", rows_all)
+            total_written += len(rows_all)
+        st.update({"state": "done", "ts": time.time()})
+        print(f"[game-recipes] synchro OK : {total_written} recettes", flush=True)
+    except Exception as exc:  # noqa: BLE001 — tâche de fond : on trace sans casser
+        st.update({"state": "error", "error": str(exc)[:200]})
+        print(f"[game-recipes] erreur : {exc}", flush=True)
+
+
+def _game_recipes_loop() -> None:
+    """Au démarrage puis toutes les 6 h : synchro si vide ou trop ancienne."""
+    time.sleep(50)
+    while True:
+        try:
+            with _db_lock, _db() as conn:
+                row = conn.execute("SELECT COUNT(*) AS n, MAX(updated) AS ts FROM game_recipes").fetchone()
+            n, ts = int(row["n"] or 0), float(row["ts"] or 0)
+            if _game_sync_state["state"] != "running" and (n == 0 or time.time() - ts > GAME_SYNC_TTL):
+                _game_sync()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[game-recipes] boucle : {exc}", flush=True)
+        time.sleep(6 * 3600)
+
+
+class PrepSyncGameRequest(BaseModel):
+    profs: list[str] = []
+
+
 class PrepRecipesImportRequest(BaseModel):
     payload: str = Field(..., max_length=2_000_000)
 
@@ -3565,6 +3683,17 @@ def api_prep_import_recipes(body: PrepRecipesImportRequest, request: Request):
         )
     return {"ok": True, "crafter": crafter, "recipes": len(rows),
             "professions": len(data.get("professions") or [])}
+
+
+@app.post("/api/prep/sync-game")
+def api_prep_sync_game(body: PrepSyncGameRequest, request: Request):
+    """(Officiers) Lance la synchro des recettes du jeu en tâche de fond."""
+    _require_officer(request)
+    if _game_sync_state["state"] == "running":
+        return {"ok": True, "running": True}
+    threading.Thread(target=_game_sync, args=(body.profs or [],), daemon=True,
+                     name="game-recipes-manual").start()
+    return {"ok": True, "started": True}
 
 
 @app.post("/api/gcal/import")

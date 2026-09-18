@@ -307,6 +307,36 @@ INV_TO_SLOTS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Recettes du jeu (Game Data — base « préparation de raid »)
+# ---------------------------------------------------------------------------
+def game_profession(prof_id: int) -> dict:
+    """Métier du jeu + ses paliers d'extension (noms localisés)."""
+    return _get(f"/data/wow/profession/{int(prof_id)}",
+                {"namespace": f"static-{REGION}", "locale": LOCALE},
+                not_found="Métier introuvable.")
+
+
+def game_tier_recipes(prof_id: int, tier_id: int) -> list[dict]:
+    """Recettes d'un palier d'extension (id + nom)."""
+    raw = _get(f"/data/wow/profession/{int(prof_id)}/skill-tier/{int(tier_id)}",
+               {"namespace": f"static-{REGION}", "locale": LOCALE},
+               not_found="Palier introuvable.")
+    out = []
+    for cat in raw.get("categories") or []:
+        for r in cat.get("recipes") or []:
+            if r.get("id"):
+                out.append({"id": r["id"], "name": r.get("name") or ""})
+    return out
+
+
+def game_recipe(recipe_id: int) -> dict:
+    """Détail d'une recette : objet fabriqué + compos (quantités)."""
+    return _get(f"/data/wow/recipe/{int(recipe_id)}",
+                {"namespace": f"static-{REGION}", "locale": LOCALE},
+                not_found="Recette introuvable.")
+
+
 def item(item_id: int) -> dict:
     """Objet (nom, qualité, emplacement, icône) depuis l'API Blizzard — cache 30 min."""
     key = f"item/{int(item_id)}"

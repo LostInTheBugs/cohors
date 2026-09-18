@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.082 - 2026-09-19
+
+### Added
+- Raid prep / recipe catalog sources: a built-in game recipe base (Blizzard Game Data API — `/data/wow/profession/*` + `/data/wow/recipe/*`) covering the last 2 expansion tiers (Midnight + Khaz Algar) of Cooking, Alchemy, Inscription, Blacksmithing, Leatherworking and Engineering (~1000 recipes, background sync at startup, weekly refresh, manual « Sync » button for officers). The prep catalog now has a source filter: « Game · last 2 expansions » (default, works without any player export — each recipe shows its materials and, when known, which guild crafters can craft it) or « Guild crafters » (imported exports only).
+
 ## 2026.09.081 - 2026-09-19
 
 ### Added

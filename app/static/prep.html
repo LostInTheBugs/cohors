@@ -79,7 +79,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.081">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.082">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -136,7 +136,8 @@
     <h2>📚 Recettes <span class="pc">officiers — objet fabriqué → compos</span></h2>
     <div class="row" style="margin-bottom:8px">
       <input id="catq" placeholder="Rechercher un objet connu des artisans…" style="min-width:240px">
-      <select id="catexp"><option value="2">2 dernières extensions</option><option value="all">Toutes les extensions</option></select>
+      <select id="catsrc"><option value="game">🎮 Jeu · 2 dernières extensions</option><option value="guild">👥 Artisans de la guilde</option></select>
+      <button class="btn ghost" id="gsync">🔄 Synchroniser</button>
       <button class="btn ghost" id="rimpbtn">📥 Importer un export d'artisan</button>
       <input type="file" id="rfile" accept=".lua,.txt,.json" class="hidden">
       <span class="meta" id="catmeta"></span>
@@ -155,8 +156,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.081"></script>
-<script src="/static/i18n.js?v=2026.09.081"></script>
+<script src="/static/nav.js?v=2026.09.082"></script>
+<script src="/static/i18n.js?v=2026.09.082"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -271,37 +272,67 @@ function renderNeeds() {
 
 function renderCatalog() {
   const box = $("#catlist");
+  const sel = $("#catsrc");
+  const mode = sel.value || "game";
+  const game = DATA.game || [];
   const cat = DATA.catalog || [];
   const crafters = DATA.crafters || [];
-  $("#catmeta").textContent = cat.length
-    ? `${cat.length} objet(s) connus · ${crafters.length} artisan${crafters.length > 1 ? "s" : ""} : ${crafters.join(", ")}` : "";
-  const sel = $("#catexp");
-  const exps = (DATA.exps || []).slice(0, 2).map(x => x.name).filter(Boolean);
-  sel.options[0].textContent = exps.length ? `2 dernières : ${exps.join(" · ")}` : "2 dernières extensions";
+  const sync = DATA.game_sync || {};
   const q = ($("#catq").value || "").trim().toLowerCase();
-  if (!cat.length) { box.innerHTML = ""; return; }
-  const mode = sel.value || "2";
-  let src = cat;
-  if (mode === "2") src = src.filter(x => (+x.exp_rank || 0) <= 2);
-  const shown = src.length;
-  if (shown !== cat.length) {
-    $("#catmeta").textContent += ` · ${shown} affiché(s)`;
+  const src = mode === "game" ? game : cat;
+
+  const stripProf = (x) => (x.exp || '').startsWith(x.prof + ' de ') ? x.exp.slice(x.prof.length + 4) : (x.exp || '');
+  if (mode === "game") {
+    const tiers = [...new Set(game.map(stripProf).filter(Boolean))].slice(0, 3);
+    let meta = game.length
+      ? `${game.length} recettes du jeu${tiers.length ? " · " + tiers.join(" · ") : ""}`
+      : "Aucune recette du jeu pour le moment.";
+    if (sync.state === "running") meta += ` · synchronisation en cours…${sync.total ? ` (${sync.done}/${sync.total})` : ""}`;
+    else if (sync.state === "error") meta += ` · erreur de synchro : ${sync.error || "?"}`;
+    else if (sync.ts) meta += ` · maj ${ago(sync.ts)}`;
+    else meta += " · pas encore synchronisé";
+    $("#catmeta").textContent = meta;
+  } else {
+    $("#catmeta").textContent = cat.length
+      ? `${cat.length} objet(s) connus · ${crafters.length} artisan${crafters.length > 1 ? "s" : ""} : ${crafters.join(", ")}`
+      : "Aucune recette d'artisan importée pour le moment.";
   }
-  const list = (q ? src.filter(x => x.item.toLowerCase().includes(q)) : src).slice(0, 12);
-  if (!list.length) { box.innerHTML = `<div class="empty">Aucun objet ne correspond.</div>`; return; }
+  const syncing = sync.state === "running";
+  const gb = $("#gsync");
+  gb.disabled = syncing;
+  gb.style.opacity = syncing ? "0.5" : "";
+
+  const list = (q ? src.filter(x => x.item.toLowerCase().includes(q)) : src).slice(0, 14);
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">${mode === "game"
+      ? "Aucune recette du jeu pour le moment — la synchro se fait toute seule, ou clique « 🔄 Synchroniser »."
+      : "Aucun objet ne correspond."}</div>`;
+    return;
+  }
   box.innerHTML = list.map(x => `<div class="irow">
     <span class="iname">${esc(x.item)}</span>
-    <span class="meta">${x.exp ? `<span class="chip${(+x.exp_rank || 0) === 1 ? " chip-new" : ""}">${esc(x.exp)}</span> · ` : ""}${esc(x.prof)} · ${(x.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "aucune compos"}</span>
-    <span class="nclaims">qui : ${(x.crafters || []).map(esc).join(", ")}</span>
+    <span class="meta">${x.exp ? `<span class="chip${(+x.exp_rank || 0) === 0 ? " chip-new" : ""}">${esc(stripProf(x))}</span> · ` : ""}${esc(x.prof)} · ${(x.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "aucune compos"}</span>
+    ${(x.crafters || []).length ? `<span class="nclaims">qui : ${(x.crafters || []).map(esc).join(", ")}</span>` : ""}
     <button class="btn ghost" data-cat="${esc(x.item)}" style="margin-left:auto">＋ recette</button>
   </div>`).join("");
   box.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => {
-    const x = cat.find(v => v.item === b.dataset.cat);
+    const x = src.find(v => v.item === b.dataset.cat);
     if (!x) return;
     $("#rname").value = x.item;
     $("#rmats").value = (x.mats || []).map(m => `${m.name} = ${m.qty}`).join("\n");
     setMsg("Compos pré-remplies — vérifie puis « Ajouter / MAJ ».", true);
   }));
+}
+
+function scheduleSyncPoll() {
+  clearInterval(window._syncT);
+  window._syncT = setInterval(async () => {
+    await load();
+    if (((DATA || {}).game_sync || {}).state !== "running") {
+      clearInterval(window._syncT);
+      window._syncT = null;
+    }
+  }, 4000);
 }
 
 function renderRecipes() {
@@ -390,7 +421,15 @@ $("#rsave").addEventListener("click", async () => {
   } catch (e) { setMsg(e.message, false); }
 });
 $("#catq").addEventListener("input", () => { if (CAN) renderCatalog(); });
-$("#catexp").addEventListener("change", () => { if (CAN) renderCatalog(); });
+$("#catsrc").addEventListener("change", () => { if (CAN) renderCatalog(); });
+$("#gsync").addEventListener("click", async () => {
+  try {
+    setMsg("Synchronisation des recettes du jeu lancée…", true);
+    await jpost("POST", "/api/prep/sync-game", {});
+    await load();
+    scheduleSyncPoll();
+  } catch (e) { setMsg(e.message, false); }
+});
 $("#rimpbtn").addEventListener("click", () => $("#rfile").click());
 $("#rfile").addEventListener("change", async () => {
   const f = $("#rfile").files[0];
@@ -419,6 +458,7 @@ $("#objreset").addEventListener("click", async () => {
   try {
     await load();
     if (CAN) await loadEvents();
+    if (((DATA || {}).game_sync || {}).state === "running") scheduleSyncPoll();
   } catch (e) {
     $("#needs").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`;
   }
