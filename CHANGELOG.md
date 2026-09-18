@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.054 - 2026-09-18
+
+### Added
+- Daily character snapshots (linked characters): gear, level, ilvl, achievements, mounts/pets and M+ rating.
+- Character page: "📈 Evolution" section — day-by-day table with deltas, iLvl sparkline and any-to-any date comparison including gear changes. History kept for a rolling 30 days (Blizzard API ToU 30-day retention rule).
+
+### Changed
+- Restored the original dark texture background (bg-texture.png); the stone-wall wallpaper is no longer used.
+
 ## 2026.09.053 - 2026-09-18
 
 ### Added

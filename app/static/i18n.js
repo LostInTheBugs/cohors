@@ -585,7 +585,20 @@
  "Clique sur le cadre d'un compte pour ouvrir la fiche de son main, ou sur un personnage pour la sienne.": "Click an account frame to open its main's profile, or a character for their own.",
  "Personnage introuvable.": "Character not found.",
  "Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment": "Character profile — Battle.net API (30 min cache) · Game data provided by Blizzard Entertainment · Not affiliated with Blizzard Entertainment",
- "Personnage introuvable sur ce royaume.": "Character not found on this realm."
+ "Personnage introuvable sur ce royaume.": "Character not found on this realm.",
+ "📈 Évolution": "📈 Evolution",
+ "Chaque jour, l'app enregistre l'état du personnage (équipement, niveau, collections). Historique conservé 30 jours (règle Blizzard).": "Every day the app records the character state (gear, level, collections). History is kept for 30 days (Blizzard API rule).",
+ "Les relevés quotidiens démarrent — le premier d'aujourd'hui est enregistré. Reviens demain pour voir l'évolution.": "Daily snapshots are starting — today's is being recorded. Come back tomorrow to see the progress.",
+ "Du": "From",
+ "au": "to",
+ "Jour par jour": "Day by day",
+ "Changements d'équipement": "Gear changes",
+ "Aucun changement d'équipement sur la période.": "No gear changes in this period.",
+ "Hauts faits": "Achievements",
+ "Montures": "Mounts",
+ "Mascottes": "Pets",
+ "Nouveau": "New",
+ "Retiré": "Removed"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -594,6 +607,8 @@
     [/il y a (\d+) h\b/g, "$1 h ago"],
     [/il y a (\d+) j\b/g, "$1 d ago"],
     [/(\d[\d\u00a0 ]*) membres\b/g, "$1 members"],
+    [/(\d+) relevés/g, "$1 snapshots"],
+    [/(\d+) relevé\b/g, "$1 snapshot"],
     [/actualisé/g, "refreshed"],
     [/à l'instant/g, "just now"],
     [/rapports au total/g, "reports total"],

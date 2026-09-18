@@ -22,6 +22,7 @@ import time
 import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager, contextmanager
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote, unquote
 
@@ -60,6 +61,11 @@ PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1") not in ("0", "false", "no", "")
 COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "").strip() or None
 BOT_POLL_S = int(os.environ.get("BOT_POLL_S", "300"))  # intervalle du bot Discord (secondes)
+# Relevés quotidiens (évolution des personnages liés) — v2026.09.054.
+# TTL max 30 jours : Blizzard Developer API ToU §18 (« retain data ... no longer than 30 days »).
+SNAP_POLL_S = float(os.environ.get("SNAPSHOT_POLL_S", "900"))       # tick de la boucle (s)
+SNAP_REFRESH_MIN = float(os.environ.get("SNAPSHOT_REFRESH_MIN", "360"))  # re-relevé si dernier > 6 h
+SNAP_KEEP_DAYS = min(30, max(2, int(os.environ.get("SNAPSHOT_KEEP_DAYS", "30"))))
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -279,6 +285,20 @@ def _init_db() -> None:
         )
         for k in ("intro", "discord_url", "discord_note", "ts_host", "ts_password", "ts_note", "web_url", "web_note"):
             conn.execute("INSERT OR IGNORE INTO guild_info (key, value, updated) VALUES (?, '', 0)", (k,))
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS char_snapshots (
+                id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                realm  TEXT NOT NULL,
+                name   TEXT NOT NULL,
+                day    TEXT NOT NULL,
+                ts     REAL NOT NULL,
+                data   TEXT NOT NULL,
+                UNIQUE (realm, name, day)
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_char_snapshots_lookup ON char_snapshots(realm, name, day)")
         # v2026.09.015 — rôles (membre / officier / administrateur).
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "role" not in cols:
@@ -520,6 +540,7 @@ async def _lifespan(_app: FastAPI):
     _bootstrap_admin()
     threading.Thread(target=_worker_loop, daemon=True, name="sim-worker").start()
     threading.Thread(target=_bot_loop, daemon=True, name="discord-bot").start()
+    threading.Thread(target=_snap_loop, daemon=True, name="char-snap").start()
     yield
 
 
@@ -2095,6 +2116,193 @@ def set_main_char(cid: int, request: Request):
         conn.execute("UPDATE char_links SET is_main=0 WHERE user_email=?", (user["email"],))
         conn.execute("UPDATE char_links SET is_main=1 WHERE id=?", (cid,))
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Relevés quotidiens — évolution des personnages liés (v2026.09.054)
+# ---------------------------------------------------------------------------
+def _snap_day(ts: float | None = None) -> str:
+    """Jour courant (Europe/Paris, DST-safe) au format YYYY-MM-DD."""
+    moment = time.time() if ts is None else ts
+    try:
+        from zoneinfo import ZoneInfo
+
+        return datetime.fromtimestamp(moment, ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d")
+    except Exception:  # noqa: BLE001
+        return time.strftime("%Y-%m-%d", time.gmtime(moment))
+
+
+def _char_snapshot(realm: str, name: str) -> dict:
+    """État d'un personnage (résumé + équipement + collections) pour un relevé quotidien."""
+    s, _ = bnet.character(realm, name)
+    g, _ = bnet.equipment(realm, name)
+    x, _ = bnet.extras(realm, name)
+    return {
+        "level": s.get("level"), "spec": s.get("spec"), "class": s.get("class"),
+        "ilvl": s.get("ilvl_equipped"), "ilvl_avg": s.get("ilvl_avg"),
+        "achv": s.get("achievement_points"),
+        "mounts": x.get("mounts"), "pets": x.get("pets"), "mplus": x.get("mplus_rating"),
+        "items": [
+            {"slot": it.get("slot"), "name": it.get("name"), "ilvl": it.get("ilvl"),
+             "q": it.get("quality"), "id": it.get("item_id")}
+            for it in (g.get("items") or [])
+        ],
+    }
+
+
+def _snap_store(realm: str, name: str, data: dict) -> None:
+    """Enregistre (ou remplace) le relevé du jour pour ce personnage."""
+    with _db_lock, _db() as conn:
+        conn.execute(
+            "INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES (?,?,?,?,?) "
+            "ON CONFLICT(realm, name, day) DO UPDATE SET ts=excluded.ts, data=excluded.data",
+            (realm.lower(), name.lower(), _snap_day(), time.time(), json.dumps(data, ensure_ascii=False)),
+        )
+
+
+def _snap_capture(realm: str, name: str) -> None:
+    """Capture silencieuse (thread à la demande) — les erreurs sont seulement journalisées."""
+    try:
+        _snap_store(realm, name, _char_snapshot(realm, name))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[snap] {name}: {exc}")
+
+
+def _snap_tick() -> None:
+    """Un passage : relevés des personnages liés (si dernier > SNAP_REFRESH_MIN) + purge de rétention."""
+    with _db_lock, _db() as conn:
+        chars = [dict(r) for r in conn.execute("SELECT DISTINCT realm, name FROM char_links").fetchall()]
+        latest = {
+            r["k"]: r["ts"]
+            for r in conn.execute(
+                "SELECT realm || '|' || name AS k, MAX(ts) AS ts FROM char_snapshots GROUP BY realm, name"
+            ).fetchall()
+        }
+    now = time.time()
+    for ch in chars:
+        k = f"{ch['realm']}|{ch['name']}"
+        last = latest.get(k)
+        if last and now - last < SNAP_REFRESH_MIN * 60:
+            continue
+        try:
+            _snap_store(ch["realm"], ch["name"], _char_snapshot(ch["realm"], ch["name"]))
+        except bnet.BnetError as exc:
+            if getattr(exc, "status", None) == 404:
+                # personnage inexistant : purge des relevés s'il ne figure plus au roster (ToU §18)
+                try:
+                    roster, _ts = bnet.roster()
+                    names = {(m.get("name") or "").lower() for m in (roster.get("members") or [])}
+                except bnet.BnetError:
+                    names = None
+                if names is not None and ch["name"].lower() not in names:
+                    with _db_lock, _db() as conn:
+                        conn.execute(
+                            "DELETE FROM char_snapshots WHERE realm=? AND name=?",
+                            (ch["realm"], ch["name"]),
+                        )
+                    print(f"[snap] {ch['name']} absent du roster → relevés supprimés")
+            else:
+                print(f"[snap] {ch['name']}: {exc}")
+    cutoff = _snap_day(now - (SNAP_KEEP_DAYS - 1) * 86400)
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM char_snapshots WHERE day < ?", (cutoff,))
+
+
+def _snap_loop() -> None:
+    time.sleep(20)
+    while True:
+        try:
+            _snap_tick()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[snap] tick: {exc}")
+        time.sleep(SNAP_POLL_S)
+
+
+def _snap_summary(day: str, ts: float, d: dict) -> dict:
+    return {"day": day, "ts": ts, "level": d.get("level"), "spec": d.get("spec"),
+            "class": d.get("class"), "ilvl": d.get("ilvl"), "ilvl_avg": d.get("ilvl_avg"),
+            "achv": d.get("achv"), "mounts": d.get("mounts"), "pets": d.get("pets"),
+            "mplus": d.get("mplus")}
+
+
+@app.get("/api/char/{realm}/{name}/history")
+def api_char_history(realm: str, name: str, request: Request):
+    """Relevés quotidiens (résumés) d'un personnage — du plus ancien au plus récent."""
+    _require_user(request)
+    realm, name = realm.lower(), name.lower()
+    with _db_lock, _db() as conn:
+        rows = conn.execute(
+            "SELECT day, ts, data FROM char_snapshots WHERE realm=? AND name=? ORDER BY day",
+            (realm, name),
+        ).fetchall()
+    days = []
+    for r in rows:
+        try:
+            days.append(_snap_summary(r["day"], r["ts"], json.loads(r["data"])))
+        except ValueError:
+            continue
+    # personnage suivi et relevé du jour manquant → capture à la volée (sans bloquer la réponse)
+    if (not days or days[-1]["day"] != _snap_day()):
+        with _db_lock, _db() as conn:
+            linked = conn.execute(
+                "SELECT 1 FROM char_links WHERE realm=? AND name=? LIMIT 1", (realm, name)
+            ).fetchone()
+        if linked is not None:
+            threading.Thread(target=_snap_capture, args=(realm, name), daemon=True).start()
+    return {"ok": True, "days": days, "keep_days": SNAP_KEEP_DAYS}
+
+
+@app.get("/api/char/{realm}/{name}/snapdiff")
+def api_char_snapdiff(realm: str, name: str, request: Request):
+    """Différence entre deux relevés (?from=YYYY-MM-DD&to=YYYY-MM-DD ; défaut : début → fin)."""
+    _require_user(request)
+    realm, name = realm.lower(), name.lower()
+    frm = (request.query_params.get("from") or "").strip()
+    to = (request.query_params.get("to") or "").strip()
+    with _db_lock, _db() as conn:
+        rows = conn.execute(
+            "SELECT day, ts, data FROM char_snapshots WHERE realm=? AND name=? ORDER BY day",
+            (realm, name),
+        ).fetchall()
+    if not rows:
+        raise HTTPException(404, "Aucun relevé pour ce personnage.")
+    snaps = []
+    for r in rows:
+        try:
+            snaps.append((r["day"], r["ts"], json.loads(r["data"])))
+        except ValueError:
+            continue
+    if not snaps:
+        raise HTTPException(404, "Aucun relevé pour ce personnage.")
+    by_day = {d: (ts, data) for d, ts, data in snaps}
+    a_day = frm if frm in by_day else snaps[0][0]
+    b_day = to if to in by_day else snaps[-1][0]
+    if a_day > b_day:
+        a_day, b_day = b_day, a_day
+    a_ts, a = by_day[a_day]
+    b_ts, b = by_day[b_day]
+
+    def delta(key: str):
+        av, bv = a.get(key), b.get(key)
+        if isinstance(av, (int, float)) and isinstance(bv, (int, float)):
+            return round(bv - av, 2)
+        return None
+
+    a_items = {it.get("slot"): it for it in (a.get("items") or [])}
+    b_items = {it.get("slot"): it for it in (b.get("items") or [])}
+    items = []
+    for slot in list(dict.fromkeys(list(a_items.keys()) + list(b_items.keys()))):
+        fa, fb = a_items.get(slot), b_items.get(slot)
+        if fa and fb and fa.get("id") == fb.get("id") and fa.get("ilvl") == fb.get("ilvl"):
+            continue
+        items.append({"slot": slot, "from": fa, "to": fb})
+    return {
+        "ok": True,
+        "from": _snap_summary(a_day, a_ts, a),
+        "to": _snap_summary(b_day, b_ts, b),
+        "deltas": {k: delta(k) for k in ("level", "ilvl", "ilvl_avg", "achv", "mounts", "pets", "mplus")},
+        "items": items,
+    }
 
 
 # ---------------------------------------------------------------------------

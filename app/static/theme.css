@@ -53,17 +53,15 @@ h2 .meta, h2 small { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
 /* tableaux : en-têtes dorées discrètes */
 table th, .rtab th { color: #b9a37a; }
 
-/* Fond « pierre de forteresse » — uniquement sur les pages connectées (login/register restent sobres). */
+/* Fond d'origine (texture sombre) — restauré en v054 : préférence Fred, mieux que la « pierre » bg-wow. */
 body.wb {
-  background-color: #0a0908 !important;
+  background-color: #0b0f17 !important;
   background-image:
-    radial-gradient(1200px 700px at 50% -10%, rgba(177, 0, 46, .12), transparent 60%),
-    radial-gradient(900px 600px at 100% 110%, rgba(223, 165, 90, .06), transparent 55%),
-    url("/static/bg-wow.jpg") !important;
-  background-repeat: no-repeat, no-repeat, no-repeat !important;
+    radial-gradient(1200px 700px at 50% -10%, rgba(177, 0, 46, .10), transparent 60%),
+    radial-gradient(900px 600px at 100% 110%, rgba(223, 165, 90, .05), transparent 55%),
+    url("/static/bg-texture.png") !important;
+  background-repeat: no-repeat, no-repeat, repeat !important;
   background-attachment: scroll, scroll, fixed !important;
-  background-size: auto, auto, cover !important;
-  background-position: center top, center bottom, center center !important;
 }
 
 /* ---------------------------------------------------------------------
@@ -73,16 +71,15 @@ body.wb {
   .wrap { padding: 12px 12px 30px !important; max-width: 100% !important; }
   .card { padding: 14px 13px !important; border-radius: 12px !important; margin-bottom: 13px !important; }
 
-  /* fond : voile renforce + pas d'attachement fixe (bug iOS) */
+  /* fond : texture d'origine, pas d'attachement fixe (bug iOS) */
   body.wb {
     background-image:
-      linear-gradient(rgba(9, 8, 7, .62), rgba(9, 8, 7, .80)),
-      radial-gradient(1000px 600px at 50% -10%, rgba(177, 0, 46, .10), transparent 60%),
-      url("/static/bg-wow.jpg") !important;
-    background-repeat: no-repeat, no-repeat, no-repeat !important;
+      radial-gradient(1200px 700px at 50% -10%, rgba(177, 0, 46, .10), transparent 60%),
+      radial-gradient(900px 600px at 100% 110%, rgba(223, 165, 90, .05), transparent 55%),
+      url("/static/bg-texture.png") !important;
+    background-repeat: no-repeat, no-repeat, repeat !important;
     background-attachment: scroll, scroll, scroll !important;
-    background-size: auto, auto, cover !important;
-    background-position: center top, center top, center top !important;
+    background-size: auto, auto, auto !important;
   }
   body { background-attachment: scroll, scroll, scroll !important; }
 

@@ -69,9 +69,23 @@
   .spin { display:inline-block; animation:spin 1.2s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .hidden { display:none !important; }
+  select { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:8px;
+           padding:6px 8px; font-size:13.5px; }
+  .spark { width:100%; height:56px; display:block; margin:2px 0 0; }
+  .evwrap { overflow-x:auto; }
+  .evtab { width:100%; border-collapse:collapse; font-size:13.5px; }
+  .evtab th { text-align:left; color:#b9a37a; font-size:12px; font-weight:600; padding:6px 10px;
+              border-bottom:1px solid var(--line); white-space:nowrap; }
+  .evtab td { padding:6px 10px; border-top:1px solid var(--line); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .d { font-size:12px; margin-left:4px; }
+  .d.up { color:var(--ok); }
+  .d.down { color:var(--err); }
+  .change { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; font-size:13.5px; padding:2px 0; }
+  .change .gs { color:var(--mut); min-width:92px; flex-shrink:0; font-size:12.5px; }
+  .tag { font-size:11.5px; border:1px solid var(--line); border-radius:999px; padding:1px 8px; color:var(--mut); }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.053">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.054">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -97,10 +111,15 @@
     <div id="content"><div class="empty"><span class="spin">⏳</span> Chargement de la fiche…</div></div>
   </div>
 
+  <div class="card">
+    <h2>📈 Évolution <span class="meta" id="evo-count"></span></h2>
+    <div id="evo"><div class="empty"><span class="spin">⏳</span> Chargement…</div></div>
+  </div>
+
   <footer>Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment · <span id="ver"></span></footer>
 </div>
-<script src="/static/nav.js?v=2026.09.053"></script>
-<script src="/static/i18n.js?v=2026.09.053"></script>
+<script src="/static/nav.js?v=2026.09.054"></script>
+<script src="/static/i18n.js?v=2026.09.054"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -178,6 +197,7 @@ function render(s, g, x) {
 
 async function loadChar(realm, name, push) {
   $("#content").innerHTML = '<div class="empty"><span class="spin">⏳</span> Chargement de la fiche…</div>';
+  evoReset();
   REALM = realm.toLowerCase(); NAME = name.toLowerCase();
   markCur();
   try {
@@ -188,10 +208,133 @@ async function loadChar(realm, name, push) {
     ]);
     render(s, g, x);
     document.title = `LOTP — ${s.name || name}`;
+    loadEvo(realm, name);
     if (push) history.replaceState(null, "", charUrl(realm, name));
   } catch (e) {
     $("#content").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
   }
+}
+
+// ---- 📈 Évolution : relevés quotidiens (v2026.09.054) ----
+function evoReset() {
+  $("#evo").innerHTML = '<div class="empty"><span class="spin">⏳</span> Chargement…</div>';
+  $("#evo-count").textContent = "";
+}
+
+function shortDay(s) { return s.slice(8, 10) + "/" + s.slice(5, 7); }
+
+function fmtDelta(v) {
+  if (v == null || v === 0) return "";
+  return `<span class="d ${v > 0 ? "up" : "down"}">${v > 0 ? "+" : ""}${fmt(v)}</span>`;
+}
+
+function sparkline(days) {
+  const pts = days.filter(x => x.ilvl != null);
+  if (pts.length < 2) return "";
+  const w = 660, h = 56, pad = 5;
+  const vals = pts.map(x => x.ilvl);
+  const mn = Math.min(...vals), mx = Math.max(...vals), span = Math.max(1, mx - mn);
+  const xs = (i) => pad + i * (w - 2 * pad) / (pts.length - 1);
+  const ys = (v) => h - pad - (v - mn) * (h - 2 * pad) / span;
+  const path = pts.map((x, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)},${ys(x.ilvl).toFixed(1)}`).join(" ");
+  const dots = pts.map((x, i) => `<circle cx="${xs(i).toFixed(1)}" cy="${ys(x.ilvl).toFixed(1)}" r="2.4" fill="#b1002e" stroke="#dfa55a" stroke-width="1"/>`).join("");
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="#dfa55a" stroke-width="2"/>${dots}</svg>
+    <div class="meta">iLvl : ${fmt(vals[0])} (${shortDay(pts[0].day)}) → ${fmt(vals[vals.length - 1])} (${shortDay(pts[pts.length - 1].day)})</div>`;
+}
+
+async function loadEvo(realm, name) {
+  try {
+    const d = await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/history`);
+    renderEvo(d);
+  } catch (e) {
+    $("#evo").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`;
+    $("#evo-count").textContent = "";
+  }
+}
+
+function renderEvo(d) {
+  const days = (d && d.days) || [];
+  const box = $("#evo");
+  const desc = `<div class="meta" style="margin:-2px 0 10px">Chaque jour, l'app enregistre l'état du personnage (équipement, niveau, collections). Historique conservé 30 jours (règle Blizzard).</div>`;
+  const rowsOf = (list) => list.map((x, i) => {
+    const p = list[i - 1] || {};
+    const dv = (k) => (x[k] != null && p[k] != null) ? x[k] - p[k] : null;
+    return `<tr>
+      <td class="rk">${shortDay(x.day)}</td>
+      <td>${fmt(x.ilvl)}${fmtDelta(dv("ilvl"))}</td>
+      <td>${fmt(x.achv)}${fmtDelta(dv("achv"))}</td>
+      <td>${fmt(x.mounts)}${fmtDelta(dv("mounts"))}</td>
+      <td>${fmt(x.pets)}${fmtDelta(dv("pets"))}</td>
+      <td>${x.mplus != null ? Math.round(x.mplus) : "—"}${fmtDelta(dv("mplus"))}</td>
+    </tr>`;
+  }).join("");
+  const table = (list) => `<div class="evwrap"><table class="evtab"><thead><tr>
+      <th>Date</th><th>iLvl</th><th>Hauts faits</th><th>Montures</th><th>Mascottes</th><th>M+</th>
+    </tr></thead><tbody>${rowsOf(list)}</tbody></table></div>`;
+  if (!days.length) {
+    $("#evo-count").textContent = "";
+    box.innerHTML = desc + `<div class="empty">Les relevés quotidiens démarrent — le premier d'aujourd'hui est enregistré. Reviens demain pour voir l'évolution.</div>`;
+    return;
+  }
+  if (days.length < 2) {
+    $("#evo-count").textContent = `· ${days.length} relevé`;
+    box.innerHTML = desc
+      + `<div class="empty">Les relevés quotidiens démarrent — le premier d'aujourd'hui est enregistré. Reviens demain pour voir l'évolution.</div>
+      <h3 class="sect">Jour par jour</h3>` + table(days);
+    return;
+  }
+  $("#evo-count").textContent = `· ${days.length} relevés`;
+  const opts = days.map(x => `<option value="${x.day}">${shortDay(x.day)}</option>`).join("");
+  box.innerHTML = desc
+    + sparkline(days)
+    + `<div class="row" style="margin:10px 0 4px">
+      <label class="meta">Du <select id="evo-from">${opts}</select></label>
+      <label class="meta">au <select id="evo-to">${opts}</select></label>
+    </div>
+    <div id="evo-diff"></div>
+    <h3 class="sect">Jour par jour</h3>` + table(days);
+  const selF = $("#evo-from"), selT = $("#evo-to");
+  selF.value = days[0].day;
+  selT.value = days[days.length - 1].day;
+  selF.addEventListener("change", () => loadDiff(selF.value, selT.value));
+  selT.addEventListener("change", () => loadDiff(selF.value, selT.value));
+  loadDiff(selF.value, selT.value);
+}
+
+async function loadDiff(fromDay, toDay) {
+  const out = $("#evo-diff");
+  if (!out) return;
+  out.innerHTML = '<div class="empty"><span class="spin">⏳</span> Chargement…</div>';
+  try {
+    const d = await jget(`/api/char/${encodeURIComponent(REALM)}/${encodeURIComponent(NAME)}/snapdiff?from=${fromDay}&to=${toDay}`);
+    out.innerHTML = renderDiff(d);
+  } catch (e) {
+    out.innerHTML = `<div class="err">Erreur : ${esc(e.message)}</div>`;
+  }
+}
+
+function itemLine(it) {
+  const col = (q) => QUA[q] || "#e7ebf5";
+  const nm = (x) => !x ? "—" : (x.id
+    ? `<a href="https://www.wowhead.com/item=${x.id}" target="_blank" rel="noopener" style="color:${col(x.q)}">${esc(x.name)}</a>`
+    : esc(x.name));
+  const delta = (it.from && it.to) ? ((it.to.ilvl || 0) - (it.from.ilvl || 0)) : null;
+  const tag = !it.from ? '<span class="tag">Nouveau</span>' : (!it.to ? '<span class="tag">Retiré</span>' : "");
+  const dl = (delta != null && delta !== 0) ? `<span class="d ${delta > 0 ? "up" : "down"}">${delta > 0 ? "+" : ""}${fmt(delta)} iLvl</span>` : "";
+  return `<div class="change"><span class="gs">${esc(it.slot)}</span>${nm(it.from)} <span class="meta">→</span> ${nm(it.to)} ${dl}${tag}</div>`;
+}
+
+function renderDiff(d) {
+  const dl = d.deltas || {};
+  const chip = (label, v) => (v == null || v === 0) ? "" :
+    `<span class="xchip">${label} <b>${v > 0 ? "+" : ""}${fmt(Math.round(v * 10) / 10)}</b></span>`;
+  const items = d.items || [];
+  const changes = items.length ? items.map(itemLine).join("")
+    : `<div class="empty">Aucun changement d'équipement sur la période.</div>`;
+  return `<div class="extras" style="margin:2px 0 4px">
+      ${chip("iLvl", dl.ilvl)}${chip("Hauts faits", dl.achv)}${chip("Montures", dl.mounts)}${chip("Mascottes", dl.pets)}${chip("M+", dl.mplus)}
+    </div>
+    <h3 class="sect">Changements d'équipement</h3>${changes}`;
 }
 
 document.addEventListener("click", (ev) => {
