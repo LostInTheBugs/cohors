@@ -639,7 +639,18 @@
  "📈 Paliers des personnages liés": "📈 Linked characters milestones",
  "📰 Récap hebdo (lundi matin)": "📰 Weekly recap (Monday morning)",
  "📰 Tester le récap": "📰 Test the recap",
- "À améliorer (sous la moyenne)": "To upgrade (below average)"
+ "À améliorer (sous la moyenne)": "To upgrade (below average)",
+ "🧩 Calendrier in-game": "🧩 In-game calendar",
+ "⬇️ Télécharger l'addon (zip)": "⬇️ Download the addon (zip)",
+ "📥 Importer le fichier": "📥 Import the file",
+ "📥 Importer la chaîne": "📥 Import the string",
+ "📣 Relancer": "📣 Remind",
+ "…ou colle ici la chaîne exportée (/lotp export → Ctrl+C)": "…or paste the exported string here (/lotp export → Ctrl+C)",
+ "En jeu : /lotp → « Exporter » → colle la chaîne ci-dessous (ou importe le fichier SavedVariables/LOTP.lua).": "In game: /lotp → « Exporter » → paste the string below (or import the SavedVariables/LOTP.lua file).",
+ "Choisis d'abord le fichier LOTP.lua": "Pick the LOTP.lua file first",
+ "Colle la chaîne exportée en jeu (/lotp export)": "Paste the string exported in game (/lotp export)",
+ "Aucun événement in-game à venir.": "No upcoming in-game event.",
+ "· aucun import pour le moment": "· no import yet"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -654,6 +665,11 @@
     [/(\d+) pièce changée/g, "$1 item changed"],
     [/actualisé/g, "refreshed"],
     [/à l'instant/g, "just now"],
+    [/· importé /g, "· imported "],
+    [/⏳ sans réponse : /g, "⏳ no answer yet: "],
+    [/Relance envoyée pour (\d+) membre\(s\)/g, "Reminder sent for $1 member(s)"],
+    [/Import OK — (\d+) événement\(s\), (\d+) réponse\(s\)/g, "Import OK — $1 event(s), $2 answer(s)"],
+    [/Import en cours…/g, "Importing…"],
     [/(\d+) emplacements faibles/g, "$1 weak slots"],
     [/(\d+) emplacement faible/g, "$1 weak slot"],
     [/— à améliorer en priorité/g, "— upgrade these first"],

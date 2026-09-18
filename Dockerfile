@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 COPY worker ./worker
+COPY addon ./addon
 
 ARG PORT=8030
 ENV PORT=${PORT}

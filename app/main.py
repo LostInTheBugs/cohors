@@ -347,6 +347,17 @@ def _init_db() -> None:
                 conn.execute(f"ALTER TABLE bot_config ADD COLUMN {bcol} INTEGER NOT NULL DEFAULT 1")
         if "last_recap" not in bcols:
             conn.execute("ALTER TABLE bot_config ADD COLUMN last_recap REAL NOT NULL DEFAULT 0")
+        # v2026.09.064 — import du calendrier in-game (addon LOTP).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gcal_import (
+                id     INTEGER PRIMARY KEY CHECK (id = 1),
+                ts     REAL NOT NULL,
+                player TEXT NOT NULL DEFAULT '',
+                data   TEXT NOT NULL
+            )
+            """
+        )
 
 
 def _hash_password(password: str) -> str:
@@ -2853,6 +2864,70 @@ class BotConfigRequest(BaseModel):
     notify_weekly: bool | None = None
 
 
+class GcalImportRequest(BaseModel):
+    payload: str = Field("", max_length=2_000_000)
+
+
+def _lua_unescape(t: str) -> str:
+    """Dé-échappe une chaîne Lua écrite par le jeu dans un fichier SavedVariables."""
+    out: list[str] = []
+    i, n = 0, len(t)
+    while i < n:
+        c = t[i]
+        if c != "\\" or i + 1 >= n:
+            out.append(c)
+            i += 1
+            continue
+        nxt = t[i + 1]
+        if nxt in "\\\"'":
+            out.append(nxt)
+            i += 2
+        elif nxt == "n":
+            out.append("\n")
+            i += 2
+        elif nxt == "r":
+            out.append("\r")
+            i += 2
+        elif nxt == "t":
+            out.append("\t")
+            i += 2
+        elif nxt.isdigit():
+            j = i + 1
+            while j < n and j < i + 4 and t[j].isdigit():
+                j += 1
+            out.append(chr(int(t[i + 1:j])))
+            i = j
+        else:
+            out.append(nxt)
+            i += 2
+    return "".join(out)
+
+
+def _gcal_parse(text: str) -> dict:
+    """Extrait les données d'un import : JSON brut (chaîne collée) ou fichier SavedVariables (LOTP.lua)."""
+    t = (text or "").strip()
+    if not t:
+        raise HTTPException(400, "Contenu vide.")
+    if t.startswith("{"):
+        raw = t
+    else:
+        ls = re.search(r'\["export"\]\s*=\s*\[(=*)\[(.*?)\]\1\]', t, re.S)
+        st = re.search(r'\["export"\]\s*=\s*"((?:[^"\\]|\\.)*)"', t, re.S)
+        if ls:
+            raw = ls.group(2)
+        elif st:
+            raw = _lua_unescape(st.group(1))
+        else:
+            raise HTTPException(400, "Format non reconnu — colle la chaîne exportée ou choisis le fichier LOTP.lua.")
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        raise HTTPException(400, "Données illisibles (JSON invalide).")
+    if not isinstance(data, dict) or not isinstance(data.get("events"), list):
+        raise HTTPException(400, "Données inattendues (aucun événement).")
+    return data
+
+
 def _bot_config() -> sqlite3.Row | None:
     with _db_lock, _db() as conn:
         return conn.execute("SELECT * FROM bot_config WHERE id=1").fetchone()
@@ -3040,6 +3115,121 @@ def _bot_loop() -> None:
         except Exception as exc:  # noqa: BLE001
             print(f"[bot] tick: {exc}")
         time.sleep(BOT_POLL_S)
+
+
+@app.get("/api/addon")
+def api_addon(request: Request):
+    """Addon WoW « LOTP » (zip) — collecte le calendrier de guilde en jeu."""
+    _require_user(request)
+    import io as _io
+    import zipfile as _zip
+    src = Path(__file__).resolve().parent.parent / "addon" / "LOTP"
+    if not src.is_dir():
+        raise HTTPException(404, "Addon introuvable sur le serveur.")
+    buf = _io.BytesIO()
+    with _zip.ZipFile(buf, "w", _zip.ZIP_DEFLATED) as z:
+        for fp in sorted(src.glob("*")):
+            if fp.is_file():
+                z.write(fp, f"LOTP/{fp.name}")
+    buf.seek(0)
+    return Response(buf.read(), media_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="LOTP-addon.zip"'})
+
+
+@app.get("/api/gcal")
+def api_gcal_get(request: Request):
+    """Dernier import du calendrier in-game (addon)."""
+    _require_user(request)
+    with _db_lock, _db() as conn:
+        row = conn.execute("SELECT ts, player, data FROM gcal_import WHERE id=1").fetchone()
+    if row is None:
+        return {"imported_at": 0, "player": "", "events": []}
+    try:
+        data = json.loads(row["data"])
+    except ValueError:
+        data = {}
+    return {"imported_at": row["ts"], "player": row["player"], "events": data.get("events") or []}
+
+
+@app.post("/api/gcal/import")
+def api_gcal_import(payload: GcalImportRequest, request: Request):
+    """Importe un export du calendrier in-game (JSON collé ou fichier SavedVariables LOTP.lua)."""
+    _require_officer(request)
+    data = _gcal_parse(payload.payload)
+    events: list[dict] = []
+    responses = 0
+    for e in (data.get("events") or []):
+        if not isinstance(e, dict):
+            continue
+        inv = []
+        for i in (e.get("inv") or []):
+            if not isinstance(i, dict) or not i.get("n"):
+                continue
+            try:
+                st = int(i.get("s")) if i.get("s") is not None else -1
+            except (TypeError, ValueError):
+                st = -1
+            inv.append({"n": str(i["n"])[:60], "s": st,
+                        "t": (i.get("t") if isinstance(i.get("t"), (int, float)) else None)})
+        responses += len(inv)
+        try:
+            ts = float(e.get("ts") or 0)
+        except (TypeError, ValueError):
+            ts = 0.0
+        events.append({
+            "id": int(e.get("id") or 0),
+            "title": str(e.get("title") or "?")[:200],
+            "date": str(e.get("date") or "")[:20],
+            "ts": ts,
+            "type": int(e.get("type") or 0),
+            "inv": inv,
+        })
+    blob = json.dumps({"events": events}, ensure_ascii=False)
+    with _db_lock, _db() as conn:
+        conn.execute(
+            "INSERT INTO gcal_import (id, ts, player, data) VALUES (1, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET ts=excluded.ts, player=excluded.player, data=excluded.data",
+            (time.time(), str(data.get("player") or "")[:60], blob),
+        )
+    return {"ok": True, "events": len(events), "responses": responses}
+
+
+@app.post("/api/gcal/relance/{event_id}")
+def api_gcal_relance(event_id: int, request: Request):
+    """Poste sur Discord une relance pour les membres sans réponse (événement in-game)."""
+    _require_officer(request)
+    cfg = _bot_config()
+    token, channel = (cfg["token"] or "").strip(), (cfg["channel_id"] or "").strip()
+    if not (cfg["enabled"] and token and channel):
+        raise HTTPException(400, "Bot Discord non configuré ou inactif (Admin → Bot Discord).")
+    with _db_lock, _db() as conn:
+        row = conn.execute("SELECT data FROM gcal_import WHERE id=1").fetchone()
+    if row is None:
+        raise HTTPException(404, "Aucun import du calendrier in-game.")
+    try:
+        events = (json.loads(row["data"]) or {}).get("events") or []
+    except ValueError:
+        events = []
+    ev = next((e for e in events if int(e.get("id") or 0) == event_id), None)
+    if ev is None:
+        raise HTTPException(404, "Événement introuvable dans le dernier import.")
+    waiting = [i.get("n") for i in (ev.get("inv") or []) if int(i.get("s", -1)) not in (1, 2, 3, 8)]
+    if not waiting:
+        raise HTTPException(400, "Tout le monde a répondu 👍")
+    link = f"{PUBLIC_BASE_URL}/calendar" if PUBLIC_BASE_URL else ""
+    emb = {
+        "title": "⏰ Il manque des réponses",
+        "description": (f"**{ev.get('title') or 'Raid'}** — {ev.get('date') or ''}\n"
+                        f"En attente de réponse : **{', '.join(waiting[:40])}**")
+                       + (f"\n\n👉 [Répondre sur le site]({link})" if link else ""),
+        "color": discord_bot.COLOR_CRIMSON,
+        "footer": {"text": "Lords Of The Pit · calendrier"},
+    }
+    try:
+        discord_bot.send(token, channel, embeds=[emb])
+    except discord_bot.DiscordError as exc:
+        raise HTTPException(400, f"Discord — {exc}")
+    return {"ok": True, "count": len(waiting)}
 
 
 @app.get("/api/admin/bot")

@@ -56,9 +56,14 @@
   .msg-ok { color:var(--ok); font-size:13.5px; }
   .msg-err { color:var(--err); font-size:13.5px; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  .warn { color:var(--acc2); }
+  textarea { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
+             padding:9px 12px; font-size:13px; min-width:min(520px,100%); font-family:inherit; }
+  input[type=file] { font-size:12.5px; color:var(--mut); }
+  code { background:var(--card2); border:1px solid var(--line); border-radius:6px; padding:0 5px; font-size:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.063">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.064">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -96,14 +101,34 @@
   </div>
 
   <div class="card">
+    <h2>🧩 Calendrier in-game <span class="meta" id="gmeta" style="color:var(--mut);font-size:12.5px;font-weight:400"></span></h2>
+    <div class="row" style="margin-bottom:6px">
+      <button class="small ghost" id="gdl">⬇️ Télécharger l'addon (zip)</button>
+      <span class="meta" style="color:var(--mut);font-size:12.5px">En jeu : /lotp → « Exporter » → colle la chaîne ci-dessous (ou importe le fichier SavedVariables/LOTP.lua).</span>
+    </div>
+    <div id="gimport" class="hidden" style="margin:6px 0 10px">
+      <div class="row">
+        <input type="file" id="gfile" accept=".lua,.txt">
+        <button class="small ghost" id="gbtn-file">📥 Importer le fichier</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <textarea id="gtext" rows="3" placeholder="…ou colle ici la chaîne exportée (/lotp export → Ctrl+C)"></textarea>
+        <button class="small ghost" id="gbtn-text">📥 Importer la chaîne</button>
+      </div>
+      <div id="gmsg" class="meta"></div>
+    </div>
+    <div id="glist"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card">
     <h2>🕓 Raids passés</h2>
     <div id="past"><div class="empty">Chargement…</div></div>
   </div>
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.063"></script>
-<script src="/static/i18n.js?v=2026.09.063"></script>
+<script src="/static/nav.js?v=2026.09.064"></script>
+<script src="/static/i18n.js?v=2026.09.064"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -159,6 +184,77 @@ function renderRaids(d) {
     `<div class="item"><div class="main"><span class="meta">${dateTxt(r.starts)} · <b>${esc(r.title)}</b></span></div></div>`).join("");
 }
 
+// ---- 🧩 Calendrier in-game (addon LOTP)
+let GCAL = null, CAN_IMP = false;
+
+const ago = (ts) => { if (!ts) return "jamais"; const s = Math.max(0, Date.now() / 1000 - ts);
+  if (s < 90) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`; return `il y a ${Math.floor(s / 86400)} j`; };
+
+async function loadGcal() {
+  try { GCAL = await jget("/api/gcal"); renderGcal(); }
+  catch (e) { $("#glist").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+function renderGcal() {
+  const d = GCAL || { events: [], imported_at: 0, player: "" };
+  $("#gmeta").textContent = d.imported_at
+    ? `· importé ${ago(d.imported_at)} par ${d.player || "?"}`
+    : "· aucun import pour le moment";
+  const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
+  const box = $("#glist");
+  if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
+  box.innerHTML = evs.map(e => {
+    const c = { ok: 0, maybe: 0, no: 0, wait: 0 };
+    const lists = { ok: [], maybe: [], no: [] }, wait = [];
+    for (const i of (e.inv || [])) {
+      if (i.s === 1 || i.s === 3) { c.ok++; lists.ok.push(i.n); }
+      else if (i.s === 8) { c.maybe++; lists.maybe.push(i.n); }
+      else if (i.s === 2) { c.no++; lists.no.push(i.n); }
+      else { c.wait++; wait.push(i.n); }
+    }
+    const line = (emo, arr) => arr.length ? `<span class="meta">${emo} ${arr.map(esc).join(", ")}</span>` : "";
+    return `<div class="item"><div class="main">
+      <span class="name">${esc(e.title)}</span>
+      <span class="meta">${e.ts ? dateTxt(e.ts) : esc(e.date || "")}</span>
+      ${line("✅", lists.ok)}${line("❓", lists.maybe)}${line("❌", lists.no)}
+      ${wait.length ? `<span class="meta warn">⏳ sans réponse : ${wait.map(esc).join(", ")}</span>` : ""}
+    </div>
+    <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}</span>
+    ${wait.length && CAN_IMP ? `<button class="small ghost" data-rel="${e.id}">📣 Relancer</button>` : ""}
+    </div>`;
+  }).join("");
+  box.querySelectorAll("button[data-rel]").forEach(b => b.addEventListener("click", async () => {
+    b.disabled = true;
+    try { const r = await jpost("POST", `/api/gcal/relance/${b.dataset.rel}`); setMsg("#gmsg", `Relance envoyée pour ${r.count} membre(s) ✓`, true); }
+    catch (e) { setMsg("#gmsg", e.message, false); }
+    b.disabled = false;
+  }));
+}
+
+$("#gdl").addEventListener("click", () => { location.href = "/api/addon"; });
+
+async function gcalImport(payload) {
+  setMsg("#gmsg", "Import en cours…", true);
+  try {
+    const r = await jpost("POST", "/api/gcal/import", { payload });
+    setMsg("#gmsg", `Import OK — ${r.events} événement(s), ${r.responses} réponse(s) ✓`, true);
+    $("#gtext").value = "";
+    await loadGcal();
+  } catch (e) { setMsg("#gmsg", e.message, false); }
+}
+
+$("#gbtn-file").addEventListener("click", async () => {
+  const f = $("#gfile").files[0];
+  if (!f) { setMsg("#gmsg", "Choisis d'abord le fichier LOTP.lua", false); return; }
+  gcalImport(await f.text());
+});
+$("#gbtn-text").addEventListener("click", () => {
+  const t = $("#gtext").value.trim();
+  if (!t) { setMsg("#gmsg", "Colle la chaîne exportée en jeu (/lotp export)", false); return; }
+  gcalImport(t);
+});
+
 async function load() {
   try {
     const d = await jget("/api/raids");
@@ -203,12 +299,15 @@ $("#logout").addEventListener("click", async (ev) => {
     if (me.is_admin || me.role === "officer") {
       $("#admin-link").classList.remove("hidden");
       $("#plan-card").classList.remove("hidden");
+      CAN_IMP = true;
+      $("#gimport").classList.remove("hidden");
     }
   } catch (e) { location.href = "/login"; return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 2);
   $("#r-start").value = toLocalInput(d);
   load();
+  loadGcal();
 })();
 </script>
 </body>

@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.064 - 2026-09-18
+
+### Added
+- In-game calendar bridge: World of Warcraft addon "LOTP" (download from the Calendar page) that collects guild calendar events (raids, invites, answers) in game and exports them as a string or SavedVariables file.
+- Calendar page: "In-game calendar" card — import from officers (file or pasted string), per-event answer summary (available / tentative / declined / **no answer yet**), and a "Remind" button posting the non-responders to Discord.
+- APIs: `GET /api/addon` (zip), `GET /api/gcal`, `POST /api/gcal/import` (officers), `POST /api/gcal/relance/{event_id}` (officers).
+
 ## 2026.09.063 - 2026-09-18
 
 ### Added
