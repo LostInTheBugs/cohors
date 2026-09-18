@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.072 - 2026-09-18
+
+### Fixed
+- Addon 1.4.1: every click and slash command is now failure-proof and gives visible feedback (errors shown in chat, click logged in the report); second collection driver as a fallback (frame update + backup timer, whichever runs drives the collection); clicking "Collecter" during a collection advances it manually one step; heartbeat counters saved in the report (proof of which mechanisms actually run on the client).
+
 ## 2026.09.071 - 2026-09-18
 
 ### Fixed

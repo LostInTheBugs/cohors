@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.4.0"
+local ADDON_VER = "1.4.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -376,7 +376,7 @@ local function engineTick(now)
     end
 end
 
-f:SetScript("OnUpdate", function()
+local function engineTickSafe()
     if not engine then return end
     local ok, err = pcall(engineTick, GetTime())
     if not ok then
@@ -387,8 +387,20 @@ f:SetScript("OnUpdate", function()
         pcall(finishCollect)
     end
     if engine and ui and ui:IsShown() and statusText then
-        statusText:SetText("⏳ " .. tostring(engine.status or "…"))
+        statusText:SetText("… " .. tostring(engine.status or ""))
     end
+end
+
+f:SetScript("OnUpdate", function()
+    LOTP_DB.beat_ou = (LOTP_DB.beat_ou or 0) + 1   -- pulsation : preuve que OnUpdate tourne
+    engineTickSafe()
+end)
+-- second moteur de secours : si OnUpdate ne tourne pas, ce minuteur fait avancer la collecte
+pcall(function()
+    C_Timer.NewTicker(0.5, function()
+        LOTP_DB.beat_timer = (LOTP_DB.beat_timer or 0) + 1  -- pulsation : preuve que les minuteurs tournent
+        engineTickSafe()
+    end)
 end)
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
@@ -421,7 +433,10 @@ function LOTP_Collect()
             engine = nil
             collecting = false
         else
-            msg("collecte déjà en cours… (tape /lotp reset si elle semble bloquée)")
+            dtrace("clic : avance manuelle (phase " .. tostring(engine.phase) .. ")")
+            if engine.phase ~= "openWait" then engine.await = 0 end
+            engineTickSafe()
+            msg("collecte en cours — étape forcée à la main (" .. tostring(engine.phase) .. ").")
             return
         end
     end
@@ -474,6 +489,8 @@ diagLines = function()
         ("en cours depuis " .. dateStr(collectStartAt) .. " · phase " .. tostring(engine and engine.phase)) or "au repos")
     local copies = lotpCopies()
     L[#L + 1] = "dossiers LOTP : " .. (#copies > 0 and table.concat(copies, ", ") or "?")
+    L[#L + 1] = ("pulsations : OnUpdate=%s · minuteur=%s"):format(tostring(LOTP_DB.beat_ou or 0),
+        tostring(LOTP_DB.beat_timer or 0))
     if LOTP_DB.last_error then
         L[#L + 1] = "dernière erreur : " .. tostring(LOTP_DB.last_error)
     end
@@ -610,7 +627,15 @@ local function mkButton(text, x, w, fn)
     b:SetSize(w, 26)
     b:SetPoint("BOTTOMLEFT", x, 16)
     b:SetText(text)
-    b:SetScript("OnClick", fn)
+    b:SetScript("OnClick", function()
+        dtrace("clic « " .. text .. " »")
+        local ok, err = pcall(fn)
+        if not ok then
+            local t = tostring(err)
+            LOTP_DB.last_error = "clic " .. text .. " : " .. t
+            msg("ERREUR (clic « " .. text .. " ») — " .. t)
+        end
+    end)
     return b
 end
 
@@ -675,29 +700,35 @@ mkButton("Fermer", 482, 90, function() ui:Hide() end)
 SLASH_LOTP1 = "/lotp"
 SlashCmdList["LOTP"] = function(arg)
     arg = (arg or ""):lower()
-    if arg == "" then
-        ui:Show()
-        if LOTP_DB.export then pcall(showSummary) end
-        if not engine and (time() - (LOTP_DB.export_at or 0)) > 120 then
+    dtrace("commande : /lotp " .. arg)
+    local okAll, errAll = pcall(function()
+        if arg == "" then
+            ui:Show()
+            if LOTP_DB.export then pcall(showSummary) end
+            if not engine and (time() - (LOTP_DB.export_at or 0)) > 120 then
+                LOTP_Collect()
+            end
+        elseif arg == "collect" then
+            ui:Show()
             LOTP_Collect()
-        end
-    elseif arg == "collect" then
-        ui:Show()
-        LOTP_Collect()
-    elseif arg == "export" then
-        ui:Show()
-        if LOTP_DB.export then
-            eb:SetText(LOTP_DB.export)
-            eb:HighlightText()
-            eb:SetFocus()
+        elseif arg == "export" then
+            ui:Show()
+            if LOTP_DB.export then
+                eb:SetText(LOTP_DB.export)
+                eb:HighlightText()
+                eb:SetFocus()
+            else
+                msg("aucune donnée — /lotp collect d'abord.")
+            end
+        elseif arg == "diag" then
+            dumpDiag(true)
+        elseif arg == "reset" then
+            LOTP_Reset()
         else
-            msg("aucune donnée — /lotp collect d'abord.")
+            msg("commandes : /lotp · /lotp collect · /lotp export · /lotp diag · /lotp reset")
         end
-    elseif arg == "diag" then
-        dumpDiag(true)
-    elseif arg == "reset" then
-        LOTP_Reset()
-    else
-        msg("commandes : /lotp · /lotp collect · /lotp export · /lotp diag · /lotp reset")
+    end)
+    if not okAll then
+        msg("ERREUR (/lotp " .. arg .. ") — " .. tostring(errAll))
     end
 end
