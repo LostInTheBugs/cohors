@@ -76,7 +76,7 @@
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
   .hidden { display: none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.079">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.080">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -131,7 +131,14 @@
 
   <div class="card hidden" id="reccard">
     <h2>📚 Recettes <span class="pc">officiers — objet fabriqué → compos</span></h2>
-    <div id="reclistbox"></div>
+    <div class="row" style="margin-bottom:8px">
+      <input id="catq" placeholder="Rechercher un objet connu des artisans…" style="min-width:240px">
+      <button class="btn ghost" id="rimpbtn">📥 Importer un export d'artisan</button>
+      <input type="file" id="rfile" accept=".lua,.txt,.json" class="hidden">
+      <span class="meta" id="catmeta"></span>
+    </div>
+    <div id="catlist"></div>
+    <div id="reclistbox" style="margin-top:8px"></div>
     <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
       <div class="row" style="align-items:flex-start">
         <input id="rname" placeholder="Objet fabriqué (ex : Festin)" style="min-width:200px">
@@ -143,8 +150,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.079"></script>
-<script src="/static/i18n.js?v=2026.09.079"></script>
+<script src="/static/nav.js?v=2026.09.080"></script>
+<script src="/static/i18n.js?v=2026.09.080"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -257,9 +264,35 @@ function renderNeeds() {
   }));
 }
 
+function renderCatalog() {
+  const box = $("#catlist");
+  const cat = DATA.catalog || [];
+  const crafters = DATA.crafters || [];
+  $("#catmeta").textContent = cat.length
+    ? `${cat.length} objet(s) connus · ${crafters.length} artisan(s) : ${crafters.join(", ")}` : "";
+  const q = ($("#catq").value || "").trim().toLowerCase();
+  if (!cat.length) { box.innerHTML = ""; return; }
+  const list = (q ? cat.filter(x => x.item.toLowerCase().includes(q)) : cat).slice(0, 12);
+  if (!list.length) { box.innerHTML = `<div class="empty">Aucun objet ne correspond.</div>`; return; }
+  box.innerHTML = list.map(x => `<div class="irow">
+    <span class="iname">${esc(x.item)}</span>
+    <span class="meta">${esc(x.prof)} · ${(x.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "aucune compos"}</span>
+    <span class="nclaims">qui : ${(x.crafters || []).map(esc).join(", ")}</span>
+    <button class="btn ghost" data-cat="${esc(x.item)}" style="margin-left:auto">＋ recette</button>
+  </div>`).join("");
+  box.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => {
+    const x = cat.find(v => v.item === b.dataset.cat);
+    if (!x) return;
+    $("#rname").value = x.item;
+    $("#rmats").value = (x.mats || []).map(m => `${m.name} = ${m.qty}`).join("\n");
+    setMsg("Compos pré-remplies — vérifie puis « Ajouter / MAJ ».", true);
+  }));
+}
+
 function renderRecipes() {
   $("#reccard").classList.toggle("hidden", !CAN);
   if (!CAN) return;
+  renderCatalog();
   const rl = DATA.recipes || [];
   const box = $("#reclistbox");
   if (!rl.length) {
@@ -340,6 +373,19 @@ $("#rsave").addEventListener("click", async () => {
     await load();
   } catch (e) { setMsg(e.message, false); }
 });
+$("#catq").addEventListener("input", () => { if (CAN) renderCatalog(); });
+$("#rimpbtn").addEventListener("click", () => $("#rfile").click());
+$("#rfile").addEventListener("change", async () => {
+  const f = $("#rfile").files[0];
+  if (!f) return;
+  try {
+    const r = await jpost("POST", "/api/prep/import-recipes", { payload: await f.text() });
+    setMsg(`${r.recipes} recette(s) importée(s) de ${r.crafter} ✓`, true);
+    await load();
+  } catch (e) { setMsg(e.message, false); }
+  $("#rfile").value = "";
+});
+
 $("#objreset").addEventListener("click", async () => {
   if (!confirm("Vider le plan et tous les apports ? (les recettes sont conservées)")) return;
   try { await jpost("POST", "/api/prep/reset"); setMsg("Plan réinitialisé ✓", true); await load(); }

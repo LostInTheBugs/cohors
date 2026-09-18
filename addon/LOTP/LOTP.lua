@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.4.6"
+local ADDON_VER = "1.5.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -175,6 +175,7 @@ end
 
 local diagLines    -- définies plus bas
 local finishCollect
+local recTickSafe   -- moteur recettes (défini plus bas)
 
 -- ------------------------------------------------------------------- export
 local function buildExport()
@@ -431,6 +432,7 @@ end
 
 f:SetScript("OnUpdate", function()
     engineTickSafe()
+    recTickSafe()
 end)
 -- pas de minuteur créé au chargement : la collecte avance par l'affichage (OnUpdate) et par les clics
 -- (chaque clic sur « Collecter » force une étape, même si l'affichage ne tourne pas)
@@ -600,6 +602,8 @@ diagLines = function()
         L[#L + 1] = ("offset %d : %d événement(s) au total"):format(off, total)
         for _, s in ipairs(samples) do L[#L + 1] = "   " .. s end
     end
+    L[#L + 1] = ("recettes exportées : %s (total %s)"):format(
+        LOTP_DB.recipes and (dateStr(LOTP_DB.recipes_at or 0)) or "aucune", tostring(LOTP_DB.recipes_total or 0))
     local ok3, ni = pcall(C_Calendar.GetNumInvites)
     L[#L + 1] = "GetNumInvites (événement ouvert) : " .. tostring(ok3 and ni or "erreur")
     return L
@@ -616,6 +620,212 @@ local function dumpDiag(writeFile)
         msg("rapport enregistré — tape /reload puis envoie le fichier "
             .. "WTF/Account/<compte>/SavedVariables/LOTP.lua")
     end
+end
+
+-- ------------------------------------------------- recettes des artisans (export)
+-- Lit les recettes connues du personnage (comme l'interface des métiers) et les
+-- écrit dans LOTP_DB.recipes pour l'import sur le site (Préparation de raid).
+local recEngine = nil
+local recResults = {}
+local REC_TOTAL_TIMEOUT = 150
+
+local function itemName(id)
+    if not id or id <= 0 then return "" end
+    local ok, name = pcall(function()
+        return C_Item.GetItemNameByID(id) or select(1, C_Item.GetItemInfo(id))
+    end)
+    if ok and type(name) == "string" and name ~= "" then return name end
+    return ""
+end
+
+local function recProfs()
+    local out = {}
+    local ok, p1, p2, p3, p4, p5 = pcall(GetProfessions)
+    if not ok then return out end
+    for _, idx in ipairs({ p1, p2, p3, p4, p5 }) do
+        if idx then
+            -- GetProfessionInfo(index) : name, icon, lvl, max, nb, offset, skillLine, ...
+            local info = { pcall(GetProfessionInfo, idx) }
+            local name, skillLine = info[2], info[8]
+            if info[1] and name and tonumber(skillLine) and tonumber(skillLine) > 0 then
+                out[#out + 1] = { name = tostring(name), skillLine = skillLine }
+            end
+        end
+    end
+    return out
+end
+
+local function collectProfession()
+    local out = {}
+    local seen = {}
+    local ok, ids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
+    if not ok or type(ids) ~= "table" then return out end
+    for _, rid in ipairs(ids) do
+        local oki, info = pcall(C_TradeSkillUI.GetRecipeInfo, rid)
+        if oki and type(info) == "table" and info.name and not seen[info.name] then
+            seen[info.name] = true
+            local mats = {}
+            local oks, sch = pcall(C_TradeSkillUI.GetRecipeSchematic, rid, false)
+            if oks and type(sch) == "table" then
+                for _, slot in ipairs(sch.reagentSlotSchematics or {}) do
+                    local qty = tonumber(slot.quantityRequired) or 0
+                    for _, r in ipairs(slot.reagents or {}) do
+                        local iid = tonumber(r.itemID) or 0
+                        if iid > 0 then
+                            mats[#mats + 1] = { iid, itemName(iid), qty }
+                            break
+                        end
+                    end
+                end
+            end
+            out[#out + 1] = { n = tostring(info.name), i = info.recipeID or rid, m = mats }
+        end
+    end
+    return out
+end
+
+local function recSave()
+    local parts = {}
+    parts[#parts + 1] = '{"v":1,"player":"' .. jsonEsc(UnitName("player") or "?") .. '"'
+    parts[#parts + 1] = ',"realm":"' .. jsonEsc(GetRealmName() or "?") .. '"'
+    parts[#parts + 1] = ',"at":' .. jsonNum(time()) .. ',"professions":['
+    local firstP = true
+    for _, prof in ipairs(recResults) do
+        if not firstP then parts[#parts + 1] = "," end
+        firstP = false
+        parts[#parts + 1] = '{"name":"' .. jsonEsc(prof.name) .. '","recipes":['
+        local firstR = true
+        for _, r in ipairs(prof.recipes or {}) do
+            if not firstR then parts[#parts + 1] = "," end
+            firstR = false
+            parts[#parts + 1] = '{"n":"' .. jsonEsc(r.n) .. '","i":' .. jsonNum(r.i) .. ',"m":['
+            local firstM = true
+            for _, m in ipairs(r.m or {}) do
+                if not firstM then parts[#parts + 1] = "," end
+                firstM = false
+                parts[#parts + 1] = "[" .. jsonNum(m[1]) .. ',"' .. jsonEsc(m[2]) .. '",' .. jsonNum(m[3]) .. "]"
+            end
+            parts[#parts + 1] = "]}"
+        end
+        parts[#parts + 1] = "]}"
+    end
+    parts[#parts + 1] = "]}"
+    LOTP_DB.recipes = table.concat(parts)
+    LOTP_DB.recipes_at = time()
+end
+
+local function recFinish(note)
+    if not recEngine then return end
+    recEngine = nil
+    pcall(C_TradeSkillUI.CloseTradeSkill)
+    local okS = pcall(recSave)
+    local total = 0
+    for _, prof in ipairs(recResults) do total = total + #(prof.recipes or {}) end
+    LOTP_DB.recipes_total = total
+    msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/LOTP.lua au site (Préparation de raid → 📥 importer).")
+        :format(total, note and (" (" .. tostring(note) .. ")") or ""))
+    if statusText then statusText:SetText("prêt (v" .. ADDON_VER .. ")") end
+end
+
+local function recTick(now, force)
+    local e = recEngine
+    if not e then return end
+    if now > e.deadline then
+        dtrace("recettes : délai global dépassé")
+        recFinish("délai dépassé")
+        return
+    end
+    local prof = e.progs[e.pi]
+    if not prof then
+        dtrace("recettes : terminé")
+        recFinish(nil)
+        return
+    end
+    if e.phase == "open" then
+        if not force and now < e.await then return end
+        pcall(C_TradeSkillUI.OpenTradeSkill, prof.skillLine)
+        e.phase = "waitList"
+        e.attempts = 0
+        e.await = now + 0.8
+        dtrace(("métier %d/%d : %s"):format(e.pi, #e.progs, prof.name))
+        return
+    elseif e.phase == "waitList" then
+        if not force and now < e.await then return end
+        local ok, ids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
+        if ok and type(ids) == "table" and #ids > 0 then
+            e.phase = "collect"
+            e.await = now + 0.05
+            return
+        end
+        e.attempts = (e.attempts or 0) + 1
+        if e.attempts > 20 then
+            dtrace(("%s : aucune recette lue — métier suivant"):format(prof.name))
+            pcall(C_TradeSkillUI.CloseTradeSkill)
+            e.pi = e.pi + 1
+            e.phase = "open"
+            e.await = now + 0.4
+            return
+        end
+        e.await = now + 1.0
+        return
+    elseif e.phase == "collect" then
+        if not force and now < e.await then return end
+        local okc, list = pcall(collectProfession)
+        list = (okc and type(list) == "table") and list or {}
+        recResults[#recResults + 1] = { name = prof.name, recipes = list }
+        dtrace(("%s : %d recette(s)"):format(prof.name, #list))
+        msg(("• %s : %d recette(s)"):format(prof.name, #list))
+        pcall(C_TradeSkillUI.CloseTradeSkill)
+        e.pi = e.pi + 1
+        e.phase = "open"
+        e.await = now + 0.5
+        return
+    end
+end
+
+recTickSafe = function(force)
+    if not recEngine then return end
+    local ok, err = pcall(recTick, GetTime(), force)
+    if not ok then
+        local t2 = tostring(err)
+        LOTP_DB.last_error = "recettes : " .. t2
+        dtrace("ERREUR recettes : " .. t2)
+        msg("erreur (recettes) — " .. t2)
+        pcall(recFinish, "erreur")
+    end
+    if recEngine and ui and ui:IsShown() and statusText then
+        statusText:SetText("… " .. ("recettes " .. tostring(recEngine.phase)))
+    end
+end
+
+function LOTP_Recipes()
+    if recEngine then
+        local age = GetTime() - (recEngine.started or 0)
+        if age > 90 then
+            msg("export précédent bloqué — réinitialisation…")
+            recEngine = nil
+        else
+            dtrace("clic : étape recettes forcée")
+            recTickSafe(true)
+            msg("export en cours — étape forcée (" .. tostring(recEngine and recEngine.phase) .. ").")
+            return
+        end
+    end
+    local profs = recProfs()
+    LOTP_DB.rec_trace = ("recettes — %s (addon v%s · client %s)"):format(dateStr(time()), ADDON_VER,
+        tostring(clientIface()))
+    if #profs == 0 then
+        msg("aucun métier détecté sur ce personnage.")
+        return
+    end
+    recResults = {}
+    recEngine = {
+        progs = profs, pi = 1, phase = "open", attempts = 0,
+        started = GetTime(), await = GetTime() + 0.4, deadline = GetTime() + REC_TOTAL_TIMEOUT,
+    }
+    dtrace(("recettes : %d métier(s) — %s"):format(#profs, profs[1] and profs[1].name or "?"))
+    msg(("lecture des recettes (%d métier(s))… garde le jeu au premier plan quelques secondes."):format(#profs))
+    if statusText then statusText:SetText("… recettes") end
 end
 
 -- ------------------------------------------------------------------- panneau
@@ -739,6 +949,7 @@ local function buildPanel()
         mkButton("Diag → fichier", 354, 120, function()
             dumpDiag(true)
         end)
+        mkButton("📚 Recettes", 582, 100, function() LOTP_Recipes() end)
         mkButton("Fermer", 482, 90, function() ui:Hide() end)
     end)
     if not okB then
@@ -791,10 +1002,12 @@ SlashCmdList["LOTP"] = function(arg)
             end
         elseif arg == "diag" then
             dumpDiag(true)
+        elseif arg == "recettes" then
+            LOTP_Recipes()
         elseif arg == "reset" then
             LOTP_Reset()
         else
-            msg("commandes : /lotp · /lotp collect · /lotp export · /lotp diag · /lotp reset")
+            msg("commandes : /lotp · /lotp collect · /lotp export · /lotp recettes · /lotp diag · /lotp reset")
         end
     end)
     if not okAll then

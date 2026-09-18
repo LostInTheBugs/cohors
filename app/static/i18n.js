@@ -682,7 +682,12 @@
  "Vider le plan et tous les apports ? (les recettes sont conservées)": "Empty the plan and all contributions? (recipes are kept)",
  "Indique l'objet à fabriquer.": "Name the item to craft.",
  "Indique l'objet fabriqué.": "Name the crafted item.",
- "j'apporte": "I bring"
+ "j'apporte": "I bring",
+ "Rechercher un objet connu des artisans…": "Search an item known to crafters…",
+ "📥 Importer un export d'artisan": "📥 Import a crafter export",
+ "＋ recette": "＋ recipe",
+ "Compos pré-remplies — vérifie puis « Ajouter / MAJ ».": "Materials pre-filled — check then « Add / update ».",
+ "Aucun objet ne correspond.": "No matching item."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -705,6 +710,9 @@
     [/fourni : /g, "provided: "],
     [/⚠️ sans recette : /g, "⚠️ no recipe: "],
     [/\bobjet\(s\)/g, "item(s)"],
+    [/\bartisan\(s\)/g, "crafter(s)"],
+    [/qui : /g, "who: "],
+    [/recette\(s\) importée\(s\) de (.*?) ✓/g, "recipe(s) imported from $1 ✓"],
     [/\bcomplets?\b/g, "complete"],
     [/Recette enregistrée : (.*?) ✓/g, "Recipe saved: $1 ✓"],
     [/Apport enregistré : (.*?) ×([\d\u00a0 ]+) ✓/g, "Contribution saved: $1 ×$2 ✓"],

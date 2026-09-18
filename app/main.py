@@ -395,6 +395,22 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_prep_claims ON prep_claims(mat, user)")
+        # v2026.09.080 — recettes des artisans (export addon /lotp recettes).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS craft_recipes (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                crafter    TEXT NOT NULL,
+                realm      TEXT NOT NULL DEFAULT '',
+                profession TEXT NOT NULL DEFAULT '',
+                item       TEXT NOT NULL,
+                item_id    INTEGER NOT NULL DEFAULT 0,
+                mats       TEXT NOT NULL DEFAULT '[]',
+                updated    REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_craft_recipes ON craft_recipes(crafter, item)")
 
 
 def _hash_password(password: str) -> str:
@@ -3310,6 +3326,8 @@ def api_prep_get(request: Request):
             "SELECT id, name, mats, updated FROM prep_recipes ORDER BY name COLLATE NOCASE").fetchall()]
         claims = [dict(r) for r in conn.execute(
             "SELECT mat, qty, user, name FROM prep_claims").fetchall()]
+        crafts = [dict(r) for r in conn.execute(
+            "SELECT crafter, profession, item, item_id, mats FROM craft_recipes").fetchall()]
     for r in recipes:
         try:
             r["mats"] = json.loads(r["mats"] or "[]")
@@ -3336,7 +3354,23 @@ def api_prep_get(request: Request):
             needs.append({"mat": mat, "need": 0, "claims": cs,
                           "claimed": round(sum(x["qty"] for x in cs), 2)})
     can = _user_role(user) in ("officer", "admin")
+    catalog: dict = {}
+    for c in crafts:
+        key = str(c["item"]).casefold()
+        ent = catalog.get(key)
+        if ent is None:
+            try:
+                cmats = json.loads(c["mats"] or "[]")
+            except ValueError:
+                cmats = []
+            ent = {"item": c["item"], "item_id": c["item_id"] or 0, "prof": c["profession"],
+                   "mats": cmats, "crafters": []}
+            catalog[key] = ent
+        if c["crafter"] not in ent["crafters"]:
+            ent["crafters"].append(c["crafter"])
+    cat_list = sorted(catalog.values(), key=lambda e: str(e["item"]).casefold())
     return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
+            "catalog": cat_list, "crafters": sorted({c["crafter"] for c in crafts}),
             "me": {"name": user["name"] if "name" in user.keys() else user["email"]},
             "can_edit": can}
 
@@ -3429,6 +3463,78 @@ def api_prep_reset(request: Request):
         conn.execute("UPDATE prep_plan SET items='[]', updated=?, updated_by=? WHERE id=1",
                      (time.time(), user["name"] if "name" in user.keys() else user["email"]))
     return {"ok": True}
+
+
+class PrepRecipesImportRequest(BaseModel):
+    payload: str = Field(..., max_length=2_000_000)
+
+
+def _prep_parse_recipes(text: str) -> dict:
+    """Extrait un export de recettes d'artisan : JSON brut ou fichier SavedVariables (clé "recipes")."""
+    t = (text or "").strip()
+    if not t:
+        raise HTTPException(400, "Contenu vide.")
+    raw = None
+    st = re.search(r'\["recipes"\]\s*=\s*"((?:[^"\\]|\\.)*)"', t, re.S)
+    if st:
+        raw = _lua_unescape(st.group(1))
+    elif t.startswith("{") and '"professions"' in t:
+        raw = t
+    else:
+        j = t.find('{"v":')
+        k = t.rfind("}")
+        if j >= 0 and k > j and '"professions"' in t[j:k + 1]:
+            raw = t[j:k + 1]
+    if raw is None:
+        snippet = " ".join(t[:90].split())
+        raise HTTPException(400, "Format non reconnu (reçu : %d caractères — « %s… »). En jeu : /lotp recettes, "
+                                 "puis /reload, puis choisis le fichier WTF/Account/<compte>/SavedVariables/LOTP.lua."
+                                 % (len(t), snippet))
+    raw = re.sub(r"(\s*:\s*)0x([0-9A-Fa-f]+)", r'\1"0x\2"', raw)
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        raise HTTPException(400, "Données illisibles (JSON invalide).")
+    if not isinstance(data, dict) or not isinstance(data.get("professions"), list):
+        raise HTTPException(400, "Données inattendues (aucun métier dans cet export).")
+    return data
+
+
+@app.post("/api/prep/import-recipes")
+def api_prep_import_recipes(body: PrepRecipesImportRequest, request: Request):
+    _require_officer(request)
+    data = _prep_parse_recipes(body.payload)
+    crafter = str(data.get("player") or "").strip()[:60] or "?"
+    realm = str(data.get("realm") or "").strip()[:60]
+    rows = []
+    for prof in (data.get("professions") or [])[:10]:
+        pname = str((prof or {}).get("name") or "").strip()[:60]
+        for rec in ((prof or {}).get("recipes") or [])[:1500]:
+            item = str((rec or {}).get("n") or "").strip()[:120]
+            if not item:
+                continue
+            mats = []
+            for m in ((rec or {}).get("m") or [])[:30]:
+                if isinstance(m, list) and len(m) >= 3:
+                    try:
+                        q = float(m[2] or 0)
+                    except (TypeError, ValueError):
+                        q = 0.0
+                    mats.append({"id": _int_any(m[0]), "name": str(m[1] or "")[:120], "qty": q})
+            rows.append((crafter, realm, pname, item, _int_any((rec or {}).get("i")),
+                         json.dumps(mats, ensure_ascii=False)))
+    if not rows:
+        raise HTTPException(400, "Aucune recette exploitable dans cet export.")
+    now = time.time()
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM craft_recipes WHERE crafter=?", (crafter,))
+        conn.executemany(
+            "INSERT OR REPLACE INTO craft_recipes (crafter, realm, profession, item, item_id, mats, updated) "
+            "VALUES (?,?,?,?,?,?,?)",
+            [(c, r, p, i, iid, mm, now) for (c, r, p, i, iid, mm) in rows],
+        )
+    return {"ok": True, "crafter": crafter, "recipes": len(rows),
+            "professions": len(data.get("professions") or [])}
 
 
 @app.post("/api/gcal/import")

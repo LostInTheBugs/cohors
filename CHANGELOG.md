@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.080 - 2026-09-18
+
+### Added
+- Raid prep / known recipes: crafters export their professions from the game with the LOTP addon (v1.5.0, `/lotp recettes` — reads the profession UI like the game does, writes every known recipe with its materials into SavedVariables); officers import the file on the prep page (`POST /api/prep/import-recipes`, raw JSON or SavedVariables) — the site keeps a catalog of the guild's known recipes (item, materials, who can craft it) and the recipe picker searches it and pre-fills the materials.
+
 ## 2026.09.079 - 2026-09-18
 
 ### Added
