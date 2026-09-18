@@ -635,7 +635,10 @@
  "Vu < 24 h": "Seen < 24 h",
  "Vu < 48 h": "Seen < 48 h",
  "Vu < 7 j": "Seen < 7 d",
- "Personne dans cette catégorie.": "Nobody in this category."
+ "Personne dans cette catégorie.": "Nobody in this category.",
+ "📈 Paliers des personnages liés": "📈 Linked characters milestones",
+ "📰 Récap hebdo (lundi matin)": "📰 Weekly recap (Monday morning)",
+ "📰 Tester le récap": "📰 Test the recap"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

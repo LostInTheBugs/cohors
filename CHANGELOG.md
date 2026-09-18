@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.062 - 2026-09-18
+
+### Added
+- Discord bot: milestone alerts for linked characters (iLvl milestone every 5 levels, new mounts / pets) — toggle "Paliers des personnages liés" in the admin bot card.
+- Discord bot: weekly recap (Mondays from 9:00, Paris time) — top iLvl progressions of the week, raid activity, guild movements; admin button "Tester le récap" (POST /api/admin/bot/recap).
+- Admin bot config: `notify_chars` / `notify_weekly` toggles (columns migrated automatically).
+
 ## 2026.09.061 - 2026-09-18
 
 ### Added

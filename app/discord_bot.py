@@ -147,6 +147,37 @@ def roster_embed(kind: str, member: dict) -> dict:
     }
 
 
+def char_embed(name: str, changes: dict) -> dict:
+    """Embed « progression de personnage » (palier d'iLvl, nouvelles montures / mascottes)."""
+    bits = []
+    if changes.get("ilvl_from") or changes.get("ilvl_to"):
+        bits.append(f"iLvl **{changes.get('ilvl_from')} → {changes.get('ilvl_to')}**")
+    if changes.get("mounts"):
+        bits.append(f"🐎 +{int(changes['mounts'])} monture(s)")
+    if changes.get("pets"):
+        bits.append(f"🐾 +{int(changes['pets'])} mascotte(s)")
+    return {
+        "title": "📈 Progression de personnage",
+        "description": f"**{str(name)[:80]}** — " + " · ".join(bits),
+        "color": COLOR_GOLD,
+        "footer": {"text": "Lords Of The Pit · suivi quotidien"},
+    }
+
+
+def weekly_embed(fields: list[dict], link: str = "") -> dict:
+    """Embed « récap hebdomadaire » de la guilde."""
+    desc = "La semaine de la guilde en un coup d'œil :"
+    if link:
+        desc += f"\n\n👉 [Voir les classements]({link})"
+    return {
+        "title": "📰 Récap hebdo — Lords Of The Pit",
+        "description": desc,
+        "color": COLOR_CRIMSON,
+        "fields": fields[:6],
+        "footer": {"text": "Lords Of The Pit · récap hebdomadaire"},
+    }
+
+
 # ---------------------------------------------------------------------------
 # Embeds « calendrier des raids » (français)
 # ---------------------------------------------------------------------------

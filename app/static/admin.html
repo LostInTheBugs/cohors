@@ -75,7 +75,7 @@
   .hidden { display:none !important; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:26px; padding-top:14px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.061">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.062">
 </head>
 <body class="wb">
 <div class="adminband"></div>
@@ -142,6 +142,8 @@
         <label class="chk"><input type="checkbox" id="bot-enabled"> Bot actif</label>
         <label class="chk"><input type="checkbox" id="bot-reports"> 📊 Nouveaux rapports de raid</label>
         <label class="chk"><input type="checkbox" id="bot-roster"> 👥 Mouvements de guilde</label>
+        <label class="chk"><input type="checkbox" id="bot-chars"> 📈 Paliers des personnages liés</label>
+        <label class="chk"><input type="checkbox" id="bot-weekly"> 📰 Récap hebdo (lundi matin)</label>
       </div>
       <div class="row">
         <input type="text" id="bot-appid" placeholder="Application ID (Portail développeurs)" style="min-width:260px">
@@ -156,6 +158,7 @@
         <input type="text" id="bot-token" placeholder="Token du bot" style="min-width:320px">
         <button id="bot-save">💾 Enregistrer</button>
         <button class="small ghost" id="bot-test">📨 Message de test</button>
+        <button class="small ghost" id="bot-recap">📰 Tester le récap</button>
       </div>
       <div class="linkbox hidden" id="bot-invite-box" style="margin-top:12px"></div>
       <div class="empty" id="bot-info" style="margin-top:12px; line-height:1.9"></div>
@@ -165,7 +168,7 @@
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
 <div id="toast"></div>
-<script src="/static/i18n.js?v=2026.09.061"></script>
+<script src="/static/i18n.js?v=2026.09.062"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -341,6 +344,8 @@ async function loadBot() {
   $("#bot-enabled").checked = d.enabled;
   $("#bot-reports").checked = d.notify_reports;
   $("#bot-roster").checked = d.notify_roster;
+  $("#bot-chars").checked = d.notify_chars;
+  $("#bot-weekly").checked = d.notify_weekly;
   $("#bot-appid").value = d.app_id || "";
   $("#bot-token").placeholder = d.token_set ? `Token actuel : …${d.token_hint} (laisser vide = inchangé)` : "Token du bot (Portail développeurs → onglet Bot)";
   const bits = [];
@@ -395,6 +400,8 @@ $("#bot-save").addEventListener("click", async () => {
     enabled: $("#bot-enabled").checked,
     notify_reports: $("#bot-reports").checked,
     notify_roster: $("#bot-roster").checked,
+    notify_chars: $("#bot-chars").checked,
+    notify_weekly: $("#bot-weekly").checked,
     app_id: $("#bot-appid").value.trim(),
     token: $("#bot-token").value.trim(),
   };
@@ -413,6 +420,11 @@ $("#bot-save").addEventListener("click", async () => {
 
 $("#bot-test").addEventListener("click", async () => {
   try { await api("POST", "/api/admin/bot/test"); toast("Message de test envoyé 📨"); loadBot(); }
+  catch (e) {}
+});
+
+$("#bot-recap").addEventListener("click", async () => {
+  try { await api("POST", "/api/admin/bot/recap"); toast("Récap envoyé 📰"); loadBot(); }
   catch (e) {}
 });
 

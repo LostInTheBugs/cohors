@@ -340,6 +340,13 @@ def _init_db() -> None:
             cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
             if col not in cols:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
+        # v2026.09.062 — alertes « paliers » + récap hebdo du bot.
+        bcols = [r["name"] for r in conn.execute("PRAGMA table_info(bot_config)").fetchall()]
+        for bcol in ("notify_chars", "notify_weekly"):
+            if bcol not in bcols:
+                conn.execute(f"ALTER TABLE bot_config ADD COLUMN {bcol} INTEGER NOT NULL DEFAULT 1")
+        if "last_recap" not in bcols:
+            conn.execute("ALTER TABLE bot_config ADD COLUMN last_recap REAL NOT NULL DEFAULT 0")
 
 
 def _hash_password(password: str) -> str:
@@ -1487,14 +1494,12 @@ def _build_leaderboard() -> dict:
     return data
 
 
-@app.get("/api/progression")
-def api_progression(request: Request, days: int = 30):
+def _progression_data(days: int = 30) -> dict:
     """Classement des progressions (relevés quotidiens) + courbe iLvl moyen.
 
     Fenêtre glissante de « days » jours (7 ou 30). Les gains comparent le premier et
     le dernier relevé de chaque personnage dans la fenêtre.
     """
-    _require_user(request)
     days = 7 if int(days) == 7 else 30
     cutoff = _snap_day(time.time() - (days - 1) * 86400)
     with _db_lock, _db() as conn:
@@ -1560,6 +1565,13 @@ def api_progression(request: Request, days: int = 30):
             pop = set()
     return {"days": days, "built": time.time(), "rows": out_rows, "curve": curve,
             "measured": measured, "progressed": len(out_rows), "curve_pop": len(pop)}
+
+
+@app.get("/api/progression")
+def api_progression(request: Request, days: int = 30):
+    """Classement des progressions (relevés quotidiens) + courbe iLvl moyen (7 ou 30 j)."""
+    _require_user(request)
+    return _progression_data(days)
 
 
 # Clés de classe anglaises (couleurs côté front) ↔ libellés Blizzard localisés (données stockées).
@@ -2461,6 +2473,37 @@ def _prof_store(realm: str, name: str) -> None:
         )
 
 
+def _char_changes(prev: dict, new: dict) -> dict:
+    """Différences annonçables entre deux relevés : palier d'iLvl, montures, mascottes."""
+    ch: dict = {}
+    p_il, n_il = prev.get("ilvl"), new.get("ilvl")
+    if p_il and n_il and n_il > p_il and (n_il // 5) > (p_il // 5):
+        ch["ilvl_from"], ch["ilvl_to"] = p_il, n_il
+    for key in ("mounts", "pets"):
+        p, n = prev.get(key), new.get(key)
+        if p is not None and n is not None and n > p:
+            ch[key] = n - p
+    return ch
+
+
+def _char_alert(name: str, prev: dict, new: dict) -> None:
+    """Annonce Discord (persos liés) : palier d'iLvl, nouvelles montures / mascottes."""
+    ch = _char_changes(prev, new)
+    if not ch:
+        return
+    try:
+        cfg = _bot_config()
+    except Exception:  # noqa: BLE001
+        return
+    if (cfg is None or not cfg["enabled"] or not cfg["notify_chars"]
+            or not (cfg["token"] or "").strip() or not (cfg["channel_id"] or "").strip()):
+        return
+    try:
+        discord_bot.send(cfg["token"], cfg["channel_id"], embeds=[discord_bot.char_embed(name, ch)])
+    except Exception as exc:  # noqa: BLE001
+        print(f"[snap] alerte {name}: {exc}")
+
+
 def _char_snapshot(realm: str, name: str) -> dict:
     """État d'un personnage (résumé + équipement + collections) pour un relevé quotidien."""
     s, _ = bnet.character(realm, name)
@@ -2627,7 +2670,28 @@ def _snap_tick() -> None:
         done_this_tick += 1
         if need_snap:
             try:
-                _snap_store(realm, name, _char_snapshot(realm, name))
+                prev = None
+                if name.lower() in linked:
+                    with _db_lock, _db() as conn:
+                        prow = conn.execute(
+                            "SELECT data FROM char_snapshots WHERE realm=? AND name=? AND day=?",
+                            (realm.lower(), name.lower(), _snap_day()),
+                        ).fetchone()
+                        if prow is None:
+                            prow = conn.execute(
+                                "SELECT data FROM char_snapshots WHERE realm=? AND name=? "
+                                "ORDER BY day DESC LIMIT 1",
+                                (realm.lower(), name.lower()),
+                            ).fetchone()
+                    if prow is not None:
+                        try:
+                            prev = json.loads(prow["data"] or "{}")
+                        except (ValueError, TypeError):
+                            prev = None
+                data = _char_snapshot(realm, name)
+                _snap_store(realm, name, data)
+                if prev:
+                    _char_alert(name, prev, data)
             except bnet.BnetError as exc:
                 if getattr(exc, "status", None) == 404 and roster_ok:
                     # personnage inexistant côté API : purge des relevés s'il a quitté le roster (ToU §18)
@@ -2785,6 +2849,8 @@ class BotConfigRequest(BaseModel):
     channel_name: str = Field("", max_length=120)
     notify_reports: bool | None = None
     notify_roster: bool | None = None
+    notify_chars: bool | None = None
+    notify_weekly: bool | None = None
 
 
 def _bot_config() -> sqlite3.Row | None:
@@ -2798,6 +2864,50 @@ def _bot_save(updates: dict) -> None:
     sets = ", ".join(f"{k}=?" for k in updates)
     with _db_lock, _db() as conn:
         conn.execute(f"UPDATE bot_config SET {sets}, updated=? WHERE id=1", (*updates.values(), time.time()))
+
+
+def _weekly_recap_embed() -> dict | None:
+    """Embed du récap hebdo : progressions (7 j), raids, mouvements de guilde."""
+    fields: list[dict] = []
+    try:
+        prog = _progression_data(7)
+        top = [r for r in (prog.get("rows") or []) if r.get("d_ilvl")][:5]
+        if top:
+            lines = [f"**{r['name']}** +{r['d_ilvl']} iLvl ({r.get('ilvl0')} → {r.get('ilvl1')})" for r in top]
+            fields.append({"name": "🏆 Progressions de la semaine", "value": "\n".join(lines)[:1024]})
+    except Exception as exc:  # noqa: BLE001
+        print(f"[bot] récap progression: {exc}")
+    nights = kills = 0
+    try:
+        rl, _ts = wcl.reports(limit=30)
+        cutoff = time.time() - 7 * 86400
+        for rep in rl.get("data") or []:
+            if (rep.get("startTime") or 0) / 1000 < cutoff:
+                continue
+            full, _t = wcl.report_full(rep["code"])
+            boss = [f for f in ((full.get("report") or {}).get("fights") or []) if f.get("encounterID")]
+            if boss:
+                nights += 1
+                kills += sum(1 for f in boss if f.get("kill"))
+        if nights:
+            fields.append({"name": "⚔️ Raids", "value": f"{nights} soirée(s) · {kills} boss tué(s)", "inline": True})
+    except wcl.WclError:
+        pass
+    try:
+        with _db_lock, _db() as conn:
+            ev = conn.execute(
+                "SELECT kind, COUNT(*) AS c FROM guild_events WHERE created > ? GROUP BY kind",
+                (time.time() - 7 * 86400,),
+            ).fetchall()
+        mov = {row["kind"]: row["c"] for row in ev}
+        if mov.get("join") or mov.get("leave"):
+            fields.append({"name": "👋 Mouvements",
+                           "value": f"+{mov.get('join', 0)} / −{mov.get('leave', 0)}", "inline": True})
+    except Exception:  # noqa: BLE001
+        pass
+    if not fields:
+        return None
+    return discord_bot.weekly_embed(fields, f"{PUBLIC_BASE_URL}/rankings" if PUBLIC_BASE_URL else "")
 
 
 def _bot_tick() -> None:
@@ -2897,6 +3007,25 @@ def _bot_tick() -> None:
     except Exception as exc:  # noqa: BLE001
         errs.append(f"roster — {exc}")
 
+    # Récap hebdo (lundi matin, heure de Paris) — une fois par semaine si activé.
+    if bot_on and cfg["notify_weekly"]:
+        try:
+            now = time.time()
+            try:
+                from zoneinfo import ZoneInfo
+                local_now = datetime.now(ZoneInfo("Europe/Paris"))
+            except Exception:  # noqa: BLE001
+                local_now = datetime.now()
+            if (local_now.weekday() == 0 and local_now.hour >= 9
+                    and now - float(cfg["last_recap"] or 0) > 6 * 86400):
+                emb = _weekly_recap_embed()
+                if emb is not None:
+                    discord_bot.send(token, channel, embeds=[emb])
+                    updates["last_recap"] = now
+                    notes.append("récap hebdo")
+        except Exception as exc:  # noqa: BLE001
+            errs.append(f"récap — {exc}")
+
     if updates or notes or errs or cfg["last_error"]:
         updates["last_message"] = " ; ".join(notes)[:300] if notes else (cfg["last_message"] or "")
         updates["last_error"] = " ; ".join(errs)[:300]
@@ -2927,6 +3056,9 @@ def admin_bot_get(request: Request):
         "channel_name": cfg["channel_name"] or "",
         "notify_reports": bool(cfg["notify_reports"]),
         "notify_roster": bool(cfg["notify_roster"]),
+        "notify_chars": bool(cfg["notify_chars"]),
+        "notify_weekly": bool(cfg["notify_weekly"]),
+        "last_recap": cfg["last_recap"],
         "last_message": cfg["last_message"] or "",
         "last_error": cfg["last_error"] or "",
         "last_report_t": cfg["last_report_t"],
@@ -2957,6 +3089,10 @@ def admin_bot_save(payload: BotConfigRequest, request: Request):
         updates["notify_reports"] = 1 if payload.notify_reports else 0
     if payload.notify_roster is not None:
         updates["notify_roster"] = 1 if payload.notify_roster else 0
+    if payload.notify_chars is not None:
+        updates["notify_chars"] = 1 if payload.notify_chars else 0
+    if payload.notify_weekly is not None:
+        updates["notify_weekly"] = 1 if payload.notify_weekly else 0
     if payload.channel_id.strip():
         updates["channel_id"] = payload.channel_id.strip()
         updates["channel_name"] = payload.channel_name.strip()[:120]
@@ -2967,6 +3103,25 @@ def admin_bot_save(payload: BotConfigRequest, request: Request):
             raise HTTPException(400, f"Token refusé par Discord — {exc}")
         updates["token"] = payload.token.strip()
     _bot_save(updates)
+    return {"ok": True}
+
+
+@app.post("/api/admin/bot/recap")
+def admin_bot_recap(request: Request):
+    """Envoie le récap hebdo à la demande (admin)."""
+    _require_admin(request)
+    cfg = _bot_config()
+    token, channel = (cfg["token"] or "").strip(), (cfg["channel_id"] or "").strip()
+    if not token or not channel:
+        raise HTTPException(400, "Bot Discord non configuré.")
+    emb = _weekly_recap_embed()
+    if emb is None:
+        raise HTTPException(400, "Rien à résumer pour le moment.")
+    try:
+        discord_bot.send(token, channel, embeds=[emb])
+    except discord_bot.DiscordError as exc:
+        raise HTTPException(400, f"Discord — {exc}")
+    _bot_save({"last_recap": time.time()})
     return {"ok": True}
 
 
