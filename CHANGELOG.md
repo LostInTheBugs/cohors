@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.059 - 2026-09-18
+
+### Added
+- Raids page: "Assiduité" card — real attendance per player over the last 30 days from Warcraft Logs (nights attended, percentage, last raid), plus evening chips that open the matching report. API: `GET /api/attendance`.
+
 ## 2026.09.058 - 2026-09-18
 
 ### Added

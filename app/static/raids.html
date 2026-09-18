@@ -77,13 +77,25 @@
   .reph a { color: var(--acc2); text-decoration: none; font-weight: 600; }
   .reph a:hover { text-decoration: underline; }
   .empty { color: var(--mut); font-size: 14px; padding: 8px 2px; }
+  .evev { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 12px; }
+  .evchip { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+            padding: 3px 10px; font-size: 12.5px; border-radius: 8px; cursor: pointer; }
+  .evchip:hover { border-color: var(--acc2); color: var(--acc2); }
+  table.attab { width: 100%; border-collapse: collapse; }
+  table.attab th, table.attab td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13.5px; }
+  table.attab th { color: var(--mut); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; }
+  .attab .abar { display: inline-block; width: 90px; height: 7px; border-radius: 4px; background: var(--line);
+                 overflow: hidden; vertical-align: middle; margin-right: 7px; }
+  .attab .abar i { display: block; height: 100%; background: linear-gradient(90deg, var(--acc), var(--acc2)); }
+  .attab .aname { font-weight: 600; text-decoration: none; }
+  .attab .aname:hover { text-decoration: underline; }
   .err { color: var(--err); font-size: 13px; }
   .spin { display: inline-block; animation: spin 1.2s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none !important; }
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 24px; padding-top: 14px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.058">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.059">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -114,6 +126,17 @@
     <div id="rlist"><div class="empty">Chargement…</div></div>
   </div>
 
+  <div class="card">
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <h2 style="margin:0;">📋 Assiduité</h2>
+      <span class="spacer"></span>
+      <span class="meta" id="ameta">Chargement…</span>
+    </div>
+    <div class="evev" id="aeven"></div>
+    <div id="atab"><div class="empty">Chargement…</div></div>
+    <div class="meta" style="margin-top:8px">Soirées loggées sur Warcraft Logs — clique sur une date pour ouvrir le rapport.</div>
+  </div>
+
   <div class="card hidden" id="dcard">
     <div class="reph" id="dhead"></div>
     <div id="dfights"></div>
@@ -126,13 +149,14 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.058"></script>
-<script src="/static/i18n.js?v=2026.09.058"></script>
+<script src="/static/nav.js?v=2026.09.059"></script>
+<script src="/static/i18n.js?v=2026.09.059"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
 const dtFmt = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const shortDay = (s) => s.slice(8, 10) + "/" + s.slice(5, 7);
 const durFmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`; };
 
 const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
@@ -171,6 +195,34 @@ async function loadList(refresh = 0) {
   } catch (e) {
     $("#rlist").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
   }
+}
+
+async function loadAtt(refresh = 0) {
+  try {
+    const d = await jget("/api/attendance" + (refresh ? "?refresh=1" : ""));
+    renderAtt(d);
+  } catch (e) {
+    $("#atab").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
+  }
+}
+
+function renderAtt(d) {
+  if (d.error) { $("#atab").innerHTML = `<div class="err">${esc(d.error)}</div>`; $("#ameta").textContent = ""; return; }
+  const ev = d.evenings || [];
+  $("#ameta").textContent = `${ev.length} soirées loggées sur les ${d.days} derniers jours`;
+  $("#aeven").innerHTML = ev.map(e => `<button class="evchip" data-code="${esc(e.code)}" title="${esc(e.zone || "Zone inconnue")} · ${e.kills} boss tués">${shortDay(e.day)}</button>`).join("");
+  $("#aeven").querySelectorAll(".evchip").forEach(b => b.addEventListener("click", () => openReport(b.dataset.code)));
+  const rows = d.rows || [];
+  $("#atab").innerHTML = rows.length ? `<table class="attab">
+    <thead><tr><th>#</th><th>Joueur</th><th>Soirs</th><th>Présence</th><th>Dernier raid</th></tr></thead>
+    <tbody>${rows.map((r, i) => `<tr>
+      <td><b>${i + 1}</b></td>
+      <td><a class="aname" style="color:${CLASS_COLORS[r.class_key || r.class] || "var(--fg)"}" href="/char/${esc(r.realm)}/${esc(r.key)}">${esc(r.name)}</a>${r.guest ? ` <span class="meta">· invité</span>` : ""}</td>
+      <td>${r.nights}/${d.total}</td>
+      <td><span class="abar"><i style="width:${Math.max(2, r.pct)}%"></i></span><b>${r.pct} %</b></td>
+      <td class="meta">${shortDay(r.last_day)}</td>
+    </tr>`).join("")}</tbody></table>`
+    : `<div class="empty">Aucune soirée de raid loggée sur la période.</div>`;
 }
 
 async function openReport(code, row) {
@@ -249,6 +301,7 @@ function toggleParses(frow) {
 $("#refresh").addEventListener("click", async (ev) => {
   ev.target.disabled = true;
   await loadList(1);
+  await loadAtt(1);
   ev.target.disabled = false;
 });
 $("#logout").addEventListener("click", async (ev) => {
@@ -265,6 +318,7 @@ $("#logout").addEventListener("click", async (ev) => {
   } catch (e) { location.href = "/login"; return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   loadList(0);
+  loadAtt(0);
 })();
 </script>
 </body>

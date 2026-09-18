@@ -602,7 +602,14 @@
  "° relevé d'après les logs de raid (Warcraft Logs)": "° snapshot from raid logs (Warcraft Logs)",
  "Fiche": "Profile",
  "Aucune progression mesurée pour le moment — les relevés quotidiens l'alimentent au fil des jours.": "No progression measured yet — daily snapshots feed this ranking over time.",
- "Le tableau des champions de la guilde — progression, parses, boss et clés M+.": "The guild's champions board — progression, recent parses, bosses and M+ keys."
+ "Le tableau des champions de la guilde — progression, parses, boss et clés M+.": "The guild's champions board — progression, recent parses, bosses and M+ keys.",
+ "📋 Assiduité": "📋 Attendance",
+ "Soirs": "Nights",
+ "Présence": "Attendance",
+ "Dernier raid": "Last raid",
+ "· invité": "· guest",
+ "Aucune soirée de raid loggée sur la période.": "No raid night logged for this period.",
+ "Soirées loggées sur Warcraft Logs — clique sur une date pour ouvrir le rapport.": "Nights logged on Warcraft Logs — click a date to open the report."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -689,6 +696,8 @@
     [/(\d+) personnages suivis/g, "$1 characters tracked"],
     [/(\d+) ont progressé/g, "$1 improved"],
     [/(\d+) persos(?![\w])/g, "$1 characters"],
+    [/(\d+) soirées loggées/g, "$1 logged evenings"],
+    [/sur les (\d+) derniers jours/g, "over the last $1 days"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
