@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.079 - 2026-09-18
+
+### Added
+- New "Raid prep" page (`/prep`, guild menu): officers pick what the guild crafts for the upcoming raid (items chosen from the recipes catalog), the page aggregates the required materials (items x quantities x recipes), and every member can claim how much of each material they bring (progress per material, list of contributors). Officers manage the recipes (crafted item -> materials) and can reset the plan. API: `GET /api/prep`, `POST /api/prep/plan|recipes|claim|reset`, `DELETE /api/prep/recipes/{id}`.
+
 ## 2026.09.078 - 2026-09-18
 
 ### Added

@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — Préparation de raid</title>
+<meta name="theme-color" content="#0b0e14">
+<link rel="icon" href="/static/icon-192.png">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brandname span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 12.5px; }
+  .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+         color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+         border: 1px solid var(--line); background: transparent;
+         transition: border-color .15s, color .15s, background .15s; }
+  .tab:hover { color: var(--fg); border-color: #3a4763; }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+  .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+  .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+  .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input, select, textarea { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 10px; padding: 8px 11px; font-size: 14px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
+  .meta { color: var(--mut); font-size: 13px; }
+  .empty { color: var(--mut); font-size: 14px; padding: 8px 2px; }
+  .btn { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+         padding: 9px 14px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); }
+  .irow, .nrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 7px 2px;
+                 border-top: 1px solid var(--line); font-size: 14px; }
+  .irow:first-child, .nrow:first-child { border-top: 0; }
+  .iname { font-weight: 600; }
+  .qty { font-weight: 700; color: var(--acc2); font-variant-numeric: tabular-nums; }
+  .nmat { font-weight: 600; min-width: 120px; }
+  .nneed { color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .nclaimed { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .nclaimed.ok { color: var(--ok); font-weight: 600; }
+  .nclaimed.warn { color: var(--warn); }
+  .nclaims { color: var(--mut); font-size: 12.5px; flex: 1 1 140px; }
+  .napport { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+  .napport input { width: 84px; padding: 6px 8px; }
+  .napport button { padding: 6px 11px; font-size: 13px; }
+  .bar { flex: 1 1 100%; height: 5px; border-radius: 3px; background: var(--card2); overflow: hidden; margin-top: 2px; }
+  .bar i { display: block; height: 100%; background: var(--ok); }
+  .mic { background: transparent; border: 0; color: var(--mut); cursor: pointer; font-size: 15px; padding: 4px 6px; }
+  .mic:hover { color: var(--err); }
+  .objtitle { font-size: 22px; font-weight: 700; color: var(--acc2); }
+  .svg { margin-left: 8px; }
+  #msg { min-height: 20px; font-size: 13.5px; margin: 0 0 10px; }
+  #msg.ok { color: var(--ok); }
+  #msg.err { color: var(--err); }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
+  .hidden { display: none !important; }
+</style>
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.079">
+</head>
+<body class="wb">
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Préparation de raid</span></div>
+        <div class="tagline">Ce que la guilde fabrique pour les raids — compos nécessaires et apports de chacun.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+  <div id="msg"></div>
+
+  <div class="card">
+    <h2>🎯 Objectif <span class="pc" id="objmeta"></span></h2>
+    <div id="objbody"><div class="empty">Chargement…</div></div>
+    <div id="objedit" class="hidden" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="row">
+        <select id="evsel"><option value="">— choisir un raid du calendrier —</option></select>
+        <input id="otitle" placeholder="Titre (ex : Raid HM du 21/09)" style="min-width:240px">
+        <button class="btn" id="objsave">💾 Enregistrer l'objectif</button>
+        <button class="btn ghost" id="objreset" title="Vide le plan et les apports (les recettes sont gardées)">♻️ Réinitialiser</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🛠️ À fabriquer <span class="pc" id="itemsmeta"></span></h2>
+    <div id="items"><div class="empty">Chargement…</div></div>
+    <div id="itemsedit" class="hidden" style="margin-top:8px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="row">
+        <input id="inew" list="reclist" placeholder="Objet à fabriquer (ex : Festin)" style="min-width:230px">
+        <datalist id="reclist"></datalist>
+        <input id="iqty" type="number" min="1" step="1" value="1" style="width:90px">
+        <button class="btn" id="iadd">＋ Ajouter</button>
+        <span class="meta">Les objets se choisissent dans les recettes (📚 plus bas).</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🧾 Compos nécessaires <span class="pc" id="needsmeta"></span></h2>
+    <div id="needs"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card hidden" id="reccard">
+    <h2>📚 Recettes <span class="pc">officiers — objet fabriqué → compos</span></h2>
+    <div id="reclistbox"></div>
+    <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="row" style="align-items:flex-start">
+        <input id="rname" placeholder="Objet fabriqué (ex : Festin)" style="min-width:200px">
+        <textarea id="rmats" rows="3" placeholder="Compos — une par ligne : Nom = quantité&#10;ex : Viande = 20" style="flex:1;min-width:240px;font:13.5px ui-monospace,SFMono-Regular,Menlo,monospace"></textarea>
+        <button class="btn" id="rsave">💾 Ajouter / MAJ</button>
+      </div>
+    </div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js?v=2026.09.079"></script>
+<script src="/static/i18n.js?v=2026.09.079"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  return `il y a ${Math.floor(s / 86400)} j`; };
+const dtFmt = (ts) => { const d = new Date(ts * 1000);
+  return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }) +
+         " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); };
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jpost = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
+    body: b === undefined ? undefined : JSON.stringify(b) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+let msgT = null;
+function setMsg(txt, ok) { const m = $("#msg"); m.textContent = txt || ""; m.className = txt ? (ok ? "ok" : "err") : "";
+  clearTimeout(msgT); if (txt) msgT = setTimeout(() => { m.textContent = ""; m.className = ""; }, 4000); }
+
+let DATA = null, CAN = false;
+let PLAN = { title: "", event_ts: 0, items: [] };
+
+async function savePlan() {
+  try {
+    await jpost("POST", "/api/prep/plan", { title: PLAN.title, event_ts: PLAN.event_ts, items: PLAN.items });
+    setMsg("Objectif enregistré ✓", true);
+    await load();
+  } catch (e) { setMsg(e.message, false); }
+}
+
+function renderObj() {
+  const p = DATA.plan || {};
+  const body = $("#objbody");
+  if (!p.title && !PLAN.title) {
+    body.innerHTML = `<div class="empty">Aucun plan pour le moment — les officiers choisissent ce qu'on prépare pour le prochain raid.</div>`;
+  } else {
+    const t = PLAN.title || p.title || "";
+    const d = (PLAN.event_ts || p.event_ts) ? ` <span class="meta">· ${dtFmt(PLAN.event_ts || p.event_ts)}</span>` : "";
+    body.innerHTML = `<div class="objtitle">${esc(t)}</div>${d}
+      ${p.updated ? `<div class="meta">enregistré par ${esc(p.updated_by || "?")} · ${ago(p.updated)}</div>` : ""}`;
+  }
+  $("#objedit").classList.toggle("hidden", !CAN);
+  $("#otitle").value = PLAN.title || "";
+}
+
+function renderItems() {
+  const box = $("#items");
+  const it = PLAN.items || [];
+  $("#itemsmeta").textContent = it.length ? `· ${it.length} objet(s)` : "";
+  if (!it.length) {
+    box.innerHTML = `<div class="empty">Aucun objet dans le plan pour le moment.</div>`;
+  } else {
+    box.innerHTML = it.map((x, i) => `<div class="irow">
+      <span class="iname">${esc(x.name)}</span>
+      <span class="qty">× ${fmt(x.qty)}</span>
+      ${CAN ? `<button class="mic" data-ri="${i}" title="Retirer">✕</button>` : ""}
+    </div>`).join("");
+    if (CAN) box.querySelectorAll("[data-ri]").forEach(b => b.addEventListener("click", async () => {
+      PLAN.items.splice(+b.dataset.ri, 1); await savePlan();
+    }));
+  }
+  $("#itemsedit").classList.toggle("hidden", !CAN);
+  const dl = $("#reclist");
+  dl.innerHTML = (DATA.recipes || []).map(r => `<option value="${esc(r.name)}">`).join("");
+  if (DATA.unknown && DATA.unknown.length) {
+    $("#itemsmeta").textContent += ` · ⚠️ sans recette : ${DATA.unknown.join(", ")}`;
+  }
+}
+
+function renderNeeds() {
+  const box = $("#needs");
+  const needs = DATA.needs || [];
+  const total = needs.reduce((a, n) => a + (n.need > 0 ? 1 : 0), 0);
+  const done = needs.filter(n => n.need > 0 && n.claimed >= n.need).length;
+  $("#needsmeta").textContent = total ? `· ${done}/${total} complet${done > 1 ? "s" : ""}` : "";
+  if (!needs.length) {
+    box.innerHTML = `<div class="empty">Rien à préparer pour le moment.</div>`;
+    return;
+  }
+  box.innerHTML = needs.map(n => {
+    const mine = (n.claims || []).find(c => c.mine);
+    const cls = n.need > 0 && n.claimed >= n.need ? "ok" : (n.claimed > 0 ? "warn" : "");
+    const claimTxt = (n.claims || []).map(c => `${esc(c.name)} ×${fmt(c.qty)}`).join(", ");
+    const pct = n.need > 0 ? Math.min(100, Math.round(100 * n.claimed / n.need)) : 0;
+    return `<div class="nrow">
+      <span class="nmat">${esc(n.mat)}</span>
+      <span class="nneed">besoin : ${n.need > 0 ? fmt(n.need) : "—"}</span>
+      <span class="nclaimed ${cls}">fourni : ${fmt(n.claimed)}${n.need > 0 ? "/" + fmt(n.need) : ""}</span>
+      <span class="napport">
+        <input type="number" min="0" step="1" value="${mine ? fmt(mine.qty) : ""}" data-mat="${esc(n.mat)}" placeholder="qté" title="Quantité que tu apportes (0 ou vide = retirer ton apport)">
+        <button class="btn ghost" data-claim="${esc(n.mat)}">j'apporte</button>
+      </span>
+      <span class="nclaims">${claimTxt}</span>
+      ${n.need > 0 ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ""}
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-claim]").forEach(b => b.addEventListener("click", async () => {
+    const mat = b.dataset.claim;
+    const inp = box.querySelector(`input[data-mat="${CSS.escape(mat)}"]`);
+    const qty = parseFloat((inp.value || "0").replace(",", ".")) || 0;
+    try {
+      await jpost("POST", "/api/prep/claim", { mat, qty });
+      setMsg(qty > 0 ? `Apport enregistré : ${mat} ×${qty} ✓` : `Apport retiré : ${mat}`, true);
+      await load();
+    } catch (e) { setMsg(e.message, false); }
+  }));
+}
+
+function renderRecipes() {
+  $("#reccard").classList.toggle("hidden", !CAN);
+  if (!CAN) return;
+  const rl = DATA.recipes || [];
+  const box = $("#reclistbox");
+  if (!rl.length) {
+    box.innerHTML = `<div class="empty">Aucune recette — ajoute la première ci-dessous (objet fabriqué → compos).</div>`;
+    return;
+  }
+  box.innerHTML = rl.map(r => `<div class="irow">
+    <span class="iname">${esc(r.name)}</span>
+    <span class="meta">${(r.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "aucune compos"}</span>
+    <button class="mic" data-rdel="${r.id}" title="Supprimer" style="margin-left:auto">✕</button>
+  </div>`).join("");
+  box.querySelectorAll("[data-rdel]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("Supprimer cette recette ?")) return;
+    try { await jpost("DELETE", `/api/prep/recipes/${b.dataset.rdel}`); setMsg("Recette supprimée ✓", true); await load(); }
+    catch (e) { setMsg(e.message, false); }
+  }));
+}
+
+async function loadEvents() {
+  try {
+    const g = await jget("/api/gcal");
+    const now = Date.now() / 1000;
+    const up = (g.events || []).filter(e => (+e.ts || 0) > now - 3600)
+      .sort((a, b) => (+a.ts || 0) - (+b.ts || 0));
+    $("#evsel").innerHTML = `<option value="">— choisir un raid du calendrier —</option>` +
+      up.map(e => `<option value="${esc(e.date)}" data-ts="${+e.ts || 0}" data-title="${esc(e.title || "")}">${esc(e.title || "?")} — ${esc(e.date || "")}</option>`).join("");
+  } catch (e) {}
+}
+
+async function load() {
+  DATA = await jget("/api/prep");
+  CAN = !!DATA.can_edit;
+  PLAN = { title: DATA.plan.title || "", event_ts: DATA.plan.event_ts || 0,
+           items: (DATA.plan.items || []).map(x => ({ name: x.name, qty: +x.qty || 0 })) };
+  renderObj(); renderItems(); renderNeeds(); renderRecipes();
+}
+
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+$("#objsave").addEventListener("click", async () => {
+  PLAN.title = $("#otitle").value.trim();
+  await savePlan();
+});
+$("#evsel").addEventListener("change", (ev) => {
+  const o = ev.target.selectedOptions[0];
+  if (!o || !o.value) return;
+  PLAN.event_ts = +o.dataset.ts || 0;
+  PLAN.title = `${o.dataset.title || "Raid"} — ${o.value}`;
+  $("#otitle").value = PLAN.title;
+});
+$("#iadd").addEventListener("click", async () => {
+  const name = $("#inew").value.trim();
+  const qty = Math.max(1, parseInt($("#iqty").value || "1", 10) || 1);
+  if (!name) { setMsg("Indique l'objet à fabriquer.", false); return; }
+  const found = PLAN.items.find(x => x.name.toLowerCase() === name.toLowerCase());
+  if (found) found.qty += qty;
+  else PLAN.items.push({ name, qty });
+  $("#inew").value = ""; $("#iqty").value = "1";
+  await savePlan();
+});
+$("#rsave").addEventListener("click", async () => {
+  const name = $("#rname").value.trim();
+  if (!name) { setMsg("Indique l'objet fabriqué.", false); return; }
+  const mats = [];
+  for (const line of $("#rmats").value.split("\n")) {
+    const m = line.split(/\s*[=:]\s*/);
+    if (m.length >= 2 && m[0].trim()) {
+      mats.push({ name: m[0].trim(), qty: parseFloat((m[1] || "0").replace(",", ".")) || 0 });
+    }
+  }
+  try {
+    await jpost("POST", "/api/prep/recipes", { name, mats });
+    setMsg(`Recette enregistrée : ${name} ✓`, true);
+    $("#rname").value = ""; $("#rmats").value = "";
+    await load();
+  } catch (e) { setMsg(e.message, false); }
+});
+$("#objreset").addEventListener("click", async () => {
+  if (!confirm("Vider le plan et tous les apports ? (les recettes sont conservées)")) return;
+  try { await jpost("POST", "/api/prep/reset"); setMsg("Plan réinitialisé ✓", true); await load(); }
+  catch (e) { setMsg(e.message, false); }
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+    if (me.is_admin || me.role === "officer" || me.role === "admin") $("#admin-link").classList.remove("hidden");
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  try {
+    await load();
+    if (CAN) await loadEvents();
+  } catch (e) {
+    $("#needs").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

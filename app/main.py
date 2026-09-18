@@ -358,6 +358,43 @@ def _init_db() -> None:
             )
             """
         )
+        # v2026.09.079 — préparation de raid (recettes d'objets, plan, apports des membres).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS prep_recipes (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                name    TEXT NOT NULL,
+                mats    TEXT NOT NULL DEFAULT '[]',
+                created REAL NOT NULL DEFAULT 0,
+                updated REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS prep_plan (
+                id         INTEGER PRIMARY KEY CHECK (id = 1),
+                title      TEXT NOT NULL DEFAULT '',
+                event_ts   REAL NOT NULL DEFAULT 0,
+                items      TEXT NOT NULL DEFAULT '[]',
+                updated    REAL NOT NULL DEFAULT 0,
+                updated_by TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS prep_claims (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                mat     TEXT NOT NULL,
+                qty     REAL NOT NULL DEFAULT 0,
+                user    TEXT NOT NULL,
+                name    TEXT NOT NULL DEFAULT '',
+                updated REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_prep_claims ON prep_claims(mat, user)")
 
 
 def _hash_password(password: str) -> str:
@@ -634,6 +671,13 @@ def craft_page(request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "craft.html")
+
+
+@app.api_route("/prep", methods=["GET", "HEAD"])
+def prep_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "prep.html")
 
 
 @app.api_route("/mains", methods=["GET", "HEAD"])
@@ -3200,6 +3244,191 @@ def api_gcal_get(request: Request):
     except ValueError:
         data = {}
     return {"imported_at": row["ts"], "player": row["player"], "events": data.get("events") or []}
+
+
+# ---------------------------------------------------------------------------
+# Préparation de raid (atelier : recettes, plan, apports des membres)
+# ---------------------------------------------------------------------------
+class PrepPlanRequest(BaseModel):
+    title: str = Field("", max_length=120)
+    event_ts: float = 0
+    items: list[dict] = []
+
+
+class PrepRecipeRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    mats: list[dict] = []
+
+
+class PrepClaimRequest(BaseModel):
+    mat: str = Field(..., min_length=1, max_length=120)
+    qty: float = 0
+
+
+def _prep_needs(plan_items: list, recipes: list) -> tuple[list[dict], list[str]]:
+    """Agrège les compos nécessaires (objets du plan × quantités × recettes)."""
+    rec = {}
+    for r in recipes:
+        rec[str(r.get("name") or "").casefold()] = r.get("mats") or []
+    needs: dict = {}
+    unknown: list = []
+    for it in plan_items:
+        name = str(it.get("name") or "").strip()
+        if not name:
+            continue
+        try:
+            qty = max(0.0, min(9999.0, float(it.get("qty") or 0)))
+        except (TypeError, ValueError):
+            qty = 0.0
+        mats = rec.get(name.casefold())
+        if mats is None:
+            if name not in unknown:
+                unknown.append(name)
+            continue
+        for m in mats:
+            mn = str((m or {}).get("name") or "").strip()
+            if not mn:
+                continue
+            try:
+                mq = max(0.0, min(999999.0, float((m or {}).get("qty") or 0)))
+            except (TypeError, ValueError):
+                mq = 0.0
+            needs[mn] = needs.get(mn, 0.0) + mq * qty
+    out = [{"mat": k, "need": round(v, 2)} for k, v in needs.items()]
+    out.sort(key=lambda n: n["mat"].casefold())
+    return out, unknown
+
+
+@app.get("/api/prep")
+def api_prep_get(request: Request):
+    """Plan de préparation + recettes + besoins agrégés + apports des membres."""
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        plan = conn.execute(
+            "SELECT title, event_ts, items, updated, updated_by FROM prep_plan WHERE id=1").fetchone()
+        recipes = [dict(r) for r in conn.execute(
+            "SELECT id, name, mats, updated FROM prep_recipes ORDER BY name COLLATE NOCASE").fetchall()]
+        claims = [dict(r) for r in conn.execute(
+            "SELECT mat, qty, user, name FROM prep_claims").fetchall()]
+    for r in recipes:
+        try:
+            r["mats"] = json.loads(r["mats"] or "[]")
+        except ValueError:
+            r["mats"] = []
+    p = dict(plan) if plan else {"title": "", "event_ts": 0, "items": "[]", "updated": 0, "updated_by": ""}
+    try:
+        p["items"] = json.loads(p.get("items") or "[]")
+    except ValueError:
+        p["items"] = []
+    needs, unknown = _prep_needs(p["items"], recipes)
+    by_mat: dict = {}
+    for c in claims:
+        by_mat.setdefault(str(c["mat"]), []).append(
+            {"qty": c["qty"], "name": c["name"] or c["user"], "mine": c["user"] == user["email"]})
+    known = {n["mat"] for n in needs}
+    for n in needs:
+        cs = by_mat.get(n["mat"], [])
+        cs.sort(key=lambda x: x["name"].casefold())
+        n["claims"] = cs
+        n["claimed"] = round(sum(x["qty"] for x in cs), 2)
+    for mat, cs in by_mat.items():
+        if mat not in known:
+            needs.append({"mat": mat, "need": 0, "claims": cs,
+                          "claimed": round(sum(x["qty"] for x in cs), 2)})
+    can = _user_role(user) in ("officer", "admin")
+    return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
+            "me": {"name": user["name"] if "name" in user.keys() else user["email"]},
+            "can_edit": can}
+
+
+@app.post("/api/prep/plan")
+def api_prep_plan(body: PrepPlanRequest, request: Request):
+    user = _require_officer(request)
+    items = []
+    for it in (body.items or [])[:60]:
+        name = str((it or {}).get("name") or "").strip()[:120]
+        if not name:
+            continue
+        try:
+            qty = max(0.0, min(9999.0, float((it or {}).get("qty") or 0)))
+        except (TypeError, ValueError):
+            qty = 0.0
+        items.append({"name": name, "qty": qty})
+    with _db_lock, _db() as conn:
+        conn.execute(
+            "INSERT INTO prep_plan (id, title, event_ts, items, updated, updated_by) VALUES (1, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET title=excluded.title, event_ts=excluded.event_ts, items=excluded.items, "
+            "updated=excluded.updated, updated_by=excluded.updated_by",
+            (body.title.strip()[:120], float(body.event_ts or 0), json.dumps(items, ensure_ascii=False),
+             time.time(), user["name"] if "name" in user.keys() else user["email"]),
+        )
+    return {"ok": True, "items": len(items)}
+
+
+@app.post("/api/prep/recipes")
+def api_prep_recipe_save(body: PrepRecipeRequest, request: Request):
+    _require_officer(request)
+    mats = []
+    for m in (body.mats or [])[:40]:
+        mn = str((m or {}).get("name") or "").strip()[:120]
+        if not mn:
+            continue
+        try:
+            mq = max(0.0, min(999999.0, float((m or {}).get("qty") or 0)))
+        except (TypeError, ValueError):
+            mq = 0.0
+        mats.append({"name": mn, "qty": mq})
+    name = body.name.strip()[:120]
+    now = time.time()
+    with _db_lock, _db() as conn:
+        row = conn.execute("SELECT id FROM prep_recipes WHERE name=? COLLATE NOCASE", (name,)).fetchone()
+        if row:
+            conn.execute("UPDATE prep_recipes SET mats=?, updated=? WHERE id=?",
+                         (json.dumps(mats, ensure_ascii=False), now, row["id"]))
+            rid = row["id"]
+        else:
+            cur = conn.execute("INSERT INTO prep_recipes (name, mats, created, updated) VALUES (?,?,?,?)",
+                               (name, json.dumps(mats, ensure_ascii=False), now, now))
+            rid = cur.lastrowid
+    return {"ok": True, "id": rid, "mats": len(mats)}
+
+
+@app.delete("/api/prep/recipes/{rid}")
+def api_prep_recipe_del(rid: int, request: Request):
+    _require_officer(request)
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM prep_recipes WHERE id=?", (rid,))
+    return {"ok": True}
+
+
+@app.post("/api/prep/claim")
+def api_prep_claim(body: PrepClaimRequest, request: Request):
+    user = _require_user(request)
+    mat = body.mat.strip()[:120]
+    try:
+        qty = max(0.0, min(999999.0, float(body.qty or 0)))
+    except (TypeError, ValueError):
+        qty = 0.0
+    with _db_lock, _db() as conn:
+        if qty <= 0:
+            conn.execute("DELETE FROM prep_claims WHERE mat=? AND user=?", (mat, user["email"]))
+        else:
+            conn.execute(
+                "INSERT INTO prep_claims (mat, qty, user, name, updated) VALUES (?,?,?,?,?) "
+                "ON CONFLICT(mat, user) DO UPDATE SET qty=excluded.qty, name=excluded.name, updated=excluded.updated",
+                (mat, qty, user["email"], user["name"] if "name" in user.keys() else "", time.time()),
+            )
+    return {"ok": True}
+
+
+@app.post("/api/prep/reset")
+def api_prep_reset(request: Request):
+    user = _require_officer(request)
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM prep_claims")
+        conn.execute("UPDATE prep_plan SET items='[]', updated=?, updated_by=? WHERE id=1",
+                     (time.time(), user["name"] if "name" in user.keys() else user["email"]))
+    return {"ok": True}
 
 
 @app.post("/api/gcal/import")
