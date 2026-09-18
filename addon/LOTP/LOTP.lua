@@ -6,7 +6,7 @@
 -- Lecture du calendrier : même méthode que l'UI Blizzard — on affiche le mois
 -- (SetAbsMonth/SetMonth) puis on lit les jours (GetNumDayEvents/GetDayEvent),
 -- et on ouvre chaque événement (OpenEvent(0, jour, index)) pour les réponses.
-local ADDON_VER = "1.3.0"
+local ADDON_VER = "1.3.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local STEP_WAIT = 1.2   -- attente entre deux changements de mois (s)
@@ -86,6 +86,8 @@ local function restoreCalendar()
     end
 end
 
+local diagLines -- définie plus bas (section diagnostic), déclarée ici pour finishCollect
+
 -- ------------------------------------------------------------------- collecte
 local function buildExport()
     local parts = {}
@@ -140,13 +142,27 @@ local function finishCollect()
     LOTP_DB.export = buildExport()
     LOTP_DB.export_at = time()
     LOTP_DB.player = UnitName("player")
+    -- rapport de diagnostic : écrit automatiquement à chaque collecte
+    local okd, lines = pcall(diagLines)
+    if okd and type(lines) == "table" then
+        lines[#lines + 1] = ("résultat : %d événement(s) collecté(s)"):format(#results)
+        for i, e in ipairs(results) do
+            if i <= 10 then
+                lines[#lines + 1] = ("  collecté : %s | %s | %d réponse(s)"):format(
+                    tostring(e.date), tostring(e.title), #(e.invites or {}))
+            end
+        end
+        LOTP_DB.diag = table.concat(lines, "\n")
+        LOTP_DB.diag_at = time()
+    end
     local nresp = 0
     for _, e in ipairs(results) do
         nresp = nresp + #(e.invites or {})
     end
     if #results == 0 then
         msg("aucun événement trouvé dans le calendrier. Ouvre le calendrier du jeu (touche C) pour vérifier "
-            .. "que la guilde a bien des raids, puis /lotp. (/lotp diag écrit un rapport fichier)")
+            .. "que la guilde a bien des raids, puis /lotp. (le rapport a été enregistré : /reload puis "
+            .. "envoie le fichier LOTP.lua)")
     else
         msg(("%d raid(s) collecté(s), %d réponse(s). • /lotp export pour la chaîne à coller sur le site.")
             :format(#results, nresp))
@@ -300,6 +316,9 @@ function LOTP_Collect()
     current = nil
     openedFrame = false
     watchMonth = nil
+    LOTP_DB.diag = ("collecte démarrée %s — addon v%s · client %s"):format(
+        dateStr(time()), ADDON_VER, tostring(clientIface()))
+    LOTP_DB.diag_at = time()
     msg("lecture du calendrier de guilde…")
     startCollect()
 end
@@ -335,7 +354,7 @@ f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CALENDAR_OPEN_EVENT")
 
 -- ------------------------------------------------------------------ diagnostic
-local function diagLines()
+diagLines = function()
     local L = {}
     L[#L + 1] = "LOTP diag — " .. dateStr(time())
     L[#L + 1] = ("addon v%s · client %s · collecte %s"):format(ADDON_VER, tostring(clientIface()),
@@ -541,7 +560,8 @@ SlashCmdList["LOTP"] = function(arg)
     if arg == "" then
         ui:Show()
         if LOTP_DB.export then pcall(showSummary) end
-        if not collecting and (not LOTP_DB.export or (time() - (LOTP_DB.export_at or 0)) > 3600) then
+        -- toujours relancer une collecte (sauf si une vient de finir il y a < 2 min)
+        if not collecting and (time() - (LOTP_DB.export_at or 0)) > 120 then
             LOTP_Collect()
         end
     elseif arg == "collect" then

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.069 - 2026-09-18
+
+### Fixed
+- Addon 1.3.1: `/lotp` always starts a fresh collection (it previously skipped when the last export was under an hour old — that is why no new collection ran after the update); the diagnostic report is now written automatically into SavedVariables on every collection (start marker + full report + result), so any LOTP.lua file sent back contains the debug info.
+
 ## 2026.09.068 - 2026-09-18
 
 ### Fixed
