@@ -19,6 +19,7 @@
       { href: "/calendar", label: "🗓️ Calendrier" },
       { href: "/craft", label: "🔨 Artisanat" },
       { href: "/prep", label: "🧪 Préparation de raid" },
+      { href: "/mplus", label: "⚔️ MM+" },
       { href: "/guild", label: "🛡️ Infos & liens" }
     ] },
     { label: "🎧 Vocal", items: [

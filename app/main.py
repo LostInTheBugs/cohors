@@ -427,6 +427,18 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_game_recipes_prof ON game_recipes(prof)")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mplus_posts (
+                user    TEXT PRIMARY KEY,
+                name    TEXT NOT NULL DEFAULT '',
+                roles   TEXT NOT NULL DEFAULT '[]',
+                slots   TEXT NOT NULL DEFAULT '[]',
+                keys    TEXT NOT NULL DEFAULT '[]',
+                updated REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
         for _stmt in (
             "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",
@@ -719,6 +731,11 @@ def prep_page(request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "prep.html")
+@app.api_route("/mplus", methods=["GET", "HEAD"])
+def mplus_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "mplus.html")
 
 
 @app.api_route("/mains", methods=["GET", "HEAD"])
@@ -3536,6 +3553,94 @@ GAME_PREP_PROFS = ((185, "Cuisine"), (171, "Alchimie"), (773, "Calligraphie"),
                    (164, "Forge"), (165, "Travail du cuir"), (202, "Ingénierie"))
 GAME_SYNC_TTL = 6 * 86400.0  # rafraîchi bien avant le TTL de 30 j des API Blizzard
 _game_sync_state = {"state": "idle", "prof": "", "done": 0, "total": 0, "error": "", "ts": 0.0}
+
+
+class MplusPostRequest(BaseModel):
+    roles: list[str] = []
+    slots: list[dict] = []
+    keys: list[dict] = []
+
+
+def _mplus_clean_slots(slots) -> list[dict]:
+    out = []
+    for s in (slots or [])[:6]:
+        if not isinstance(s, dict):
+            continue
+        days = sorted({str(d)[:10] for d in (s.get("days") or [])
+                       if re.match(r"^\d{4}-\d{2}-\d{2}$", str(d))})[:20]
+        fr = str(s.get("from") or "")[:5]
+        to = str(s.get("to") or "")[:5]
+        fr = fr if re.match(r"^\d{2}:\d{2}$", fr) else ""
+        to = to if re.match(r"^\d{2}:\d{2}$", to) else ""
+        if days and (fr or to):
+            out.append({"days": days, "from": fr, "to": to})
+    return out
+
+
+def _mplus_clean_keys(keys) -> list[dict]:
+    out = []
+    for k in (keys or [])[:12]:
+        if not isinstance(k, dict):
+            continue
+        ch = str(k.get("char") or "").strip()[:40]
+        du = str(k.get("dungeon") or "").strip()[:80]
+        try:
+            lv = max(2, min(40, int(k.get("level") or 2)))
+        except (TypeError, ValueError):
+            lv = 2
+        if ch or du:
+            out.append({"char": ch, "dungeon": du, "level": lv})
+    return out
+
+
+@app.get("/api/mplus")
+def api_mplus(request: Request):
+    """Tableau d'organisation MM+ : dispos de chacun + clés annoncées."""
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT user, name, roles, slots, keys, updated FROM mplus_posts ORDER BY updated DESC").fetchall()]
+        mine = [dict(r) for r in conn.execute(
+            "SELECT name, display, is_main FROM char_links WHERE user_email=?", (user["email"],)).fetchall()]
+    posts = []
+    for r in rows:
+        for f in ("roles", "slots", "keys"):
+            try:
+                r[f] = json.loads(r[f] or "[]")
+            except ValueError:
+                r[f] = []
+        r["mine"] = r["user"] == user["email"]
+        posts.append(r)
+    try:
+        dun, _ts = bnet.mplus_dungeons()
+        dungeons = dun.get("dungeons") or []
+    except bnet.BnetError:
+        dungeons = []
+    return {"posts": posts, "dungeons": dungeons,
+            "my_chars": [{"name": c["name"], "display": c["display"], "is_main": bool(c["is_main"])}
+                         for c in mine],
+            "me": {"name": user["name"] if "name" in user.keys() else user["email"]}}
+
+
+@app.post("/api/mplus")
+def api_mplus_save(body: MplusPostRequest, request: Request):
+    user = _require_user(request)
+    roles = [r for r in (body.roles or []) if r in ("tank", "heal", "dps")][:3]
+    slots = _mplus_clean_slots(body.slots)
+    keys = _mplus_clean_keys(body.keys)
+    email = user["email"]
+    name = (user["name"] if "name" in user.keys() else "") or email
+    with _db_lock, _db() as conn:
+        if not roles and not slots and not keys:
+            conn.execute("DELETE FROM mplus_posts WHERE user=?", (email,))
+            return {"ok": True, "deleted": True}
+        conn.execute(
+            "INSERT INTO mplus_posts (user, name, roles, slots, keys, updated) VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(user) DO UPDATE SET name=excluded.name, roles=excluded.roles, "
+            "slots=excluded.slots, keys=excluded.keys, updated=excluded.updated",
+            (email, name, json.dumps(roles),
+             json.dumps(slots, ensure_ascii=False), json.dumps(keys, ensure_ascii=False), time.time()))
+    return {"ok": True, "roles": roles, "slots": len(slots), "keys": len(keys)}
 
 
 def _game_sync_report(db_ts: float = 0.0) -> dict:

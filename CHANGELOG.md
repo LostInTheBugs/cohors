@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.083 - 2026-09-19
+
+### Added
+- New "MM+" page (guild menu): members post their Mythic+ availability over the next 2 weeks — roles (tank/heal/dps), day slots with hour ranges, and the keys they hold (character + dungeon + level, several characters allowed). The board shows who is available on each day, and a key list summarizes every announced key. The season's dungeon list is fetched automatically (Raider.IO + Blizzard journal API, FR names). API: `GET/POST /api/mplus`, table `mplus_posts`.
+
 ## 2026.09.082 - 2026-09-19
 
 ### Added

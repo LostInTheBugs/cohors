@@ -337,6 +337,56 @@ def game_recipe(recipe_id: int) -> dict:
                 not_found="Recette introuvable.")
 
 
+def mplus_dungeons() -> tuple[dict, float]:
+    """Donjons M+ de la saison courante (Raider.IO) avec les noms FR (API journal Blizzard)."""
+    key = "mplus_dungeons"
+    hit = _cached(key, False)
+    if hit:
+        return hit["data"], hit["ts"]
+    dungeons_en: list[str] = []
+    for exp_id in (11, 10, 9):  # Midnight, puis replis
+        try:
+            req = urllib.request.Request(
+                f"https://raider.io/api/v1/mythic-plus/static-data?expansion_id={exp_id}",
+                headers={"User-Agent": "lotp-guild-app/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                data = json.load(resp)
+        except Exception:  # noqa: BLE001 — source externe : on tente l'extension suivante
+            continue
+        seasons = [s for s in (data.get("seasons") or []) if s.get("is_main_season")]
+        if not seasons:
+            seasons = data.get("seasons") or []
+        if not seasons:
+            continue
+        seasons.sort(key=lambda s: str((s.get("starts") or {}).get("eu") or ""))  # la plus récente
+        dungeons_en = [str(x.get("name")) for x in (seasons[-1].get("dungeons") or []) if x.get("name")]
+        if dungeons_en:
+            break
+    out: list[dict] = []
+    if dungeons_en:
+        en_map: dict = {}
+        try:
+            idx = _get("/data/wow/journal-instance/index",
+                       {"namespace": f"static-{REGION}", "locale": "en_US"})
+            en_map = {x.get("name"): x.get("id") for x in (idx.get("instances") or [])}
+        except BnetError:
+            pass
+        for nom in dungeons_en:
+            fr = nom
+            iid = en_map.get(nom)
+            if iid:
+                try:
+                    det = _get(f"/data/wow/journal-instance/{iid}",
+                               {"namespace": f"static-{REGION}", "locale": LOCALE})
+                    fr = det.get("name") or nom
+                except BnetError:
+                    pass
+            out.append({"en": nom, "name": fr})
+    data = {"dungeons": out}
+    return data, _store(key, data)
+
+
 def item(item_id: int) -> dict:
     """Objet (nom, qualité, emplacement, icône) depuis l'API Blizzard — cache 30 min."""
     key = f"item/{int(item_id)}"

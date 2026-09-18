@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOTP — MM+</title>
+<meta name="theme-color" content="#0b0e14">
+<link rel="icon" href="/static/icon-192.png">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brandname span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 12.5px; }
+  .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+         color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+         border: 1px solid var(--line); background: transparent;
+         transition: border-color .15s, color .15s, background .15s; }
+  .tab:hover { color: var(--fg); border-color: #3a4763; }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+  .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+  .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+  .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input, select { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 10px; padding: 8px 11px; font-size: 14px; }
+  input:focus, select:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+  input[type=time] { width: 116px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
+  .meta { color: var(--mut); font-size: 13px; }
+  .empty { color: var(--mut); font-size: 14px; padding: 8px 2px; }
+  .btn { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+         padding: 9px 14px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); }
+  .btn.ghost:hover { border-color: #3a4763; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 7px 15px; cursor: pointer;
+          background: transparent; color: var(--mut); font-weight: 600; font-size: 14px; }
+  .pill:hover { color: var(--fg); border-color: #3a4763; }
+  .pill.on { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border-color: transparent; }
+  .dchip { border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; font-size: 12.5px;
+           cursor: pointer; color: var(--mut); background: transparent; white-space: nowrap; }
+  .dchip:hover { border-color: #3a4763; color: var(--fg); }
+  .dchip.on { background: #22304f; color: #fff; border-color: #3f5180; }
+  .slotrow, .keyrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+                      padding: 8px 0; border-top: 1px solid var(--line); }
+  .days-grid { display: flex; gap: 4px; flex-wrap: wrap; }
+  .mic { background: transparent; border: 0; color: var(--mut); cursor: pointer; font-size: 15px; padding: 3px 6px; }
+  .mic:hover { color: var(--err); }
+  .day { font-weight: 700; margin: 14px 0 4px; font-size: 14.5px; }
+  .day:first-child { margin-top: 0; }
+  .day .n { color: var(--mut); font-weight: 500; font-size: 12.5px; }
+  .av { padding: 3px 2px 3px 10px; border-left: 2px solid var(--line); margin: 3px 0; font-size: 14px; }
+  .av.mine { border-left-color: var(--acc2); }
+  .qty { font-weight: 700; color: var(--acc2); font-variant-numeric: tabular-nums; }
+  #msg { min-height: 20px; font-size: 13.5px; margin: 0 0 10px; }
+  #msg.ok { color: var(--ok); }
+  #msg.err { color: var(--err); }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
+  .hidden { display: none !important; }
+</style>
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.083">
+</head>
+<body class="wb">
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>MM+</span></div>
+        <div class="tagline">Organisez vos clés mythiques+ — dispos, rôles et clés annoncées sur les 2 prochaines semaines.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+  <div id="msg"></div>
+
+  <div class="card">
+    <h2>📝 Mes dispos</h2>
+    <div class="row">
+      <span class="meta">Rôle(s) :</span>
+      <button class="pill" data-role="tank">🛡️ Tank</button>
+      <button class="pill" data-role="heal">💚 Heal</button>
+      <button class="pill" data-role="dps">⚔️ DPS</button>
+    </div>
+    <div class="meta" style="margin:12px 0 2px">Créneaux (clique les jours, puis les heures) :</div>
+    <div id="slots"></div>
+    <button class="btn ghost" id="addslot" style="margin-top:8px">＋ Ajouter un créneau</button>
+    <div class="meta" style="margin:16px 0 2px">Clés que tu as (facultatif — un perso, son donjon, son niveau) :</div>
+    <div id="keys"></div>
+    <button class="btn ghost" id="addkey" style="margin-top:8px">＋ Ajouter une clé</button>
+    <datalist id="mychars"></datalist>
+    <datalist id="dunlist"></datalist>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="save">💾 Enregistrer mes dispos</button>
+      <button class="btn ghost" id="clear">🗑️ Retirer mes dispos</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📅 Qui est dispo <span class="pc">· 2 prochaines semaines</span></h2>
+    <div id="board"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>🔑 Clés annoncées <span class="pc" id="keysmeta"></span></h2>
+    <div id="keylist"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js?v=2026.09.083"></script>
+<script src="/static/i18n.js?v=2026.09.083"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jpost = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
+    body: b === undefined ? undefined : JSON.stringify(b) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+let msgT = null;
+function setMsg(txt, ok) { const m = $("#msg"); m.textContent = txt || ""; m.className = txt ? (ok ? "ok" : "err") : "";
+  clearTimeout(msgT); if (txt) msgT = setTimeout(() => { m.textContent = ""; m.className = ""; }, 4500); }
+
+const ROLE_ICON = { tank: "🛡️", heal: "💚", dps: "⚔️" };
+const roleIcons = (roles) => (roles || []).map(r => ROLE_ICON[r] || "").join("") || "•";
+const DAYS_N = 14;
+let POSTS = [], DUNGEONS = [], MY = { roles: [], slots: [], keys: [] }, CHARS = [];
+
+const dayList = () => { const out = [], d = new Date(); d.setHours(12, 0, 0, 0);
+  for (let i = 0; i < DAYS_N; i++) { const x = new Date(d); x.setDate(d.getDate() + i); out.push(x); } return out; };
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const shortDay = (d, i) => i === 0 ? "auj." : i === 1 ? "dem." : d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" }).replace(".", ".");
+const longDay = (d, i) => i === 0 ? "Aujourd'hui" : i === 1 ? "Demain"
+  : d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+function renderRoles() {
+  document.querySelectorAll("#roles .pill, .pill[data-role]").forEach(b =>
+    b.classList.toggle("on", MY.roles.includes(b.dataset.role)));
+}
+
+function renderSlots() {
+  const box = $("#slots");
+  const days = dayList();
+  if (!MY.slots.length) {
+    box.innerHTML = `<div class="empty">Aucun créneau — clique « ＋ Ajouter un créneau » (ex : vendredi et samedi soir).</div>`;
+    return;
+  }
+  box.innerHTML = MY.slots.map((s, si) => `<div class="slotrow">
+    <div class="days-grid">${days.map((d, i) =>
+      `<button class="dchip${s.days.includes(iso(d)) ? " on" : ""}" data-s="${si}" data-d="${iso(d)}">${shortDay(d, i)}</button>`).join("")}</div>
+    <span class="meta">de</span><input type="time" value="${esc(s.from || "20:00")}" data-sf="${si}">
+    <span class="meta">à</span><input type="time" value="${esc(s.to || "23:00")}" data-st="${si}">
+    <button class="mic" data-sdel="${si}" title="Retirer">✕</button>
+  </div>`).join("");
+  box.querySelectorAll("[data-d]").forEach(b => b.addEventListener("click", () => {
+    const s = MY.slots[+b.dataset.s], d = b.dataset.d;
+    const k = s.days.indexOf(d);
+    if (k >= 0) s.days.splice(k, 1); else s.days.push(d);
+    renderSlots();
+  }));
+  box.querySelectorAll("[data-sf]").forEach(x => x.addEventListener("change", () => { MY.slots[+x.dataset.sf].from = x.value; }));
+  box.querySelectorAll("[data-st]").forEach(x => x.addEventListener("change", () => { MY.slots[+x.dataset.st].to = x.value; }));
+  box.querySelectorAll("[data-sdel]").forEach(b => b.addEventListener("click", () => { MY.slots.splice(+b.dataset.sdel, 1); renderSlots(); }));
+}
+
+function renderKeys() {
+  const box = $("#keys");
+  if (!MY.keys.length) {
+    box.innerHTML = `<div class="empty">Aucune clé annoncée — ajoute-la si tu en as une (ex : Chamoisdort · +8 · Flèche de Coursevent).</div>`;
+    return;
+  }
+  const opts = ["", ...DUNGEONS.map(d => d.name)];
+  box.innerHTML = MY.keys.map((k, ki) => `<div class="keyrow">
+    <input list="mychars" placeholder="Perso" value="${esc(k.char)}" data-kc="${ki}" style="min-width:150px">
+    <select data-kd="${ki}" style="min-width:210px">${opts.map(n =>
+      `<option value="${esc(n)}"${n === k.dungeon ? " selected" : ""}>${n ? esc(n) : "— donjon —"}</option>`).join("")}</select>
+    <span class="meta">niveau</span>
+    <input type="number" min="2" max="40" value="${k.level || 2}" data-kl="${ki}" style="width:76px">
+    <button class="mic" data-kdel="${ki}" title="Retirer">✕</button>
+  </div>`).join("");
+  box.querySelectorAll("[data-kc]").forEach(x => x.addEventListener("input", () => { MY.keys[+x.dataset.kc].char = x.value; }));
+  box.querySelectorAll("[data-kd]").forEach(x => x.addEventListener("change", () => { MY.keys[+x.dataset.kd].dungeon = x.value; }));
+  box.querySelectorAll("[data-kl]").forEach(x => x.addEventListener("change", () => { MY.keys[+x.dataset.kl].level = parseInt(x.value || "2", 10) || 2; }));
+  box.querySelectorAll("[data-kdel]").forEach(b => b.addEventListener("click", () => { MY.keys.splice(+b.dataset.kdel, 1); renderKeys(); }));
+}
+
+function renderBoard() {
+  const box = $("#board");
+  const days = dayList();
+  const rows = [];
+  days.forEach((d, i) => {
+    const ds = iso(d), avs = [];
+    for (const p of POSTS) for (const s of (p.slots || []))
+      if ((s.days || []).includes(ds))
+        avs.push(`<div class="av${p.mine ? " mine" : ""}">${roleIcons(p.roles)} <b>${esc(p.name)}</b> <span class="meta">· ${esc(s.from || "?")}–${esc(s.to || "?")}</span></div>`);
+    if (avs.length)
+      rows.push(`<div class="day">${longDay(d, i)} <span class="n">· ${avs.length} dispo</span></div>${avs.join("")}`);
+  });
+  box.innerHTML = rows.length ? rows.join("")
+    : `<div class="empty">Aucune disponibilité annoncée pour les 2 prochaines semaines — sois le premier 😉</div>`;
+}
+
+function renderKeyList() {
+  const all = [];
+  for (const p of POSTS) for (const k of (p.keys || []))
+    all.push({ ...k, who: p.name, roles: p.roles, mine: p.mine });
+  all.sort((a, b) => (b.level || 0) - (a.level || 0));
+  $("#keysmeta").textContent = all.length ? `· ${all.length}` : "";
+  $("#keylist").innerHTML = all.length
+    ? all.map(k => `<div class="av${k.mine ? " mine" : ""}">${roleIcons(k.roles)} <b>${esc(k.char || "?")}</b> · contient une clé <span class="qty">+${fmt(k.level)}</span> ${esc(k.dungeon || "(donjon non précisé)")} <span class="meta">— ${esc(k.who)}</span></div>`).join("")
+    : `<div class="empty">Aucune clé annoncée pour le moment.</div>`;
+}
+
+async function save() {
+  // relecture défensive des champs (autofill / événement manqué)
+  document.querySelectorAll('[data-kc]').forEach(x => { MY.keys[+x.dataset.kc].char = x.value; });
+  document.querySelectorAll('[data-kd]').forEach(x => { MY.keys[+x.dataset.kd].dungeon = x.value; });
+  document.querySelectorAll('[data-kl]').forEach(x => { MY.keys[+x.dataset.kl].level = parseInt(x.value || '2', 10) || 2; });
+  document.querySelectorAll('[data-sf]').forEach(x => { MY.slots[+x.dataset.sf].from = x.value; });
+  document.querySelectorAll('[data-st]').forEach(x => { MY.slots[+x.dataset.st].to = x.value; });
+  try {
+    const r = await jpost("POST", "/api/mplus", { roles: MY.roles, slots: MY.slots, keys: MY.keys });
+    setMsg(r.deleted ? "Dispos retirées ✓" : "Dispos enregistrées ✓", true);
+    await load();
+  } catch (e) { setMsg(e.message, false); }
+}
+
+async function load() {
+  const d = await jget("/api/mplus");
+  POSTS = d.posts || [];
+  DUNGEONS = d.dungeons || [];
+  const mine = POSTS.find(p => p.mine);
+  MY = {
+    roles: mine ? [...(mine.roles || [])] : [],
+    slots: mine ? (mine.slots || []).map(s => ({ days: [...(s.days || [])], from: s.from, to: s.to })) : [],
+    keys: mine ? (mine.keys || []).map(k => ({ ...k })) : [],
+  };
+  CHARS = d.my_chars || [];
+  $("#mychars").innerHTML = CHARS.map(c => `<option value="${esc(c.name)}">`).join("");
+  $("#dunlist").innerHTML = DUNGEONS.map(x => `<option value="${esc(x.name)}">`).join("");
+  renderRoles(); renderSlots(); renderKeys(); renderBoard(); renderKeyList();
+}
+
+document.querySelectorAll(".pill[data-role]").forEach(b => b.addEventListener("click", () => {
+  const r = b.dataset.role, k = MY.roles.indexOf(r);
+  if (k >= 0) MY.roles.splice(k, 1); else MY.roles.push(r);
+  renderRoles();
+}));
+$("#addslot").addEventListener("click", () => {
+  MY.slots.push({ days: [iso(new Date())], from: "20:00", to: "23:00" });
+  renderSlots();
+});
+$("#addkey").addEventListener("click", () => {
+  const pref = CHARS.find(c => c.is_main) || CHARS[0] || {};
+  MY.keys.push({ char: pref.name || "", dungeon: "", level: 2 });
+  renderKeys();
+});
+$("#save").addEventListener("click", save);
+$("#clear").addEventListener("click", async () => {
+  if (!confirm("Retirer toutes tes dispos et tes clés ?")) return;
+  MY = { roles: [], slots: [], keys: [] };
+  await save();
+});
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  try { await load(); }
+  catch (e) { $("#board").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`; }
+})();
+</script>
+</body>
+</html>
