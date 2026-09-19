@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.105 - 2026-09-19
+
+### Added
+- Calendar: player names now use the in-game class colours (tank/heal/dps lists, unavailability lines and the officer player panel), from the character snapshots (localized FR/EN). Help updated.
+
 ## 2026.09.104 - 2026-09-19
 
 ### Added

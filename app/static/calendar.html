@@ -77,7 +77,7 @@
   .eb.on { border-color:var(--acc2); color:var(--acc2); font-weight:700; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.104">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.105">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -123,8 +123,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.104"></script>
-<script src="/static/i18n.js?v=2026.09.104"></script>
+<script src="/static/nav.js?v=2026.09.105"></script>
+<script src="/static/i18n.js?v=2026.09.105"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -157,6 +157,25 @@ function renderUnav(d) {
     `<div class="meta" style="padding:2px 0">🚫 <b style="color:var(--fg)">${esc(r.name)}</b> — ${perTxt(r)}</div>`).join("");
 }
 
+const CLASS_COLORS = {
+  "Chevalier de la mort": "#C41E3A", "Chasseur de démons": "#A330C9", "Druide": "#FF7C0A",
+  "Évocateur": "#33937F", "Chasseur": "#AAD372", "Mage": "#3FC7EB", "Moine": "#00FF98",
+  "Paladin": "#F48CBA", "Prêtre": "#FFFFFF", "Voleur": "#FFF468", "Chaman": "#0070DD",
+  "Démoniste": "#8788EE", "Guerrier": "#C69B6D",
+  DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+  Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+  Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D"
+};
+let GCAL_CLS = {};
+const clsOf = (n) => {
+  const k = String(n || "").toLowerCase();
+  return GCAL_CLS[k] || (k.includes("-") ? GCAL_CLS[k.slice(0, k.lastIndexOf("-"))] : "") || "";
+};
+const cName = (n) => {
+  const col = CLASS_COLORS[clsOf(n)];
+  return col ? `<span style="color:${col}">${esc(n)}</span>` : esc(n);
+};
+
 const ago = (ts) => { if (!ts) return "jamais"; const s = Math.max(0, Date.now() / 1000 - ts);
   if (s < 90) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`; return `il y a ${Math.floor(s / 86400)} j`; };
@@ -175,7 +194,7 @@ function playerRows(e) {
     const st = stOf(i), r = EDBOX.roles[i.n] || "", ov = EDBOX.ovr[i.n] || "";
     const sel = (v, lab) => `<option value="${v}"${r === v ? " selected" : ""}>${lab}</option>`;
     return `<div class="erow">
-      <span class="est">${SE[st]}</span><b>${esc(i.n)}</b>
+      <span class="est">${SE[st]}</span><b>${cName(i.n)}</b>
       <select data-rname="${esc(i.n)}">${sel("", "—")}${sel("tank", "🛡️ tank")}${sel("heal", "💚 heal")}${sel("dps", "⚔️ dps")}</select>
       <span class="ebtns">
         <button class="eb${ov === "ok" ? " on" : ""}" data-fname="${esc(i.n)}" data-fv="ok" title="Forcer présent">✅</button>
@@ -219,6 +238,7 @@ function renderGcal() {
     : "· aucun import pour le moment";
   renderUnav(d);
   GCAL_CAT = d.raid_catalog || { raids: [] };
+  GCAL_CLS = d.classes || {};
   const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
   const box = $("#glist");
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
@@ -227,7 +247,7 @@ function renderGcal() {
     const ROLES = mt.roles || {}, OVR = mt.ovr || {};
     const REMO = { tank: "🛡️", heal: "💚", dps: "⚔️" };
     const stOf = (i) => OVR[i.n] || (i.s === 1 || i.s === 3 ? "ok" : i.s === 8 ? "maybe" : i.s === 2 ? "no" : "wait");
-    const nmTxt = (n) => esc(n) + (ROLES[n] ? " " + (REMO[ROLES[n]] || "") : "") + (OVR[n] ? " (officier)" : "");
+    const nmTxt = (n) => cName(n) + (ROLES[n] ? " " + (REMO[ROLES[n]] || "") : "") + (OVR[n] ? " (officier)" : "");
     const c = { ok: 0, maybe: 0, no: 0, wait: 0 };
     const lists = { ok: [], maybe: [], no: [] }, wait = [];
     const rc2 = { tank: 0, heal: 0, dps: 0 };
@@ -250,8 +270,8 @@ function renderGcal() {
       ${line("✅", lists.ok)}${line("❓", lists.maybe)}${line("❌", lists.no)}
       ${wait.length ? `<span class="meta warn">⏳ sans réponse : ${wait.map(esc).join(", ")}</span>` : ""}
       ${(e.unav || []).map(u => u.conflict
-        ? `<span class="meta" style="color:var(--warn)">⚠️ ${esc(u.n)} — indispo mais a accepté le raid · ${perTxt(u)}</span>`
-        : `<span class="meta">🚫 ${esc(u.n)} · ${perTxt(u)}</span>`).join("")}
+        ? `<span class="meta" style="color:var(--warn)">⚠️ ${cName(u.n)} — indispo mais a accepté le raid · ${perTxt(u)}</span>`
+        : `<span class="meta">🚫 ${cName(u.n)} · ${perTxt(u)}</span>`).join("")}
       ${mTxt ? `<span class="meta">${mTxt}</span>` : ""}
       ${mt.bosses && mt.bosses.length ? `<span class="meta">⚔️ ${mt.bosses.map(esc).join(" · ")}</span>` : ""}
     </div>

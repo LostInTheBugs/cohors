@@ -3573,6 +3573,10 @@ def api_gcal_get(request: Request):
             "SELECT email, name FROM users").fetchall()}
         metas = {r["event_key"]: dict(r) for r in conn.execute(
             "SELECT event_key, data, updated, updated_by FROM gcal_meta").fetchall()}
+        class_rows = conn.execute(
+            "SELECT name, json_extract(data, '$.class') AS cfr, "
+            "json_extract(data, '$.class_en') AS cen FROM char_snapshots "
+            "WHERE id IN (SELECT MAX(id) FROM char_snapshots GROUP BY name)").fetchall()
     by_email: dict = {}
     for urow in unavails:
         by_email.setdefault(urow["email"], []).append(urow)
@@ -3635,8 +3639,17 @@ def api_gcal_get(request: Request):
         raid_catalog, _jts = bnet.journal_raids(_user_locale(request))
     except bnet.BnetError:
         raid_catalog = {"expansion": "", "raids": []}
+    en_loc = _user_locale(request).startswith("en")
+    classes: dict = {}
+    for cr in class_rows:
+        nmk = str(cr["name"] or "").strip().lower()
+        if not nmk or nmk in classes:
+            continue
+        cname = (cr["cen"] if en_loc else cr["cfr"]) or cr["cfr"] or ""
+        if cname:
+            classes[nmk] = cname
     return {"imported_at": row["ts"] if row else 0, "player": row["player"] if row else "",
-            "events": events, "raid_catalog": raid_catalog,
+            "events": events, "raid_catalog": raid_catalog, "classes": classes,
             "unavail": {"rows": urows, "counts": {"members": len(urows), "conflict": conflicts}}}
 
 
