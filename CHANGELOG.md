@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.115 - 2026-09-19
+
+### Changed
+- After logging in (or registering), the app now lands on the Dashboard instead of the Simulator page; opening /login while already signed in also redirects to the Dashboard. Custom ?next= destinations keep working.
+
 ## 2026.09.114 - 2026-09-19
 
 ### Fixed

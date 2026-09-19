@@ -947,7 +947,7 @@ def index(request: Request):
 @app.api_route("/login", methods=["GET", "HEAD"])
 def login_page(request: Request):
     if _get_session_user(request) is not None:
-        return RedirectResponse("/", status_code=302)
+        return RedirectResponse("/dashboard", status_code=302)
     return FileResponse(STATIC_DIR / "login.html")
 
 
