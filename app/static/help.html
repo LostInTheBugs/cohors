@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LOTP — Aide</title>
-<link rel="icon" href="/static/crest.png">
+<link rel="icon" href="/branding/logo">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#b1002e">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -44,13 +44,13 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.110">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.111">
 </head>
 <body class="wb">
 <div class="wrap">
   <header class="topbar">
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <img src="/branding/logo" alt="Lords of the Pit" class="crest">
       <div>
         <div class="brandname">LOTP <span>Aide</span></div>
         <div class="tagline">Toutes les fonctionnalités de l'application et comment s'en servir.</div>
@@ -86,6 +86,7 @@
       <a href="#addon">🧩 L'addon in-game</a><span class="dot">·</span>
       <a href="#guilde">🛡️ Guilde</a><span class="dot">·</span>
       <a href="#parametres">⚙️ Paramètres du compte</a><span class="dot">·</span>
+      <a href="#identite">🎨 Identité de la guilde</a><span class="dot">·</span>
       <a href="#bot">🤖 Le bot Discord</a><span class="dot">·</span>
       <a href="#faq">❓ Bon à savoir (FAQ)</a>
     </div>
@@ -278,6 +279,14 @@
     </ul>
   </section>
 
+  <section class="card" id="identite">
+    <h2>🎨 Identité de la guilde</h2>
+    <ul>
+      <li>Dans Administration → 🎨 Identité : change le logo, le nom de la guilde et le fond du site — pratique pour réutiliser le site avec une autre guilde.</li>
+      <li>Le logo sert aussi d'icône d'onglet et d'icône d'application (PWA) ; le fond peut être une couleur et/ou une image.</li>
+    </ul>
+  </section>
+
   <section class="card" id="bot">
     <h2>🤖 Le bot Discord</h2>
     <ul>
@@ -299,8 +308,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.110"></script>
-<script src="/static/i18n.js?v=2026.09.110"></script>
+<script src="/static/nav.js?v=2026.09.111"></script>
+<script src="/static/branding.js?v=2026.09.111"></script>
+<script src="/static/i18n.js?v=2026.09.111"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 (async () => {

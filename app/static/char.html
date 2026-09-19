@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LOTP — Personnage</title>
-<link rel="icon" href="/static/crest.png">
+<link rel="icon" href="/branding/logo">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#b1002e">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -96,13 +96,13 @@
   .evtab .wcl { color:var(--acc2); font-size:11px; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.110">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.111">
 </head>
 <body class="wb">
 <div class="wrap">
   <header class="topbar">
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <img src="/branding/logo" alt="Lords of the Pit" class="crest">
       <div>
         <div class="brandname">LOTP <span>Personnage</span></div>
         <div class="tagline">Détails d'un personnage de la guilde — équipement, succès, collections.</div>
@@ -129,8 +129,9 @@
 
   <footer>Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment · <span id="ver"></span></footer>
 </div>
-<script src="/static/nav.js?v=2026.09.110"></script>
-<script src="/static/i18n.js?v=2026.09.110"></script>
+<script src="/static/nav.js?v=2026.09.111"></script>
+<script src="/static/branding.js?v=2026.09.111"></script>
+<script src="/static/i18n.js?v=2026.09.111"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));

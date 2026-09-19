@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.111 - 2026-09-19
+
+### Added
+- Guild identity (white-labeling): admins can change the logo, the guild name (full + short) and the background (color and/or image) from Administration → 🎨 Identity. The logo (favicon, header, mobile drawer, PWA manifest) and the names apply everywhere, including the login page. Help updated.
+
 ## 2026.09.110 - 2026-09-19
 
 ### Changed
