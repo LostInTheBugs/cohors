@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.124 - 2026-09-19
+
+### Fixed
+- Gear advice (BiS mode): remaining French fragments translated in English mode.
+
 ## 2026.09.123 - 2026-09-19
 
 ### Added

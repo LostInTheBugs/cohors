@@ -1104,6 +1104,9 @@
     [/— les meilleures pièces de la saison, comparées à ce que tu portes\. Le build et le contenu ne changent pas cette liste\./g, "— the season's best items, compared to what you wear. The build and content do not change this list."],
     [/🎒 dans tes sacs/g, "🎒 in your bags"],
     [/Il te manque /g, "You are missing "],
+    [/pièce\(s\) BIS/g, "BiS item(s)"],
+    [/(\d+) pièce\(s\) déjà en poche sur (\d+)/g, "$1 item(s) already owned out of $2"],
+    [/Il te manque /g, "You are missing "],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
