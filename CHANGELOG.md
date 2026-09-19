@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.101 - 2026-09-19
+
+### Changed
+- Calendar page: now keeps only the in-game calendar card, renamed "🗓️ Upcoming raids" (raid creation/invites happen in-game only — the in-app create/signup cards are gone). Player unavailabilities moved here: each upcoming raid flags invitees who declared an unavailability, plus a 14-day list of declared periods (⚠️ accepted but unavailable).
+- Raid preparation: the 🚫 unavailability card is gone (now on the calendar page).
+
 ## 2026.09.100 - 2026-09-19
 
 ### Changed

@@ -63,7 +63,7 @@
   code { background:var(--card2); border:1px solid var(--line); border-radius:6px; padding:0 5px; font-size:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.100">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.101">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -72,7 +72,7 @@
       <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
       <div>
         <div class="brandname">LOTP <span>Calendrier</span></div>
-        <div class="tagline">Prochains raids et présences — réponds en un clic.</div>
+        <div class="tagline">Raids planifiés dans le jeu (addon LOTP) et indisponibilités des joueurs.</div>
       </div>
     </div>
     <div class="userbox">
@@ -83,25 +83,8 @@
   </header>
   <nav class="tabs" id="navmain"></nav>
 
-  <div class="card hidden" id="plan-card">
-    <h2>➕ Créer un raid</h2>
-    <div class="row">
-      <input type="text" id="r-title" placeholder="Raid de guilde" maxlength="120" style="min-width:220px">
-      <input type="datetime-local" id="r-start">
-      <input type="number" id="r-dur" value="180" min="15" max="720" step="15" title="Durée (min)" style="width:110px">
-      <input type="text" id="r-note" placeholder="Note (optionnelle)" maxlength="300" style="min-width:220px">
-      <button id="r-create">➕ Créer le raid</button>
-      <span id="r-msg"></span>
-    </div>
-  </div>
-
   <div class="card">
-    <h2>🗓️ Prochains raids</h2>
-    <div id="list"><div class="empty">Chargement…</div></div>
-  </div>
-
-  <div class="card">
-    <h2>🧩 Calendrier in-game <span class="meta" id="gmeta" style="color:var(--mut);font-size:12.5px;font-weight:400"></span></h2>
+    <h2>🗓️ Prochains raids <span class="meta" id="gmeta" style="color:var(--mut);font-size:12.5px;font-weight:400"></span></h2>
     <div class="row" style="margin-bottom:6px">
       <button class="small ghost" id="gdl">⬇️ Télécharger l'addon (zip)</button>
       <span class="meta" style="color:var(--mut);font-size:12.5px">En jeu : /lotp → « Exporter » → colle la chaîne ci-dessous (ou importe le fichier SavedVariables/LOTP.lua).</span>
@@ -118,17 +101,16 @@
       <div id="gmsg" class="meta"></div>
     </div>
     <div id="glist"><div class="empty">Chargement…</div></div>
-  </div>
-
-  <div class="card">
-    <h2>🕓 Raids passés</h2>
-    <div id="past"><div class="empty">Chargement…</div></div>
+    <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="meta" style="color:var(--fg);font-weight:700;font-size:13.5px">🚫 Indisponibilités déclarées — 14 prochains jours <span style="font-weight:400">(déclarées dans 🙋 Moi → 🚫 Mes indispos)</span></div>
+      <div id="unavlist" style="margin-top:4px"><div class="empty">Chargement…</div></div>
+    </div>
   </div>
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.100"></script>
-<script src="/static/i18n.js?v=2026.09.100"></script>
+<script src="/static/nav.js?v=2026.09.101"></script>
+<script src="/static/i18n.js?v=2026.09.101"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -144,48 +126,20 @@ const dateTxt = (ms) => new Date(ms * 1000).toLocaleDateString("fr-FR", { weekda
 
 function setMsg(sel, t, ok) { const e = $(sel); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; }
 
-let CAN_PLAN = false;
-
-function renderRaids(d) {
-  const box = $("#list");
-  if (!d.raids.length) { box.innerHTML = `<div class="empty">Aucun raid prévu pour le moment.</div>`; }
-  else box.innerHTML = d.raids.map(r => {
-    const n = r.names;
-    const lines = ["yes", "maybe", "no"]
-      .filter(k => n[k] && n[k].length)
-      .map(k => `<span class="meta">${k === "yes" ? "✅" : k === "maybe" ? "❓" : "❌"} ${n[k].map(esc).join(", ")}</span>`).join("");
-    const btn = (s, label) => `<button class="small ghost${r.mine === s ? " act" : ""}" data-s="${s}" data-id="${r.id}">${label}</button>`;
-    return `<div class="item">
-      <div class="main">
-        <span class="name">${esc(r.title)}</span>
-        <span class="meta">${dateTxt(r.starts)} · ${r.duration_min} min · par ${esc(r.created_by || "—")}</span>
-        ${r.note ? `<span class="meta">${esc(r.note)}</span>` : ""}
-        ${lines}
-      </div>
-      <span class="badge">✅ ${r.counts.yes} · ❓ ${r.counts.maybe} · ❌ ${r.counts.no}</span>
-      <span style="flex:1"></span>
-      ${btn("yes", "✅ Présent")} ${btn("maybe", "❓ Peut-être")} ${btn("no", "❌ Absent")}
-      ${CAN_PLAN ? `<button class="small danger" data-del="${r.id}" title="Supprimer ce raid">🗑</button>` : ""}
-    </div>`;
-  }).join("");
-  box.querySelectorAll("button[data-s]").forEach(b => b.addEventListener("click", async () => {
-    const same = b.classList.contains("act");
-    try { await jpost("POST", `/api/raids/${b.dataset.id}/signup`, { status: same ? "" : b.dataset.s }); load(); }
-    catch (e) { setMsg("#r-msg", e.message, false); }
-  }));
-  box.querySelectorAll("button[data-del]").forEach(b => b.addEventListener("click", async () => {
-    if (!confirm("Supprimer ce raid ?")) return;
-    try { await jpost("DELETE", `/api/raids/${b.dataset.del}`); load(); }
-    catch (e) { setMsg("#r-msg", e.message, false); }
-  }));
-  const past = $("#past");
-  if (!d.past.length) past.innerHTML = `<div class="empty">Aucun raid passé.</div>`;
-  else past.innerHTML = d.past.map(r =>
-    `<div class="item"><div class="main"><span class="meta">${dateTxt(r.starts)} · <b>${esc(r.title)}</b></span></div></div>`).join("");
-}
-
 // ---- 🧩 Calendrier in-game (addon LOTP)
 let GCAL = null, CAN_IMP = false;
+
+const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
+const perTxt = (r) => (r.periods || []).map(x =>
+  fmtDay(x.from) + (x.to !== x.from ? " → " + fmtDay(x.to) : "") + (x.note ? ` (${esc(x.note)})` : "")).join(", ");
+
+function renderUnav(d) {
+  const rows = ((d || {}).unavail || {}).rows || [];
+  const box = $("#unavlist");
+  if (!rows.length) { box.innerHTML = `<div class="empty">Aucune indisponibilité déclarée pour les 14 prochains jours.</div>`; return; }
+  box.innerHTML = rows.map(r =>
+    `<div class="meta" style="padding:2px 0">🚫 <b style="color:var(--fg)">${esc(r.name)}</b> — ${perTxt(r)}</div>`).join("");
+}
 
 const ago = (ts) => { if (!ts) return "jamais"; const s = Math.max(0, Date.now() / 1000 - ts);
   if (s < 90) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
@@ -201,6 +155,7 @@ function renderGcal() {
   $("#gmeta").textContent = d.imported_at
     ? `· importé ${ago(d.imported_at)} par ${d.player || "?"}`
     : "· aucun import pour le moment";
+  renderUnav(d);
   const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
   const box = $("#glist");
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
@@ -219,8 +174,11 @@ function renderGcal() {
       <span class="meta">${e.ts ? dateTxt(e.ts) : esc(e.date || "")}</span>
       ${line("✅", lists.ok)}${line("❓", lists.maybe)}${line("❌", lists.no)}
       ${wait.length ? `<span class="meta warn">⏳ sans réponse : ${wait.map(esc).join(", ")}</span>` : ""}
+      ${(e.unav || []).map(u => u.conflict
+        ? `<span class="meta" style="color:var(--warn)">⚠️ ${esc(u.n)} — indispo mais a accepté le raid · ${perTxt(u)}</span>`
+        : `<span class="meta">🚫 ${esc(u.n)} · ${perTxt(u)}</span>`).join("")}
     </div>
-    <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}</span>
+    <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}${(e.unav || []).length ? ` · 🚫 ${e.unav.length}` : ""}</span>
     ${wait.length && CAN_IMP ? `<button class="small ghost" data-rel="${e.id}">📣 Relancer</button>` : ""}
     </div>`;
   }).join("");
@@ -255,37 +213,6 @@ $("#gbtn-text").addEventListener("click", () => {
   gcalImport(t);
 });
 
-async function load() {
-  try {
-    const d = await jget("/api/raids");
-    CAN_PLAN = !!d.can_plan;
-    renderRaids(d);
-  } catch (e) { $("#list").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
-}
-
-function toLocalInput(d) {
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-$("#r-create").addEventListener("click", async () => {
-  const start = $("#r-start").value;
-  if (!start) { setMsg("#r-msg", "Choisis une date et une heure.", false); return; }
-  const ms = new Date(start).getTime();
-  if (!ms) { setMsg("#r-msg", "Date invalide.", false); return; }
-  $("#r-create").disabled = true;
-  try {
-    await jpost("POST", "/api/raids", {
-      title: $("#r-title").value.trim(), starts: ms / 1000,
-      duration_min: parseInt($("#r-dur").value || "180", 10), note: $("#r-note").value.trim(),
-    });
-    setMsg("#r-msg", "Raid créé ✓", true);
-    $("#r-title").value = ""; $("#r-note").value = "";
-    load();
-  } catch (e) { setMsg("#r-msg", e.message, false); }
-  $("#r-create").disabled = false;
-});
-
 $("#logout").addEventListener("click", async (ev) => {
   ev.preventDefault();
   await fetch("/api/logout", { method: "POST" });
@@ -298,15 +225,11 @@ $("#logout").addEventListener("click", async (ev) => {
     $("#who").textContent = me.name || me.email;
     if (me.is_admin || me.role === "officer") {
       $("#admin-link").classList.remove("hidden");
-      $("#plan-card").classList.remove("hidden");
       CAN_IMP = true;
       $("#gimport").classList.remove("hidden");
     }
   } catch (e) { location.href = "/login"; return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-  const d = new Date(); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 2);
-  $("#r-start").value = toLocalInput(d);
-  load();
   loadGcal();
 })();
 </script>

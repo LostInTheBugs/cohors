@@ -3479,17 +3479,71 @@ def api_addon(request: Request):
 
 @app.get("/api/gcal")
 def api_gcal_get(request: Request):
-    """Dernier import du calendrier in-game (addon)."""
+    """Dernier import du calendrier in-game (addon) + croisement avec les indispos."""
     _require_user(request)
     with _db_lock, _db() as conn:
         row = conn.execute("SELECT ts, player, data FROM gcal_import WHERE id=1").fetchone()
+        unavails = [dict(r) for r in conn.execute(
+            "SELECT email, day_from, day_to, note FROM unavails ORDER BY day_from").fetchall()]
+        links = {r["name"]: r["user_email"] for r in conn.execute(
+            "SELECT user_email, name FROM char_links").fetchall()}
+        unames = {(r["name"] or "").lower(): r["email"] for r in conn.execute(
+            "SELECT email, name FROM users WHERE active=1").fetchall()}
+        uname_by_email = {r["email"]: (r["name"] or r["email"]) for r in conn.execute(
+            "SELECT email, name FROM users").fetchall()}
+    by_email: dict = {}
+    for urow in unavails:
+        by_email.setdefault(urow["email"], []).append(urow)
     if row is None:
-        return {"imported_at": 0, "player": "", "events": []}
-    try:
-        data = json.loads(row["data"])
-    except ValueError:
-        data = {}
-    return {"imported_at": row["ts"], "player": row["player"], "events": data.get("events") or []}
+        events = []
+    else:
+        try:
+            data = json.loads(row["data"])
+        except ValueError:
+            data = {}
+        events = data.get("events") or []
+    status_map = {1: "ok", 3: "ok", 2: "no", 8: "maybe"}
+    conflicts = 0
+    for e in events:
+        rows = []
+        try:
+            ts = float(e.get("ts") or 0)
+        except (TypeError, ValueError):
+            ts = 0
+        if ts > 0:
+            day = _snap_day(ts)
+            for mem in (e.get("inv") or []):
+                nm = str(mem.get("n") or "").strip()
+                if not nm:
+                    continue
+                owner = links.get(nm.lower()) or unames.get(nm.lower())
+                periods = [x for x in by_email.get(owner, [])
+                           if x["day_from"] <= day <= x["day_to"]] if owner else []
+                if not periods:
+                    continue
+                st = status_map.get(mem.get("s"), "wait")
+                conf = st == "ok"
+                if conf:
+                    conflicts += 1
+                rows.append({"n": nm, "status": st, "conflict": conf,
+                             "periods": [{"from": x["day_from"], "to": x["day_to"], "note": x["note"] or ""}
+                                         for x in periods]})
+        rows.sort(key=lambda r: (not r["conflict"], r["n"].casefold()))
+        e["unav"] = rows
+        e["unav_conflicts"] = sum(1 for r in rows if r["conflict"])
+    today = _snap_day()
+    limit = _snap_day(time.time() + 14 * 86400)
+    urows = []
+    for email, periods in by_email.items():
+        ps = [x for x in periods if x["day_to"] >= today and x["day_from"] <= limit]
+        if ps:
+            urows.append({"name": uname_by_email.get(email, email),
+                          "periods": [{"from": x["day_from"], "to": x["day_to"], "note": x["note"] or ""}
+                                      for x in ps]})
+    urows.sort(key=lambda r: r["periods"][0]["from"])
+    return {"imported_at": row["ts"] if row else 0, "player": row["player"] if row else "",
+            "events": events,
+            "unavail": {"rows": urows, "counts": {"members": len(urows), "conflict": conflicts}}}
 
 
 # ---------------------------------------------------------------------------
