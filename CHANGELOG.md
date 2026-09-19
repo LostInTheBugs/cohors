@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.084 - 2026-09-19
+
+### Added
+- Help page brought up to date with everything shipped since v052: new sections « ⭐ Mains & alts », « 🔨 Artisanat », « 🧪 Préparation de raid », « ⚔️ MM+ » and « 🧩 The in-game addon » (guild calendar + recipe exports), plus new notes in the existing sections (character-sheet selector, Evolution curve / gear comparison / weak slots, « Dispo pour jouer », attendance, progression, dashboard « Prochain raid » tile, in-game calendar import + « Relancer », character alerts and weekly recap, mobile install tip).
+
+### Changed
+- i18n: 32 new EN entries (all the new help content; `MM+` now reads « Mythic+ » in English), and the dead dictionary key containing inline `<b>` tags was replaced by the real DOM fragments so the wishlist bullet now translates.
+
+### Fixed
+- Help page: « Succès fun » bullets and the wishlist note were not translated to English.
+
 ## 2026.09.083 - 2026-09-19
 
 ### Added
