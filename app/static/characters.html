@@ -104,7 +104,7 @@
   .extras { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 4px; }
   .xchip { border:1px solid var(--line); border-radius:999px; padding:3px 12px; font-size:12.5px; background:var(--card2,#182130); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.088">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.089">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -144,14 +144,6 @@
   </div>
 
   <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <b>🪪 Tes personnages</b>
-      <span class="meta">Liaison, ⭐ main, recettes, statistiques et alertes MM+ : tout se gère dans la section <a class="hlink" href="/mespersos">🙋 Moi</a>.</span>
-    </div>
-    <div id="mymsg" class="meta" style="margin-top:6px"></div>
-  </div>
-
-  <div class="card">
     <div class="row">
       <input type="search" id="srch" placeholder="Rechercher un personnage…">
       <label class="chkline"><input type="checkbox" id="f90"> Niveau max (90) uniquement</label>
@@ -159,6 +151,7 @@
       <span class="meta" id="rmeta">Chargement…</span>
       <button class="ghost" id="refresh" title="Refetch des données (max 1×/min)">⟳ Actualiser</button>
     </div>
+    <div id="mymsg" class="meta" style="margin-top:6px"></div>
   </div>
 
   <div class="card">
@@ -179,8 +172,8 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.088"></script>
-<script src="/static/i18n.js?v=2026.09.088"></script>
+<script src="/static/nav.js?v=2026.09.089"></script>
+<script src="/static/i18n.js?v=2026.09.089"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));

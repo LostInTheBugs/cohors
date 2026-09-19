@@ -793,7 +793,6 @@
  "La section « 🙋 Moi » regroupe des pages dédiées : 🪪 Mes personnages (liaison, ⭐ main), 📖 Mes recettes, 📊 Mes statistiques, 🔔 Alertes MM+ — plus 🎯 Ma wishlist.": "The « 🙋 Me » section gathers dedicated pages: 🪪 My characters (linking, ⭐ main), 📖 My recipes, 📊 My statistics, 🔔 Mythic+ alerts — plus 🎯 My wishlist.",
  "🔔 Alertes MM+ : choisis un donjon (ou tous les donjons) et un niveau minimum — dès que quelqu'un annonce une clé correspondante dans ⚔️ MM+, tu reçois une notification sur la page Alertes MM+ (badge dans le menu).": "🔔 Mythic+ alerts: pick a dungeon (or any dungeon) and a minimum level — as soon as someone announces a matching key on ⚔️ Mythic+, you get a notification on the Alerts page (menu badge).",
  "📊 Tes statistiques : iLvl (équipé et moyen), présence aux soirées de raid, recettes déclarées et dernière connexion, pour chacun de tes personnages.": "📊 Your statistics: item level (equipped and average), raid evening attendance, declared recipes and last login, for each of your characters.",
- "Liaison, ⭐ main, recettes, statistiques et alertes MM+ : tout se gère dans la section": "Linking, ⭐ main, recipes, statistics and Mythic+ alerts: everything lives in the",
  "📖 Recettes de tes métiers (sélection dans la liste du jeu ou import d'addon) : page": "📖 Your characters' recipes (tick from the in-game list or import your addon export): page",
  "— elles apparaissent dans « Qui peut crafter quoi ».": "— they show up in « Who can craft what ».",
  "Mes personnages": "My characters",

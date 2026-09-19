@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.089 - 2026-09-19
+
+### Changed
+- Characters page: the "🪪 Your characters" info card is removed — the roster card keeps a discreet status line for the inline link button; character management lives in the 🙋 Me section (`/mespersos`).
+
 ## 2026.09.088 - 2026-09-19
 
 ### Changed
