@@ -983,7 +983,28 @@
  "🔴 erreur": "🔴 error",
  "dernier passage": "last run",
  "Réglages enregistrés ✓": "Settings saved ✓",
- "<li><b>Synchronisations (administration)</b> : la cadence des tâches automatiques — relevés des personnages (niveau, équipement, métiers) et passages du bot Discord — se règle dans <i>Paramètres → Administration → 🔄 Synchronisations</i> : intervalle, fréquence de re-relevé (personnages liés / roster), nombre de personnages par passage, durée de conservation de l'historique. La page affiche l'heure du dernier passage et un bouton <b>▶ Lancer maintenant</b>. Un intervalle plus court = davantage d'appels API ; la conservation reste limitée à 30 jours (conditions Blizzard).</li>": "<li><b>Sync jobs (administration)</b>: the cadence of automatic tasks — character snapshots (level, gear, professions) and Discord bot runs — is set in <i>Settings → Administration → 🔄 Sync jobs</i>: interval, re-snapshot frequency (linked chars / roster), characters per run, history retention. The page shows the last run time and a <b>▶ Run now</b> button. A shorter interval means more API calls; retention stays capped at 30 days (Blizzard terms).</li>"
+ "<li><b>Synchronisations (administration)</b> : la cadence des tâches automatiques — relevés des personnages (niveau, équipement, métiers) et passages du bot Discord — se règle dans <i>Paramètres → Administration → 🔄 Synchronisations</i> : intervalle, fréquence de re-relevé (personnages liés / roster), nombre de personnages par passage, durée de conservation de l'historique. La page affiche l'heure du dernier passage et un bouton <b>▶ Lancer maintenant</b>. Un intervalle plus court = davantage d'appels API ; la conservation reste limitée à 30 jours (conditions Blizzard).</li>": "<li><b>Sync jobs (administration)</b>: the cadence of automatic tasks — character snapshots (level, gear, professions) and Discord bot runs — is set in <i>Settings → Administration → 🔄 Sync jobs</i>: interval, re-snapshot frequency (linked chars / roster), characters per run, history retention. The page shows the last run time and a <b>▶ Run now</b> button. A shorter interval means more API calls; retention stays capped at 30 days (Blizzard terms).</li>",
+ "✉️ E-mail (SMTP)": "✉️ E-mail (SMTP)",
+ "Serveur d'envoi des e-mails du site (invitations). Les valeurs enregistrées ici remplacent celles du serveur ; la connexion est vérifiée à l'enregistrement. Sans configuration, les invitations restent possibles en copiant le lien.": "The site's outgoing mail server (invitations). Values saved here override the server ones; the connection is verified on save. Without any configuration, invitations still work by copying the link.",
+ "Serveur d'envoi": "Mail server",
+ "Serveur": "Server ",
+ "Identifiant": "Username ",
+ "Expéditeur": "Sender ",
+ "Sécurité": "Security",
+ "défaut : l'identifiant": "default: the username",
+ "défaut : domaine de l'expéditeur": "default: sender's domain",
+ "🟢 Configurée (ici)": "🟢 Configured (here)",
+ "Vérification de la connexion…": "Checking the connection…",
+ "Configuration e-mail enregistrée ✓": "E-mail settings saved ✓",
+ "Retirer ces réglages ? Le site utilisera le serveur configuré dans le fichier serveur, s'il existe.": "Remove these settings? The site will use the server configured in the server file, if any.",
+ "Réglages retirés": "Settings removed",
+ "Envoyer un test à": "Send a test to ",
+ "✉️ Envoyer le test": "✉️ Send the test",
+ "Indique une adresse.": "Enter an address.",
+ "Envoi…": "Sending…",
+ "Le mot de passe n'est jamais réaffiché (seuls les 4 derniers caractères). Le message de test part avec le nom de la guilde défini dans": "The password is never displayed again (only the last 4 characters). The test message is sent with the guild name set in",
+ "Aucun serveur configuré : les invitations utilisent le lien à copier.": "No server configured: invitations use the copy-link fallback.",
+ "<li><b>E-mail / SMTP (administration)</b> : l'envoi des e-mails du site (invitations) se règle dans <i>Paramètres → Administration → ✉️ E-mail (SMTP)</i> — serveur, port, sécurité (STARTTLS / SSL / aucune), identifiant, mot de passe, expéditeur. La connexion est vérifiée à l'enregistrement et un <b>e-mail de test</b> peut être envoyé. Sans configuration SMTP, les invitations restent utilisables via le lien à copier.</li>": "<li><b>E-mail / SMTP (administration)</b>: outgoing site e-mails (invitations) are configured in <i>Settings → Administration → ✉️ E-mail (SMTP)</i> — server, port, security (STARTTLS / SSL / none), username, password, sender. The connection is verified on save and a <b>test e-mail</b> can be sent. Without SMTP configuration, invitations still work through the copy-link fallback.</li>"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

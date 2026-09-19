@@ -187,6 +187,15 @@ def _init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS mail_config (
+                key     TEXT PRIMARY KEY,
+                value   TEXT NOT NULL DEFAULT '',
+                updated REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS job_status (
                 slug     TEXT PRIMARY KEY,
                 last_run REAL NOT NULL DEFAULT 0,
@@ -1038,6 +1047,10 @@ async def _lifespan(_app: FastAPI):
     _init_db()
     _apply_api_keys()
     _bootstrap_admin()
+    try:
+        _apply_mail_config()
+    except sqlite3.Error as exc:
+        print(f"[mail] config: {exc}")
     threading.Thread(target=_worker_loop, daemon=True, name="sim-worker").start()
     threading.Thread(target=_bot_loop, daemon=True, name="discord-bot").start()
     threading.Thread(target=_snap_loop, daemon=True, name="char-snap").start()
@@ -3542,8 +3555,9 @@ def admin_create_invite(payload: InviteRequest, request: Request):
     mail_result = None
     if payload.send_email and email:
         try:
-            text, html = mailer.invite_mail(_invite_link(token), INVITE_TTL_DAYS)
-            mailer.send_mail(email, "Invitation — LOTP Simulateur", text, html)
+            ident = _brand_identity()
+            text, html = mailer.invite_mail(_invite_link(token), INVITE_TTL_DAYS, **ident)
+            mailer.send_mail(email, f"Invitation — {ident['short_name'] or ident['guild_name']}", text, html)
             mail_result = {"sent": True, "to": email}
         except mailer.MailError as exc:
             mail_result = {"sent": False, "error": str(exc)}
@@ -3562,8 +3576,9 @@ def admin_send_invite(token: str, request: Request):
     if not r["email"]:
         raise HTTPException(400, "Cette invitation est un lien libre (sans e-mail).")
     try:
-        text, html = mailer.invite_mail(_invite_link(token), INVITE_TTL_DAYS)
-        mailer.send_mail(r["email"], "Invitation — LOTP Simulateur", text, html)
+        ident = _brand_identity()
+        text, html = mailer.invite_mail(_invite_link(token), INVITE_TTL_DAYS, **ident)
+        mailer.send_mail(r["email"], f"Invitation — {ident['short_name'] or ident['guild_name']}", text, html)
     except mailer.MailError as exc:
         raise HTTPException(502, str(exc))
     return {"ok": True, "sent_to": r["email"]}
@@ -4466,6 +4481,36 @@ def _snap_tick_job() -> None:
                                             f'{res.get("profs", 0)} métier(s)')
     except Exception as exc:  # noqa: BLE001
         _job_status_set("snapshots", error=str(exc))
+
+
+# ---------------------------------------------------------------------------
+# E-mail (SMTP) — réglages de l'administration ; prioritaires sur l'environnement
+# ---------------------------------------------------------------------------
+MAIL_KEYS = ("host", "port", "mode", "user", "password", "sender", "helo")
+
+
+def _mail_rows() -> dict:
+    with _db_lock, _db() as conn:
+        return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM mail_config").fetchall()}
+
+
+def _apply_mail_config() -> None:
+    """Applique les réglages SMTP enregistrés (sinon retour aux variables d'environnement)."""
+    rows = _mail_rows()
+    mailer.set_config(rows if rows.get("host") and rows.get("user") else None)
+
+
+def _brand_identity() -> dict:
+    """Identité de guilde pour les e-mails et métadonnées (nom, nom court, adresse du site)."""
+    name, short = "la guilde", ""
+    try:
+        with _db_lock, _db() as conn:
+            row = _brand_row(conn)
+        name = (row["guild_name"] or "").strip() or "la guilde"
+        short = (row["guild_short"] or "").strip()
+    except sqlite3.Error:
+        pass
+    return {"guild_name": name, "short_name": short, "base_url": PUBLIC_BASE_URL}
 
 
 def _api_keys_rows() -> dict:
@@ -6073,6 +6118,94 @@ def api_gcal_relance(event_id: int, request: Request):
     except discord_bot.DiscordError as exc:
         raise HTTPException(400, f"Discord — {exc}")
     return {"ok": True, "count": len(waiting)}
+
+
+@app.get("/api/admin/mail")
+def admin_mail_get(request: Request):
+    _require_admin(request)
+    rows = _mail_rows()
+    cfg = mailer._config()
+    env_ok = bool(os.environ.get("SMTP_HOST", "").strip() and os.environ.get("SMTP_USER", "").strip())
+    src = "admin" if (rows.get("host") and rows.get("user")) else ("env" if env_ok else "")
+    pw = rows.get("password") or ""
+    return {
+        "config": {k: rows.get(k, "") for k in MAIL_KEYS},
+        "password_hint": ("•" * 6 + pw[-4:]) if len(pw) >= 4 else ("•" * len(pw) if pw else ""),
+        "configured": cfg is not None,
+        "source": src,
+        "env_available": env_ok,
+        "effective": {"host": (cfg or {}).get("host", ""), "port": (cfg or {}).get("port", ""),
+                      "mode": (cfg or {}).get("mode", ""), "sender": (cfg or {}).get("sender", "")},
+    }
+
+
+class MailConfigRequest(BaseModel):
+    values: dict[str, str] = {}
+    clear: bool = False
+
+
+@app.post("/api/admin/mail")
+def admin_mail_save(payload: MailConfigRequest, request: Request):
+    _require_admin(request)
+    if payload.clear:
+        with _db_lock, _db() as conn:
+            conn.execute("DELETE FROM mail_config")
+        _apply_mail_config()
+        return {"ok": True, "cleared": True}
+    values = {k: str(v).strip() for k, v in (payload.values or {}).items() if k in MAIL_KEYS}
+    if not values:
+        raise HTTPException(400, "Aucune valeur à enregistrer.")
+    rows = dict(_mail_rows())
+    if values.get("password", None) == "":
+        values.pop("password")  # mot de passe vide = inchangé
+    rows.update(values)
+    if not (rows.get("host") and rows.get("user")):
+        raise HTTPException(400, "Serveur et identifiant sont obligatoires.")
+    try:
+        port = int(rows.get("port") or 587)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Port invalide.")
+    if not (1 <= port <= 65535):
+        raise HTTPException(400, "Port entre 1 et 65535.")
+    mode = (rows.get("mode") or "starttls").lower()
+    if mode not in ("starttls", "ssl", "none"):
+        raise HTTPException(400, "Mode de sécurité inconnu.")
+    res = mailer.check(rows.get("host", ""), port, mode, rows.get("user", ""),
+                       rows.get("password", ""), rows.get("sender", ""), rows.get("helo", ""))
+    if not res["ok"]:
+        raise HTTPException(400, f"SMTP — {res['detail']}")
+    rows["port"] = str(port)
+    rows["mode"] = mode
+    with _db_lock, _db() as conn:
+        for k, v in rows.items():
+            conn.execute("INSERT OR REPLACE INTO mail_config (key, value, updated) VALUES (?,?,?)",
+                         (k, v, time.time()))
+    _apply_mail_config()
+    return {"ok": True, "test": res["detail"]}
+
+
+class MailTestRequest(BaseModel):
+    to: str = Field(..., max_length=200)
+
+
+@app.post("/api/admin/mail/test")
+def admin_mail_test(payload: MailTestRequest, request: Request):
+    _require_admin(request)
+    to = payload.to.strip()
+    if "@" not in to or " " in to or len(to) < 6:
+        raise HTTPException(400, "Adresse e-mail invalide.")
+    ident = _brand_identity()
+    title = f"{ident['short_name'] or ident['guild_name']} Simulateur"
+    try:
+        mailer.send_mail(to, f"Test — {title}",
+                         f"Ceci est un e-mail de test envoyé depuis {title} "
+                         f"({ident['base_url'] or 'le site'}).\n\n"
+                         "Si tu reçois ce message, la configuration SMTP fonctionne.",
+                         f"<p>Ceci est un e-mail de test envoyé depuis <b>{title}</b>.</p>"
+                         "<p>Si tu reçois ce message, la configuration SMTP fonctionne.</p>")
+    except mailer.MailError as exc:
+        return {"ok": False, "detail": str(exc)}
+    return {"ok": True, "detail": f"E-mail de test envoyé à {to}."}
 
 
 @app.get("/api/admin/jobs")

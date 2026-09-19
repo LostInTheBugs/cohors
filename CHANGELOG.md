@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.135 - 2026-09-19
+
+### Added
+- Administration: SMTP is now configurable (Settings -> Administration -> E-mail (SMTP)): server, port, security (STARTTLS/SSL/none), username, password, sender, HELO. Connection checked on save, test e-mail button.
+
+### Changed
+- Invitation e-mails now use the guild identity (name, short name, site URL) instead of hardcoded text.
+
 ## 2026.09.134 - 2026-09-19
 
 ### Fixed
