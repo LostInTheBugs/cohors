@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.099 - 2026-09-19
+
+### Removed
+- Raid preparation: the officer "⚙️ House recipes & catalogue" section is gone — the recipe search field (jump to any of the ~1000 in-game recipes, guild-filter and materials preview) covers browsing, and guild imports live in 🙋 Moi → 📖 Mes recettes. House recipes already saved keep working (resolution priority unchanged); the ⚠️ hint now points to the addon export path.
+
 ## 2026.09.098 - 2026-09-19
 
 ### Added

@@ -108,7 +108,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.098">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.099">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -172,24 +172,6 @@
       <div class="row" style="margin-top:6px">
         <span class="meta" id="gsyncmeta"></span>
       </div>
-      <details id="advbox" style="margin-top:10px">
-        <summary class="meta" style="cursor:pointer;font-size:13px">⚙️ Recettes maison &amp; catalogue (officier)</summary>
-        <div class="row" style="margin-top:8px">
-          <input id="catq" placeholder="Rechercher un objet connu des artisans…" style="min-width:240px">
-          <select id="catsrc"><option value="game">🎮 Jeu · 2 dernières extensions</option><option value="guild">👥 Artisans de la guilde</option></select>
-          <span class="meta" id="catmeta"></span>
-        </div>
-        <div id="catlist"></div>
-        <div class="meta" id="reclbl" style="margin-top:10px">Vos recettes de préparation (reprises dans le plan) :</div>
-        <div id="reclistbox" style="margin-top:4px"></div>
-        <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
-          <div class="row" style="align-items:flex-start">
-            <input id="rname" placeholder="Objet fabriqué (ex : Festin)" style="min-width:200px">
-            <textarea id="rmats" rows="3" placeholder="Compos — une par ligne : Nom = quantité&#10;ex : Viande = 20" style="flex:1;min-width:240px;font:13.5px ui-monospace,SFMono-Regular,Menlo,monospace"></textarea>
-            <button class="btn" id="rsave">💾 Ajouter / MAJ</button>
-          </div>
-        </div>
-      </details>
     </div>
   </div>
 
@@ -200,8 +182,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.098"></script>
-<script src="/static/i18n.js?v=2026.09.098"></script>
+<script src="/static/nav.js?v=2026.09.099"></script>
+<script src="/static/i18n.js?v=2026.09.099"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -356,7 +338,7 @@ function renderInList(q) {
     return;
   }
   if (!res.length) {
-    box.innerHTML = `<div class="inhint">Aucun résultat — si la recette manque, ajoute-la en ⚙️ recette maison (plus bas).</div>`;
+    box.innerHTML = `<div class="inhint">Aucun résultat — si le filtre guilde est coché, essaie de le décocher ; sinon, vérifie l'orthographe.</div>`;
     box.classList.remove("hidden");
     return;
   }
@@ -379,7 +361,7 @@ function showPrev(x) {
   const p = $("#inewprev");
   if (!x) { p.textContent = ""; return; }
   if (!(x.optMats || []).length) {
-    p.textContent = "⚠️ Compos inconnues pour cette recette (données du jeu incomplètes) — ajoute-la en recette maison (⚙️ plus bas) pour calculer ses compos.";
+    p.textContent = "⚠️ Compos inconnues pour cette recette (données du jeu incomplètes) — elles apparaîtront dès qu'un artisan de la guilde importera son export d'addon (🙋 Moi → 📖 Mes recettes).";
     return;
   }
   const mats = x.optMats.map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ");
@@ -487,61 +469,6 @@ function renderNeeds() {
   }));
 }
 
-function renderCatalog() {
-  const box = $("#catlist");
-  const sel = $("#catsrc");
-  const mode = sel.value || "game";
-  const game = DATA.game || [];
-  const cat = DATA.catalog || [];
-  const crafters = DATA.crafters || [];
-  const sync = DATA.game_sync || {};
-  const q = ($("#catq").value || "").trim().toLowerCase();
-  const src = mode === "game" ? game : cat;
-
-  const stripProf = (x) => {
-    const e = x.exp || '';
-    if (!x.prof) return e;
-    if (e.startsWith(x.prof + ' de ')) return e.slice(x.prof.length + 4);   // FR : « Cuisine de Midnight »
-    if (e.endsWith(' ' + x.prof)) return e.slice(0, -(x.prof.length + 1));  // EN : « Midnight Cooking »
-    return e;
-  };
-  if (mode === "game") {
-    const tiers = [...new Set(game.map(stripProf).filter(Boolean))].slice(0, 3);
-    let meta = game.length
-      ? `${game.length} recettes du jeu${tiers.length ? " · " + tiers.join(" · ") : ""}`
-      : "Aucune recette du jeu pour le moment.";
-    if (sync.state === "running") meta += ` · synchronisation en cours…${sync.total ? ` (${sync.done}/${sync.total})` : ""}`;
-    else if (sync.state === "error") meta += ` · erreur de synchro : ${sync.error || "?"}`;
-    else if (sync.ts) meta += ` · maj ${ago(sync.ts)}`;
-    else meta += " · pas encore synchronisé";
-    $("#catmeta").textContent = meta;
-  } else {
-    $("#catmeta").textContent = cat.length
-      ? `${cat.length} objet(s) connus · ${crafters.length} artisan${crafters.length > 1 ? "s" : ""} : ${crafters.join(", ")}`
-      : "Aucune recette d'artisan importée pour le moment.";
-  }
-  const list = (q ? src.filter(x => x.item.toLowerCase().includes(q)) : src).slice(0, 14);
-  if (!list.length) {
-    box.innerHTML = `<div class="empty">${mode === "game"
-      ? "Aucune recette du jeu pour le moment — la synchro se fait toute seule (au démarrage puis tous les jours)."
-      : "Aucun objet ne correspond."}</div>`;
-    return;
-  }
-  box.innerHTML = list.map(x => `<div class="irow">
-    <span class="iname">${esc(x.item)}</span>
-    <span class="meta">${x.exp ? `<span class="chip${(+x.exp_rank || 0) === 0 ? " chip-new" : ""}">${esc(stripProf(x))}</span> · ` : ""}${esc(x.prof)} · ${(x.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "aucune compos"}</span>
-    ${(x.crafters || []).length ? `<span class="nclaims">qui : ${(x.crafters || []).map(esc).join(", ")}</span>` : ""}
-    <button class="btn ghost" data-cat="${esc(x.item)}" style="margin-left:auto">＋ recette</button>
-  </div>`).join("");
-  box.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => {
-    const x = src.find(v => v.item === b.dataset.cat);
-    if (!x) return;
-    $("#rname").value = x.item;
-    $("#rmats").value = (x.mats || []).map(m => `${m.name} = ${m.qty}`).join("\n");
-    setMsg("Compos pré-remplies — vérifie puis « Ajouter / MAJ ».", true);
-  }));
-}
-
 function scheduleSyncPoll() {
   clearInterval(window._syncT);
   window._syncT = setInterval(async () => {
@@ -554,7 +481,6 @@ function scheduleSyncPoll() {
 }
 
 function renderRecipes() {
-  $("#advbox").classList.toggle("hidden", !CAN);
   if (!CAN) { $("#gsyncmeta").textContent = ""; return; }
   const gm = $("#gsyncmeta");
   const s = DATA.game_sync || {};
@@ -562,24 +488,6 @@ function renderRecipes() {
   if (s.state === "running") gm.textContent = `· ${n} recettes du jeu · synchronisation en cours…${s.total ? ` (${s.done}/${s.total})` : ""}`;
   else if (s.state === "error") gm.textContent = `· ${n} recettes du jeu · erreur de synchro : ${s.error || "?"}`;
   else gm.textContent = `· ${n} recettes du jeu · ` + (s.ts ? `maj ${ago(s.ts)}` : "pas encore synchronisé");
-  renderCatalog();
-  const rl = DATA.recipes || [];
-  const box = $("#reclistbox");
-  $("#reclbl").style.display = rl.length ? "" : "none";
-  if (!rl.length) {
-    box.innerHTML = `<div class="empty">Aucune recette — ajoute la première ci-dessous (objet fabriqué → compos).</div>`;
-    return;
-  }
-  box.innerHTML = rl.map(r => `<div class="irow">
-    <span class="iname">${esc(r.name)}</span>
-    <span class="meta">${(r.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "aucune compos"}</span>
-    <button class="mic" data-rdel="${r.id}" title="Supprimer" style="margin-left:auto">✕</button>
-  </div>`).join("");
-  box.querySelectorAll("[data-rdel]").forEach(b => b.addEventListener("click", async () => {
-    if (!confirm("Supprimer cette recette ?")) return;
-    try { await jpost("DELETE", `/api/prep/recipes/${b.dataset.rdel}`); setMsg("Recette supprimée ✓", true); await load(); }
-    catch (e) { setMsg(e.message, false); }
-  }));
 }
 
 const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
@@ -674,25 +582,6 @@ $("#iadd").addEventListener("click", async () => {
   $("#inew").value = ""; $("#iqty").value = "1"; $("#inewprev").textContent = ""; hideInList();
   await savePlan();
 });
-$("#rsave").addEventListener("click", async () => {
-  const name = $("#rname").value.trim();
-  if (!name) { setMsg("Indique l'objet fabriqué.", false); return; }
-  const mats = [];
-  for (const line of $("#rmats").value.split("\n")) {
-    const m = line.split(/\s*[=:]\s*/);
-    if (m.length >= 2 && m[0].trim()) {
-      mats.push({ name: m[0].trim(), qty: parseFloat((m[1] || "0").replace(",", ".")) || 0 });
-    }
-  }
-  try {
-    await jpost("POST", "/api/prep/recipes", { name, mats });
-    setMsg(`Recette enregistrée : ${name} ✓`, true);
-    $("#rname").value = ""; $("#rmats").value = "";
-    await load();
-  } catch (e) { setMsg(e.message, false); }
-});
-$("#catq").addEventListener("input", () => { if (CAN) renderCatalog(); });
-$("#catsrc").addEventListener("change", () => { if (CAN) renderCatalog(); });
 $("#objreset").addEventListener("click", async () => {
   if (!confirm("Vider le plan et tous les apports ? (les recettes sont conservées)")) return;
   try { await jpost("POST", "/api/prep/reset"); setMsg("Plan réinitialisé ✓", true); await load(); }
