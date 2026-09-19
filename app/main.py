@@ -958,12 +958,8 @@ def invite_page(token: str):
 
 @app.api_route("/admin", methods=["GET", "HEAD"])
 def admin_page(request: Request):
-    user = _get_session_user(request)
-    if user is None:
-        return RedirectResponse("/login", status_code=302)
-    if _user_role(user) == "member":
-        return RedirectResponse("/", status_code=302)
-    return FileResponse(STATIC_DIR / "admin.html")
+    """L'administration vit désormais dans ⚙️ Paramètres (v2026.09.112)."""
+    return RedirectResponse("/settings", status_code=302)
 
 
 @app.api_route("/characters", methods=["GET", "HEAD"])

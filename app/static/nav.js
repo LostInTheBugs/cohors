@@ -64,7 +64,6 @@
         html += '<a class="tab' + (m.href === path ? " active" : "") + '" href="' + m.href + '">' + m.label + '</a>';
       }
     });
-    html += '<a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>';
     return html;
   }
 
@@ -81,7 +80,6 @@
     });
     return '' +
       '<button id="navburger" type="button" aria-label="Menu" aria-expanded="false">☰&nbsp;Menu</button>' +
-      '<a class="tab admin hidden" id="admin-link" href="/admin">⚙️ Administration</a>' +
       '<div id="navscrim"></div>' +
       '<aside id="navdrawer" aria-hidden="true">' +
         '<div class="dhead"><a class="dlogo" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px"><img src="/branding/logo" alt=""><span>LOTP</span></a>' +

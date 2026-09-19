@@ -841,7 +841,7 @@
  "Identité enregistrée ✓": "Identity saved ✓",
  "Identité réinitialisée ✓": "Identity reset ✓",
  "Réinitialiser l'identité : logo, nom et fond par défaut ?": "Reset the identity: logo, names and background to default?",
- "Dans Administration → 🎨 Identité : change le logo, le nom de la guilde et le fond du site — pratique pour réutiliser le site avec une autre guilde.": "In Administration → 🎨 Identity: change the logo, the guild name and the site background — handy to reuse the site with another guild.",
+ "Dans ⚙️ Paramètres → 🎨 Identité : change le logo, le nom de la guilde et le fond du site — pratique pour réutiliser le site avec une autre guilde.": "In ⚙️ Settings → 🎨 Identity: change the logo, the guild name and the site background — handy to reuse the site with another guild.",
  "Le logo sert aussi d'icône d'onglet et d'icône d'application (PWA) ; le fond peut être une couleur et/ou une image.": "The logo also serves as the tab icon and app icon (PWA); the background can be a color and/or an image."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];

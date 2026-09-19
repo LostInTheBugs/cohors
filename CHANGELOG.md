@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.112 - 2026-09-19
+
+### Changed
+- The administration area (invitations, accounts, Discord bot, guild identity) now lives inside ⚙️ Settings for officers and admins; the separate "Administration" entry and page are gone (the /admin URL redirects to /settings). Help updated.
+
 ## 2026.09.111 - 2026-09-19
 
 ### Added
