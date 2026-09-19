@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.128 - 2026-09-19
+
+### Added
+- Gear advice (BiS mode): BiS lists now cover all 40 specializations (every class, hero specs included), each snapshot dated and sourced from the Wowhead guides. Every item id verified against the Blizzard API (469 entries, slot/type check, 0 anomalies).
+
 ## 2026.09.127 - 2026-09-19
 
 ### Fixed
