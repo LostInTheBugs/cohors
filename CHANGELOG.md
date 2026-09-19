@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.120 - 2026-09-19
+
+### Fixed
+- English wording on the Gear advice page for counters split by markup (e.g. "15 item(s) equipped").
+
 ## 2026.09.119 - 2026-09-19
 
 ### Added
