@@ -78,7 +78,7 @@
   .src { font-size: 12.5px; }
   .src a { color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.122">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.123">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -131,6 +131,7 @@
         <select id="mode">
           <option value="cur" selected>Pièces à leur niveau actuel</option>
           <option value="max">Toutes les pièces au rang d'amélioration max</option>
+          <option value="bis">BIS — les meilleures pièces du guide</option>
         </select>
       </div>
       <button id="go" disabled>🧮 Voir ce que je dois porter</button>
@@ -155,9 +156,9 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.122"></script>
-<script src="/static/branding.js?v=2026.09.122"></script>
-<script src="/static/i18n.js?v=2026.09.122"></script>
+<script src="/static/nav.js?v=2026.09.123"></script>
+<script src="/static/branding.js?v=2026.09.123"></script>
+<script src="/static/i18n.js?v=2026.09.123"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -231,7 +232,7 @@ $("#go").addEventListener("click", async () => {
   $("#rescard").classList.add("hidden");
   try {
     const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
-      content: $("#content").value, max_rank: $("#mode").value === "max" });
+      content: $("#content").value, mode: $("#mode").value });
     poll(d.id);
   } catch (e) { setMsg(String(e.message || e), "msg-err"); $("#go").disabled = false; }
 });
@@ -265,6 +266,42 @@ function render(d) {
   sum.innerHTML = ""; src.innerHTML = "";
   if (!st) { meta.textContent = "Pas de résultat."; table.classList.add("hidden"); return; }
   const contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[st.content] || st.content;
+
+  if (st.mode === "bis") {
+    const en = (localStorage.getItem("lotp_lang") || "fr") === "en";
+    const slotFr = st.slot_fr || {};
+    meta.innerHTML = [
+      `<span>Méthode : liste BIS du guide Wowhead (mise à jour du ${esc(st.updated_fr || "?")}) — les meilleures pièces de la saison, comparées à ce que tu portes. Le build et le contenu ne changent pas cette liste.</span>`,
+      st.loadout ? `<span>Build : ${esc(st.loadout)}</span>` : "",
+      `<span>${st.have} pièce(s) déjà en poche sur ${(st.slots || []).length}</span>`
+    ].filter(Boolean).join(" · ");
+    const rows = st.slots || [];
+    table.classList.remove("hidden");
+    table.innerHTML = "<tr><th>Emplacement</th><th>Ce que tu portes</th><th>BIS (guide)</th><th>Provenance</th><th>Tu l'as ?</th></tr>" +
+      rows.map(r => {
+        const cur = r.current;
+        const curCell = cur ? `<span class="gname">${esc(cur.name)}</span> <small>(${cur.ilvl || "?"})</small>` : '<span class="gnil">rien d\'équipé</span>';
+        const nm = en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en);
+        const bisCell = `<a class="hlink" href="https://www.wowhead.com/item=${r.id}" target="_blank" rel="noopener">${esc(nm)}</a>` +
+          (r.max_ilvl ? ` <small class="gnil">(max ${r.max_ilvl})</small>` : "");
+        let have;
+        if (r.equipped) have = '<span class="gpos">✅ portée</span>';
+        else if (r.owned) have = `<span class="msg-warn">🎒 dans tes sacs${r.bag_ilvl ? " (" + r.bag_ilvl + ")" : ""}</span>`;
+        else have = '<span class="gnil">—</span>';
+        return `<tr class="${r.owned || r.equipped ? "" : "gbest"}"><td>${esc(slotFr[r.slot] || r.slot)}</td><td>${curCell}</td>` +
+          `<td>${bisCell}</td><td class="islot">${esc(en ? (r.src_en || r.src_fr) : (r.src_fr || r.src_en))}</td><td>${have}</td></tr>`;
+      }).join("");
+    const missing = rows.filter(r => !r.owned && !r.equipped);
+    if (missing.length) {
+      sum.innerHTML = `Il te manque <b>${missing.length}</b> pièce(s) BIS : ` +
+        missing.map(r => `${esc(slotFr[r.slot] || r.slot)} — ${esc(en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en))}`).join(", ") + ".";
+    } else {
+      sum.textContent = "Tu as déjà toutes les pièces BIS de la liste — bravo !";
+    }
+    src.innerHTML = st.source ? `Liste : <a href="${esc(st.source)}" target="_blank" rel="noopener">${esc(st.source_fr || st.source)}</a>.` : "";
+    if (d.note) setMsg(d.note, "msg-warn");
+    return;
+  }
 
   if (st.mode === "heal") {
     meta.innerHTML = [

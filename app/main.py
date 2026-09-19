@@ -828,6 +828,54 @@ def _run_one(sim_id: str) -> None:
             )
 
 
+def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0: float) -> None:
+    """Mode BIS : liste des meilleures pièces du guide, possession et comparaison."""
+    blk = _stuff_bis_list(parsed["cls"], parsed["spec"]) or {}
+    slot_fr = {}
+    with _db_lock, _db() as conn:
+        loc = "fr_FR"
+        loc_en = "en_US"
+        results = {"mode": "bis", "source": blk.get("source_url", ""),
+                   "source_fr": blk.get("source_label_fr", ""),
+                   "updated_fr": blk.get("updated_fr", ""), "slots": [],
+                   "content": plan.get("content") or "raid"}
+        owned_by_id, equipped_by_id = {}, set()
+        for it in items:
+            m = re.search(r"id=(\d+)", it.get("opts") or "")
+            if not m:
+                continue
+            owned_by_id[int(m.group(1))] = it
+            if it.get("equipped"):
+                equipped_by_id.add(int(m.group(1)))
+        cur_by_slot = {it["slot"]: it for it in items if it.get("equipped")}
+        need_stats = []
+        for e in blk.get("slots") or []:
+            row = {"slot": e.get("slot"), "id": e.get("id"),
+                   "src_fr": e.get("src_fr", ""), "src_en": e.get("src_en", "")}
+            cur = cur_by_slot.get(e.get("slot"))
+            row["current"] = ({"name": cur.get("name"), "ilvl": cur.get("ilvl")} if cur else None)
+            row["equipped"] = int(e.get("id") or 0) in equipped_by_id
+            row["owned"] = int(e.get("id") or 0) in owned_by_id
+            if row["owned"] and not row["equipped"]:
+                row["bag_ilvl"] = (owned_by_id[int(e.get("id"))] or {}).get("ilvl")
+            try:
+                row["name_fr"] = bnet.item(int(e.get("id")), locale=loc).get("name") or ""
+                row["name_en"] = bnet.item(int(e.get("id")), locale=loc_en).get("name") or ""
+            except Exception:  # noqa: BLE001
+                row["name_fr"], row["name_en"] = "", ""
+            need_stats.append({"opts": f',id={int(e.get("id"))}', "ilvl": 0})
+            results["slots"].append(row)
+        _stuff_max_levels(need_stats, conn)
+        for row, st in zip(results["slots"], need_stats):
+            row["max_ilvl"] = st.get("max_ilvl")
+    results["missing"] = sum(1 for r in results["slots"] if not r["owned"] and not r["equipped"])
+    results["have"] = len(results["slots"]) - results["missing"]
+    wall = time.time() - t0
+    with _db_lock, _db() as conn:
+        conn.execute("UPDATE sims SET status='done', wall_s=?, gear=?, finished=? WHERE id=?",
+                     (round(wall, 3), json.dumps(results), time.time(), sim_id))
+
+
 def _run_stuff(row: sqlite3.Row) -> None:
     """Exécute un « Stuff conseillé » (kind='stuff') : stats des pièces puis classement."""
     sim_id = row["id"]
@@ -866,6 +914,9 @@ def _run_stuff(row: sqlite3.Row) -> None:
         if plan.get("max_rank"):
             with _db_lock, _db() as conn:
                 boosted, examples = _stuff_max_levels(items, conn)
+        if (plan.get("mode") or "cur") == "bis":
+            _run_stuff_bis(sim_id, parsed, items, plan, t0)
+            return
         stats, dropped, crashed = _stuff_fetch_stats(items, parsed["cls"], parsed["spec"], workdir)
         for it in items:
             it["stats"] = stats.get(it.get("actor"))
@@ -1481,6 +1532,27 @@ WH_ILVL_RE = re.compile(r"Item Level <!--ilvl-->(\d+)")
 WH_UP_RE = re.compile(r"Upgrade Level: ([A-Za-z ]+) <!--uindex-->(\d+)/(\d+)")
 
 
+# Liste BIS : instantané des guides embarqué (voir app/data/bis.json) — le serveur ne peut
+# pas récupérer les pages de guides (Cloudflare 403), donc la liste est versionnée avec l'app.
+BIS_FILE = Path(__file__).resolve().parent / "data" / "bis.json"
+BIS_CACHE: dict = {"mtime": 0.0, "data": {}}
+
+
+def _stuff_bis_list(cls: str, spec: str) -> dict | None:
+    """Bloc BIS d'une spécialisation depuis l'instantané embarqué."""
+    try:
+        mtime = BIS_FILE.stat().st_mtime
+    except OSError:
+        return None
+    if BIS_CACHE["mtime"] != mtime:
+        try:
+            BIS_CACHE["data"] = json.loads(BIS_FILE.read_text(encoding="utf-8"))
+            BIS_CACHE["mtime"] = mtime
+        except Exception:  # noqa: BLE001
+            return None
+    return ((BIS_CACHE["data"].get("specs") or {}).get(f"{cls}/{spec}"))
+
+
 def _stuff_wh_version(iid: int) -> dict | None:
     """Version maximum publiée par Wowhead pour une pièce : {ilvl, track, rank, label}."""
     try:
@@ -1512,7 +1584,8 @@ def _stuff_max_levels(items: list[dict], conn) -> tuple[int, list[str]]:
                fetched   REAL NOT NULL DEFAULT 0)""")
     ids = sorted({int(re.search(r"id=(\d+)", it.get("opts") or "").group(1))
                   for it in items if re.search(r"id=(\d+)", it.get("opts") or "")})
-    known = {r["item_id"]: r for r in conn.execute("SELECT * FROM item_max_ilvl").fetchall()}
+    known = {r["item_id"]: {"ilvl": r["ilvl"], "label": r["label"]}
+             for r in conn.execute("SELECT * FROM item_max_ilvl").fetchall()}
     missing = [i for i in ids if i not in known]
     if missing:
         from concurrent.futures import ThreadPoolExecutor
@@ -1849,7 +1922,8 @@ class StuffRequest(BaseModel):
     profile_id: int
     loadout: str = ""
     content: str = "raid"
-    max_rank: bool = False
+    mode: str = "cur"          # cur | max | bis
+    max_rank: bool = False     # compat : équivaut à mode="max"
 
 
 @app.post("/api/stuff")
@@ -1880,11 +1954,15 @@ def submit_stuff(payload: StuffRequest, request: Request):
         sim_dir.mkdir(parents=True, exist_ok=True)
         input_file = sim_dir / "input.simc"
         input_file.write_text("")
+        mode = payload.mode if payload.mode in ("cur", "max", "bis") else ("max" if payload.max_rank else "cur")
+        if mode == "bis" and _stuff_bis_list(parsed["cls"], parsed["spec"]) is None:
+            raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
         plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
                 "spec": parsed["spec"], "loadout": loadout or {}, "content": payload.content,
-                "max_rank": bool(payload.max_rank)}
+                "mode": mode, "max_rank": mode == "max"}
         label = f'{prof["name"]} · {STUFF_CONTENTS[payload.content]["label_fr"]}' + \
-                (f' · {loadout["name"]}' if loadout else "") + (" · rang max" if payload.max_rank else "")
+                (f' · {loadout["name"]}' if loadout else "") + \
+                ({"max": " · rang max", "bis": " · BIS"}.get(mode) or "")
         conn.execute(
             """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
                                  user_email, user_name, kind, plan)
@@ -1982,6 +2060,8 @@ def get_sim(sim_id: str, request: Request):
             for e in st.get("items") or []:
                 e["slot_fr"] = bnet.slot_label(e.get("slot"), loc)
         d["stuff"] = st
+        if st and st.get("mode") == "bis":
+            d["stuff"]["slot_fr"] = {k: bnet.slot_label(k, loc) for k in STUFF_SLOTS}
     return d
 
 

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.123 - 2026-09-19
+
+### Added
+- Gear advice: BiS mode — the guide's best-in-slot list per spec (bundled dated snapshot in app/data/bis.json, Wowhead), slot by slot with source, max item level and ownership status (equipped / in bags / missing), compared against what you wear.
+
 ## 2026.09.122 - 2026-09-19
 
 ### Added

@@ -908,7 +908,19 @@
  "Moteur :": "Engine: ",
  "<li><b>Deux modes</b> : « Pièces à leur niveau actuel » (ce que tu portes aujourd'hui) ou « <b>Toutes les pièces au rang d'amélioration max</b> » — chaque pièce est alors modélisée à sa version la plus haute publiée par Wowhead (le résultat indique combien de pièces ont été remontées, ex. 308 → 334).</li>": "<li><b>Two modes</b>: \"Items at their current level\" (what you wear today) or \"<b>All items at max upgrade rank</b>\" — each item is then modelled at the highest version published by Wowhead (the result shows how many items were raised, e.g. 308 → 334).</li>",
  "<li>Le <b>build</b> choisi est appliqué au calcul (les talents du build sont utilisés) ; pour les soins, les guides donnent la même priorité de statistiques quel que soit l'arbre héroïque.</li>": "<li>The chosen <b>build</b> is applied to the calculation (the build's talents are used); for healers, the guides give the same stat priority regardless of the hero tree.</li>",
- "<li>Références utilisées : <b>Wowhead</b>, <b>Icy Veins</b> et <b>Archon</b> (guides de classe et données de saison) — liens en bas de la page.</li>": "<li>References used: <b>Wowhead</b>, <b>Icy Veins</b> and <b>Archon</b> (class guides and season data) — links at the bottom of the page.</li>"
+ "<li>Références utilisées : <b>Wowhead</b>, <b>Icy Veins</b> et <b>Archon</b> (guides de classe et données de saison) — liens en bas de la page.</li>": "<li>References used: <b>Wowhead</b>, <b>Icy Veins</b> and <b>Archon</b> (class guides and season data) — links at the bottom of the page.</li>",
+ "BIS — les meilleures pièces du guide": "BiS — the guide's best items",
+ "Ce que tu portes": "What you wear",
+ "BIS (guide)": "BiS (guide)",
+ "Provenance": "Source",
+ "Tu l'as ?": "Do you have it?",
+ "✅ portée": "✅ equipped",
+ "🎒 dans tes sacs": "🎒 in your bags",
+ "Tu as déjà toutes les pièces BIS de la liste — bravo !": "You already have every BiS item in the list — nice!",
+ "Il te manque": "You are missing ",
+ "pièce(s) BIS :": " BiS item(s): ",
+ "pièce(s) déjà en poche sur": "item(s) already owned out of",
+ "<li><b>BIS</b> : la liste des meilleures pièces de la saison, reprise du guide Wowhead de ta spécialisation (instantané daté, affiché dans le résultat) — emplacement par emplacement, avec la provenance (raid, donjon, catalyseur) et ce que tu possèdes déjà (✅ portée, 🎒 dans tes sacs, — manquante). Le build et le contenu ne changent pas cette liste.</li>": "<li><b>BiS</b>: the season's best items from your specialization's Wowhead guide (dated snapshot, shown in the result) — slot by slot, with the source (raid, dungeon, catalyst) and what you already own (✅ equipped, 🎒 in your bags, — missing). The build and content do not change this list.</li>"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1088,6 +1100,10 @@
     [/itérations/g, "iterations"],
     [/Rang max : /g, "Max rank: "],
     [/pièce\(s\) au niveau maximum/g, "item(s) at max level"],
+    [/Méthode : liste BIS du guide Wowhead \(mise à jour du ([\d\/]+)\)/g, "Method: BiS list from the Wowhead guide (updated $1)"],
+    [/— les meilleures pièces de la saison, comparées à ce que tu portes\. Le build et le contenu ne changent pas cette liste\./g, "— the season's best items, compared to what you wear. The build and content do not change this list."],
+    [/🎒 dans tes sacs/g, "🎒 in your bags"],
+    [/Il te manque /g, "You are missing "],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
