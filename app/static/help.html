@@ -44,7 +44,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.115">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.116">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -308,19 +308,18 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.115"></script>
-<script src="/static/branding.js?v=2026.09.115"></script>
-<script src="/static/i18n.js?v=2026.09.115"></script>
+<script src="/static/nav.js?v=2026.09.116"></script>
+<script src="/static/branding.js?v=2026.09.116"></script>
+<script src="/static/i18n.js?v=2026.09.116"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 (async () => {
   try {
     const r = await fetch("/api/me");
-    if (!r.ok) { location.href = "/login"; return; }
+    if (r.status === 401) { location.href = "/login"; return; }
     const me = await r.json();
     $("#who").textContent = me.name || me.email;
-    if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
-  } catch (e) { location.href = "/login"; return; }
+  } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
   try { const h = await fetch("/api/health").then(x => x.json()); $("#ver").textContent = "v" + h.version; } catch (e) {}
 })();
 $("#logout").addEventListener("click", async (ev) => {

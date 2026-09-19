@@ -113,7 +113,7 @@
   .gbar { height:7px; border-radius:4px; background:linear-gradient(90deg,var(--acc,#b1002e),var(--acc2,#dfa55a)); }
   .gmeta { color:var(--mut,#8b96ad); font-size:12px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.115">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.116">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -212,9 +212,9 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.115"></script>
-<script src="/static/branding.js?v=2026.09.115"></script>
-<script src="/static/i18n.js?v=2026.09.115"></script>
+<script src="/static/nav.js?v=2026.09.116"></script>
+<script src="/static/branding.js?v=2026.09.116"></script>
+<script src="/static/i18n.js?v=2026.09.116"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -289,7 +289,6 @@ setInterval(load, 5000); load();
     if (r.status === 401) { location.href = "/login"; return; }
     const d = await r.json();
     $("#who").textContent = d.name || d.email;
-    if (d.is_admin || d.role === "officer") $("#admin-link").classList.remove("hidden");
   } catch (e) { /* ignoré */ }
 })();
 $("#logout").addEventListener("click", async (e) => {

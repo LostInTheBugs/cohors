@@ -64,7 +64,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.115">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.116">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -123,9 +123,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment · Données Warcraft Logs</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.115"></script>
-<script src="/static/branding.js?v=2026.09.115"></script>
-<script src="/static/i18n.js?v=2026.09.115"></script>
+<script src="/static/nav.js?v=2026.09.116"></script>
+<script src="/static/branding.js?v=2026.09.116"></script>
+<script src="/static/i18n.js?v=2026.09.116"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -138,7 +138,7 @@ const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1
   return `il y a ${Math.floor(s / 86400)} j`; };
 const jget = async (u) => { const r = await fetch(u);
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
 
 const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
@@ -291,8 +291,7 @@ $("#logout").addEventListener("click", async (ev) => {
   try {
     const me = await jget("/api/me");
     $("#who").textContent = me.name || me.email;
-    if (me.is_admin || me.role === "officer") $("#admin-link").classList.remove("hidden");
-  } catch (e) { location.href = "/login"; return; }
+  } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   load();
   loadProg();

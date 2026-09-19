@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.116 - 2026-09-19
+
+### Fixed
+- Infinite refresh loop for officers/admins: pages tried to reveal a nav entry (#admin-link) that no longer exists and bounced to /login on any init error. The stale calls are removed and pages now redirect to /login only on a real auth error (401).
+
 ## 2026.09.115 - 2026-09-19
 
 ### Changed
