@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.091 - 2026-09-19
+
+### Added
+- Raid preparation: the objective can now specify the raid(s) and boss(es) targeted for the evening — pickers built from the in-game journal (Blizzard API, localized, current season: 7 raids and their bosses). Stored on the plan (`prep_plan.raids` / `prep_plan.bosses`), shown under the objective for everyone, cleared by the plan reset. Handy below the objective: the unavailability block uses the same evening date.
+
 ## 2026.09.090 - 2026-09-19
 
 ### Added

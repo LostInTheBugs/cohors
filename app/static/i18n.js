@@ -735,7 +735,7 @@
  "🎧 La carte « Vocal » montre qui est connecté sur TeamSpeak.": "🎧 The « Voice » tile shows who is connected on TeamSpeak.",
  "Qui peut crafter quoi : les métiers de toute la guilde, regroupés par profession, avec les points de chaque personnage.": "Who can craft what: the whole guild's professions, grouped by trade, with each character's points.",
  "Recherche un métier ou un personnage, et clique pour ouvrir sa fiche — les métiers se mettent à jour automatiquement depuis le jeu.": "Search a profession or a character, and click to open the sheet — professions update automatically from the game.",
- "L'atelier du raid : les officiers choisissent les recettes (objet fabriqué → compos), définissent l'objectif (un raid du calendrier) et ajoutent ce qu'on veut fabriquer (objet × quantité).": "The raid workshop: officers pick the recipes (crafted item → materials), set the goal (a raid from the calendar) and add what the guild will craft (item × quantity).",
+ "L'atelier du raid : les officiers choisissent les recettes (objet fabriqué → compos), définissent l'objectif (un raid du calendrier, avec le ou les raids et boss visés pour la soirée — catalogue du jeu) et ajoutent ce qu'on veut fabriquer (objet × quantité).": "The raid workshop: officers pick recipes (crafted item → materials), set the objective (a calendar raid, with the raids and bosses targeted for the evening — in-game catalogue) and add what we want to craft (item × quantity).",
  "La page agrège les compos nécessaires (besoin / fourni, barre de progression) et chaque membre clique « j'apporte » pour annoncer sa part.": "The page aggregates the required materials (needed / provided, progress bar) and every member clicks « I bring » to claim their share.",
  "📚 Catalogue : les recettes du jeu (2 dernières extensions, synchronisées automatiquement) ou les recettes des artisans de la guilde (déclarées : import d'addon ou cases cochées sur la page 🔨 Artisanat) — tu vois qui peut crafter quoi.": "📚 Catalog: game recipes (last 2 expansions, synced automatically) or the guild crafters' recipes (declared: addon import or ticked on the 🔨 Crafting page) — you see who can craft what.",
  "Organise les clés mythiques+ : choisis tes rôles (🛡️ tank / 💚 heal / ⚔️ DPS), tes créneaux (les 14 prochains jours, avec heures) et les clés que tu as (perso, donjon, niveau).": "Organize your Mythic+ keys: pick your roles (🛡️ tank / 💚 heal / ⚔️ DPS), your slots (next 14 days, with hours) and the keys you hold (character, dungeon, level).",
@@ -825,7 +825,11 @@
  "⏳ sans réponse": "⏳ no answer",
  "indispo mais a accepté le raid": "unavailable but accepted the raid",
  "🚫 Mes indispos : déclare tes périodes de non-disponibilité (vacances, exams…) — elles sont croisées avec tes réponses du calendrier dans 🧪 Préparation de raid.": "🚫 My time off: declare your unavailability periods (holidays, exams…) — they are cross-checked with your calendar answers in 🧪 Raid preparation.",
- "🚫 Indisponibilités : sous l'objectif, tu vois qui est indisponible pour ce raid-là, croisé avec les réponses du calendrier in-game — ⚠️ signale « indispo mais a accepté le raid ».": "🚫 Unavailability: below the objective, see who is unavailable for that raid, cross-checked with the in-game calendar answers — ⚠️ flags « unavailable but accepted the raid »."
+ "🚫 Indisponibilités : sous l'objectif, tu vois qui est indisponible pour ce raid-là, croisé avec les réponses du calendrier in-game — ⚠️ signale « indispo mais a accepté le raid ».": "🚫 Unavailability: below the objective, see who is unavailable for that raid, cross-checked with the in-game calendar answers — ⚠️ flags « unavailable but accepted the raid ».",
+ "🗺️ Raids de la soirée :": "🗺️ Evening raids:",
+ "⚔️ Boss visés :": "⚔️ Target bosses:",
+ "— choisis d'abord un ou des raids": "— pick one or more raids first",
+ "Catalogue du jeu indisponible pour le moment.": "In-game catalogue unavailable right now."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

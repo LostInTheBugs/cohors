@@ -487,6 +487,8 @@ def _init_db() -> None:
             "ALTER TABLE game_recipes ADD COLUMN tier_en TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE game_recipes ADD COLUMN prof_en TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE game_recipes ADD COLUMN mats_en TEXT NOT NULL DEFAULT '[]'",
+            "ALTER TABLE prep_plan ADD COLUMN raids TEXT NOT NULL DEFAULT '[]'",
+            "ALTER TABLE prep_plan ADD COLUMN bosses TEXT NOT NULL DEFAULT '[]'",
         ):
             try:
                 conn.execute(_stmt)
@@ -3486,6 +3488,8 @@ class PrepPlanRequest(BaseModel):
     title: str = Field("", max_length=120)
     event_ts: float = 0
     items: list[dict] = []
+    raids: list[str] = []
+    bosses: list[str] = []
 
 
 class PrepRecipeRequest(BaseModel):
@@ -3538,7 +3542,7 @@ def api_prep_get(request: Request):
     user = _require_user(request)
     with _db_lock, _db() as conn:
         plan = conn.execute(
-            "SELECT title, event_ts, items, updated, updated_by FROM prep_plan WHERE id=1").fetchone()
+            "SELECT title, event_ts, items, raids, bosses, updated, updated_by FROM prep_plan WHERE id=1").fetchone()
         recipes = [dict(r) for r in conn.execute(
             "SELECT id, name, mats, updated FROM prep_recipes ORDER BY name COLLATE NOCASE").fetchall()]
         claims = [dict(r) for r in conn.execute(
@@ -3554,11 +3558,13 @@ def api_prep_get(request: Request):
             r["mats"] = json.loads(r["mats"] or "[]")
         except ValueError:
             r["mats"] = []
-    p = dict(plan) if plan else {"title": "", "event_ts": 0, "items": "[]", "updated": 0, "updated_by": ""}
-    try:
-        p["items"] = json.loads(p.get("items") or "[]")
-    except ValueError:
-        p["items"] = []
+    p = dict(plan) if plan else {"title": "", "event_ts": 0, "items": "[]", "raids": "[]",
+                                 "bosses": "[]", "updated": 0, "updated_by": ""}
+    for _k in ("items", "raids", "bosses"):
+        try:
+            p[_k] = json.loads(p.get(_k) or "[]")
+        except (ValueError, TypeError):
+            p[_k] = []
     needs, unknown = _prep_needs(p["items"], recipes)
     by_mat: dict = {}
     for c in claims:
@@ -3700,8 +3706,13 @@ def api_prep_get(request: Request):
         rows.sort(key=lambda r: r["periods"][0]["from"])
         unavail_block["rows"] = rows
         unavail_block["counts"] = {"members": len(rows), "conflict": 0}
+    try:
+        _jr, _jts = bnet.journal_raids(_user_locale(request))
+        raid_catalog = _jr
+    except bnet.BnetError:
+        raid_catalog = {"expansion": "", "raids": []}
     return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
-            "unavail": unavail_block,
+            "unavail": unavail_block, "raid_catalog": raid_catalog,
             "catalog": cat_list, "exps": exps_list, "crafters": sorted({c["crafter"] for c in crafts}),
             "game": game_list, "game_sync": _game_sync_report(float(gts_row["ts"] or 0)),
             "me": {"name": user["name"] if "name" in user.keys() else user["email"]},
@@ -3721,15 +3732,27 @@ def api_prep_plan(body: PrepPlanRequest, request: Request):
         except (TypeError, ValueError):
             qty = 0.0
         items.append({"name": name, "qty": qty})
+    raids = []
+    for r in (body.raids or [])[:8]:
+        nm = str(r or "").strip()[:80]
+        if nm and nm not in raids:
+            raids.append(nm)
+    bosses = []
+    for x in (body.bosses or [])[:40]:
+        nm = str(x or "").strip()[:80]
+        if nm and nm not in bosses:
+            bosses.append(nm)
     with _db_lock, _db() as conn:
         conn.execute(
-            "INSERT INTO prep_plan (id, title, event_ts, items, updated, updated_by) VALUES (1, ?, ?, ?, ?, ?) "
+            "INSERT INTO prep_plan (id, title, event_ts, items, raids, bosses, updated, updated_by) "
+            "VALUES (1, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(id) DO UPDATE SET title=excluded.title, event_ts=excluded.event_ts, items=excluded.items, "
-            "updated=excluded.updated, updated_by=excluded.updated_by",
+            "raids=excluded.raids, bosses=excluded.bosses, updated=excluded.updated, updated_by=excluded.updated_by",
             (body.title.strip()[:120], float(body.event_ts or 0), json.dumps(items, ensure_ascii=False),
+             json.dumps(raids, ensure_ascii=False), json.dumps(bosses, ensure_ascii=False),
              time.time(), user["name"] if "name" in user.keys() else user["email"]),
         )
-    return {"ok": True, "items": len(items)}
+    return {"ok": True, "items": len(items), "raids": len(raids), "bosses": len(bosses)}
 
 
 @app.post("/api/prep/recipes")
@@ -3793,7 +3816,7 @@ def api_prep_reset(request: Request):
     user = _require_officer(request)
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM prep_claims")
-        conn.execute("UPDATE prep_plan SET items='[]', updated=?, updated_by=? WHERE id=1",
+        conn.execute("UPDATE prep_plan SET items='[]', raids='[]', bosses='[]', updated=?, updated_by=? WHERE id=1",
                      (time.time(), user["name"] if "name" in user.keys() else user["email"]))
     return {"ok": True}
 

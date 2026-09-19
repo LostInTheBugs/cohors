@@ -70,6 +70,11 @@
   .avrow.conflict { border-left-color: var(--warn); background: rgba(251,191,36,.06); }
   .avrow .avst { color: var(--mut); font-size: 13px; }
   .avrow.conflict .avwarn { color: var(--warn); font-size: 12.5px; font-weight: 600; }
+  .chips { display: inline-flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+  .chip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px;
+          padding: 4px 12px; font-size: 13px; cursor: pointer; color: var(--mut); }
+  .chip:hover { border-color: var(--acc2); }
+  .chip.on { border-color: var(--acc2); color: var(--acc2); font-weight: 600; }
   .bar i { display: block; height: 100%; background: var(--ok); }
   .mic { background: transparent; border: 0; color: var(--mut); cursor: pointer; font-size: 15px; padding: 4px 6px; }
   .mic:hover { color: var(--err); }
@@ -84,7 +89,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.090">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.091">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -114,6 +119,14 @@
         <input id="otitle" placeholder="Titre (ex : Raid HM du 21/09)" style="min-width:240px">
         <button class="btn" id="objsave">💾 Enregistrer l'objectif</button>
         <button class="btn ghost" id="objreset" title="Vide le plan et les apports (les recettes sont gardées)">♻️ Réinitialiser</button>
+      </div>
+      <div class="row" style="margin-top:8px;align-items:flex-start">
+        <span class="meta" style="padding-top:5px">🗺️ Raids de la soirée :</span>
+        <span id="rchips" class="chips"></span>
+      </div>
+      <div class="row" style="margin-top:6px;align-items:flex-start">
+        <span class="meta" style="padding-top:5px">⚔️ Boss visés :</span>
+        <span id="bchips" class="chips"></span>
       </div>
     </div>
   </div>
@@ -166,8 +179,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.090"></script>
-<script src="/static/i18n.js?v=2026.09.090"></script>
+<script src="/static/nav.js?v=2026.09.091"></script>
+<script src="/static/i18n.js?v=2026.09.091"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -192,11 +205,12 @@ function setMsg(txt, ok) { const m = $("#msg"); m.textContent = txt || ""; m.cla
   clearTimeout(msgT); if (txt) msgT = setTimeout(() => { m.textContent = ""; m.className = ""; }, 4000); }
 
 let DATA = null, CAN = false;
-let PLAN = { title: "", event_ts: 0, items: [] };
+let PLAN = { title: "", event_ts: 0, items: [], raids: [], bosses: [] };
 
 async function savePlan() {
   try {
-    await jpost("POST", "/api/prep/plan", { title: PLAN.title, event_ts: PLAN.event_ts, items: PLAN.items });
+    await jpost("POST", "/api/prep/plan", { title: PLAN.title, event_ts: PLAN.event_ts, items: PLAN.items,
+      raids: PLAN.raids || [], bosses: PLAN.bosses || [] });
     setMsg("Objectif enregistré ✓", true);
     await load();
   } catch (e) { setMsg(e.message, false); }
@@ -210,11 +224,44 @@ function renderObj() {
   } else {
     const t = PLAN.title || p.title || "";
     const d = (PLAN.event_ts || p.event_ts) ? ` <span class="meta">· ${dtFmt(PLAN.event_ts || p.event_ts)}</span>` : "";
+    const raids = PLAN.raids || [], bosses = PLAN.bosses || [];
     body.innerHTML = `<div class="objtitle">${esc(t)}</div>${d}
+      ${raids.length ? `<div class="meta">🗺️ ${raids.map(esc).join(" · ")}</div>` : ""}
+      ${bosses.length ? `<div class="meta">⚔️ ${bosses.map(esc).join(" · ")}</div>` : ""}
       ${p.updated ? `<div class="meta">enregistré par ${esc(p.updated_by || "?")} · ${ago(p.updated)}</div>` : ""}`;
   }
   $("#objedit").classList.toggle("hidden", !CAN);
   $("#otitle").value = PLAN.title || "";
+}
+
+function renderRaids() {
+  const cat = ((DATA.raid_catalog || {}).raids) || [];
+  const rc = $("#rchips"), bc = $("#bchips");
+  rc.innerHTML = cat.length
+    ? cat.map(r => `<span class="chip${(PLAN.raids || []).includes(r.name) ? " on" : ""}" data-rtog="${esc(r.name)}">${esc(r.name)}</span>`).join("")
+    : `<span class="meta">Catalogue du jeu indisponible pour le moment.</span>`;
+  rc.querySelectorAll("[data-rtog]").forEach(c => c.addEventListener("click", () => {
+    const nm = c.dataset.rtog;
+    PLAN.raids = PLAN.raids || [];
+    if (PLAN.raids.includes(nm)) {
+      PLAN.raids = PLAN.raids.filter(x => x !== nm);
+      const del = new Set(((cat.find(r => r.name === nm) || {}).bosses) || []);
+      PLAN.bosses = (PLAN.bosses || []).filter(b => !del.has(b));
+    } else PLAN.raids.push(nm);
+    renderRaids(); renderObj();
+  }));
+  const sel = cat.filter(r => (PLAN.raids || []).includes(r.name));
+  const bosses = [];
+  sel.forEach(r => (r.bosses || []).forEach(b => { if (!bosses.includes(b)) bosses.push(b); }));
+  bc.innerHTML = sel.length
+    ? bosses.map(b => `<span class="chip${(PLAN.bosses || []).includes(b) ? " on" : ""}" data-btog="${esc(b)}">${esc(b)}</span>`).join("")
+    : `<span class="meta">— choisis d'abord un ou des raids</span>`;
+  bc.querySelectorAll("[data-btog]").forEach(c => c.addEventListener("click", () => {
+    const nm = c.dataset.btog;
+    PLAN.bosses = PLAN.bosses || [];
+    PLAN.bosses = PLAN.bosses.includes(nm) ? PLAN.bosses.filter(x => x !== nm) : PLAN.bosses.concat([nm]);
+    renderRaids();
+  }));
 }
 
 function renderItems() {
@@ -421,8 +468,9 @@ async function load() {
   DATA = await jget("/api/prep");
   CAN = !!DATA.can_edit;
   PLAN = { title: DATA.plan.title || "", event_ts: DATA.plan.event_ts || 0,
-           items: (DATA.plan.items || []).map(x => ({ name: x.name, qty: +x.qty || 0 })) };
-  renderObj(); renderItems(); renderNeeds(); renderRecipes(); renderAvail();
+           items: (DATA.plan.items || []).map(x => ({ name: x.name, qty: +x.qty || 0 })),
+           raids: DATA.plan.raids || [], bosses: DATA.plan.bosses || [] };
+  renderObj(); renderItems(); renderNeeds(); renderRecipes(); renderAvail(); renderRaids();
 }
 
 $("#logout").addEventListener("click", async (ev) => {

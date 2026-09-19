@@ -111,6 +111,43 @@ def _store(key: str, data: dict) -> float:
 # ---------------------------------------------------------------------------
 # API
 # ---------------------------------------------------------------------------
+def journal_raids(locale: str | None = None) -> tuple[dict, float]:
+    """Raids de la saison en cours (journal de jeu) et leurs boss, pour l'objectif de prépa.
+
+    Catalogue optionnel : en cas d'erreur API, renvoie un catalogue vide (le plan reste)
+    et l'échec n'est pas propagé."""
+    loc = _loc(locale)
+    key = f"journal_raids_{loc}"
+    hit = _cached(key, False)
+    if hit:
+        return hit["data"], hit["ts"]
+    ns = {"namespace": f"static-{REGION}", "locale": loc}
+    data: dict = {"expansion": "", "raids": []}
+    try:
+        idx = _get("/data/wow/journal-expansion/index", dict(ns))
+        tiers = [t for t in (idx.get("tiers") or []) if t.get("id")]
+        if tiers:
+            tiers.sort(key=lambda t: int(t["id"]), reverse=True)   # la plus récente d'abord
+            for tier in tiers[:3]:
+                det = _get(f"/data/wow/journal-expansion/{tier['id']}", dict(ns))
+                raids = []
+                for r in (det.get("raids") or [])[:10]:
+                    try:
+                        ins = _get(f"/data/wow/journal-instance/{r.get('id')}", dict(ns))
+                    except BnetError:
+                        continue
+                    raids.append({"name": ins.get("name") or r.get("name") or "?",
+                                  "bosses": [e.get("name") for e in (ins.get("encounters") or [])
+                                             if e.get("name")]})
+                if raids:
+                    data = {"expansion": tier.get("name") or "", "raids": raids}
+                    break
+    except BnetError:
+        pass
+    ts = _store(key, data)
+    return data, ts
+
+
 def roster(force: bool = False) -> tuple[dict, float]:
     """Roster de la guilde (membres, rangs, niveaux)."""
     hit = _cached("roster", force)
