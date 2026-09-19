@@ -961,7 +961,8 @@
  "Battle.net (Blizzard)": "Battle.net (Blizzard)",
  "Clés refusées par Battle.net.": "Keys rejected by Battle.net.",
  "Clés refusées par Warcraft Logs.": "Keys rejected by Warcraft Logs.",
- "Jeton obtenu — les clés fonctionnent.": "Token obtained — the keys work."
+ "Jeton obtenu — les clés fonctionnent.": "Token obtained — the keys work.",
+ "🟢 Configurée (serveur)": "🟢 Configured (server)"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1148,6 +1149,9 @@
     [/pièce\(s\) BIS/g, "BiS item(s)"],
     [/(\d+) pièce\(s\) déjà en poche sur (\d+)/g, "$1 item(s) already owned out of $2"],
     [/Il te manque /g, "You are missing "],
+    [/Jeton \+ API OK — quota (\d+) pts\/h, ([\d.]+) utilisés cette heure\./g, "Token + API OK — quota $1 pts/h, $2 used this hour."],
+    [/Jeton obtenu — les clés fonctionnent\./g, "Token obtained — the keys work."],
+    [/Jeton + API OK/g, "Token + API OK"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.130 - 2026-09-19
+
+### Fixed
+- API keys (administration): English wording for the status badge and the connection test messages.
+
 ## 2026.09.129 - 2026-09-19
 
 ### Added
