@@ -3916,7 +3916,7 @@ def api_prep_reset(request: Request):
 # ---- Recettes du jeu (API Game Data Blizzard) --------------------------------
 GAME_PREP_PROFS = ((185, "Cuisine"), (171, "Alchimie"), (773, "Calligraphie"),
                    (164, "Forge"), (165, "Travail du cuir"), (202, "Ingénierie"))
-GAME_SYNC_TTL = 6 * 86400.0  # rafraîchi bien avant le TTL de 30 j des API Blizzard
+GAME_SYNC_TTL = 86400.0  # resynchro auto au plus une fois par jour (boucle 6 h + au démarrage)
 _game_sync_state = {"state": "idle", "prof": "", "done": 0, "total": 0, "error": "", "ts": 0.0}
 
 

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.097 - 2026-09-19
+
+### Changed
+- Raid preparation: recipe sync is now fully automatic (at startup, then at most once a day — was every 6 days) and the "🔄 Sync" button is gone; the in-game recipe count and last sync time stay visible ("1001 recettes du jeu · maj il y a 3 h"). The artisan export import button was removed from this page too: exports are imported in 🙋 Moi → 📖 Mes recettes.
+
 ## 2026.09.095 - 2026-09-19
 
 ### Changed
