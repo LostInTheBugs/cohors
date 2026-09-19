@@ -148,6 +148,52 @@ def journal_raids(locale: str | None = None) -> tuple[dict, float]:
     return data, ts
 
 
+def journal_loot() -> list[dict]:
+    """Butin des raids et donjons du dernier palier (journal de jeu) — noms FR et EN.
+
+    Une entrée par couple (objet, rencontre) : {item_id, kind, inst_fr, inst_en, boss_fr, boss_en}.
+    """
+    ns_fr = {"namespace": f"static-{REGION}", "locale": "fr_FR"}
+    ns_en = {"namespace": f"static-{REGION}", "locale": "en_US"}
+    idx = _get("/data/wow/journal-expansion/index", dict(ns_fr))
+    tiers = sorted([t for t in (idx.get("tiers") or []) if t.get("id")],
+                   key=lambda t: int(t["id"]), reverse=True)
+    if not tiers:
+        return []
+    det = _get(f"/data/wow/journal-expansion/{tiers[0]['id']}", dict(ns_fr))
+    rows: list[dict] = []
+    for kind, grp in (("raid", "raids"), ("dungeon", "dungeons")):
+        for ref in (det.get(grp) or [])[:20]:
+            if not ref.get("id"):
+                continue
+            try:
+                ins_fr = _get(f"/data/wow/journal-instance/{ref['id']}", dict(ns_fr))
+                ins_en = _get(f"/data/wow/journal-instance/{ref['id']}", dict(ns_en))
+            except BnetError:
+                continue
+            in_fr = ins_fr.get("name") or ref.get("name") or "?"
+            in_en = ins_en.get("name") or in_fr
+            encs_en = {e.get("id"): (e.get("name") or "") for e in (ins_en.get("encounters") or [])}
+            for enc in (ins_fr.get("encounters") or []):
+                if not enc.get("id"):
+                    continue
+                b_fr = enc.get("name") or "?"
+                b_en = encs_en.get(enc.get("id")) or b_fr
+                try:
+                    e_fr = _get(f"/data/wow/journal-encounter/{enc['id']}", dict(ns_fr))
+                except BnetError:
+                    continue
+                for it in (e_fr.get("items") or []):
+                    iid = ((it.get("item") or {}).get("id")) or it.get("id")
+                    if not iid:
+                        continue
+                    rows.append({"item_id": int(iid), "kind": kind,
+                                 "inst_fr": in_fr, "inst_en": in_en,
+                                 "boss_fr": b_fr, "boss_en": b_en})
+                time.sleep(0.03)
+    return rows
+
+
 def roster(force: bool = False) -> tuple[dict, float]:
     """Roster de la guilde (membres, rangs, niveaux)."""
     hit = _cached("roster", force)

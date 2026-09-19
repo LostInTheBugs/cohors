@@ -478,6 +478,21 @@ def _init_db() -> None:
             )
             """
         )
+        # v2026.09.104 — butin (journal de jeu) : où trouver quoi (raids, donjons/MM+).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS item_loot (
+                item_id INTEGER NOT NULL,
+                kind    TEXT NOT NULL DEFAULT '',
+                inst_fr TEXT NOT NULL DEFAULT '',
+                inst_en TEXT NOT NULL DEFAULT '',
+                boss_fr TEXT NOT NULL DEFAULT '',
+                boss_en TEXT NOT NULL DEFAULT '',
+                updated REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_item_loot_item ON item_loot(item_id)")
         # v2026.09.087 — alertes MM+ (clés recherchées) & notifications personnelles.
         conn.execute(
             """
@@ -766,6 +781,7 @@ async def _lifespan(_app: FastAPI):
     threading.Thread(target=_bot_loop, daemon=True, name="discord-bot").start()
     threading.Thread(target=_snap_loop, daemon=True, name="char-snap").start()
     threading.Thread(target=_game_recipes_loop, daemon=True, name="game-recipes").start()
+    threading.Thread(target=_loot_loop, daemon=True, name="loot-sync").start()
     yield
 
 
@@ -2114,6 +2130,12 @@ def wishlist_page(request: Request):
 def api_wishlist(request: Request):
     user = _require_user(request)
     loc = _user_locale(request)
+    en = loc.startswith("en")
+    if _loot_sync_state["state"] != "running":
+        with _db_lock, _db() as conn:
+            n_loot = int(conn.execute("SELECT COUNT(*) AS n FROM item_loot").fetchone()["n"] or 0)
+        if not n_loot:
+            threading.Thread(target=_loot_sync, daemon=True).start()
     with _db_lock, _db() as conn:
         rows = conn.execute(
             "SELECT item_id, name, slot, quality, icon, added FROM wishlist WHERE user_email=? ORDER BY added DESC",
@@ -2123,20 +2145,54 @@ def api_wishlist(request: Request):
             "SELECT realm, name, display, is_main FROM char_links WHERE user_email=? ORDER BY is_main DESC, name",
             (user["email"],),
         ).fetchall()
-    items = []
-    for r in rows:
-        nm = r["name"]
-        if loc.startswith("en") and r["item_id"]:
-            try:
-                nm = bnet.item(r["item_id"], locale=loc).get("name") or nm
-            except bnet.BnetError:
-                pass
-        items.append({
-            "item_id": r["item_id"], "name": nm,
-            "slot": r["slot"], "slot_fr": bnet.slot_label(r["slot"], loc),
-            "quality": r["quality"], "icon": r["icon"], "added": r["added"],
-        })
-    chars_out = [dict(c) for c in chars]
+        loot: dict = {}
+        for lr in conn.execute(
+                "SELECT item_id, kind, inst_fr, inst_en, boss_fr, boss_en FROM item_loot").fetchall():
+            loot.setdefault(int(lr["item_id"]), []).append(dict(lr))
+        items = []
+        for r in rows:
+            nm = r["name"]
+            if en and r["item_id"]:
+                try:
+                    nm = bnet.item(r["item_id"], locale=loc).get("name") or nm
+                except bnet.BnetError:
+                    pass
+            src, seen = [], {}
+            for s in loot.get(int(r["item_id"] or 0), []):
+                key = (s["kind"], s["inst_en"])
+                ent = seen.get(key)
+                if ent is None:
+                    if len(src) >= 3:
+                        continue
+                    ent = {"kind": s["kind"], "inst": s["inst_en"] if en else s["inst_fr"], "bosses": []}
+                    seen[key] = ent
+                    src.append(ent)
+                bos = s["boss_en"] if en else s["boss_fr"]
+                if bos and bos not in ent["bosses"] and len(ent["bosses"]) < 3:
+                    ent["bosses"].append(bos)
+            gr = conn.execute(
+                "SELECT item, prof, prof_en, mats, mats_en FROM game_recipes WHERE item_id=? LIMIT 1",
+                (r["item_id"] or 0,)).fetchone()
+            fr_name = (gr["item"] if gr else r["name"]) or ""
+            who = [w["crafter"] for w in conn.execute(
+                "SELECT DISTINCT crafter FROM craft_recipes "
+                "WHERE (item_id > 0 AND item_id=?) OR lower(item)=lower(?)",
+                (r["item_id"] or 0, fr_name)).fetchall()]
+            craft = None
+            if gr or who:
+                try:
+                    mats = json.loads((gr["mats_en"] if (gr and en) else gr["mats"]) or "[]") if gr else []
+                except ValueError:
+                    mats = []
+                craft = {"prof": ((gr["prof_en"] if en else gr["prof"]) if gr else "") or "",
+                         "mats": mats, "who": who[:6]}
+            items.append({
+                "item_id": r["item_id"], "name": nm,
+                "slot": r["slot"], "slot_fr": bnet.slot_label(r["slot"], loc),
+                "quality": r["quality"], "icon": r["icon"], "added": r["added"],
+                "source": src, "craft": craft,
+            })
+        chars_out = [dict(c) for c in chars]
     for ch in chars_out:
         try:
             eq, _t = bnet.equipment(ch["realm"], ch["name"])
@@ -4388,6 +4444,48 @@ def _game_recipes_loop() -> None:
                 _game_sync()
         except Exception as exc:  # noqa: BLE001
             print(f"[game-recipes] boucle : {exc}", flush=True)
+        time.sleep(6 * 3600)
+
+
+LOOT_SYNC_TTL = 7 * 86400.0
+_loot_sync_state = {"state": "idle", "ts": 0.0, "error": ""}
+
+
+def _loot_sync() -> None:
+    """Synchronise le butin des raids et donjons (journal de jeu) dans item_loot."""
+    st = _loot_sync_state
+    if st["state"] == "running":
+        return
+    st.update({"state": "running", "error": ""})
+    try:
+        rows = bnet.journal_loot()
+        now = time.time()
+        with _db_lock, _db() as conn:
+            conn.execute("DELETE FROM item_loot")
+            conn.executemany(
+                "INSERT INTO item_loot (item_id, kind, inst_fr, inst_en, boss_fr, boss_en, updated) "
+                "VALUES (?,?,?,?,?,?,?)",
+                [(r["item_id"], r["kind"], r["inst_fr"], r["inst_en"], r["boss_fr"], r["boss_en"], now)
+                 for r in rows])
+        st.update({"state": "idle", "ts": now})
+        print(f"[loot] butin synchronisé : {len(rows)} ligne(s)", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        st.update({"state": "idle", "error": str(exc)})
+        print(f"[loot] synchro : {exc}", flush=True)
+
+
+def _loot_loop() -> None:
+    """Au démarrage puis toutes les 6 h : synchro du butin si vide ou trop ancien."""
+    time.sleep(70)
+    while True:
+        try:
+            with _db_lock, _db() as conn:
+                row = conn.execute("SELECT COUNT(*) AS n, MAX(updated) AS ts FROM item_loot").fetchone()
+            n, ts = int(row["n"] or 0), float(row["ts"] or 0)
+            if _loot_sync_state["state"] != "running" and (n == 0 or time.time() - ts > LOOT_SYNC_TTL):
+                _loot_sync()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[loot] boucle : {exc}", flush=True)
         time.sleep(6 * 3600)
 
 

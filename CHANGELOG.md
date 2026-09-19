@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.104 - 2026-09-19
+
+### Added
+- Wishlist: each wanted piece now shows how to get it (raid instance + bosses, or dungeon/MM+ from the in-game journal loot tables, synced to `item_loot`) and, when it is crafted, its materials plus who in the guild can craft it (game recipes + declared crafters). Help updated.
+
 ## 2026.09.103 - 2026-09-19
 
 ### Added
