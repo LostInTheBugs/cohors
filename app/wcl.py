@@ -29,6 +29,55 @@ RAID_ZONE_ID = int(os.environ.get("WCL_RAID_ZONE_ID", "53"))  # raid courant (pa
 _lock = threading.Lock()
 _token: dict = {"value": None, "expires": 0.0}
 _cache: dict[str, dict] = {}
+_cfg: dict = {"client_id": None, "client_secret": None}  # clés posées depuis l'administration
+
+
+def set_credentials(client_id: str | None, client_secret: str | None) -> None:
+    """Clés renseignées dans l'administration — prioritaires sur l'environnement."""
+    _cfg["client_id"] = (client_id or "").strip() or None
+    _cfg["client_secret"] = (client_secret or "").strip() or None
+    _token["value"], _token["expires"] = None, 0.0
+
+
+def credentials() -> tuple[str, str]:
+    """Clés effectives : administration d'abord, sinon environnement."""
+    return (_cfg["client_id"] or os.environ.get("WCL_CLIENT_ID", "").strip(),
+            _cfg["client_secret"] or os.environ.get("WCL_CLIENT_SECRET", "").strip())
+
+
+def check(client_id: str, client_secret: str) -> dict:
+    """Teste un couple de clés (jeton + requête de quota) sans toucher au cache."""
+    cid, secret = (client_id or "").strip(), (client_secret or "").strip()
+    if not cid or not secret:
+        return {"ok": False, "detail": "Client ID et secret requis."}
+    auth = base64.b64encode(f"{cid}:{secret}".encode()).decode()
+    req = urllib.request.Request(
+        TOKEN_URL, method="POST",
+        headers={"Authorization": f"Basic {auth}",
+                 "Content-Type": "application/x-www-form-urlencoded"},
+        data=b"grant_type=client_credentials")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            payload = json.load(resp)
+    except urllib.error.HTTPError as exc:
+        msg = "Clés refusées par Warcraft Logs." if exc.code in (400, 401, 403) else f"Erreur HTTP {exc.code}."
+        return {"ok": False, "detail": msg}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "detail": f"Connexion impossible ({type(exc).__name__})."}
+    token = payload.get("access_token")
+    q = urllib.request.Request(
+        API_URL, method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        data=json.dumps({"query": "query { rateLimitData { limitPerHour pointsSpentThisHour } }"}).encode())
+    try:
+        with urllib.request.urlopen(q, timeout=20) as resp:
+            data = json.load(resp)
+        rl = ((data.get("data") or {}).get("rateLimitData") or {})
+        detail = (f"Jeton + API OK — quota {rl.get('limitPerHour', '?')} pts/h, "
+                  f"{rl.get('pointsSpentThisHour', '?')} utilisés cette heure.")
+        return {"ok": True, "detail": detail}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "detail": f"Jeton obtenu mais API injoignable ({type(exc).__name__})."}
 
 
 class WclError(Exception):
@@ -43,8 +92,7 @@ def _access_token() -> str:
     with _lock:
         if _token["value"] and time.time() < _token["expires"] - 3600:
             return _token["value"]
-        cid = os.environ.get("WCL_CLIENT_ID", "").strip()
-        secret = os.environ.get("WCL_CLIENT_SECRET", "").strip()
+        cid, secret = credentials()
         if not cid or not secret:
             raise WclError(500, "Clés API Warcraft Logs non configurées sur le serveur.")
         auth = base64.b64encode(f"{cid}:{secret}".encode()).decode()

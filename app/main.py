@@ -178,6 +178,16 @@ def _init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS api_keys (
+                provider      TEXT PRIMARY KEY,
+                client_id     TEXT NOT NULL DEFAULT '',
+                client_secret TEXT NOT NULL DEFAULT '',
+                updated       REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS bot_config (
                 id             INTEGER PRIMARY KEY CHECK (id = 1),
                 enabled        INTEGER NOT NULL DEFAULT 0,
@@ -1007,6 +1017,7 @@ def _worker_loop() -> None:
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     _init_db()
+    _apply_api_keys()
     _bootstrap_admin()
     threading.Thread(target=_worker_loop, daemon=True, name="sim-worker").start()
     threading.Thread(target=_bot_loop, daemon=True, name="discord-bot").start()
@@ -4226,6 +4237,19 @@ def api_char_snapdiff(realm: str, name: str, request: Request):
 # ---------------------------------------------------------------------------
 # Bot Discord (annonces de guilde)
 # ---------------------------------------------------------------------------
+class ApiKeyRequest(BaseModel):
+    """Clés d'un fournisseur : secret vide = inchangé ; clear=True = retour à l'environnement."""
+
+    provider: str = Field(..., max_length=20)
+    client_id: str | None = Field(None, max_length=200)
+    client_secret: str = Field("", max_length=400)
+    clear: bool = False
+
+
+class ApiKeyTestRequest(BaseModel):
+    provider: str = Field(..., max_length=20)
+
+
 class BotConfigRequest(BaseModel):
     """Mise à jour PARTIELLE : seuls les champs transmis sont modifiés."""
 
@@ -4328,6 +4352,54 @@ def _gcal_parse(text: str) -> dict:
     if not isinstance(data, dict) or not isinstance(data.get("events"), list):
         raise HTTPException(400, "Données inattendues (aucun événement).")
     return data
+
+
+# ---------------------------------------------------------------------------
+# Clés API (Battle.net, Warcraft Logs) — renseignées depuis l'administration
+# ---------------------------------------------------------------------------
+API_PROVIDERS = {
+    "bnet": {"label": "Battle.net (Blizzard)",
+             "help_url": "https://develop.battle.net/access/clients",
+             "help_fr": "Portail développeurs Blizzard → Clients API → « Create Client » (type Client Credentials).",
+             "module": "bnet"},
+    "wcl": {"label": "Warcraft Logs",
+            "help_url": "https://www.warcraftlogs.com/api/clients",
+            "help_fr": "Warcraft Logs → ton profil → API Clients → « Create Client » (Client Credentials).",
+            "module": "wcl"},
+}
+
+
+def _api_keys_rows() -> dict:
+    with _db_lock, _db() as conn:
+        return {r["provider"]: r for r in conn.execute("SELECT * FROM api_keys").fetchall()}
+
+
+def _apply_api_keys() -> None:
+    """Recopie les clés stockées vers les clients (prioritaires sur l'environnement)."""
+    rows = _api_keys_rows()
+    for prov, mod in (("bnet", bnet), ("wcl", wcl)):
+        row = rows.get(prov)
+        mod.set_credentials(row["client_id"] if row else None,
+                            row["client_secret"] if row else None)
+
+
+def _api_effective(prov: str) -> tuple[str, str, str]:
+    """(client_id, secret, source) effectifs pour un fournisseur — source : admin / env / aucune."""
+    rows = _api_keys_rows()
+    row = rows.get(prov)
+    if row and (row["client_id"] or row["client_secret"]):
+        return (row["client_id"], row["client_secret"], "admin")
+    cid, secret = (bnet.credentials() if prov == "bnet" else wcl.credentials())
+    if cid or secret:
+        return (cid, secret, "env")
+    return ("", "", "")
+
+
+def _mask(value: str, keep: int = 4) -> str:
+    v = (value or "").strip()
+    if not v:
+        return ""
+    return ("•" * 6 + v[-keep:]) if len(v) > keep else "•" * 6
 
 
 def _bot_config() -> sqlite3.Row | None:
@@ -5900,6 +5972,74 @@ def api_gcal_relance(event_id: int, request: Request):
     except discord_bot.DiscordError as exc:
         raise HTTPException(400, f"Discord — {exc}")
     return {"ok": True, "count": len(waiting)}
+
+
+@app.get("/api/admin/api-keys")
+def admin_api_keys_get(request: Request):
+    _require_admin(request)
+    rows = _api_keys_rows()
+    out = []
+    for prov, meta in API_PROVIDERS.items():
+        cid, secret, source = _api_effective(prov)
+        row = rows.get(prov)
+        out.append({
+            "provider": prov,
+            "label": meta["label"],
+            "help_url": meta["help_url"],
+            "help_fr": meta["help_fr"],
+            "configured": bool(cid and secret),
+            "source": source,  # admin | env | ""
+            "id_hint": (cid[:8] + "…" + cid[-4:]) if len(cid) > 14 else cid,
+            "secret_hint": _mask(secret),
+            "updated": (row["updated"] if row else 0),
+            "env_available": bool((os.environ.get(f"{'BNET' if prov == 'bnet' else 'WCL'}_CLIENT_ID", "").strip()
+                                   and os.environ.get(f"{'BNET' if prov == 'bnet' else 'WCL'}_CLIENT_SECRET", "").strip())),
+        })
+    return {"providers": out}
+
+
+@app.post("/api/admin/api-keys")
+def admin_api_keys_save(payload: ApiKeyRequest, request: Request):
+    _require_admin(request)
+    prov = payload.provider.strip().lower()
+    if prov not in API_PROVIDERS:
+        raise HTTPException(400, "Fournisseur inconnu.")
+    mod = bnet if prov == "bnet" else wcl
+    if payload.clear:
+        with _db_lock, _db() as conn:
+            conn.execute("DELETE FROM api_keys WHERE provider=?", (prov,))
+        _apply_api_keys()
+        return {"ok": True, "cleared": True}
+    cid, secret, _src = _api_effective(prov)
+    new_id = (payload.client_id or "").strip() or cid
+    new_secret = payload.client_secret.strip() or secret
+    if not new_id or not new_secret:
+        raise HTTPException(400, "Client ID et secret sont requis (le secret existant est conservé si le champ est vide).")
+    res = mod.check(new_id, new_secret)
+    if not res.get("ok"):
+        raise HTTPException(400, f'{API_PROVIDERS[prov]["label"]} — {res.get("detail")}')
+    if not (payload.client_id or "").strip() and not payload.client_secret.strip():
+        raise HTTPException(400, "Rien à enregistrer (champs vides).")
+    with _db_lock, _db() as conn:
+        conn.execute("INSERT OR REPLACE INTO api_keys (provider, client_id, client_secret, updated) VALUES (?,?,?,?)",
+                     (prov, new_id, new_secret, time.time()))
+    _apply_api_keys()
+    return {"ok": True}
+
+
+@app.post("/api/admin/api-keys/test")
+def admin_api_keys_test(payload: ApiKeyTestRequest, request: Request):
+    _require_admin(request)
+    prov = payload.provider.strip().lower()
+    if prov not in API_PROVIDERS:
+        raise HTTPException(400, "Fournisseur inconnu.")
+    cid, secret, source = _api_effective(prov)
+    if not cid or not secret:
+        return {"ok": False, "detail": "Aucune clé configurée.", "source": source}
+    mod = bnet if prov == "bnet" else wcl
+    res = mod.check(cid, secret)
+    res["source"] = source
+    return res
 
 
 @app.get("/api/admin/bot")

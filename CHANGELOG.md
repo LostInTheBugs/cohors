@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.129 - 2026-09-19
+
+### Added
+- Administration: API keys (Battle.net, Warcraft Logs) can now be set from Settings → Administration → API keys, tested on save, and override the server environment values (.env) without a redeploy.
+
 ## 2026.09.128 - 2026-09-19
 
 ### Added

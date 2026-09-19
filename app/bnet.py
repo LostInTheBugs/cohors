@@ -33,6 +33,45 @@ MIN_FORCE_S = 60.0    # délai minimum entre deux rafraîchissements forcés
 _lock = threading.Lock()
 _token: dict = {"value": None, "expires": 0.0}
 _cache: dict[str, dict] = {}  # clé -> {"ts": float, "data": ...}
+_cfg: dict = {"client_id": None, "client_secret": None}  # clés posées depuis l'administration
+
+
+def set_credentials(client_id: str | None, client_secret: str | None) -> None:
+    """Clés renseignées dans l'administration — prioritaires sur l'environnement.
+
+    Un changement invalide le jeton en cache pour que le prochain appel reprenne les nouvelles clés.
+    """
+    _cfg["client_id"] = (client_id or "").strip() or None
+    _cfg["client_secret"] = (client_secret or "").strip() or None
+    _token["value"], _token["expires"] = None, 0.0
+
+
+def credentials() -> tuple[str, str]:
+    """Clés effectives : administration d'abord, sinon environnement."""
+    return (_cfg["client_id"] or os.environ.get("BNET_CLIENT_ID", "").strip(),
+            _cfg["client_secret"] or os.environ.get("BNET_CLIENT_SECRET", "").strip())
+
+
+def check(client_id: str, client_secret: str) -> dict:
+    """Teste un couple de clés sans toucher au cache (« Jeton obtenu » ou message d'erreur)."""
+    cid, secret = (client_id or "").strip(), (client_secret or "").strip()
+    if not cid or not secret:
+        return {"ok": False, "detail": "Client ID et secret requis."}
+    auth = base64.b64encode(f"{cid}:{secret}".encode()).decode()
+    req = urllib.request.Request(
+        TOKEN_URL, method="POST",
+        headers={"Authorization": f"Basic {auth}",
+                 "Content-Type": "application/x-www-form-urlencoded"},
+        data=b"grant_type=client_credentials")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            json.load(resp)
+    except urllib.error.HTTPError as exc:
+        msg = "Clés refusées par Battle.net." if exc.code in (400, 401, 403) else f"Erreur HTTP {exc.code}."
+        return {"ok": False, "detail": msg}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "detail": f"Connexion impossible ({type(exc).__name__})."}
+    return {"ok": True, "detail": "Jeton obtenu — les clés fonctionnent."}
 
 
 class BnetError(Exception):
@@ -50,8 +89,7 @@ def _access_token() -> str:
     with _lock:
         if _token["value"] and time.time() < _token["expires"] - 120:
             return _token["value"]
-        cid = os.environ.get("BNET_CLIENT_ID", "").strip()
-        secret = os.environ.get("BNET_CLIENT_SECRET", "").strip()
+        cid, secret = credentials()
         if not cid or not secret:
             raise BnetError(500, "Clés API Battle.net non configurées sur le serveur.")
         auth = base64.b64encode(f"{cid}:{secret}".encode()).decode()

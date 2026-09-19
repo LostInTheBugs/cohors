@@ -936,7 +936,32 @@
  "Bijou 1": "Trinket 1",
  "Bijou 2": "Trinket 2",
  "main_hand": "Main hand",
- "off_hand": "Off hand"
+ "off_hand": "Off hand",
+ "🔑 Clés API": "🔑 API keys",
+ "Clés utilisées par le site pour interroger les services externes (roster et objets Battle.net, rapports de raid et parses Warcraft Logs). Enregistrées ici, elles sont": "Keys used by the site to query external services (Battle.net roster and items, Warcraft Logs raid reports and parses). Stored here, they take precedence over",
+ "prioritaires sur le fichier de configuration du serveur": "the server configuration file",
+ "— pratique pour les renouveler sans redéployer.": "— handy to rotate them without redeploying.",
+ "Les secrets ne sont jamais réaffichés (seuls les 4 derniers caractères). Un test de connexion est fait à l'enregistrement.": "Secrets are never displayed again (only the last 4 characters). A connection test runs when saving.",
+ "🟢 Configurée": "🟢 Configured",
+ "⚪ Non configurée": "⚪ Not configured",
+ "Clé actuelle :": "Current key: ",
+ "enregistrée ici": "saved here",
+ "fichier du serveur (.env)": "server file (.env)",
+ "Créer les clés ↗": "Create the keys ↗",
+ "Secret :": "Secret: ",
+ "(vide = inchangé)": " (empty = unchanged)",
+ "🧪 Tester": "🧪 Test",
+ "🗑 Retirer (revenir au serveur)": "🗑 Remove (fall back to server)",
+ "Test des clés…": "Testing the keys…",
+ "Test en cours…": "Testing…",
+ "Clés enregistrées ✓": "Keys saved ✓",
+ "Clés retirées": "Keys removed",
+ "Retirer ces clés ? Le site utilisera celles du fichier serveur si elles existent.": "Remove these keys? The site will use the server file ones if present.",
+ "<li><b>Clés API (administration)</b> : les clés des services externes — <b>Battle.net</b> (roster, objets) et <b>Warcraft Logs</b> (rapports de raid, parses) — se renseignent dans <i>Paramètres → Administration → 🔑 Clés API</i>. Elles sont testées à l'enregistrement et remplacent celles du serveur.</li>": "<li><b>API keys (administration)</b>: the external services keys — <b>Battle.net</b> (roster, items) and <b>Warcraft Logs</b> (raid reports, parses) — are set in <i>Settings → Administration → 🔑 API keys</i>. They are tested on save and override the server ones.</li>",
+ "Battle.net (Blizzard)": "Battle.net (Blizzard)",
+ "Clés refusées par Battle.net.": "Keys rejected by Battle.net.",
+ "Clés refusées par Warcraft Logs.": "Keys rejected by Warcraft Logs.",
+ "Jeton obtenu — les clés fonctionnent.": "Token obtained — the keys work."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

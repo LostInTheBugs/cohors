@@ -98,7 +98,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.128">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.129">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -127,6 +127,7 @@
       <button class="sbtn hidden" type="button" data-sec="sec-invitations" id="sbtn-invitations">✉️ Invitations</button>
       <button class="sbtn hidden" type="button" data-sec="sec-comptes" id="sbtn-comptes">👤 Comptes</button>
       <button class="sbtn hidden" type="button" data-sec="sec-bot" id="sbtn-bot">🤖 Bot Discord</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-api" id="sbtn-api">🔑 Clés API</button>
       <button class="sbtn hidden" type="button" data-sec="sec-identite" id="sbtn-identite">🎨 Identité</button>
     </aside>
     <div class="spanel">
@@ -246,6 +247,15 @@
       </div>
     </div>
   
+    <div id="sec-api" class="hidden">
+      <div class="card">
+        <h2>🔑 Clés API</h2>
+        <p class="sub" style="margin:4px 0 14px">Clés utilisées par le site pour interroger les services externes (roster et objets Battle.net, rapports de raid et parses Warcraft Logs). Enregistrées ici, elles sont <b>prioritaires sur le fichier de configuration du serveur</b> — pratique pour les renouveler sans redéployer.</p>
+        <div id="api-providers"></div>
+        <p class="note">Les secrets ne sont jamais réaffichés (seuls les 4 derniers caractères). Un test de connexion est fait à l'enregistrement.</p>
+      </div>
+    </div>
+
     <div id="sec-identite" class="hidden">
       <div class="card">
         <h2>🎨 Identité de la guilde</h2>
@@ -278,9 +288,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.128"></script>
-<script src="/static/branding.js?v=2026.09.128"></script>
-<script src="/static/i18n.js?v=2026.09.128"></script>
+<script src="/static/nav.js?v=2026.09.129"></script>
+<script src="/static/branding.js?v=2026.09.129"></script>
+<script src="/static/i18n.js?v=2026.09.129"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -559,6 +569,62 @@ $("#bot-guilds").addEventListener("click", async () => {
   } catch (e) {}
 });
 
+// ---- Clés API (Battle.net, Warcraft Logs) ----
+async function loadApiKeys() {
+  const d = await api("GET", "/api/admin/api-keys");
+  const box = $("#api-providers");
+  box.innerHTML = (d.providers || []).map(p => {
+    const badge = p.configured
+      ? `<span class="badge b-used">🟢 Configurée${p.source === "env" ? " (serveur)" : ""}</span>`
+      : '<span class="badge b-off">⚪ Non configurée</span>';
+    const src = p.source === "admin" ? "enregistrée ici" : (p.source === "env" ? "fichier du serveur (.env)" : "—");
+    return `<div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px; margin-bottom:12px;">
+      <div class="row" style="justify-content:space-between"><b>${esc(p.label)}</b>${badge}</div>
+      <p class="note" style="margin:6px 0 10px">Clé actuelle : ${src} · <a class="hlink" href="${esc(p.help_url)}" target="_blank" rel="noopener">Créer les clés ↗</a><br>${esc(p.help_fr)}</p>
+      <div class="row">
+        <input type="text" id="k-${p.provider}-id" placeholder="${p.id_hint ? "Client ID actuel : " + esc(p.id_hint) : "Client ID"}" style="min-width:270px">
+        <input type="password" id="k-${p.provider}-secret" autocomplete="off" placeholder="${p.configured ? "Secret : " + esc(p.secret_hint || "••••") + " (vide = inchangé)" : "Client Secret"}" style="min-width:270px">
+      </div>
+      <div class="row" style="margin-top:9px">
+        <button class="small" data-kapi-save="${p.provider}">💾 Enregistrer</button>
+        <button class="small ghost" data-kapi-test="${p.provider}">🧪 Tester</button>
+        ${p.source === "admin" ? `<button class="small ghost" data-kapi-clear="${p.provider}">🗑 Retirer (revenir au serveur)</button>` : ""}
+        <span class="note" id="k-${p.provider}-msg"></span>
+      </div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-kapi-save]").forEach(b => b.addEventListener("click", () => saveApiKey(b.dataset.kapiSave)));
+  box.querySelectorAll("[data-kapi-test]").forEach(b => b.addEventListener("click", () => testApiKey(b.dataset.kapiTest)));
+  box.querySelectorAll("[data-kapi-clear]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("Retirer ces clés ? Le site utilisera celles du fichier serveur si elles existent.")) return;
+    try { await api("POST", "/api/admin/api-keys", { provider: b.dataset.kapiClear, clear: true }); toast("Clés retirées"); loadApiKeys(); }
+    catch (e) {}
+  }));
+}
+
+async function saveApiKey(prov) {
+  const msg = $("#k-" + prov + "-msg");
+  msg.textContent = "Test des clés…";
+  try {
+    await api("POST", "/api/admin/api-keys", {
+      provider: prov,
+      client_id: $("#k-" + prov + "-id").value.trim() || null,
+      client_secret: $("#k-" + prov + "-secret").value,
+    });
+    toast("Clés enregistrées ✓");
+    loadApiKeys();
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
+}
+
+async function testApiKey(prov) {
+  const msg = $("#k-" + prov + "-msg");
+  msg.textContent = "Test en cours…";
+  try {
+    const r = await api("POST", "/api/admin/api-keys/test", { provider: prov });
+    msg.innerHTML = r.ok ? `✅ ${esc(r.detail)}` : `<span style="color:var(--err)">⚠ ${esc(r.detail)}</span>`;
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
+}
+
 $("#bot-save").addEventListener("click", async () => {
   const body = {
     enabled: $("#bot-enabled").checked,
@@ -676,10 +742,11 @@ $("#bi-reset").addEventListener("click", async () => {
     if (IM_ADMIN) {
       $("#sbtn-comptes").classList.remove("hidden");
       $("#sbtn-bot").classList.remove("hidden");
+      $("#sbtn-api").classList.remove("hidden");
       $("#sbtn-identite").classList.remove("hidden");
     }
     loadInvites();
-    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); }
+    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); }
     openFromHash();
   }
 })();
