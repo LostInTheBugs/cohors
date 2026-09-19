@@ -3667,6 +3667,16 @@ def api_prep_get(request: Request):
                     break
             except (TypeError, ValueError):
                 continue
+        if ev is None and events:
+            # objectif saisi à la main : on rapproche par jour (Paris)
+            want = _snap_day(float(p["event_ts"]))
+            for e in events:
+                try:
+                    if _snap_day(float(e.get("ts") or 0)) == want:
+                        ev = e
+                        break
+                except (TypeError, ValueError):
+                    continue
         if ev:
             day = _snap_day(float(ev.get("ts") or p["event_ts"]))
             status_map = {1: "ok", 3: "ok", 2: "no", 8: "maybe"}

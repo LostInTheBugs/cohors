@@ -89,7 +89,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.091">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.092">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -115,7 +115,7 @@
     <div id="objbody"><div class="empty">Chargement…</div></div>
     <div id="objedit" class="hidden" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
       <div class="row">
-        <select id="evsel"><option value="">— choisir un raid du calendrier —</option></select>
+        <input type="datetime-local" id="odt" title="Date et heure de la soirée" style="color-scheme: dark">
         <input id="otitle" placeholder="Titre (ex : Raid HM du 21/09)" style="min-width:240px">
         <button class="btn" id="objsave">💾 Enregistrer l'objectif</button>
         <button class="btn ghost" id="objreset" title="Vide le plan et les apports (les recettes sont gardées)">♻️ Réinitialiser</button>
@@ -179,8 +179,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.091"></script>
-<script src="/static/i18n.js?v=2026.09.091"></script>
+<script src="/static/nav.js?v=2026.09.092"></script>
+<script src="/static/i18n.js?v=2026.09.092"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -190,6 +190,8 @@ const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1
   if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
   return `il y a ${Math.floor(s / 86400)} j`; };
+const toLocalInput = (ts) => { const d = new Date(ts * 1000), p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 const dtFmt = (ts) => { const d = new Date(ts * 1000);
   return d.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }) +
          " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); };
@@ -206,6 +208,14 @@ function setMsg(txt, ok) { const m = $("#msg"); m.textContent = txt || ""; m.cla
 
 let DATA = null, CAN = false;
 let PLAN = { title: "", event_ts: 0, items: [], raids: [], bosses: [] };
+
+const odtTs = () => { const v = $("#odt").value; if (!v) return null;
+  const t = new Date(v).getTime(); return isNaN(t) ? null : Math.round(t / 1000); };
+function collectInputs() {
+  PLAN.title = ($("#otitle").value || "").trim();
+  const t = odtTs();
+  if (t !== null) PLAN.event_ts = t;
+}
 
 async function savePlan() {
   try {
@@ -232,6 +242,7 @@ function renderObj() {
   }
   $("#objedit").classList.toggle("hidden", !CAN);
   $("#otitle").value = PLAN.title || "";
+  $("#odt").value = PLAN.event_ts ? toLocalInput(PLAN.event_ts) : "";
 }
 
 function renderRaids() {
@@ -241,6 +252,7 @@ function renderRaids() {
     ? cat.map(r => `<span class="chip${(PLAN.raids || []).includes(r.name) ? " on" : ""}" data-rtog="${esc(r.name)}">${esc(r.name)}</span>`).join("")
     : `<span class="meta">Catalogue du jeu indisponible pour le moment.</span>`;
   rc.querySelectorAll("[data-rtog]").forEach(c => c.addEventListener("click", () => {
+    collectInputs();
     const nm = c.dataset.rtog;
     PLAN.raids = PLAN.raids || [];
     if (PLAN.raids.includes(nm)) {
@@ -421,17 +433,6 @@ function renderRecipes() {
   }));
 }
 
-async function loadEvents() {
-  try {
-    const g = await jget("/api/gcal");
-    const now = Date.now() / 1000;
-    const up = (g.events || []).filter(e => (+e.ts || 0) > now - 3600)
-      .sort((a, b) => (+a.ts || 0) - (+b.ts || 0));
-    $("#evsel").innerHTML = `<option value="">— choisir un raid du calendrier —</option>` +
-      up.map(e => `<option value="${esc(e.date)}" data-ts="${+e.ts || 0}" data-title="${esc(e.title || "")}">${esc(e.title || "?")} — ${esc(e.date || "")}</option>`).join("");
-  } catch (e) {}
-}
-
 const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
 const AVST = { ok: "✅ a accepté le raid", maybe: "❓ peut-être", no: "❌ a refusé", wait: "⏳ sans réponse", "": "" };
 function renderAvail() {
@@ -446,7 +447,7 @@ function renderAvail() {
   if (!u.rows || !u.rows.length) {
     box.innerHTML = u.event
       ? `<div class="empty">Aucune indisponibilité déclarée pour ce raid ✓</div>`
-      : `<div class="empty">Choisis un objectif ci-dessus (raid du calendrier) pour croiser les réponses avec les indisponibilités. Aucune période déclarée pour les 14 prochains jours.</div>`;
+      : `<div class="empty">Choisis un objectif (avec une date) ci-dessus pour croiser les réponses avec les indisponibilités. Aucune période déclarée pour les 14 prochains jours.</div>`;
     return;
   }
   box.innerHTML = u.rows.map(r => {
@@ -479,15 +480,8 @@ $("#logout").addEventListener("click", async (ev) => {
   location.href = "/login";
 });
 $("#objsave").addEventListener("click", async () => {
-  PLAN.title = $("#otitle").value.trim();
+  collectInputs();
   await savePlan();
-});
-$("#evsel").addEventListener("change", (ev) => {
-  const o = ev.target.selectedOptions[0];
-  if (!o || !o.value) return;
-  PLAN.event_ts = +o.dataset.ts || 0;
-  PLAN.title = `${o.dataset.title || "Raid"} — ${o.value}`;
-  $("#otitle").value = PLAN.title;
 });
 $("#iadd").addEventListener("click", async () => {
   const name = $("#inew").value.trim();
@@ -553,7 +547,6 @@ $("#objreset").addEventListener("click", async () => {
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   try {
     await load();
-    if (CAN) await loadEvents();
     if (((DATA || {}).game_sync || {}).state === "running") scheduleSyncPoll();
   } catch (e) {
     $("#needs").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`;

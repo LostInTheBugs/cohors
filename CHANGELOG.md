@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.092 - 2026-09-19
+
+### Changed
+- Raid preparation: the objective date is now set directly with a date & time picker — the "calendar raid" dropdown was redundant now that raids and bosses are picked from the journal (v091). The unavailability block still finds the matching in-game calendar event: exact timestamp first, otherwise by day (Paris).
+
 ## 2026.09.091 - 2026-09-19
 
 ### Added
