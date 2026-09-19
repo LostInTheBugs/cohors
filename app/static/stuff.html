@@ -78,7 +78,7 @@
   .src { font-size: 12.5px; }
   .src a { color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.126">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.127">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -156,9 +156,9 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.126"></script>
-<script src="/static/branding.js?v=2026.09.126"></script>
-<script src="/static/i18n.js?v=2026.09.126"></script>
+<script src="/static/nav.js?v=2026.09.127"></script>
+<script src="/static/branding.js?v=2026.09.127"></script>
+<script src="/static/i18n.js?v=2026.09.127"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -268,7 +268,7 @@ function render(d) {
   const contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[st.content] || st.content;
 
   if (st.mode === "bis") {
-    const en = (localStorage.getItem("lotp_lang") || "fr") === "en";
+    const en = document.documentElement.lang === "en";
     const slotFr = st.slot_fr || {};
     meta.innerHTML = [
       `<span>Méthode : liste BIS du guide Wowhead (mise à jour du ${esc(st.updated_fr || "?")}) — les meilleures pièces de la saison, comparées à ce que tu portes. Le build et le contenu ne changent pas cette liste.</span>`,
@@ -294,7 +294,7 @@ function render(d) {
     const missing = rows.filter(r => !r.owned && !r.equipped);
     if (missing.length) {
       sum.innerHTML = `Il te manque <b>${missing.length}</b> pièce(s) BIS : ` +
-        missing.map(r => `${esc(slotFr[r.slot] || r.slot)} — ${esc(en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en))}`).join(", ") + ".";
+        missing.map(r => `<span>${esc(slotFr[r.slot] || r.slot)}</span> — ${esc(en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en))}`).join(", ") + ".";
     } else {
       sum.textContent = "Tu as déjà toutes les pièces BIS de la liste — bravo !";
     }

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.127 - 2026-09-19
+
+### Fixed
+- Gear advice: item names and slot labels now follow the active language (browser or saved preference) instead of the saved preference only.
+
 ## 2026.09.126 - 2026-09-19
 
 ### Fixed
