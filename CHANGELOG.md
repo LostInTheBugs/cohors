@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.110 - 2026-09-19
+
+### Changed
+- Dashboard is now reached by clicking the logo (top left, and the crest in the mobile drawer) instead of a menu entry; the "🏠 Tableau de bord" entry was removed from the menu. Help updated.
+
 ## 2026.09.109 - 2026-09-19
 
 ### Added

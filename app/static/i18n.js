@@ -425,7 +425,7 @@
  "Les officiers créent les raids (date, heure, durée, note).": "Officers create raids (date, time, duration, note).",
  "Réponds en un clic : ✅ Présent · ❓ Peut-être · ❌ Absent — re-clique pour annuler ta réponse.": "Answer in one click: ✅ Attending · ❓ Maybe · ❌ Not attending — click again to cancel your answer.",
  "Tu vois qui vient d'un coup d'œil, et le bot Discord relance une heure avant le raid (si activé).": "You see who's coming at a glance, and the Discord bot pings one hour before the raid (if enabled).",
- "Le récapitulatif : compte à rebours du reset hebdo, dernier raid avec les meilleurs parses, arrivées et départs de la guilde.": "The recap: weekly reset countdown, latest raid with top parses, guild joins and leaves.",
+ "Le récapitulatif : compte à rebours du reset hebdo, dernier raid avec les meilleurs parses, arrivées et départs de la guilde. On y accède en cliquant le logo en haut à gauche (ou à l'adresse /dashboard).": "The recap: weekly reset countdown, latest raid with top parses, guild joins and leaves. It is reached by clicking the logo in the top left (or at /dashboard).",
  "Les liens Discord et TeamSpeak sont sur la page 🛡️ Guilde (tenue à jour par les administrateurs).": "The Discord and TeamSpeak links are on the 🛡️ Guild page (kept up to date by administrators).",
  "« 🚀 Ouvrir dans TeamSpeak » lance ton client installé avec l'adresse et le mot de passe déjà remplis.": "« 🚀 Open in TeamSpeak » launches your installed client with the address and password pre-filled.",
  "Nom affiché, langue et mot de passe — tout se règle dans ⚙️ Paramètres.": "Display name, language and password — everything is set in ⚙️ Settings.",

@@ -59,18 +59,18 @@
   .err { color: var(--err); font-size: 13px; }
   .hidden { display: none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.109">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.110">
 </head>
 <body class="wb">
 <div class="wrap">
   <header class="topbar">
-    <div class="brand">
+    <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
       <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
       <div>
         <div class="brandname">LOTP <span>Mes indispos</span></div>
         <div class="tagline">Tes périodes d'indisponibilité — visibles dans la préparation de raid.</div>
       </div>
-    </div>
+    </a>
     <div class="userbox">
       <span class="who" id="who"></span>
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
@@ -95,8 +95,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.109"></script>
-<script src="/static/i18n.js?v=2026.09.109"></script>
+<script src="/static/nav.js?v=2026.09.110"></script>
+<script src="/static/i18n.js?v=2026.09.110"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
