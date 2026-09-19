@@ -2099,7 +2099,7 @@ SPEC_ROLE = {
 
 @app.get("/api/avail")
 def api_avail(request: Request, hours: int = 24):
-    """Dispo pour jouer : persos niveau max vus récemment (relevé du jour), groupés par rôle."""
+    """Vu dernièrement : persos niveau max vus récemment (relevé du jour), groupés par rôle."""
     _require_user(request)
     want_en = _user_locale(request).startswith("en")
     hours = hours if hours in (24, 48, 168) else 24

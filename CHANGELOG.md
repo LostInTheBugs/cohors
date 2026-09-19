@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.117 - 2026-09-19
+
+### Changed
+- Characters page: the "Available to play" section is now titled "Seen recently" (FR: « Vu dernièrement »), help text updated.
+
 ## 2026.09.116 - 2026-09-19
 
 ### Fixed
