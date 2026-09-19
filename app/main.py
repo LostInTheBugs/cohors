@@ -3649,6 +3649,11 @@ def api_gcal_get(request: Request):
             "SELECT email, name FROM users").fetchall()}
         metas = {r["event_key"]: dict(r) for r in conn.execute(
             "SELECT event_key, data, updated, updated_by FROM gcal_meta").fetchall()}
+        wish_rows = conn.execute("SELECT item_id, name, user_email FROM wishlist").fetchall()
+        loot_rows2 = conn.execute(
+            "SELECT item_id, kind, inst_fr, inst_en, boss_fr, boss_en FROM item_loot").fetchall()
+        main_chars = {r["user_email"]: (r["display"] or r["name"]) for r in conn.execute(
+            "SELECT user_email, display, name FROM char_links WHERE is_main=1").fetchall()}
         class_rows = conn.execute(
             "SELECT name, json_extract(data, '$.class') AS cfr, "
             "json_extract(data, '$.class_en') AS cen FROM char_snapshots "
@@ -3664,6 +3669,24 @@ def api_gcal_get(request: Request):
         except ValueError:
             data = {}
         events = data.get("events") or []
+    loot_by_item: dict = {}
+    for lr2 in loot_rows2:
+        loot_by_item.setdefault(int(lr2["item_id"]), []).append(dict(lr2))
+    want: dict = {}
+    for wr in wish_rows:
+        ent = want.setdefault(int(wr["item_id"]), {"name": wr["name"], "who": []})
+        disp = (main_chars.get(wr["user_email"])
+                or (uname_by_email.get(wr["user_email"]) or wr["user_email"]).split("@")[0])
+        if disp and disp not in ent["who"]:
+            ent["who"].append(disp)
+    en_wl = _user_locale(request).startswith("en")
+    if en_wl:
+        for iid2 in list(want):
+            try:
+                want[iid2]["name"] = (bnet.item(iid2, locale=_user_locale(request)).get("name")
+                                      or want[iid2]["name"])
+            except bnet.BnetError:
+                pass
     status_map = {1: "ok", 3: "ok", 2: "no", 8: "maybe"}
     conflicts = 0
     for e in events:
@@ -3679,6 +3702,33 @@ def api_gcal_get(request: Request):
             e["meta"] = json.loads(mrow["data"]) if mrow else None
         except (ValueError, TypeError):
             e["meta"] = None
+        md2 = e.get("meta") or {}
+        ev_raids = {str(x).strip().casefold() for x in (md2.get("raids") or []) if str(x).strip()}
+        ev_bosses = {str(x).strip().casefold() for x in (md2.get("bosses") or []) if str(x).strip()}
+        if ev_raids or ev_bosses:
+            groups: dict = {}
+            for iid3, went in want.items():
+                for lr2 in loot_by_item.get(iid3, []):
+                    in_f = str(lr2["inst_fr"] or "").strip().casefold()
+                    in_e = str(lr2["inst_en"] or "").strip().casefold()
+                    bo_f = str(lr2["boss_fr"] or "").strip().casefold()
+                    bo_e = str(lr2["boss_en"] or "").strip().casefold()
+                    if ev_raids and not (in_f in ev_raids or in_e in ev_raids):
+                        continue
+                    if ev_bosses and not (bo_f in ev_bosses or bo_e in ev_bosses):
+                        continue
+                    disp_b = None
+                    for b in (md2.get("bosses") or []):
+                        if str(b).strip().casefold() in (bo_f, bo_e):
+                            disp_b = str(b).strip()
+                            break
+                    if disp_b is None:
+                        disp_b = (lr2["boss_en"] if en_wl else lr2["boss_fr"]) or ""
+                    g = groups.setdefault(disp_b, [])
+                    if len(g) < 5 and all(x["name"] != went["name"] for x in g):
+                        g.append({"name": went["name"], "who": went["who"][:3]})
+            if groups:
+                e["wanted"] = [{"boss": b, "items": its} for b, its in groups.items()]
         if ts > 0:
             day = _snap_day(ts)
             ovr_map = (e.get("meta") or {}).get("ovr") or {}

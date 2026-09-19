@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.108 - 2026-09-19
+
+### Added
+- Calendar: each raid date lists the guild wishlist pieces that drop from its targeted bosses/raids (🎁, with who wants them, class colours). Help updated.
+
 ## 2026.09.107 - 2026-09-19
 
 ### Added
