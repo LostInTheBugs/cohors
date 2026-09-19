@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.119 - 2026-09-19
+
+### Added
+- New "Gear advice" page (Simulation menu): pick a /simc export, a saved build and a content (Mythic+, Raid, Delves) and see which items you already own you should wear. Healing specs are ranked by item level then stat priority (sourced guide — SimulationCraft cannot sim healers); DPS specs get real per-item simulations. Items your character cannot wear are filtered out automatically.
+
 ## 2026.09.118 - 2026-09-19
 
 ### Fixed

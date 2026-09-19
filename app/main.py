@@ -337,7 +337,8 @@ def _init_db() -> None:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sims_hash ON sims(input_hash)")
         # migrations (idempotent)
         for table, col in (("sims", "user_email"), ("sims", "user_name"),
-                           ("sims", "kind"), ("sims", "weights"), ("sims", "gear")):
+                           ("sims", "kind"), ("sims", "weights"), ("sims", "gear"),
+                           ("sims", "plan")):
             cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
             if col not in cols:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
@@ -779,6 +780,9 @@ def _run_one(sim_id: str) -> None:
 
     try:
         kind = row["kind"] or "dps"
+        if kind == "stuff":
+            _run_stuff(row)
+            return
         extra = ["calculate_scale_factors=1"] if kind == "weights" else None
         if kind == "group":
             extra = ["calculate_scale_factors=0", "fight_style=Patchwerk", "max_time=300"]
@@ -821,6 +825,113 @@ def _run_one(sim_id: str) -> None:
                 "UPDATE sims SET status='failed', error=?, finished=? WHERE id=?",
                 (str(exc)[-2000:], time.time(), sim_id),
             )
+
+
+def _run_stuff(row: sqlite3.Row) -> None:
+    """Exécute un « Stuff conseillé » (kind='stuff') : stats des pièces puis classement."""
+    sim_id = row["id"]
+    workdir = Path(row["input_file"]).parent
+    t0 = time.time()
+    res = None
+    try:
+        plan = json.loads(row["plan"] or "{}")
+        with _db_lock, _db() as conn:
+            prof = conn.execute("SELECT id, name, input FROM profiles WHERE id=?",
+                                (plan.get("profile_id"),)).fetchone()
+        if prof is None:
+            raise RuntimeError("Profil introuvable (il a peut-être été supprimé).")
+        parsed = _stuff_parse_export(prof["input"])
+        parsed["_raw"] = prof["input"]
+        if not parsed["bags"]:
+            raise RuntimeError("Aucune pièce dans les sacs de cet export — réexporte avec l'addon.")
+        items, seen = [], set()
+        for it in parsed["equipped"]:
+            key = (it["slot"], it["opts"])
+            if key in seen:
+                continue
+            seen.add(key)
+            d = dict(it)
+            d["equipped"] = True
+            items.append(d)
+        for it in parsed["bags"]:
+            key = (it["slot"], it["opts"])
+            if key in seen:
+                continue
+            seen.add(key)
+            d = dict(it)
+            d["equipped"] = False
+            items.append(d)
+        stats, dropped, crashed = _stuff_fetch_stats(items, parsed["cls"], parsed["spec"], workdir)
+        for it in items:
+            it["stats"] = stats.get(it.get("actor"))
+        content = plan.get("content") or "raid"
+        is_heal = parsed["spec"] in HEAL_SPECS
+        if is_heal:
+            prio = dict(STUFF_HEAL_PRIO.get(f'{parsed["cls"]}/{parsed["spec"]}')
+                        or {"order": [], "source": "", "source_fr": ""})
+            prio["known"] = bool(prio.get("order"))
+            results = _stuff_rank_heal(parsed, items, prio, content)
+            results["prio_known"] = prio["known"]
+            note = None if prio["known"] else "Classé au niveau d'objet : priorités de stats pas encore répertoriées pour cette spécialisation."
+        else:
+            equipped_by_slot = {it["slot"]: it for it in items if it.get("equipped")}
+            cands = _stuff_plausible(items, equipped_by_slot)
+            if not cands:
+                raise RuntimeError("Rien dans les sacs ne peut battre l'équipement actuel — bon signe !")
+            text, n_cands = _stuff_sim_input(parsed, items, plan.get("loadout") or {})
+            sim_file = workdir / "stuff.simc"
+            sim_file.write_text(text)
+            extra = list(STUFF_CONTENTS[content]["opts"])
+            res = run_sim(profile_path=sim_file, iterations=STUFF_ITERATIONS, outdir=workdir,
+                          timeout=SIM_TIMEOUT, extra=extra)
+            note = None
+            if not res.get("ok") and res.get("rc") == 139:
+                stripped, removed = _strip_crash_items(text)
+                if removed:
+                    sim_file.write_text(stripped)
+                    res = run_sim(profile_path=sim_file, iterations=STUFF_ITERATIONS, outdir=workdir,
+                                  timeout=SIM_TIMEOUT, extra=extra)
+                    if res.get("ok"):
+                        note = "Calcul lancé sans " + ", ".join(removed) + " — cet objet fait planter le moteur SimulationCraft (bug connu)."
+            if not res.get("ok"):
+                raise RuntimeError("La simulation a échoué : " + ((res.get("log_tail") or "raison inconnue")[-400:]))
+            base = None
+            try:
+                data = json.loads(Path(res["json"]).read_text())
+                p0 = (data.get("sim", {}).get("players") or [{}])[0]
+                base = ((p0.get("collected_data") or {}).get("dps") or {}).get("mean")
+            except Exception:  # noqa: BLE001
+                base = None
+            items_res = []
+            for g in (res.get("gear") or []):
+                m = re.search(r"\[(\w+)\]$", g.get("name") or "")
+                dps = float(g.get("dps") or 0.0)
+                items_res.append({"name": re.sub(r"\s*\[[^\]]*\]\s*$", "", g.get("name") or ""),
+                                  "slot": m.group(1) if m else "",
+                                  "dps": dps,
+                                  "gain": (dps - base) if base else None,
+                                  "gain_pct": round(100 * (dps - base) / base, 2) if base else None})
+            items_res.sort(key=lambda x: -(x["dps"] or 0))
+            results = {"mode": "sim", "content": content, "baseline": base,
+                       "iterations": STUFF_ITERATIONS, "items": items_res,
+                       "candidates": n_cands, "report": bool(res.get("html"))}
+        results["equipped_count"] = len(parsed["equipped"])
+        results["bag_count"] = len(parsed["bags"])
+        results["valid_count"] = sum(1 for it in items if it.get("stats"))
+        results["invalid_count"] = dropped
+        if crashed:
+            results["crashed"] = [c.get("name") or "?" for c in crashed]
+        results["loadout"] = (plan.get("loadout") or {}).get("name") or ""
+        wall = time.time() - t0
+        with _db_lock, _db() as conn:
+            conn.execute(
+                """UPDATE sims SET status='done', dps=?, wall_s=?, gear=?, error=?, report_html=?, report_json=?, finished=? WHERE id=?""",
+                (results.get("baseline"), round(wall, 3), json.dumps(results), note,
+                 (res or {}).get("html"), (res or {}).get("json"), time.time(), sim_id))
+    except Exception as exc:  # noqa: BLE001
+        with _db_lock, _db() as conn:
+            conn.execute("UPDATE sims SET status='failed', error=?, finished=? WHERE id=?",
+                         (str(exc)[-2000:], time.time(), sim_id))
 
 
 def _worker_loop() -> None:
@@ -1074,6 +1185,13 @@ def gear_page(request: Request):
     return FileResponse(STATIC_DIR / "gear.html")
 
 
+@app.api_route("/stuff", methods=["GET", "HEAD"])
+def stuff_page(request: Request):
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "stuff.html")
+
+
 @app.api_route("/dashboard", methods=["GET", "HEAD"])
 def dashboard_page(request: Request):
     if _get_session_user(request) is None:
@@ -1248,6 +1366,253 @@ def _build_gear_input(profile_text: str, items_text: str, locale: str | None = N
     return profile_text + "\n\n" + "\n".join(lines) + "\n", warnings
 
 
+# =====================================================================
+# v2026.09.119 — « Stuff conseillé » : quoi porter, depuis ce qu'on possède.
+#
+# L'export SimC de l'addon contient l'équipement porté, les pièces des sacs
+# (« ### Gear from Bags ») et les builds sauvegardés (« # Saved Loadout: »).
+# On s'en sert pour répondre à : « avec ce que j'ai, que devrais-je porter
+# pour tel contenu ? » — sans rien coller.
+#
+# Méthodes :
+#  * Spés de soin → SimulationCraft ne simule pas les soins : classement par
+#    niveau d'objet puis par priorité des statistiques du guide de la spé
+#    (les stats de chaque pièce sont extraites du moteur, bonus inclus).
+#  * Spés DPS → vraies simulations : une profileset par pièce (comme le
+#    Top Stuff), sur le contenu choisi.
+# =====================================================================
+STUFF_SLOTS = ("head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist",
+               "legs", "feet", "finger1", "finger2", "trinket1", "trinket2", "main_hand", "off_hand")
+STUFF_ITERATIONS = 800
+STUFF_MAX_CANDIDATES = 30
+STUFF_CONTENTS = {
+    "mplus": {"opts": ["fight_style=DungeonSlice"], "label_fr": "Mythique+", "label_en": "Mythic+"},
+    "raid": {"opts": ["fight_style=Patchwerk", "max_time=300"], "label_fr": "Raid", "label_en": "Raid"},
+    "delves": {"opts": ["fight_style=Patchwerk", "max_time=90", "optimal_raid=0"],
+               "label_fr": "Gouffres", "label_en": "Delves"},
+}
+# Spés de soin (le moteur ne les simule pas) — classement par stats pondérées.
+HEAL_SPECS = {"restoration", "holy", "discipline", "mistweaver", "preservation"}
+# Priorité des stats secondaires par spé : niveau d'objet d'abord, puis cet ordre.
+# Sources : guides de classe Icy Veins (patch 12.1), pages « Stat Priority ».
+STUFF_HEAL_PRIO = {
+    "shaman/restoration": {
+        "order": ["crit", "vers", "haste", "mast"],
+        "source": "https://www.icy-veins.com/wow/restoration-shaman-pve-healing-stat-priority",
+        "source_fr": "Guide Icy Veins — Chaman Restauration (12.1)",
+    },
+}
+
+
+def _stuff_parse_export(txt: str) -> dict:
+    """Analyse un export SimC : classe/spé, builds sauvegardés, équipé, pièces des sacs."""
+    out = {"cls": "", "name": "", "spec": "", "level": 0, "loadouts": [],
+           "equipped": [], "bags": []}
+    pending = None
+    cur_loadout = None
+    in_bags = False
+    for ln in txt.replace("\r\n", "\n").splitlines():
+        if not out["cls"]:
+            m = re.match(r'^([a-z_]+)="([^"]*)"\s*$', ln)
+            if m:
+                out["cls"], out["name"] = m.group(1), m.group(2)
+                continue
+        if ln.strip().startswith("### Gear from Bags"):
+            in_bags = True
+            continue
+        if not out["spec"]:
+            m = re.match(r"^spec=(\S+)", ln)
+            if m:
+                out["spec"] = m.group(1)
+                continue
+        if not out["level"]:
+            m = re.match(r"^level=(\d+)", ln)
+            if m:
+                out["level"] = int(m.group(1))
+                continue
+        m = re.match(r"^#\s*Saved Loadout:\s*(.+?)\s*$", ln)
+        if m:
+            cur_loadout = m.group(1)
+            continue
+        m = re.match(r"^#\s*talents=(\S+)\s*$", ln)
+        if m:
+            if cur_loadout:
+                out["loadouts"].append({"name": cur_loadout, "talents": m.group(1)})
+                cur_loadout = None
+            continue
+        m = re.match(r"^#\s*(.+?)\s*\((\d+)\)\s*$", ln)
+        if m:
+            pending = {"name": m.group(1), "ilvl": int(m.group(2))}
+            continue
+        m = re.match(r"^(#\s*)?(" + "|".join(STUFF_SLOTS) + r")\s*=\s*(.+?)\s*$", ln)
+        if m:
+            item = {"slot": m.group(2), "opts": m.group(3),
+                    "name": (pending or {}).get("name") or "", "ilvl": (pending or {}).get("ilvl") or 0}
+            dest = out["bags"] if (in_bags or m.group(1)) else out["equipped"]
+            dest.append(item)
+            pending = None
+    return out
+
+
+def _stuff_gear_stats(json_path: str | None) -> dict:
+    """Stats des pièces depuis le JSON d'une sim d'acteurs (un acteur par pièce)."""
+    if not json_path:
+        return {}
+    try:
+        data = json.loads(Path(json_path).read_text())
+    except Exception:  # noqa: BLE001
+        return {}
+    out: dict[str, dict] = {}
+    for p in (data.get("sim", {}).get("players") or []):
+        nm = str(p.get("name") or "")
+        if not re.match(r"^C\d+$", nm):
+            continue
+        for _slot, it in (p.get("gear") or {}).items():
+            if it.get("name"):
+                out[nm] = {"ilvl": it.get("ilevel"), "int": it.get("intellect") or it.get("agiint"),
+                           "crit": it.get("crit_rating"), "haste": it.get("haste_rating"),
+                           "mast": it.get("mastery_rating"), "vers": it.get("versatility_rating"),
+                           "stam": it.get("stamina")}
+    return out
+
+
+def _stuff_fetch_stats(items: list[dict], cls: str, spec: str, workdir: Path) -> tuple[dict, int, list]:
+    """Stats de chaque pièce via des acteurs SimC, par lots.
+
+    Retire les pièces que le personnage ne peut pas porter (le moteur répond
+    « Invalid type ») et isole par dichotomie celles qui font planter le moteur.
+    Renvoie (stats par acteur, nb de pièces écartées, pièces qui plantent).
+    """
+    for k, c in enumerate(items, 1):
+        c["actor"] = f"C{k:03d}"
+    stats: dict[str, dict] = {}
+    dropped = 0
+    crashed: list[dict] = []
+    queue = [list(items)]
+    guard = 0
+    while queue and guard < 80:
+        guard += 1
+        batch = queue.pop(0)
+        if not batch:
+            continue
+        lines = []
+        for c in batch:
+            lines += [f'{cls or "shaman"}="{c["actor"]}"', f'level={c.get("level") or 90}',
+                      "region=eu", f'spec={spec or "restoration"}', f'{c["slot"]}={c["opts"]}', ""]
+        profile = workdir / "stats.simc"
+        profile.write_text("\n".join(lines))
+        res = run_sim(profile_path=profile, iterations=1, outdir=workdir, extra=["max_time=1"], timeout=300)
+        got = _stuff_gear_stats(res.get("json"))
+        if got:
+            stats.update(got)
+            continue
+        log = res.get("log_tail") or ""
+        bad = set(re.findall(r"Player '(C\d+)'", log))
+        if bad:
+            keep = [c for c in batch if c["actor"] not in bad]
+            dropped += len(batch) - len(keep)
+            if keep:
+                queue.append(keep)
+            continue
+        if res.get("rc") == 139:
+            if len(batch) > 1:
+                mid = len(batch) // 2
+                queue += [batch[:mid], batch[mid:]]
+            else:
+                crashed.append(batch[0])
+            continue
+        dropped += len(batch)
+    return stats, dropped, crashed
+
+
+def _stuff_score(item: dict, order: list[str]) -> tuple:
+    """Clé de classement : niveau d'objet d'abord, puis stats dans l'ordre de priorité."""
+    st = item.get("stats") or {}
+    return (int(item.get("ilvl") or 0),) + tuple(int(st.get(k) or 0) for k in order)
+
+
+def _stuff_item_public(item: dict) -> dict:
+    st = item.get("stats") or {}
+    return {"name": item.get("name") or "?", "ilvl": item.get("ilvl"),
+            "int": st.get("int"), "crit": st.get("crit"), "haste": st.get("haste"),
+            "mast": st.get("mast"), "vers": st.get("vers")}
+
+
+def _stuff_rank_heal(parsed: dict, items: list[dict], prio: dict, content: str) -> dict:
+    """Classement des pièces pour une spé de soin (niveau d'objet puis priorité des stats)."""
+    order = prio["order"]
+    by_slot_cur: dict[str, dict] = {}
+    by_slot_bags: dict[str, list[dict]] = {}
+    for it in items:
+        if not it.get("stats"):
+            continue
+        if it.get("equipped"):
+            by_slot_cur[it["slot"]] = it
+        else:
+            by_slot_bags.setdefault(it["slot"], []).append(it)
+    slots = []
+    for slot in STUFF_SLOTS:
+        cur = by_slot_cur.get(slot)
+        cands = by_slot_bags.get(slot) or []
+        if not cur and not cands:
+            continue
+        best = None
+        if cands:
+            best = max(cands, key=lambda i: _stuff_score(i, order))
+        entry = {"slot": slot,
+                 "current": _stuff_item_public(cur) if cur else None,
+                 "best": _stuff_item_public(best) if best else None,
+                 "swap": False, "reason": None}
+        if best is not None:
+            if cur is None:
+                entry["swap"] = True
+                entry["reason"] = {"kind": "empty"}
+            else:
+                sb, sc = _stuff_score(best, order), _stuff_score(cur, order)
+                if sb > sc:
+                    entry["swap"] = True
+                    if int(best.get("ilvl") or 0) != int(cur.get("ilvl") or 0):
+                        entry["reason"] = {"kind": "ilvl",
+                                           "diff": int(best.get("ilvl") or 0) - int(cur.get("ilvl") or 0)}
+                    else:
+                        bs, cs = best.get("stats") or {}, cur.get("stats") or {}
+                        stat = next((k for k in order if int(bs.get(k) or 0) != int(cs.get(k) or 0)), None)
+                        entry["reason"] = {"kind": "stats", "stat": stat} if stat else {"kind": "tie"}
+        slots.append(entry)
+    return {"mode": "heal", "content": content, "priority": order,
+            "source": prio.get("source"), "source_fr": prio.get("source_fr"),
+            "slots": slots}
+
+
+def _stuff_sim_input(parsed: dict, items: list[dict], loadout: dict | None) -> str:
+    """Profil pour les spés DPS : export nettoyé + talents du build + une profileset par pièce."""
+    lines = [ln for ln in parsed.get("_raw", "").splitlines()
+             if ln.strip() and not ln.lstrip().startswith("#")]
+    if loadout and loadout.get("talents"):
+        lines = [ln for ln in lines if not ln.startswith("talents=")]
+        lines.insert(1, "talents=" + loadout["talents"])
+    cands = [it for it in items if not it.get("equipped") and it.get("stats")]
+    cands.sort(key=lambda i: -int(i.get("ilvl") or 0))
+    cands = cands[:STUFF_MAX_CANDIDATES]
+    ps = [f'profileset."{(it.get("name") or "?")[:40]} [{it["slot"]}]"={it["slot"]}={it["opts"]}'
+          for it in cands]
+    return "\n".join(lines) + "\n\n" + "\n".join(ps) + "\n", len(cands)
+
+
+def _stuff_plausible(items: list, equipped_by_slot: dict) -> list:
+    """Ne garde que les pièces qui peuvent battre (ou presque) l'équipé en niveau d'objet."""
+    out = []
+    for it in items:
+        if it.get("equipped") or not it.get("stats"):
+            continue
+        cur = equipped_by_slot.get(it["slot"])
+        ilvl = int(it.get("ilvl") or 0)
+        if cur is None or ilvl >= int(cur.get("ilvl") or 0) - 6:
+            out.append(it)
+    out.sort(key=lambda i: -int(i.get("ilvl") or 0))
+    return out[:STUFF_MAX_CANDIDATES]
+
+
 class SimRequest(BaseModel):
     input: str = Field(..., min_length=30, max_length=MAX_INPUT_CHARS)
     iterations: int = DEFAULT_ITERATIONS
@@ -1320,6 +1685,70 @@ def submit_sim(payload: SimRequest, request: Request):
             (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"], kind),
         )
         return {"id": sim_id, "status": "queued", "cached": False, "position": queue_len + 1, "warnings": warnings}
+
+
+@app.get("/api/stuff/profile/{pid}")
+def stuff_profile(pid: int, request: Request):
+    """Résumé d'un export : classe/spé, builds détectés, nb de pièces."""
+    _require_user(request)
+    with _db_lock, _db() as conn:
+        prof = conn.execute("SELECT id, name, input FROM profiles WHERE id=?", (pid,)).fetchone()
+    if prof is None:
+        raise HTTPException(404, "Profil introuvable.")
+    parsed = _stuff_parse_export(prof["input"])
+    return {"id": prof["id"], "name": prof["name"], "cls": parsed["cls"], "spec": parsed["spec"],
+            "level": parsed["level"], "loadouts": [l["name"] for l in parsed["loadouts"]],
+            "equipped": len(parsed["equipped"]), "bags": len(parsed["bags"]),
+            "heal": parsed["spec"] in HEAL_SPECS,
+            "prio_known": f'{parsed["cls"]}/{parsed["spec"]}' in STUFF_HEAL_PRIO}
+
+
+class StuffRequest(BaseModel):
+    profile_id: int
+    loadout: str = ""
+    content: str = "raid"
+
+
+@app.post("/api/stuff")
+def submit_stuff(payload: StuffRequest, request: Request):
+    """« Stuff conseillé » : que porter, avec ce qu'on possède, pour un contenu donné."""
+    user = _require_user(request)
+    if payload.content not in STUFF_CONTENTS:
+        raise HTTPException(400, "Contenu invalide.")
+    with _db_lock, _db() as conn:
+        prof = conn.execute("SELECT id, name, input FROM profiles WHERE id=?", (payload.profile_id,)).fetchone()
+    if prof is None:
+        raise HTTPException(404, "Profil introuvable.")
+    parsed = _stuff_parse_export(prof["input"])
+    if not parsed["bags"]:
+        raise HTTPException(400, "Cet export ne contient pas les pièces des sacs — réexporte ton personnage avec l'addon (les sacs sont inclus automatiquement).")
+    loadout = next((l for l in parsed["loadouts"] if l["name"] == payload.loadout), None)
+    if payload.loadout and loadout is None:
+        raise HTTPException(400, "Build introuvable dans cet export.")
+    ip = _client_ip(request)
+    now = time.time()
+    with _db_lock, _db() as conn:
+        active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
+                              (user["email"],)).fetchone()["c"]
+        if active >= PER_USER_ACTIVE:
+            raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
+        sim_id = uuid.uuid4().hex[:12]
+        sim_dir = REPORTS_DIR / sim_id
+        sim_dir.mkdir(parents=True, exist_ok=True)
+        input_file = sim_dir / "input.simc"
+        input_file.write_text("")
+        plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
+                "spec": parsed["spec"], "loadout": loadout or {}, "content": payload.content}
+        label = f'{prof["name"]} · {STUFF_CONTENTS[payload.content]["label_fr"]}' + \
+                (f' · {loadout["name"]}' if loadout else "")
+        conn.execute(
+            """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
+                                 user_email, user_name, kind, plan)
+               VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
+            (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
+             user["email"], user["name"], json.dumps(plan)))
+    return {"id": sim_id, "status": "queued", "heal": parsed["spec"] in HEAL_SPECS,
+            "loadouts": [l["name"] for l in parsed["loadouts"]]}
 
 
 def _parse_weights_json(raw: str | None) -> list | None:
@@ -1401,6 +1830,14 @@ def get_sim(sim_id: str, request: Request):
         enriched.sort(key=lambda e: e["dps"], reverse=True)
         d["gear"] = enriched
         d["gear_base_dps"] = base
+    if r["kind"] == "stuff":
+        st = _parse_weights_json(r["gear"])
+        if st:
+            for e in st.get("slots") or []:
+                e["slot_fr"] = bnet.slot_label(e.get("slot"), loc)
+            for e in st.get("items") or []:
+                e["slot_fr"] = bnet.slot_label(e.get("slot"), loc)
+        d["stuff"] = st
     return d
 
 

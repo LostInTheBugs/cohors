@@ -14,6 +14,7 @@
     { label: "⚔️ Simulation", items: [
       { href: "/", label: "⚔️ Simulateur" },
       { href: "/gear", label: "🧰 Top Stuff" },
+      { href: "/stuff", label: "🎒 Stuff conseillé" },
       { href: "/compare", label: "⚖️ Comparateur" }
     ] },
     { label: "👥 Guilde", items: [
