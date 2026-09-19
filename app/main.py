@@ -345,6 +345,10 @@ def _init_db() -> None:
         for bcol in ("notify_chars", "notify_weekly"):
             if bcol not in bcols:
                 conn.execute(f"ALTER TABLE bot_config ADD COLUMN {bcol} INTEGER NOT NULL DEFAULT 1")
+        # v2026.09.109 — wishlist : pièces prioritaires (⭐) + BIS déduits des sims « Top Stuff ».
+        wcols = [r["name"] for r in conn.execute("PRAGMA table_info(wishlist)").fetchall()]
+        if "prio" not in wcols:
+            conn.execute("ALTER TABLE wishlist ADD COLUMN prio INTEGER NOT NULL DEFAULT 0")
         if "last_recap" not in bcols:
             conn.execute("ALTER TABLE bot_config ADD COLUMN last_recap REAL NOT NULL DEFAULT 0")
         # v2026.09.064 — import du calendrier in-game (addon LOTP).
@@ -2087,6 +2091,11 @@ def api_leaderboard(request: Request, refresh: int = 0):
 # ---------------------------------------------------------------------------
 class WishlistAdd(BaseModel):
     item: str = Field(..., min_length=4, max_length=300)
+    prio: bool = False
+
+
+class PrioSet(BaseModel):
+    on: bool = False
 
 
 @app.api_route("/manifest.webmanifest", methods=["GET", "HEAD"])
@@ -2126,6 +2135,65 @@ def wishlist_page(request: Request):
     return FileResponse(STATIC_DIR / "wishlist.html")
 
 
+_SIM_ITEM_RE = re.compile(r"\[(\w+):(\d+)\]\s*$")
+
+
+def _sim_char_name(path, label: str = "") -> str:
+    """Nom du personnage depuis l'en-tête du profil SimC (1re ligne « classe="Nom" »)."""
+    try:
+        for line in Path(path).read_text(errors="ignore").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m2 = re.match(r'^\w+="?([^"=\n]+)"?\s*$', line)
+            return (m2.group(1).strip() if m2 else "") or label or ""
+    except OSError:
+        pass
+    return label or ""
+
+
+def _bis_by_user(conn) -> dict:
+    """Meilleures améliorations par emplacement déduites des sims « Top Stuff » de chaque compte.
+
+    {email: {item_id: {char, gain}}} — gain = % de DPS vs le stuff actuel du profil simulé.
+    """
+    out: dict = {}
+    try:
+        rows = conn.execute(
+            "SELECT label, user_email, dps, gear, input_file FROM sims "
+            "WHERE kind='gear' AND status='done' AND gear IS NOT NULL AND dps IS NOT NULL "
+            "ORDER BY created DESC LIMIT 200").fetchall()
+    except sqlite3.OperationalError:
+        return out
+    for sr in rows:
+        try:
+            gear = json.loads(sr["gear"]) or []
+        except (ValueError, TypeError):
+            continue
+        base = float(sr["dps"] or 0)
+        if base <= 0 or not sr["user_email"]:
+            continue
+        best: dict = {}
+        for g in gear:
+            m2 = _SIM_ITEM_RE.search(str(g.get("name") or ""))
+            if not m2:
+                continue
+            iid = int(m2.group(2))
+            try:
+                dl = 100.0 * (float(g.get("dps") or 0) - base) / base
+            except (TypeError, ValueError):
+                continue
+            if dl > 0.05 and (m2.group(1) not in best or dl > best[m2.group(1)]["gain"]):
+                best[m2.group(1)] = {"item_id": iid, "gain": round(dl, 2)}
+        if not best:
+            continue
+        chart = _sim_char_name(sr["input_file"], sr["label"] or "")
+        dset = out.setdefault(sr["user_email"], {})
+        for _slot, b in best.items():
+            dset.setdefault(b["item_id"], {"char": chart, "gain": b["gain"]})
+    return out
+
+
 @app.get("/api/wishlist")
 def api_wishlist(request: Request):
     user = _require_user(request)
@@ -2138,7 +2206,8 @@ def api_wishlist(request: Request):
             threading.Thread(target=_loot_sync, daemon=True).start()
     with _db_lock, _db() as conn:
         rows = conn.execute(
-            "SELECT item_id, name, slot, quality, icon, added FROM wishlist WHERE user_email=? ORDER BY added DESC",
+            "SELECT item_id, name, slot, quality, icon, added, prio FROM wishlist "
+            "WHERE user_email=? ORDER BY added DESC",
             (user["email"],),
         ).fetchall()
         chars = conn.execute(
@@ -2149,6 +2218,7 @@ def api_wishlist(request: Request):
         for lr in conn.execute(
                 "SELECT item_id, kind, inst_fr, inst_en, boss_fr, boss_en FROM item_loot").fetchall():
             loot.setdefault(int(lr["item_id"]), []).append(dict(lr))
+        my_bis = _bis_by_user(conn).get(user["email"], {})
         mychars = [{"k": str(c["name"] or "").strip().lower(),
                     "disp": (c["display"] or c["name"])} for c in chars]
         mynames = {c["k"] for c in mychars}
@@ -2262,12 +2332,18 @@ def api_wishlist(request: Request):
                         or [])
                 if mchars or mrec:
                     me = {"chars": mchars[:3], "recipe": mrec[:3]}
+            bis = []
+            bhit = my_bis.get(int(r["item_id"] or 0))
+            if bhit:
+                bis = [{"char": bhit["char"], "gain": bhit["gain"]}]
             items.append({
                 "item_id": r["item_id"], "name": nm,
                 "slot": r["slot"], "slot_fr": bnet.slot_label(r["slot"], loc),
                 "quality": r["quality"], "icon": r["icon"], "added": r["added"],
                 "source": src, "craft": craft, "me": me,
+                "prio": bool(r["prio"]), "bis": bis,
             })
+        items.sort(key=lambda it: 0 if it["prio"] else (1 if it["bis"] else 2))
         chars_out = [dict(c) for c in chars]
     for ch in chars_out:
         try:
@@ -2302,10 +2378,15 @@ def api_wishlist_add(payload: WishlistAdd, request: Request):
             "SELECT 1 AS x FROM wishlist WHERE user_email=? AND item_id=?", (user["email"], iid)
         ).fetchone()
         if exists:
+            if payload.prio:
+                conn.execute("UPDATE wishlist SET prio=1 WHERE user_email=? AND item_id=?",
+                             (user["email"], iid))
             return {"ok": True, "already": True, "name": it["name"]}
         conn.execute(
-            "INSERT INTO wishlist (user_email, item_id, name, slot, inv_type, quality, icon, added) VALUES (?,?,?,?,?,?,?,?)",
-            (user["email"], iid, it_fr["name"], slot, it["inv_type"], it["quality"], it.get("icon"), time.time()),
+            "INSERT INTO wishlist (user_email, item_id, name, slot, inv_type, quality, icon, added, prio) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (user["email"], iid, it_fr["name"], slot, it["inv_type"], it["quality"], it.get("icon"),
+             time.time(), 1 if payload.prio else 0),
         )
         count = conn.execute(
             "SELECT COUNT(*) AS c FROM wishlist WHERE user_email=?", (user["email"],)
@@ -2319,6 +2400,16 @@ def api_wishlist_del(item_id: int, request: Request):
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM wishlist WHERE user_email=? AND item_id=?", (user["email"], item_id))
     return {"ok": True}
+
+
+@app.post("/api/wishlist/{item_id}/prio")
+def api_wishlist_prio(item_id: int, payload: PrioSet, request: Request):
+    """Marque (ou non) une pièce de la wishlist comme prioritaire (⭐)."""
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        conn.execute("UPDATE wishlist SET prio=? WHERE user_email=? AND item_id=?",
+                     (1 if payload.on else 0, user["email"], item_id))
+    return {"ok": True, "on": bool(payload.on)}
 
 
 # ---------------------------------------------------------------------------
@@ -3649,7 +3740,8 @@ def api_gcal_get(request: Request):
             "SELECT email, name FROM users").fetchall()}
         metas = {r["event_key"]: dict(r) for r in conn.execute(
             "SELECT event_key, data, updated, updated_by FROM gcal_meta").fetchall()}
-        wish_rows = conn.execute("SELECT item_id, name, user_email FROM wishlist").fetchall()
+        wish_rows = conn.execute("SELECT item_id, name, user_email, prio FROM wishlist").fetchall()
+        bis_all = _bis_by_user(conn)
         loot_rows2 = conn.execute(
             "SELECT item_id, kind, inst_fr, inst_en, boss_fr, boss_en FROM item_loot").fetchall()
         main_chars = {r["user_email"]: (r["display"] or r["name"]) for r in conn.execute(
@@ -3674,11 +3766,13 @@ def api_gcal_get(request: Request):
         loot_by_item.setdefault(int(lr2["item_id"]), []).append(dict(lr2))
     want: dict = {}
     for wr in wish_rows:
-        ent = want.setdefault(int(wr["item_id"]), {"name": wr["name"], "who": []})
+        ent = want.setdefault(int(wr["item_id"]), {"name": wr["name"], "who": [], "prio": False})
         disp = (main_chars.get(wr["user_email"])
                 or (uname_by_email.get(wr["user_email"]) or wr["user_email"]).split("@")[0])
         if disp and disp not in ent["who"]:
             ent["who"].append(disp)
+        if wr["prio"] or int(wr["item_id"]) in (bis_all.get(wr["user_email"]) or {}):
+            ent["prio"] = True
     en_wl = _user_locale(request).startswith("en")
     if en_wl:
         for iid2 in list(want):
@@ -3725,8 +3819,12 @@ def api_gcal_get(request: Request):
                     if disp_b is None:
                         disp_b = (lr2["boss_en"] if en_wl else lr2["boss_fr"]) or ""
                     g = groups.setdefault(disp_b, [])
-                    if len(g) < 5 and all(x["name"] != went["name"] for x in g):
-                        g.append({"name": went["name"], "who": went["who"][:3]})
+                    ex = next((x for x in g if x["name"] == went["name"]), None)
+                    if ex is not None:
+                        ex["prio"] = ex["prio"] or bool(went["prio"])
+                    elif len(g) < 5:
+                        g.append({"name": went["name"], "who": went["who"][:3],
+                                  "prio": bool(went["prio"])})
             if groups:
                 e["wanted"] = [{"boss": b, "items": its} for b, its in groups.items()]
         if ts > 0:

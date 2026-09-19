@@ -70,7 +70,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.108">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.109">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -99,7 +99,7 @@
       <span class="meta" id="addmsg"></span>
     </div>
     <div id="items"></div>
-    <p class="meta" style="margin:10px 0 0">Astuce : ajoute des pièces depuis 🧰 Top Stuff avec le bouton 🎯.</p>
+    <p class="meta" style="margin:10px 0 0">Astuce : ajoute des pièces depuis 🧰 Top Stuff avec le bouton 🎯 — ou ⭐ pour la marquer prioritaire.</p>
   </div>
 
   <div class="card hidden" id="sim-card">
@@ -116,8 +116,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.108"></script>
-<script src="/static/i18n.js?v=2026.09.108"></script>
+<script src="/static/nav.js?v=2026.09.109"></script>
+<script src="/static/i18n.js?v=2026.09.109"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -167,15 +167,21 @@ function renderItems() {
           ? `✅ Tu peux la fabriquer — recette déclarée (${it.me.recipe.map(esc).join(", ")}).`
           : `⚠️ Tu as le métier (${esc(cr.prof)} · ${(it.me.chars || []).map(esc).join(", ")}) — il te manque la recette.`;
       }
+      const bisTxt = (it.bis || []).map(b => `⭐ BIS pour ${esc(b.char)} (+${b.gain} %)`).join(" · ");
       return `<tr><td>${it.icon ? `<img class="icn" src="${esc(it.icon)}" alt="">` : ""}</td>
-        <td class="${qcls}">${esc(it.name)}${srcs.length ? `<div class="meta">${srcs.join(" · ")}</div>` : ""}${crTxt ? `<div class="meta">${crTxt}</div>` : ""}${metTxt ? `<div class="meta">${metTxt}</div>` : ""}${recTxt ? `<div class="meta">${recTxt}</div>` : ""}${meTxt ? `<div class="meta">${meTxt}</div>` : ""}</td>
+        <td class="${qcls}">${it.prio ? "⭐ " : ""}${esc(it.name)}${srcs.length ? `<div class="meta">${srcs.join(" · ")}</div>` : ""}${crTxt ? `<div class="meta">${crTxt}</div>` : ""}${metTxt ? `<div class="meta">${metTxt}</div>` : ""}${recTxt ? `<div class="meta">${recTxt}</div>` : ""}${meTxt ? `<div class="meta">${meTxt}</div>` : ""}${bisTxt ? `<div class="meta">${bisTxt}</div>` : ""}</td>
         <td class="meta">${esc(it.slot_fr || "")}</td>
         <td>${chips}</td>
-        <td><button class="del" data-id="${it.item_id}" title="Retirer">🗑</button></td></tr>`;
+        <td><button class="prio" data-prio="${it.item_id}" data-on="${it.prio ? 1 : 0}" title="Prioritaire">${it.prio ? "⭐" : "☆"}</button> <button class="del" data-id="${it.item_id}" title="Retirer">🗑</button></td></tr>`;
     }).join("") + `</tbody></table>`;
   document.querySelectorAll(".del").forEach(b => b.onclick = async () => {
     b.disabled = true;
     try { await jfetch("DELETE", "/api/wishlist/" + b.dataset.id); await load(); } catch (e) { b.disabled = false; }
+  });
+  document.querySelectorAll(".prio").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try { await jfetch("POST", `/api/wishlist/${b.dataset.prio}/prio`, { on: b.dataset.on !== "1" }); await load(); }
+    catch (e) { b.disabled = false; }
   });
 }
 

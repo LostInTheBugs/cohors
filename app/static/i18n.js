@@ -421,7 +421,7 @@
  "Choisis deux personnages et compare-les côte à côte : équipement (ilvl) et parses.": "Pick two characters and compare them side by side: equipment (ilvl) and parses.",
  "Pratique pour préparer un recrutement ou un défi amical.": "Handy to prepare a recruitment or a friendly challenge.",
  "Choisis un personnage, colle les liens Wowhead des pièces convoitées, et lance : chaque pièce est chiffrée en DPS.": "Pick a character, paste Wowhead links of the wanted items and launch: each item is valued in DPS.",
- "Utilise-le avant un raid pour savoir quoi demander en loot.": "Use it before a raid to know what to ask for in loot.",
+ "Utilise-le avant un raid pour savoir quoi demander en loot.": "Use it before a raid to know what to ask for in loot. Le bouton ⭐ l'ajoute en prioritaire : les pièces prioritaires (ou qui ressortent BIS dans ton Top Stuff) passent en tête de ta wishlist et sont signalées ⭐ sur les dates de raid.\tUse it before a raid to know what to ask for in loot. The ⭐ button adds it as priority: priority pieces (or ones that come out BIS in your Top Stuff) go to the top of your wishlist and are flagged ⭐ on raid dates.",
  "Les officiers créent les raids (date, heure, durée, note).": "Officers create raids (date, time, duration, note).",
  "Réponds en un clic : ✅ Présent · ❓ Peut-être · ❌ Absent — re-clique pour annuler ta réponse.": "Answer in one click: ✅ Attending · ❓ Maybe · ❌ Not attending — click again to cancel your answer.",
  "Tu vois qui vient d'un coup d'œil, et le bot Discord relance une heure avant le raid (si activé).": "You see who's coming at a glance, and the Discord bot pings one hour before the raid (if enabled).",
@@ -464,7 +464,7 @@
  "Ajouter": "Add",
  "Ex. 235623 ou un lien Wowhead": "E.g. 235623 or a Wowhead link",
  "Ta wishlist est vide — ajoute une pièce ci-dessus ou depuis 🧰 Top Stuff avec le bouton 🎯.": "Your wishlist is empty — add an item above or from 🧰 Top Stuff with the 🎯 button.",
- "Astuce : ajoute des pièces depuis 🧰 Top Stuff avec le bouton 🎯.": "Tip: add items from 🧰 Top Stuff with the 🎯 button.",
+ "Astuce : ajoute des pièces depuis 🧰 Top Stuff avec le bouton 🎯 — ou ⭐ pour la marquer prioritaire.": "Tip: add items from 🧰 Top Stuff with the 🎯 button — or ⭐ to mark it as priority.",
  "Possédé": "Owned",
  "Lie tes personnages (page 👥 Personnages) pour voir qui possède quoi.": "Link your characters (👥 Characters page) to see who owns what.",
  "⚡ Simuler les gains": "⚡ Sim the gains",
@@ -815,7 +815,8 @@
  "Forcer présent": "Force attending",
  "Forcer absent": "Force not attending",
  "Réponse du jeu": "In-game answer",
- "Enregistré ✓": "Saved ✓"
+ "Enregistré ✓": "Saved ✓",
+ "Prioritaire": "Priority"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -882,6 +883,11 @@
     [/⚠️ Tu as le métier \(/g, "⚠️ You have the profession ("],
     [/\) — il te manque la recette\./g, ") — you are missing the recipe."],
     [/🎁 Pièces voulues — /g, "🎁 Wanted pieces — "],
+    [/⭐ BIS pour /g, "⭐ BIS for "],
+    [/Ajouter en priorité \(BIS\)/g, "Add as priority (BIS)"],
+    [/^Prioritaire$/g, "Priority"],
+    [/Marquée prioritaire ✓/g, "Marked as priority ✓"],
+    [/Ajoutée en priorité ✓/g, "Added as priority ✓"],
     [/Donjon : /g, "Dungeon: "],
     [/Raid : /g, "Raid: "],
     [/\(MM\+\)/g, "(M+)"],

@@ -99,7 +99,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.108">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.109">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -166,8 +166,8 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.108"></script>
-<script src="/static/i18n.js?v=2026.09.108"></script>
+<script src="/static/nav.js?v=2026.09.109"></script>
+<script src="/static/i18n.js?v=2026.09.109"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -277,9 +277,10 @@ function gearTable(d) {
     const icon = g.icon ? `<img class="gicon" src="${esc(g.icon)}" alt="">` : `<span class="gicon"></span>`;
     const err = g.err_pct != null ? ` <small>± ${g.err_pct.toFixed(2)} %</small>` : "";
     const wid = g.item_id ? ` <button class="wbtn" onclick="addWish(${g.item_id}, this)" title="Ajouter à ma wishlist" style="background:transparent;border:0;cursor:pointer;font-size:14px;padding:0 2px;vertical-align:-1px">🎯</button>` : "";
+    const pbtn = g.item_id ? ` <button class="wbtn" onclick="addWish(${g.item_id}, this, 1)" title="Ajouter en priorité (BIS)" style="background:transparent;border:0;cursor:pointer;font-size:14px;padding:0 2px;vertical-align:-1px">⭐</button>` : "";
     rows.push(`<tr class="${best}">
       <td>${icon}</td>
-      <td class="gname ${q}">${esc(g.name)}${wid}</td>
+      <td class="gname ${q}">${esc(g.name)}${wid}${pbtn}</td>
       <td>${esc(g.slot_fr || "")}</td>
       <td class="gv">${fmt(g.dps)}${err}</td>
       <td class="gv ${dcls}">${sign}${fmt(g.delta)} <small>(${sign}${(dl ?? 0).toFixed(2)} %)</small></td></tr>`);
@@ -294,12 +295,13 @@ function gearTable(d) {
   $("#result-card").classList.remove("hidden");
 }
 
-async function addWish(id, btn) {
+async function addWish(id, btn, prio) {
   btn.disabled = true;
   try {
-    const d = await jfetch("POST", "/api/wishlist", { item: String(id) });
+    const d = await jfetch("POST", "/api/wishlist", { item: String(id), prio: !!prio });
     btn.textContent = "✅";
-    btn.title = d.already ? "Déjà dans ta wishlist" : "Ajoutée à ta wishlist ✓";
+    btn.title = prio ? (d.already ? "Marquée prioritaire ✓" : "Ajoutée en priorité ✓")
+                     : (d.already ? "Déjà dans ta wishlist" : "Ajoutée à ta wishlist ✓");
   } catch (e) { btn.disabled = false; setStatus("Wishlist : " + e.message, "msg-err"); }
 }
 

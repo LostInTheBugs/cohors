@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.109 - 2026-09-19
+
+### Added
+- Wishlist: priority pieces (⭐) — mark an item as priority from the wishlist or straight from a Top Stuff result (⭐ button next to 🎯); items that come out as the best upgrade per slot in a Top Stuff sim are flagged "⭐ BIS for <character>" automatically, priority pieces sort first, and the raid calendar flags them ⭐ in the wanted-loot lines. Help updated.
+
 ## 2026.09.108 - 2026-09-19
 
 ### Added
