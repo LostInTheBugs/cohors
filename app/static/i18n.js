@@ -920,7 +920,23 @@
  "Il te manque": "You are missing ",
  "pièce(s) BIS :": " BiS item(s): ",
  "pièce(s) déjà en poche sur": "item(s) already owned out of",
- "<li><b>BIS</b> : la liste des meilleures pièces de la saison, reprise du guide Wowhead de ta spécialisation (instantané daté, affiché dans le résultat) — emplacement par emplacement, avec la provenance (raid, donjon, catalyseur) et ce que tu possèdes déjà (✅ portée, 🎒 dans tes sacs, — manquante). Le build et le contenu ne changent pas cette liste.</li>": "<li><b>BiS</b>: the season's best items from your specialization's Wowhead guide (dated snapshot, shown in the result) — slot by slot, with the source (raid, dungeon, catalyst) and what you already own (✅ equipped, 🎒 in your bags, — missing). The build and content do not change this list.</li>"
+ "<li><b>BIS</b> : la liste des meilleures pièces de la saison, reprise du guide Wowhead de ta spécialisation (instantané daté, affiché dans le résultat) — emplacement par emplacement, avec la provenance (raid, donjon, catalyseur) et ce que tu possèdes déjà (✅ portée, 🎒 dans tes sacs, — manquante). Le build et le contenu ne changent pas cette liste.</li>": "<li><b>BiS</b>: the season's best items from your specialization's Wowhead guide (dated snapshot, shown in the result) — slot by slot, with the source (raid, dungeon, catalyst) and what you already own (✅ equipped, 🎒 in your bags, — missing). The build and content do not change this list.</li>",
+ "Tête": "Head",
+ "Cou": "Neck",
+ "Épaules": "Shoulders",
+ "Dos": "Back",
+ "Torse": "Chest",
+ "Poignets": "Wrists",
+ "Mains": "Hands",
+ "Taille": "Waist",
+ "Jambes": "Legs",
+ "Pieds": "Feet",
+ "Anneau 1": "Ring 1",
+ "Anneau 2": "Ring 2",
+ "Bijou 1": "Trinket 1",
+ "Bijou 2": "Trinket 2",
+ "main_hand": "Main hand",
+ "off_hand": "Off hand"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

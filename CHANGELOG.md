@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.126 - 2026-09-19
+
+### Fixed
+- English mode: slot labels (Head, Neck, Waist, Ring 1…) are now translated everywhere, including gear advice tables.
+
 ## 2026.09.125 - 2026-09-19
 
 ### Added
