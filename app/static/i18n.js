@@ -824,7 +824,8 @@
  "Aucun résultat — si le filtre guilde est coché, essaie de le décocher ; sinon, vérifie l'orthographe.": "No result — if the guild filter is ticked, try unticking it; otherwise check the spelling.",
  "synchronisation en cours…": "sync in progress…",
  "🔄 Recettes du jeu : le catalogue (~1000 recettes et leurs compos) se resynchronise tout seul depuis l'API du jeu — au démarrage, puis au plus une fois par jour. Rien à faire.": "🔄 Game recipes: the catalogue (~1000 recipes and their materials) syncs itself from the game API — at startup, then at most once a day. Nothing to do.",
- "Seulement les recettes connues par les joueurs de la guilde": "Only recipes known by guild players"
+ "Seulement les recettes connues par les joueurs de la guilde": "Only recipes known by guild players",
+ "⚔️ Raid/MM+": "⚔️ Raid/Mythic+"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

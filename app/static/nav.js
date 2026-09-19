@@ -20,14 +20,16 @@
     { label: "👥 Guilde", items: [
       { href: "/characters", label: "👥 Personnages" },
       { href: "/mains", label: "⭐ Mains & alts" },
-      { href: "/raids", label: "📊 Rapports" },
       { href: "/rankings", label: "🏆 Classements" },
       { href: "/fun", label: "🎉 Succès fun" },
-      { href: "/calendar", label: "🗓️ Calendrier" },
       { href: "/craft", label: "🔨 Artisanat" },
-      { href: "/prep", label: "🧪 Préparation de raid" },
-      { href: "/mplus", label: "⚔️ MM+" },
       { href: "/guild", label: "🛡️ Infos & liens" }
+    ] },
+    { label: "⚔️ Raid/MM+", items: [
+      { href: "/raids", label: "📊 Rapports" },
+      { href: "/calendar", label: "🗓️ Calendrier" },
+      { href: "/prep", label: "🧪 Préparation de raid" },
+      { href: "/mplus", label: "⚔️ MM+" }
     ] },
     { label: "🎧 Vocal", items: [
       { href: "/voice", label: "🎧 Panneau vocal", vt: true },

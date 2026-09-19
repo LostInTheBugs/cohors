@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.100 - 2026-09-19
+
+### Changed
+- Menu: new "⚔️ Raid/MM+" section right after Guild, gathering raid reports, calendar, raid preparation and Mythic+ (moved out of the Guild section).
+
 ## 2026.09.099 - 2026-09-19
 
 ### Removed
