@@ -55,7 +55,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.086">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.087">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -64,7 +64,7 @@
       <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
       <div>
         <div class="brandname">LOTP <span>Tableau de bord</span></div>
-        <div class="tagline">Vue d'ensemble de la guilde — raids, mouvements et reset.</div>
+        <div class="tagline">Vue d'ensemble de la guilde — raids, mouvements et vocal.</div>
       </div>
     </div>
     <div class="userbox">
@@ -76,12 +76,6 @@
   <nav class="tabs" id="navmain"></nav>
 
   <div class="grid">
-    <div class="card">
-      <h2>⏳ Reset hebdomadaire</h2>
-      <div class="cd" id="cd">…</div>
-      <p class="note">Prochain reset : mercredi 05:00 (heure de Paris)</p>
-      <p class="note" id="stats"></p>
-    </div>
     <div class="card" id="nrcard" style="display:none">
       <h2>🗓️ Prochain raid</h2>
       <div class="cd" id="nrdate"></div>
@@ -102,13 +96,14 @@
 
   <div class="card">
     <h2>👥 Mouvements de guilde</h2>
+    <p class="note" id="stats"></p>
     <div id="events"><div class="empty">Chargement…</div></div>
   </div>
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.086"></script>
-<script src="/static/i18n.js?v=2026.09.086"></script>
+<script src="/static/nav.js?v=2026.09.087"></script>
+<script src="/static/i18n.js?v=2026.09.087"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -132,38 +127,6 @@ const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >=
 const jget = async (u) => { const r = await fetch(u);
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
-
-// ---- compte à rebours du reset hebdo (mercredi 05:00 heure de Paris)
-function tzOffsetMs(d) {
-  const dtf = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit",
-    day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  const p = {}; for (const x of dtf.formatToParts(d)) p[x.type] = x.value;
-  return Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second) - d.getTime();
-}
-function parisWeekdayHour(d) {
-  const dtf = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", weekday: "short",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-  const p = {}; for (const x of dtf.formatToParts(d)) p[x.type] = x.value;
-  const WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return { day: WD[p.weekday], h: (+p.hour) % 24, m: +p.minute, s: +p.second };
-}
-function nextResetMs(from) {
-  const w = parisWeekdayHour(from);
-  let dayDiff = (3 - w.day + 7) % 7;                       // prochain mercredi
-  let secs = dayDiff * 86400 + (5 * 3600 - (w.h * 3600 + w.m * 60 + w.s));
-  if (secs <= 0) secs += 7 * 86400;
-  const t1 = new Date(from.getTime() + secs * 1000);
-  const corr = (tzOffsetMs(t1) - tzOffsetMs(from)) / 1000;  // passage DST éventuel
-  return from.getTime() + (secs + corr) * 1000;
-}
-function tickCd() {
-  let ms = nextResetMs(new Date()) - Date.now();
-  if (ms < 0) ms = 0;
-  const s = Math.floor(ms / 1000);
-  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-  $("#cd").innerHTML = `${d} j ${String(h).padStart(2, "0")} h ${String(m).padStart(2, "0")} min`;
-}
-tickCd(); setInterval(tickCd, 20000);
 
 // ---- données
 (async () => {

@@ -443,6 +443,30 @@ def _init_db() -> None:
             )
             """
         )
+        # v2026.09.087 — alertes MM+ (clés recherchées) & notifications personnelles.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mplus_alerts (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                email     TEXT NOT NULL,
+                dungeon   TEXT NOT NULL DEFAULT '',
+                min_level INTEGER NOT NULL DEFAULT 2,
+                created   REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS notifs (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                email   TEXT NOT NULL,
+                kind    TEXT NOT NULL DEFAULT '',
+                data    TEXT NOT NULL DEFAULT '{}',
+                seen    INTEGER NOT NULL DEFAULT 0,
+                created REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
         for _stmt in (
             "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",
@@ -756,6 +780,14 @@ def craft_page(request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "craft.html")
+
+
+@app.api_route("/moi", methods=["GET", "HEAD"])
+def moi_page(request: Request):
+    """Page 🙋 Moi — mes personnages, mes recettes, mes statistiques, mes alertes."""
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "moi.html")
 
 
 @app.api_route("/prep", methods=["GET", "HEAD"])
@@ -3694,6 +3726,46 @@ def _mplus_clean_slots(slots) -> list[dict]:
     return out
 
 
+def _dungeon_key(name: str) -> str:
+    """Clé canonique d'un donjon MM+ (nom anglais) pour comparer FR/EN."""
+    nm = (name or "").strip()
+    if not nm:
+        return ""
+    try:
+        dun, _ts = bnet.mplus_dungeons()
+        for x in (dun.get("dungeons") or []):
+            if nm.lower() in ((x.get("name") or "").lower(), (x.get("en") or "").lower()):
+                return (x.get("en") or x.get("name") or nm).lower()
+    except bnet.BnetError:
+        pass
+    return nm.lower()
+
+
+def _notify_mplus_keys(owner_email: str, owner_name: str, keys: list[dict]) -> None:
+    """Prévient les membres dont une alerte MM+ correspond aux clés annoncées."""
+    now = time.time()
+    with _db_lock, _db() as conn:
+        alerts = [dict(r) for r in conn.execute(
+            "SELECT email, dungeon, min_level FROM mplus_alerts WHERE email != ?",
+            (owner_email,)).fetchall()]
+        for k in keys:
+            dk = _dungeon_key(k.get("dungeon"))
+            for a in alerts:
+                if a["dungeon"] and a["dungeon"] != dk:
+                    continue
+                if int(k.get("level") or 2) < int(a["min_level"] or 2):
+                    continue
+                payload = json.dumps({"who": owner_name, "dungeon": k.get("dungeon") or "",
+                                      "level": k.get("level") or 2}, ensure_ascii=False)
+                dup = conn.execute(
+                    "SELECT 1 AS x FROM notifs WHERE email=? AND kind='mplus' AND data=? AND created > ?",
+                    (a["email"], payload, now - 7 * 86400)).fetchone()
+                if dup:
+                    continue
+                conn.execute("INSERT INTO notifs (email, kind, data, created) VALUES (?,?,?,?)",
+                             (a["email"], "mplus", payload, now))
+
+
 def _mplus_clean_keys(keys) -> list[dict]:
     out = []
     for k in (keys or [])[:12]:
@@ -3750,6 +3822,13 @@ def api_mplus_save(body: MplusPostRequest, request: Request):
     email = user["email"]
     name = (user["name"] if "name" in user.keys() else "") or email
     with _db_lock, _db() as conn:
+        _old = conn.execute("SELECT keys FROM mplus_posts WHERE user=?", (email,)).fetchone()
+    try:
+        _old_keys = {(_dungeon_key(k.get("dungeon")), int(k.get("level") or 2))
+                     for k in (json.loads(_old["keys"]) if _old else [])}
+    except (ValueError, TypeError, AttributeError):
+        _old_keys = set()
+    with _db_lock, _db() as conn:
         if not roles and not slots and not keys:
             conn.execute("DELETE FROM mplus_posts WHERE user=?", (email,))
             return {"ok": True, "deleted": True}
@@ -3759,7 +3838,119 @@ def api_mplus_save(body: MplusPostRequest, request: Request):
             "slots=excluded.slots, keys=excluded.keys, updated=excluded.updated",
             (email, name, json.dumps(roles),
              json.dumps(slots, ensure_ascii=False), json.dumps(keys, ensure_ascii=False), time.time()))
+    _new_keys = [k for k in keys if (_dungeon_key(k.get("dungeon")), int(k.get("level") or 2)) not in _old_keys]
+    if _new_keys:
+        _notify_mplus_keys(email, name, _new_keys)
     return {"ok": True, "roles": roles, "slots": len(slots), "keys": len(keys)}
+
+
+class AlertRequest(BaseModel):
+    dungeon: str = Field("", max_length=80)
+    min_level: int = 2
+
+
+@app.get("/api/me/alerts")
+def api_my_alerts(request: Request):
+    """Mes alertes MM+ (clés recherchées)."""
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT id, dungeon, min_level, created FROM mplus_alerts WHERE email=? ORDER BY created DESC",
+            (user["email"],)).fetchall()]
+    return {"alerts": rows}
+
+
+@app.post("/api/me/alerts")
+def api_my_alerts_add(body: AlertRequest, request: Request):
+    user = _require_user(request)
+    dun = _dungeon_key(body.dungeon)
+    lv = max(2, min(40, int(body.min_level or 2)))
+    with _db_lock, _db() as conn:
+        n = conn.execute("SELECT COUNT(*) AS n FROM mplus_alerts WHERE email=?",
+                         (user["email"],)).fetchone()["n"]
+        if n >= 20:
+            raise HTTPException(400, "Trop d'alertes (20 maximum).")
+        if conn.execute("SELECT 1 AS x FROM mplus_alerts WHERE email=? AND dungeon=? AND min_level=?",
+                        (user["email"], dun, lv)).fetchone() is None:
+            conn.execute("INSERT INTO mplus_alerts (email, dungeon, min_level, created) VALUES (?,?,?,?)",
+                         (user["email"], dun, lv, time.time()))
+    return {"ok": True}
+
+
+@app.delete("/api/me/alerts/{aid}")
+def api_my_alerts_del(aid: int, request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM mplus_alerts WHERE id=? AND email=?", (aid, user["email"]))
+    return {"ok": True}
+
+
+@app.get("/api/me/notifs")
+def api_my_notifs(request: Request):
+    """Mes notifications (20 dernières) + compteur non lues."""
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        unread = conn.execute("SELECT COUNT(*) AS n FROM notifs WHERE email=? AND seen=0",
+                              (user["email"],)).fetchone()["n"]
+        items = [dict(r) for r in conn.execute(
+            "SELECT id, kind, data, seen, created FROM notifs WHERE email=? ORDER BY created DESC LIMIT 20",
+            (user["email"],)).fetchall()]
+    for it in items:
+        try:
+            it["data"] = json.loads(it["data"] or "{}")
+        except ValueError:
+            it["data"] = {}
+    return {"unread": unread, "items": items}
+
+
+@app.post("/api/me/notifs/read")
+def api_my_notifs_read(request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        conn.execute("UPDATE notifs SET seen=1 WHERE email=? AND seen=0", (user["email"],))
+    return {"ok": True}
+
+
+@app.get("/api/me/overview")
+def api_me_overview(request: Request):
+    """Page 🙋 Moi : mes personnages + stats rapides (ilvl, présence, recettes) et mes clés."""
+    user = _require_user(request)
+    locale = _user_locale(request)
+    with _db_lock, _db() as conn:
+        links = [dict(r) for r in conn.execute(
+            "SELECT id, realm, name, display, is_main FROM char_links WHERE user_email=? "
+            "ORDER BY is_main DESC, display COLLATE NOCASE", (user["email"],)).fetchall()]
+        craft = {(r["c"] or ""): r["n"] for r in conn.execute(
+            "SELECT lower(crafter) AS c, COUNT(*) AS n FROM craft_recipes GROUP BY lower(crafter)").fetchall()}
+        post = conn.execute("SELECT keys FROM mplus_posts WHERE user=?", (user["email"],)).fetchone()
+    try:
+        my_keys = json.loads(post["keys"]) if post else []
+    except (ValueError, TypeError):
+        my_keys = []
+    try:
+        att = api_attendance(request, days=30, refresh=0)
+        att_rows = {(r.get("name") or "").lower(): r for r in (att.get("rows") or [])}
+    except Exception:
+        att_rows = {}
+    chars = []
+    for c in links:
+        try:
+            sm, _ts = bnet.character(c["realm"], c["name"], 0, locale=locale)
+        except Exception:
+            sm = {}
+        a = att_rows.get((c["name"] or "").lower()) or {}
+        chars.append({
+            "id": c["id"], "realm": c["realm"], "name": c["name"], "display": c["display"],
+            "is_main": bool(c["is_main"]),
+            "level": sm.get("level"), "class": sm.get("class"), "class_key": sm.get("class_key"),
+            "spec": sm.get("spec"), "ilvl_equipped": sm.get("ilvl_equipped"), "ilvl_avg": sm.get("ilvl_avg"),
+            "achievements": sm.get("achievement_points"), "last_login": sm.get("last_login"),
+            "att_pct": a.get("pct"), "att_nights": a.get("nights"),
+            "recipes": craft.get((c["name"] or "").lower(), 0),
+        })
+    keys_out = [{"char": k.get("char") or "", "dungeon": k.get("dungeon") or "", "level": k.get("level") or 2}
+                for k in (my_keys if isinstance(my_keys, list) else [])][:12]
+    return {"chars": chars, "keys": keys_out}
 
 
 def _game_sync_report(db_ts: float = 0.0) -> dict:

@@ -53,16 +53,9 @@
   .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
   .hidden { display: none !important; }
-  .rcrow { display: flex; align-items: baseline; gap: 8px; padding: 3px 6px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
-  .rcrow:hover { background: #182130; }
-  .rcrow input { accent-color: var(--acc); transform: translateY(1px); }
-  .rclist { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px; margin-top: 10px; }
-  .rcbtn { background: linear-gradient(135deg, var(--acc), #7d0020); border: none; color: #fff; font-weight: 600;
-           border-radius: 10px; padding: 9px 16px; cursor: pointer; font-size: 14px; }
-  .rcbtn.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); }
   select { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 14px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.086">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.087">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -82,38 +75,21 @@
   </header>
   <nav class="tabs" id="navmain"></nav>
 
-  <div class="card" id="myrecard">
-    <h2>📖 Mes recettes connues</h2>
-    <div class="meta" style="margin:-4px 0 10px">Coche les recettes que tu connais sur tes personnages — elles apparaissent dans « Qui peut crafter quoi » (utilisation : préparation de raid).</div>
-    <div class="row">
-      <select id="rcchar"><option value="">— Choisir un personnage —</option></select>
-      <select id="rcprof"></select>
-      <input type="search" id="rcq" placeholder="Rechercher une recette…">
-      <span class="spacer"></span>
-      <span class="meta" id="rcmsg"></span>
-    </div>
-    <div class="rclist hidden" id="rclist"></div>
-    <div class="row" style="margin-top:10px">
-      <button class="rcbtn" id="rcsave">💾 Enregistrer mes recettes</button>
-      <button class="rcbtn ghost" id="rcimp">📥 Importer mon export d'addon</button>
-      <input type="file" id="rcfile" accept=".lua,.txt,.json" class="hidden">
-    </div>
-  </div>
-
   <div class="card">
     <div class="row">
       <input type="search" id="q" placeholder="Rechercher un métier ou un personnage…">
       <span class="spacer"></span>
       <span class="meta" id="cmeta">Chargement…</span>
     </div>
+    <div class="meta" style="margin-top:8px">📖 Déclare les recettes que tu connais (ou importe ton export d'addon) sur la page <a class="hlink" href="/moi">🙋 Moi</a> — elles apparaissent dans « Qui peut crafter quoi ».</div>
   </div>
 
   <div id="prof"><div class="empty">Chargement…</div></div>
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.086"></script>
-<script src="/static/i18n.js?v=2026.09.086"></script>
+<script src="/static/nav.js?v=2026.09.087"></script>
+<script src="/static/i18n.js?v=2026.09.087"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -159,97 +135,6 @@ function render() {
 }
 
 $("#q").addEventListener("input", () => { Q = $("#q").value; render(); });
-
-// ---- 📖 Mes recettes connues (self-service) ----
-let RC = { catalog: [] };
-const rcMsg = (t, ok) => { const m = $("#rcmsg"); m.textContent = t || ""; m.style.color = ok ? "#38c98e" : "var(--mut)"; };
-const rcCount = () => RC.catalog.filter(x => x.known).length;
-
-function rcRenderList() {
-  const q = ($("#rcq").value || "").trim().toLowerCase();
-  const list = RC.catalog.filter(x => !q || (x.name || "").toLowerCase().includes(q));
-  if (!RC.catalog.length) { $("#rclist").innerHTML = `<div class="empty">Choisis un personnage et un métier.</div>`; return; }
-  if (!list.length) { $("#rclist").innerHTML = `<div class="empty">Aucune recette trouvée.</div>`; return; }
-  $("#rclist").innerHTML = list.map(x => `<label class="rcrow"><input type="checkbox" data-rc="${x.id}"${x.known ? " checked" : ""}> <b>${esc(x.name)}</b> <span class="meta">${esc(x.exp || "")}${(x.mats && x.mats.length) ? " · " + esc(x.mats.map(m => m.name + " ×" + fmt(m.qty)).join(", ")) : ""}</span></label>`).join("");
-  $("#rclist").querySelectorAll("input[data-rc]").forEach(c => c.addEventListener("change", () => {
-    const it = RC.catalog.find(x => x.id === +c.dataset.rc);
-    if (it) it.known = c.checked;
-    rcMsg(rcCount() + " recette(s) cochée(s)");
-  }));
-}
-
-async function rcCharChanged() {
-  const [realm, name] = ($("#rcchar").value || "").split("|");
-  RC.catalog = []; $("#rclist").classList.add("hidden"); $("#rcprof").innerHTML = "";
-  if (!realm) { rcMsg(""); return; }
-  rcMsg("Chargement…");
-  try {
-    const d = await jget(`/api/my/recipes?realm=${encodeURIComponent(realm)}&name=${encodeURIComponent(name)}`);
-    const mine = new Set((d.professions || []).map(p => p.key));
-    $("#rcprof").innerHTML = (d.game_profs || []).map(g =>
-      `<option value="${esc(g.key)}">${esc(g.label + (mine.has(g.key) ? " · mon métier" : ""))}</option>`).join("");
-    const first = (d.professions || []).map(p => p.key).find(k => (d.game_profs || []).some(g => g.key === k));
-    if (first) $("#rcprof").value = first;
-    await rcProfChanged();
-  } catch (e) { rcMsg(e.message); }
-}
-
-async function rcProfChanged() {
-  const [realm, name] = ($("#rcchar").value || "").split("|");
-  const prof = $("#rcprof").value || "";
-  if (!realm || !prof) return;
-  rcMsg("Chargement…");
-  try {
-    const d = await jget(`/api/my/recipes?realm=${encodeURIComponent(realm)}&name=${encodeURIComponent(name)}&prof=${encodeURIComponent(prof)}`);
-    RC.catalog = d.catalog || [];
-    $("#rclist").classList.remove("hidden");
-    $("#rcq").value = "";
-    rcRenderList();
-    rcMsg(rcCount() + " recette(s) connue(s)");
-  } catch (e) { rcMsg(e.message); }
-}
-
-$("#rcchar").addEventListener("change", rcCharChanged);
-$("#rcprof").addEventListener("change", rcProfChanged);
-$("#rcq").addEventListener("input", rcRenderList);
-$("#rcsave").addEventListener("click", async () => {
-  const [realm, name] = ($("#rcchar").value || "").split("|");
-  const prof = $("#rcprof").value || "";
-  if (!realm || !prof) { rcMsg("Choisis un personnage et un métier."); return; }
-  rcMsg("Enregistrement…");
-  try {
-    const r = await fetch("/api/my/recipes", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ realm, name, prof, items: RC.catalog.filter(x => x.known).map(x => x.id) }) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.detail || "Erreur");
-    rcMsg(`Recettes enregistrées ✓ (${j.saved})`, true);
-  } catch (e) { rcMsg(e.message); }
-});
-$("#rcimp").addEventListener("click", () => $("#rcfile").click());
-$("#rcfile").addEventListener("change", async () => {
-  const f = $("#rcfile").files && $("#rcfile").files[0];
-  if (!f) return;
-  rcMsg("Import en cours…");
-  try {
-    const text = await f.text();
-    const r = await fetch("/api/prep/import-recipes", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payload: text }) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.detail || "Erreur");
-    rcMsg(`recette(s) importée(s) de ${j.crafter} ✓`, true);
-    $("#rcfile").value = "";
-    if ($("#rcchar").value && $("#rcprof").value) rcProfChanged();
-  } catch (e) { rcMsg(e.message); }
-});
-(async () => {
-  try {
-    const d = await jget("/api/me/chars");
-    const chars = d.chars || [];
-    $("#rcchar").innerHTML = `<option value="">— Choisir un personnage —</option>` + chars.map(c =>
-      `<option value="${esc((c.realm || "hyjal") + "|" + c.name)}">${esc((c.is_main ? "⭐ " : "") + (c.display || c.name))}</option>`).join("");
-    if (!chars.length) rcMsg("Aucun personnage lié à ton compte — lie-le sur la page Personnages.");
-  } catch (e) {}
-})();
 
 $("#logout").addEventListener("click", async (ev) => {
   ev.preventDefault();

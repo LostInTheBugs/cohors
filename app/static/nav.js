@@ -4,10 +4,17 @@
 (function () {
   var MENU = [
     { href: "/dashboard", label: "🏠 Tableau de bord" },
+    { label: "🙋 Moi", items: [
+      { href: "/moi", label: "🙋 Vue d'ensemble" },
+      { href: "/moi#persos", label: "🪪 Mes personnages" },
+      { href: "/moi#recettes", label: "📖 Mes recettes" },
+      { href: "/moi#stats", label: "📊 Mes statistiques" },
+      { href: "/moi#alertes", label: "🔔 Alertes MM+" },
+      { href: "/wishlist", label: "🎯 Ma wishlist" }
+    ] },
     { label: "⚔️ Simulation", items: [
       { href: "/", label: "⚔️ Simulateur" },
       { href: "/gear", label: "🧰 Top Stuff" },
-      { href: "/wishlist", label: "🎯 Ma wishlist" },
       { href: "/compare", label: "⚖️ Comparateur" }
     ] },
     { label: "👥 Guilde", items: [
@@ -249,4 +256,22 @@
       navigator.serviceWorker.register("/sw.js").catch(function () {});
     });
   }
+
+  /* Badge « notifications non lues » sur l'entrée 🙋 Moi. */
+  var UNREAD = 0;
+  function decorateNotifs(n) {
+    nav.querySelectorAll("span[data-nbadge]").forEach(function (x) { x.remove(); });
+    if (!n || n <= 0) return;
+    var html = '<span data-nbadge="1" style="background:var(--acc,#b1002e);color:#fff;border-radius:999px;padding:0 7px;' +
+      'margin-left:6px;font-size:11.5px;font-weight:700">' + n + '</span>';
+    nav.querySelectorAll(".menubtn, .dsec-t").forEach(function (b) {
+      if ((b.textContent || "").indexOf("🙋") !== 0) return;
+      b.insertAdjacentHTML("beforeend", html);
+      b.setAttribute("title", n + " notification(s) non lue(s)");
+    });
+  }
+  window.__lotpSetUnread = function (n) { UNREAD = n || 0; decorateNotifs(UNREAD); };
+  fetch("/api/me/notifs").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (j && j.unread > 0) { UNREAD = j.unread; decorateNotifs(UNREAD); }
+  }).catch(function () {});
 })();

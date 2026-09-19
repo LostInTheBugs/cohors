@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.087 - 2026-09-19
+
+### Added
+- New "🙋 Me" menu section and page (`/moi`): everything personal in one place — your linked characters (linking, ⭐ main), your known recipes, your statistics (item level, raid attendance, declared recipes, last login per character) and your Mythic+ alerts. 🎯 My wishlist moved into this section.
+- Mythic+ key alerts: pick a dungeon (or any) and a minimum level; when someone announces a matching key on the ⚔️ Mythic+ page, you get an in-app notification (page 🙋 Me, with an unread badge in the menu). Dungeon names match across FR/EN (canonical English key). Alerts API: `GET/POST /api/me/alerts`, `DELETE /api/me/alerts/{id}`; notifications: `GET /api/me/notifs`, `POST /api/me/notifs/read`; hub data: `GET /api/me/overview`.
+
+### Changed
+- The "Known recipes" editor moved from the Crafting page to the 🙋 Me page (Crafting keeps a pointer); the character-linking field moved from the Characters page to the 🙋 Me page (roster keeps its inline quick-link button).
+- Help page: new "🙋 Me" section; Characters/Crafting bullets updated to the new locations.
+
+### Removed
+- Dashboard: the "Weekly reset" countdown card (little value) — the roster/report counters it contained moved to the "Guild movements" card.
+
 ## 2026.09.086 - 2026-09-19
 
 ### Added

@@ -68,14 +68,6 @@
   .meta { color: var(--mut); font-size: 13px; }
   .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
   .chkline input { accent-color: var(--acc); }
-  .acwrap { position: relative; display: inline-block; }
-  .aclist { position: absolute; z-index: 40; top: 100%; left: 0; min-width: 240px; margin-top: 4px;
-    background: #182130; border: 1px solid var(--line); border-radius: 10px; padding: 4px;
-    max-height: 240px; overflow: auto; box-shadow: 0 8px 24px #0009; }
-  .aclist .acrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px;
-    border-radius: 8px; font-size: 13.5px; cursor: pointer; }
-  .aclist .acrow:hover { background: #22304a; }
-  .aclist .acrow .meta { font-size: 12px; white-space: nowrap; }
   .tscroll { max-height: 66vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card2); }
   table { width: 100%; border-collapse: collapse; }
   th { position: sticky; top: 0; background: #202a3f; z-index: 2; text-align: left; font-size: 12.5px;
@@ -102,11 +94,6 @@
   .gi a:hover { text-decoration: underline; }
   .gi .gl { margin-left: auto; color: var(--mut); font-variant-numeric: tabular-nums; }
   .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
-  .mychip { display: inline-flex; gap: 9px; align-items: center; background: var(--card2); border: 1px solid var(--line);
-            border-radius: 999px; padding: 5px 12px; font-size: 13.5px; }
-  .mychip.mm { border-color: #6b4a17; color: var(--acc2); }
-  .mychip a { cursor: pointer; color: var(--mut); font-size: 12.5px; text-decoration: none; }
-  .mychip a:hover { color: var(--acc2); }
   tr.my td { background: rgba(223,165,90,.06); }
   .nmstar { color: var(--acc2); margin-right: 2px; }
   .err { color: var(--err); font-size: 13px; }
@@ -117,7 +104,7 @@
   .extras { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 4px; }
   .xchip { border:1px solid var(--line); border-radius:999px; padding:3px 12px; font-size:12.5px; background:var(--card2,#182130); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.086">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.087">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -158,14 +145,8 @@
 
   <div class="card">
     <div class="row" style="justify-content:space-between">
-      <b>🪪 Mes personnages</b>
-      <span class="meta">Lie ton compte à tes personnages de guilde — ⭐ = ton main.</span>
-    </div>
-    <div class="row" id="mychips" style="margin-top:10px"><span class="empty">Chargement…</span></div>
-    <div class="row" style="margin-top:10px">
-      <span class="acwrap"><input type="search" id="mynew" placeholder="Nom exact du personnage à lier (ex. Ganathielle)" autocomplete="off"><div id="mylist" class="aclist hidden"></div></span>
-      <label class="chkline"><input type="checkbox" id="mymain"> ⭐ en faire mon main</label>
-      <button id="myadd">📌 Lier à mon compte</button>
+      <b>🪪 Tes personnages</b>
+      <span class="meta">Liaison, ⭐ main, recettes, statistiques et alertes MM+ : tout se gère sur la page <a class="hlink" href="/moi">🙋 Moi</a>.</span>
     </div>
     <div id="mymsg" class="meta" style="margin-top:6px"></div>
   </div>
@@ -198,8 +179,8 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.086"></script>
-<script src="/static/i18n.js?v=2026.09.086"></script>
+<script src="/static/nav.js?v=2026.09.087"></script>
+<script src="/static/i18n.js?v=2026.09.087"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -388,7 +369,6 @@ function applyFilters() {
 async function load(refresh = 0) {
   try {
     const data = await jget("/api/roster" + (refresh ? "?refresh=1" : ""));
-    AC_ROSTER = data.members || [];
     renderRoster(data);
   } catch (e) {
     $("#tbody").innerHTML = `<tr><td colspan="6"><div class="err">Erreur de chargement du roster : ${esc(e.message)}</div></td></tr>`;
@@ -430,24 +410,7 @@ function myMsg(t, isErr) {
 async function loadMyChars() {
   try { const d = await jget("/api/me/chars"); MYCHARS = d.chars || []; }
   catch (e) { MYCHARS = []; }
-  renderMyChips();
   applyMyMarkers();
-}
-function renderMyChips() {
-  const box = $("#mychips");
-  if (!MYCHARS.length) { box.innerHTML = `<span class="empty">Aucun personnage lié pour l'instant.</span>`; return; }
-  box.innerHTML = MYCHARS.map(c => `<span class="mychip ${c.is_main ? "mm" : ""}">
-    ${c.is_main ? "⭐" : "•"} <b>${esc(c.display)}</b>
-    ${c.is_main ? "" : `<a data-mmain="${c.id}" title="Définir comme main">⭐ définir main</a>`}
-    <a data-mdel="${c.id}" title="Retirer de mon compte">✕</a></span>`).join("");
-  box.querySelectorAll("[data-mmain]").forEach(a => a.addEventListener("click", async () => {
-    try { await jreq("POST", `/api/me/chars/${a.dataset.mmain}/main`); await loadMyChars(); myMsg("Main mis à jour ⭐"); }
-    catch (e) { myMsg(e.message, true); }
-  }));
-  box.querySelectorAll("[data-mdel]").forEach(a => a.addEventListener("click", async () => {
-    try { await jreq("DELETE", `/api/me/chars/${a.dataset.mdel}`); await loadMyChars(); myMsg("Personnage retiré."); }
-    catch (e) { myMsg(e.message, true); }
-  }));
 }
 function applyMyMarkers() {
   const map = new Map(MYCHARS.map(c => [c.name, c]));
@@ -477,59 +440,6 @@ function bindLinkBtn(btn, lname) {
     } catch (e) { myMsg(e.message, true); }
   };
 }
-$("#myadd").addEventListener("click", async () => {
-  const name = $("#mynew").value.trim();
-  if (!name) { myMsg("Saisis le nom du personnage (comme dans le roster).", true); return; }
-  try {
-    const d = await jreq("POST", "/api/me/chars", { name, main: $("#mymain").checked });
-    $("#mynew").value = ""; $("#mymain").checked = false;
-    await loadMyChars();
-    myMsg(d.taken ? "Lié ✓ — attention : ce personnage est aussi lié à un autre compte." : `« ${d.display} » lié à ton compte ✓`, d.taken);
-  } catch (e) { myMsg(e.message, true); }
-});
-
-// ---- 🔎 Suggestions du roster au fil de la frappe (champ de liaison) ----
-let AC_ROSTER = null;
-async function acMembers() {
-  if (AC_ROSTER) return AC_ROSTER;
-  try { const d = await jget("/api/roster"); AC_ROSTER = d.members || []; } catch (e) { AC_ROSTER = []; }
-  return AC_ROSTER;
-}
-async function acSuggest() {
-  const box = $("#mylist");
-  const q = $("#mynew").value.trim().toLowerCase();
-  if (q.length < 2) { box.classList.add("hidden"); box.innerHTML = ""; return; }
-  const mems = await acMembers();
-  if (q !== $("#mynew").value.trim().toLowerCase()) return;   // la frappe a continué entre-temps
-  const hits = mems.filter(m => (m.name || "").toLowerCase().includes(q))
-    .sort((a, b) => {
-      const A = a.name.toLowerCase(), B2 = b.name.toLowerCase();
-      return (A.startsWith(q) ? 0 : 1) - (B2.startsWith(q) ? 0 : 1) || A.localeCompare(B2);
-    }).slice(0, 8);
-  if (!hits.length) { box.classList.add("hidden"); box.innerHTML = ""; return; }
-  box.innerHTML = hits.map(m => `<div class="acrow" data-nm="${esc(m.name)}"><b>${esc(m.name)}</b><span class="meta">niv. ${m.level || "?"} · ${esc(rankLabel(m.rank))}</span></div>`).join("");
-  box.classList.remove("hidden");
-}
-$("#mynew").addEventListener("input", acSuggest);
-$("#mynew").addEventListener("focus", acSuggest);
-$("#mynew").addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") { $("#mylist").classList.add("hidden"); }
-  if (ev.key === "Enter") {
-    const first = $("#mylist").querySelector(".acrow");
-    if (first && !$("#mylist").classList.contains("hidden")) { ev.preventDefault(); first.click(); }
-  }
-});
-$("#mylist").addEventListener("click", (ev) => {
-  const r = ev.target.closest(".acrow");
-  if (!r) return;
-  $("#mynew").value = r.dataset.nm;
-  $("#mylist").classList.add("hidden");
-  $("#mylist").innerHTML = "";
-  myMsg("");
-});
-document.addEventListener("click", (ev) => {
-  if (!ev.target.closest(".acwrap")) { $("#mylist").classList.add("hidden"); }
-});
 
 (async () => {
   try {
