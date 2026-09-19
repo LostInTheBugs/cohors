@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.125 - 2026-09-19
+
+### Added
+- Gear advice (BiS mode): bundled BiS lists for 9 more specializations (all seven healer specs, Elemental and Enhancement Shaman, Arcane Mage) — every item id verified against the Blizzard API (slot/type check, 144 entries).
+
 ## 2026.09.124 - 2026-09-19
 
 ### Fixed
