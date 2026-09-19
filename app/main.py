@@ -2149,6 +2149,21 @@ def api_wishlist(request: Request):
         for lr in conn.execute(
                 "SELECT item_id, kind, inst_fr, inst_en, boss_fr, boss_en FROM item_loot").fetchall():
             loot.setdefault(int(lr["item_id"]), []).append(dict(lr))
+        prof_holders: dict = {}
+        for pr in conn.execute("SELECT name, data FROM char_professions").fetchall():
+            try:
+                pd = json.loads(pr["data"]) or {}
+            except (ValueError, TypeError):
+                continue
+            for pp in (pd.get("profs") or []):
+                frk = str(pp.get("name_fr") or pp.get("name") or "").strip().lower()
+                enk = str(pp.get("name_en") or pp.get("name") or "").strip().lower()
+                ent_p = {"name": (pr["name"] or "")[:1].upper() + (pr["name"] or "")[1:],
+                         "points": pp.get("points") or 0}
+                if frk:
+                    prof_holders.setdefault(frk, []).append(ent_p)
+                if enk and enk != frk:
+                    prof_holders.setdefault(enk, []).append(ent_p)
         items = []
         for r in rows:
             nm = r["name"]
@@ -2174,6 +2189,10 @@ def api_wishlist(request: Request):
                 "SELECT item, prof, prof_en, mats, mats_en FROM game_recipes WHERE item_id=? LIMIT 1",
                 (r["item_id"] or 0,)).fetchone()
             fr_name = (gr["item"] if gr else r["name"]) or ""
+            decl = conn.execute(
+                "SELECT profession, mats FROM craft_recipes "
+                "WHERE (item_id > 0 AND item_id=?) OR lower(item)=lower(?) LIMIT 1",
+                (r["item_id"] or 0, fr_name)).fetchone()
             who = [w["crafter"] for w in conn.execute(
                 "SELECT DISTINCT crafter FROM craft_recipes "
                 "WHERE (item_id > 0 AND item_id=?) OR lower(item)=lower(?)",
@@ -2181,11 +2200,22 @@ def api_wishlist(request: Request):
             craft = None
             if gr or who:
                 try:
-                    mats = json.loads((gr["mats_en"] if (gr and en) else gr["mats"]) or "[]") if gr else []
-                except ValueError:
+                    if gr:
+                        mats = json.loads((gr["mats_en"] if en else gr["mats"]) or "[]")
+                    else:
+                        mats = json.loads((decl or {})["mats"] or "[]") if decl else []
+                except (ValueError, TypeError):
                     mats = []
-                craft = {"prof": ((gr["prof_en"] if en else gr["prof"]) if gr else "") or "",
-                         "mats": mats, "who": who[:6]}
+                prof_fr = ((gr["prof"] if gr else "") or (decl["profession"] if decl else "") or "")
+                prof_en = ((gr["prof_en"] if gr else "") or (decl["profession"] if decl else "") or "")
+                prof = (prof_en if en else prof_fr) or prof_fr
+                holders = []
+                hl = prof_holders.get((prof or "").strip().lower()) or []
+                if hl:
+                    hl = sorted(hl, key=lambda x: (-(x.get("points") or 0), (x.get("name") or "").lower()))
+                    holders = [h["name"] for h in hl[:8]]
+                craft = {"prof": prof, "mats": mats, "who": who[:6],
+                         "holders": holders, "holders_n": len(hl)}
             items.append({
                 "item_id": r["item_id"], "name": nm,
                 "slot": r["slot"], "slot_fr": bnet.slot_label(r["slot"], loc),

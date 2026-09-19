@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.106 - 2026-09-19
+
+### Added
+- Wishlist: crafted items now also list who in the guild has the profession (from the characters' professions, top by skill) and who declared the recipe (or that nobody did yet); declared materials are used when the game catalogue has no recipe. Help updated.
+
 ## 2026.09.105 - 2026-09-19
 
 ### Added
