@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.118 - 2026-09-19
+
+### Fixed
+- Upcoming raids: player names in the "no answer yet" line now render with their class colour instead of showing raw span markup.
+
 ## 2026.09.117 - 2026-09-19
 
 ### Changed
