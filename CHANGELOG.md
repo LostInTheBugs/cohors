@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.095 - 2026-09-19
+
+### Changed
+- Raid preparation: the recipe picker is now a search field — type to filter among house recipes, the in-game catalogue and crafter exports (accent-insensitive, prefix matches first, keyboard navigation, ⚠️ on recipes without known materials), instead of scrolling a long dropdown list.
+
 ## 2026.09.094 - 2026-09-19
 
 ### Fixed

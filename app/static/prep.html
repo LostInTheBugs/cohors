@@ -70,6 +70,17 @@
   .nrest.ok { color: var(--ok); font-weight: 600; }
   .oqty { width: 76px; padding: 5px 7px; }
   #inewprev { min-height: 17px; }
+  .combo { position: relative; flex: 1 1 320px; max-width: 460px; }
+  .combo input { width: 100%; }
+  .inlist { position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 300px; overflow-y: auto;
+            background: var(--card2); border: 1px solid var(--line); border-radius: 10px; z-index: 40;
+            box-shadow: 0 10px 26px rgba(0,0,0,.45); }
+  .inrow { display: flex; gap: 8px; align-items: baseline; padding: 7px 10px; cursor: pointer; border-bottom: 1px solid rgba(35,45,66,.55); }
+  .inrow:last-child { border-bottom: 0; }
+  .inrow:hover, .inrow.sel { background: rgba(223,165,90,.10); }
+  .inrow .im { font-weight: 600; }
+  .inrow .meta { font-size: 12.5px; }
+  .inhint { padding: 8px 10px; color: var(--mut); font-size: 13px; }
   .bar { flex: 1 1 100%; height: 5px; border-radius: 3px; background: var(--card2); overflow: hidden; margin-top: 2px; }
   .avrow { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 7px 9px; border-radius: 8px; border-left: 3px solid transparent; }
   .avrow + .avrow { margin-top: 2px; }
@@ -95,7 +106,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.094">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.095">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -147,7 +158,10 @@
     <div id="items"><div class="empty">Chargement…</div></div>
     <div id="itemsedit" class="hidden" style="margin-top:8px;border-top:1px solid var(--line);padding-top:10px">
       <div class="row">
-        <select id="inew" style="min-width:300px;max-width:460px"></select>
+        <span class="combo">
+          <input id="inew" placeholder="Rechercher une recette… (tape pour filtrer)" autocomplete="off">
+          <div id="inlist" class="inlist hidden"></div>
+        </span>
         <input id="iqty" type="number" min="1" step="1" value="1" style="width:90px" title="Combien en fabriquer">
         <button class="btn" id="iadd">＋ Ajouter</button>
       </div>
@@ -185,8 +199,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.094"></script>
-<script src="/static/i18n.js?v=2026.09.094"></script>
+<script src="/static/nav.js?v=2026.09.095"></script>
+<script src="/static/i18n.js?v=2026.09.095"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -282,32 +296,99 @@ function renderRaids() {
   }));
 }
 
-let OPT_MATS = {};
-function buildSelect() {
+let OPT_MATS = {};        // recette normalisée -> entrée (maison > jeu > artisans)
+let OPT_LIST = [];        // toutes les entrées, ordre des sources
+let SEL = null;           // entrée choisie dans la liste
+const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const SRC_TAG = { maison: "🏕️", jeu: "🎮", artisans: "👥" };
+
+function buildIndex() {
   const groups = [
-    ["🏕️ Recettes maison", (DATA.recipes || []).map(r => ({ item: r.name, prof: "", mats: r.mats, who: [] }))],
-    ["🎮 Recettes du jeu", (DATA.game || []).map(g => ({ item: g.item, prof: g.prof, mats: g.mats, who: g.crafters || [] }))],
-    ["👥 Artisans de la guilde", (DATA.catalog || []).map(c => ({ item: c.item, prof: c.prof, mats: c.mats, who: c.crafters || [] }))]
+    ["maison", (DATA.recipes || []).map(r => ({ item: r.name, prof: "", mats: r.mats, who: [] }))],
+    ["jeu", (DATA.game || []).map(g => ({ item: g.item, prof: g.prof, mats: g.mats, who: g.crafters || [] }))],
+    ["artisans", (DATA.catalog || []).map(c => ({ item: c.item, prof: c.prof, mats: c.mats, who: c.crafters || [] }))]
   ];
-  OPT_MATS = {};
+  OPT_MATS = {}; OPT_LIST = [];
   const seen = new Set();
-  const sel = $("#inew");
-  const keep = sel.value;
-  let html = `<option value="">— choisir une recette —</option>`;
-  for (const [label, rows] of groups) {
-    const opts = [];
+  for (const [src, rows] of groups) {
     for (const x of rows) {
-      const key = String(x.item || "").toLowerCase();
+      const key = norm(x.item);
       if (!key || seen.has(key)) continue;
       seen.add(key);
+      x.src = src;
       OPT_MATS[key] = x;
-      const noMats = !(x.mats || []).length;
-      opts.push(`<option value="${esc(x.item)}">${esc(x.item)}${x.prof ? " — " + esc(x.prof) : ""}${noMats ? " ⚠️" : ""}</option>`);
+      OPT_LIST.push(x);
     }
-    if (opts.length) html += `<optgroup label="${label}">${opts.join("")}</optgroup>`;
   }
-  sel.innerHTML = html;
-  sel.value = keep || "";
+}
+
+function hideInList() { $("#inlist").classList.add("hidden"); }
+
+function renderInList(q) {
+  const box = $("#inlist");
+  const nq = norm(q);
+  let res = [];
+  if (nq) {
+    const start = [], mid = [];
+    for (const x of OPT_LIST) {
+      const n = norm(x.item);
+      if (n.startsWith(nq)) start.push(x);
+      else if (n.includes(nq)) mid.push(x);
+    }
+    res = start.concat(mid);
+  }
+  if (!nq) {
+    box.innerHTML = `<div class="inhint">Tape pour filtrer parmi ${OPT_LIST.length} recettes…</div>`;
+    box.classList.remove("hidden");
+    return;
+  }
+  if (!res.length) {
+    box.innerHTML = `<div class="inhint">Aucun résultat — si la recette manque, ajoute-la en ⚙️ recette maison (plus bas).</div>`;
+    box.classList.remove("hidden");
+    return;
+  }
+  const shown = res.slice(0, 40);
+  box.innerHTML = shown.map((x, i) => `<div class="inrow" data-i="${i}">
+      <span class="im">${esc(x.item)}</span>
+      <span class="meta">${SRC_TAG[x.src] || ""} ${esc(x.prof || "")}</span>
+      ${(x.mats || []).length ? "" : `<span class="meta">⚠️</span>`}
+    </div>`).join("") + (res.length > shown.length ? `<div class="inhint">… ${res.length - shown.length} autres — affine ta recherche.</div>` : "");
+  box.classList.remove("hidden");
+  window._inRes = shown;
+  window._inSel = -1;
+  box.querySelectorAll("[data-i]").forEach(r => {
+    r.addEventListener("mousedown", (ev) => ev.preventDefault());
+    r.addEventListener("click", () => pickIn(shown[+r.dataset.i]));
+  });
+}
+
+function showPrev(x) {
+  const p = $("#inewprev");
+  if (!x) { p.textContent = ""; return; }
+  if (!(x.mats || []).length) {
+    p.textContent = "⚠️ Compos inconnues pour cette recette (données du jeu incomplètes) — ajoute-la en recette maison (⚙️ plus bas) pour calculer ses compos.";
+    return;
+  }
+  const mats = x.mats.map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ");
+  p.textContent = `Compos : ${mats}` + ((x.who || []).length ? ` · qui : ${x.who.join(", ")}` : "");
+}
+
+function pickIn(x) {
+  if (!x) return;
+  SEL = x;
+  $("#inew").value = x.item;
+  showPrev(x);
+  hideInList();
+}
+
+function currentEntry() {
+  const typed = ($("#inew").value || "").trim();
+  if (SEL && SEL.item.toLowerCase() === typed.toLowerCase()) return SEL;
+  if (!typed) return null;
+  const exact = OPT_MATS[norm(typed)];
+  if (exact) return exact;
+  const res = window._inRes || [];
+  return res.length === 1 ? res[0] : null;
 }
 
 function renderItems() {
@@ -332,7 +413,7 @@ function renderItems() {
     }));
   }
   $("#itemsedit").classList.toggle("hidden", !CAN);
-  buildSelect();
+  buildIndex();
   if (DATA.unknown && DATA.unknown.length) {
     $("#itemsmeta").textContent += ` · ⚠️ sans compos connues : ${DATA.unknown.join(", ")}`;
   }
@@ -537,25 +618,42 @@ $("#objsave").addEventListener("click", async () => {
   collectInputs();
   await savePlan();
 });
-$("#inew").addEventListener("change", () => {
-  const x = OPT_MATS[($("#inew").value || "").toLowerCase()];
-  const p = $("#inewprev");
-  if (!x) { p.textContent = ""; return; }
-  if (!(x.mats || []).length) {
-    p.textContent = "⚠️ Compos inconnues pour cette recette (données du jeu incomplètes) — ajoute-la en recette maison (⚙️ plus bas) pour calculer ses compos.";
+$("#inew").addEventListener("input", () => {
+  SEL = null;
+  const v = $("#inew").value;
+  renderInList(v);
+  const ex = OPT_MATS[norm(v)];
+  showPrev(ex && ex.item.toLowerCase() === v.trim().toLowerCase() ? ex : null);
+});
+$("#inew").addEventListener("focus", () => renderInList($("#inew").value || ""));
+$("#inew").addEventListener("blur", () => setTimeout(hideInList, 150));
+$("#inew").addEventListener("keydown", (ev) => {
+  const box = $("#inlist");
+  if (ev.key === "Escape") { hideInList(); return; }
+  if (box.classList.contains("hidden")) {
+    if (ev.key === "Enter") { ev.preventDefault(); $("#iadd").click(); }
     return;
   }
-  const mats = x.mats.map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ");
-  p.textContent = `Compos : ${mats}` + ((x.who || []).length ? ` · qui : ${x.who.join(", ")}` : "");
+  const rows = [...box.querySelectorAll(".inrow")];
+  if (!rows.length) return;
+  let i = (window._inSel != null) ? window._inSel : -1;
+  if (ev.key === "ArrowDown") { i = Math.min(rows.length - 1, i + 1); ev.preventDefault(); }
+  else if (ev.key === "ArrowUp") { i = Math.max(0, i - 1); ev.preventDefault(); }
+  else if (ev.key === "Enter") { ev.preventDefault(); pickIn((window._inRes || [])[Math.max(0, i)]); return; }
+  else return;
+  window._inSel = i;
+  rows.forEach((r, j) => r.classList.toggle("sel", j === i));
+  rows[i].scrollIntoView({ block: "nearest" });
 });
 $("#iadd").addEventListener("click", async () => {
-  const name = ($("#inew").value || "").trim();
+  const e = currentEntry();
   const qty = Math.max(1, parseInt($("#iqty").value || "1", 10) || 1);
-  if (!name) { setMsg("Choisis une recette à ajouter.", false); return; }
-  const found = PLAN.items.find(x => x.name.toLowerCase() === name.toLowerCase());
+  if (!e) { setMsg("Choisis une recette dans la liste (tape pour filtrer).", false); return; }
+  const found = PLAN.items.find(x => x.name.toLowerCase() === e.item.toLowerCase());
   if (found) found.qty += qty;
-  else PLAN.items.push({ name, qty });
-  $("#inew").value = ""; $("#iqty").value = "1"; $("#inewprev").textContent = "";
+  else PLAN.items.push({ name: e.item, qty });
+  SEL = null;
+  $("#inew").value = ""; $("#iqty").value = "1"; $("#inewprev").textContent = ""; hideInList();
   await savePlan();
 });
 $("#rsave").addEventListener("click", async () => {
