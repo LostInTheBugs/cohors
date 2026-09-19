@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.098 - 2026-09-19
+
+### Added
+- Raid preparation: a "Only recipes known by guild players" checkbox next to the recipe search field, filtering the list down to recipes some guild member can craft (declared in 🙋 Moi → 📖 Mes recettes). The recipe preview and ⚠️ marker now use the effective materials (first non-empty source, same rule as the server) and list all guild crafters.
+
 ## 2026.09.097 - 2026-09-19
 
 ### Changed

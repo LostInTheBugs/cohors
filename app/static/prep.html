@@ -81,6 +81,8 @@
   .inrow .im { font-weight: 600; }
   .inrow .meta { font-size: 12.5px; }
   .inhint { padding: 8px 10px; color: var(--mut); font-size: 13px; }
+  .chkline { display: inline-flex; align-items: center; gap: 7px; color: var(--mut); font-size: 13px; cursor: pointer; margin-top: 6px; }
+  .chkline input[type=checkbox] { accent-color: var(--acc2); width: 15px; height: 15px; }
   .bar { flex: 1 1 100%; height: 5px; border-radius: 3px; background: var(--card2); overflow: hidden; margin-top: 2px; }
   .avrow { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 7px 9px; border-radius: 8px; border-left: 3px solid transparent; }
   .avrow + .avrow { margin-top: 2px; }
@@ -106,7 +108,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.097">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.098">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -166,6 +168,7 @@
         <button class="btn" id="iadd">＋ Ajouter</button>
       </div>
       <div class="meta" id="inewprev" style="margin-top:4px"></div>
+      <label class="chkline"><input type="checkbox" id="inguild"> Seulement les recettes connues par les joueurs de la guilde</label>
       <div class="row" style="margin-top:6px">
         <span class="meta" id="gsyncmeta"></span>
       </div>
@@ -197,8 +200,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.097"></script>
-<script src="/static/i18n.js?v=2026.09.097"></script>
+<script src="/static/nav.js?v=2026.09.098"></script>
+<script src="/static/i18n.js?v=2026.09.098"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -300,35 +303,45 @@ let SEL = null;           // entrée choisie dans la liste
 const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const SRC_TAG = { maison: "🏕️", jeu: "🎮", artisans: "👥" };
 
+let GUILD_ONLY = false;
+
 function buildIndex() {
   const groups = [
     ["maison", (DATA.recipes || []).map(r => ({ item: r.name, prof: "", mats: r.mats, who: [] }))],
     ["jeu", (DATA.game || []).map(g => ({ item: g.item, prof: g.prof, mats: g.mats, who: g.crafters || [] }))],
     ["artisans", (DATA.catalog || []).map(c => ({ item: c.item, prof: c.prof, mats: c.mats, who: c.crafters || [] }))]
   ];
-  OPT_MATS = {}; OPT_LIST = [];
-  const seen = new Set();
+  const cands = {};   // clé -> candidats dans l'ordre de priorité (maison > jeu > artisans)
   for (const [src, rows] of groups) {
     for (const x of rows) {
       const key = norm(x.item);
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
+      if (!key) continue;
       x.src = src;
-      OPT_MATS[key] = x;
-      OPT_LIST.push(x);
+      (cands[key] = cands[key] || []).push(x);
     }
   }
+  OPT_MATS = {}; OPT_LIST = [];
+  for (const list of Object.values(cands)) {
+    const keep = list[0];
+    keep.optMats = list.map(c => c.mats || []).find(m => m.length) || [];       // comme le serveur : 1re source non vide
+    keep.optWho = [...new Set(list.flatMap(c => c.who || []))];
+    OPT_MATS[norm(keep.item)] = keep;
+    OPT_LIST.push(keep);
+  }
 }
+
+const guildKnown = (x) => (x.optWho || []).length > 0;
 
 function hideInList() { $("#inlist").classList.add("hidden"); }
 
 function renderInList(q) {
   const box = $("#inlist");
   const nq = norm(q);
+  const base = GUILD_ONLY ? OPT_LIST.filter(guildKnown) : OPT_LIST;
   let res = [];
   if (nq) {
     const start = [], mid = [];
-    for (const x of OPT_LIST) {
+    for (const x of base) {
       const n = norm(x.item);
       if (n.startsWith(nq)) start.push(x);
       else if (n.includes(nq)) mid.push(x);
@@ -336,7 +349,9 @@ function renderInList(q) {
     res = start.concat(mid);
   }
   if (!nq) {
-    box.innerHTML = `<div class="inhint">Tape pour filtrer parmi ${OPT_LIST.length} recettes…</div>`;
+    box.innerHTML = GUILD_ONLY
+      ? `<div class="inhint">Tape pour filtrer parmi ${base.length} recettes connues de la guilde…</div>`
+      : `<div class="inhint">Tape pour filtrer parmi ${base.length} recettes…</div>`;
     box.classList.remove("hidden");
     return;
   }
@@ -349,7 +364,7 @@ function renderInList(q) {
   box.innerHTML = shown.map((x, i) => `<div class="inrow" data-i="${i}">
       <span class="im">${esc(x.item)}</span>
       <span class="meta">${SRC_TAG[x.src] || ""} ${esc(x.prof || "")}</span>
-      ${(x.mats || []).length ? "" : `<span class="meta">⚠️</span>`}
+      ${(x.optMats || []).length ? "" : `<span class="meta">⚠️</span>`}
     </div>`).join("") + (res.length > shown.length ? `<div class="inhint">… ${res.length - shown.length} autres — affine ta recherche.</div>` : "");
   box.classList.remove("hidden");
   window._inRes = shown;
@@ -363,12 +378,12 @@ function renderInList(q) {
 function showPrev(x) {
   const p = $("#inewprev");
   if (!x) { p.textContent = ""; return; }
-  if (!(x.mats || []).length) {
+  if (!(x.optMats || []).length) {
     p.textContent = "⚠️ Compos inconnues pour cette recette (données du jeu incomplètes) — ajoute-la en recette maison (⚙️ plus bas) pour calculer ses compos.";
     return;
   }
-  const mats = x.mats.map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ");
-  p.textContent = `Compos : ${mats}` + ((x.who || []).length ? ` · qui : ${x.who.join(", ")}` : "");
+  const mats = x.optMats.map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ");
+  p.textContent = `Compos : ${mats}` + ((x.optWho || []).length ? ` · qui : ${x.optWho.join(", ")}` : "");
 }
 
 function pickIn(x) {
@@ -616,6 +631,10 @@ $("#logout").addEventListener("click", async (ev) => {
 $("#objsave").addEventListener("click", async () => {
   collectInputs();
   await savePlan();
+});
+$("#inguild").addEventListener("change", () => {
+  GUILD_ONLY = $("#inguild").checked;
+  renderInList($("#inew").value || "");
 });
 $("#inew").addEventListener("input", () => {
   SEL = null;
