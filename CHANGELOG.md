@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.094 - 2026-09-19
+
+### Fixed
+- Raid preparation materials: recipes whose materials are missing from Blizzard's static API (164 in-game recipes, mostly recent Midnight content: leatherworking, engineering, inscription, alchemy…) no longer silently produce an empty materials list. When several sources describe the same item, the first non-empty one wins (house recipe > in-game catalogue > crafter exports) — previously an empty in-game entry could override a crafter export that had the materials.
+- Such recipes are now flagged ⚠️ in the recipe dropdown and listed as "sans compos connues" under the plan, with a hint to add a house recipe (its materials then take precedence).
+
 ## 2026.09.093 - 2026-09-19
 
 ### Changed

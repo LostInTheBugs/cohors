@@ -95,7 +95,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.093">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.094">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -185,8 +185,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.093"></script>
-<script src="/static/i18n.js?v=2026.09.093"></script>
+<script src="/static/nav.js?v=2026.09.094"></script>
+<script src="/static/i18n.js?v=2026.09.094"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -301,7 +301,8 @@ function buildSelect() {
       if (!key || seen.has(key)) continue;
       seen.add(key);
       OPT_MATS[key] = x;
-      opts.push(`<option value="${esc(x.item)}">${esc(x.item)}${x.prof ? " — " + esc(x.prof) : ""}</option>`);
+      const noMats = !(x.mats || []).length;
+      opts.push(`<option value="${esc(x.item)}">${esc(x.item)}${x.prof ? " — " + esc(x.prof) : ""}${noMats ? " ⚠️" : ""}</option>`);
     }
     if (opts.length) html += `<optgroup label="${label}">${opts.join("")}</optgroup>`;
   }
@@ -333,7 +334,7 @@ function renderItems() {
   $("#itemsedit").classList.toggle("hidden", !CAN);
   buildSelect();
   if (DATA.unknown && DATA.unknown.length) {
-    $("#itemsmeta").textContent += ` · ⚠️ sans recette : ${DATA.unknown.join(", ")}`;
+    $("#itemsmeta").textContent += ` · ⚠️ sans compos connues : ${DATA.unknown.join(", ")}`;
   }
 }
 
@@ -540,7 +541,11 @@ $("#inew").addEventListener("change", () => {
   const x = OPT_MATS[($("#inew").value || "").toLowerCase()];
   const p = $("#inewprev");
   if (!x) { p.textContent = ""; return; }
-  const mats = (x.mats || []).map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ") || "aucune compos";
+  if (!(x.mats || []).length) {
+    p.textContent = "⚠️ Compos inconnues pour cette recette (données du jeu incomplètes) — ajoute-la en recette maison (⚙️ plus bas) pour calculer ses compos.";
+    return;
+  }
+  const mats = x.mats.map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ");
   p.textContent = `Compos : ${mats}` + ((x.who || []).length ? ` · qui : ${x.who.join(", ")}` : "");
 });
 $("#iadd").addEventListener("click", async () => {

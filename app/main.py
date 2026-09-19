@@ -3529,7 +3529,7 @@ def _prep_needs(plan_items: list, recipes: list) -> tuple[list[dict], list[str]]
         except (TypeError, ValueError):
             qty = 0.0
         mats = rec.get(name.casefold())
-        if mats is None:
+        if not mats:   # recette absente OU compos inconnues (données Blizzard incomplètes)
             if name not in unknown:
                 unknown.append(name)
             continue
@@ -3577,15 +3577,18 @@ def api_prep_get(request: Request):
             p[_k] = json.loads(p.get(_k) or "[]")
         except (ValueError, TypeError):
             p[_k] = []
-    # Résolution des compos : la première source trouvée gagne pour un objet donné
-    # (artisans, puis recettes du jeu FR + EN, puis recettes maison des officiers).
-    res_list: list = []
+    # Résolution des compos par objet : recettes maison > jeu > artisans, en ignorant les
+    # entrées vides (l'API du jeu n'a pas les compos de nombreuses recettes récentes).
+    cand: dict = {}
     for c in crafts:
         try:
             _m = json.loads(c["mats"] or "[]")
         except ValueError:
             _m = []
-        res_list.append({"name": c["item"], "mats": _m})
+        nm = str(c.get("item") or "").strip()
+        if nm:
+            e = cand.setdefault(nm.casefold(), {"name": nm, "maison": [], "jeu": [], "artisans": []})
+            e["artisans"] = _m
     game_best: dict = {}
     for c in game:
         try:
@@ -3603,9 +3606,17 @@ def api_prep_get(request: Request):
                 except (TypeError, ValueError):
                     _gm = []
                 game_best[nm.casefold()] = (g_rank, nm, _gm)
-    for _rk, _nm, _gm in sorted(game_best.values(), key=lambda x: x[0]):
-        res_list.append({"name": _nm, "mats": _gm})
-    res_list.extend({"name": r["name"], "mats": r["mats"]} for r in recipes)
+    for _k, (_rk, _nm, _gm) in game_best.items():
+        e = cand.setdefault(_k, {"name": _nm, "maison": [], "jeu": [], "artisans": []})
+        e["jeu"] = _gm
+        e["name"] = e.get("name") or _nm
+    for r in recipes:
+        nm = str(r.get("name") or "").strip()
+        if nm:
+            e = cand.setdefault(nm.casefold(), {"name": nm, "maison": [], "jeu": [], "artisans": []})
+            e["maison"] = r.get("mats") or []
+    res_list = [{"name": v["name"], "mats": (v["maison"] or v["jeu"] or v["artisans"] or [])}
+                for v in cand.values()]
     needs, unknown = _prep_needs(p["items"], res_list)
     by_mat: dict = {}
     for c in claims:

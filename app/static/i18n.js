@@ -733,7 +733,7 @@
  "🎧 La carte « Vocal » montre qui est connecté sur TeamSpeak.": "🎧 The « Voice » tile shows who is connected on TeamSpeak.",
  "Qui peut crafter quoi : les métiers de toute la guilde, regroupés par profession, avec les points de chaque personnage.": "Who can craft what: the whole guild's professions, grouped by trade, with each character's points.",
  "Recherche un métier ou un personnage, et clique pour ouvrir sa fiche — les métiers se mettent à jour automatiquement depuis le jeu.": "Search a profession or a character, and click to open the sheet — professions update automatically from the game.",
- "L'atelier du raid : les officiers définissent l'objectif (la date et l'heure de la soirée, le ou les raids et boss visés — catalogue du jeu), puis choisissent les recettes à fabriquer dans la liste (« ＋ Ajouter » pour en ajouter une autre, avec la quantité voulue). Les compos nécessaires se calculent tout seuls : les officiers notent ce qui est déjà en banque 🏦, chacun peut indiquer ce qu'il apporte, et le reste à réunir se met à jour.": "The raid workshop: officers set the objective (the evening's date and time, the raids and bosses targeted — in-game catalogue), then pick the recipes to craft from the list (« ＋ Add » for another one, with the wanted quantity). The required materials compute themselves: officers mark what's already in the bank 🏦, anyone can say what they bring, and the remaining total updates itself.",
+ "L'atelier du raid : les officiers définissent l'objectif (la date et l'heure de la soirée, le ou les raids et boss visés — catalogue du jeu), puis choisissent les recettes à fabriquer dans la liste (« ＋ Ajouter » pour en ajouter une autre, avec la quantité voulue). Les compos nécessaires se calculent tout seuls : les officiers notent ce qui est déjà en banque 🏦, chacun peut indiquer ce qu'il apporte, et le reste à réunir se met à jour. Si une recette du jeu arrive sans compos connues (données Blizzard incomplètes — souvent du contenu récent), elle est signalée ⚠️ : ajoute-la en ⚙️ recette maison, ses compos prendront le dessus.": "The raid workshop: officers set the objective (the evening's date and time, the raids and bosses targeted — in-game catalogue), then pick the recipes to craft from the list (« ＋ Add » for another one, with the wanted quantity). The required materials compute themselves: officers mark what's already in the bank 🏦, anyone can say what they bring, and the remaining total updates itself. If a game recipe shows up without known materials (incomplete Blizzard data — often recent content), it is flagged ⚠️: add it as a ⚙️ house recipe and its materials will take over.",
  "La page agrège les compos nécessaires (besoin / fourni, barre de progression) et chaque membre clique « j'apporte » pour annoncer sa part.": "The page aggregates the required materials (needed / provided, progress bar) and every member clicks « I bring » to claim their share.",
  "📚 Catalogue : les recettes du jeu (2 dernières extensions, synchronisées automatiquement) ou les recettes des artisans de la guilde (déclarées : import d'addon ou cases cochées sur la page 🔨 Artisanat) — tu vois qui peut crafter quoi.": "📚 Catalog: game recipes (last 2 expansions, synced automatically) or the guild crafters' recipes (declared: addon import or ticked on the 🔨 Crafting page) — you see who can craft what.",
  "Organise les clés mythiques+ : choisis tes rôles (🛡️ tank / 💚 heal / ⚔️ DPS), tes créneaux (les 14 prochains jours, avec heures) et les clés que tu as (perso, donjon, niveau).": "Organize your Mythic+ keys: pick your roles (🛡️ tank / 💚 heal / ⚔️ DPS), your slots (next 14 days, with hours) and the keys you hold (character, dungeon, level).",
@@ -833,7 +833,8 @@
  "Quantité déjà en banque de guilde": "Quantity already in the guild bank",
  "Combien en fabriquer": "How many to craft",
  "Quantité à fabriquer": "Quantity to craft",
- "✓ complet": "✓ complete"
+ "✓ complet": "✓ complete",
+ "⚠️ Compos inconnues pour cette recette (données du jeu incomplètes) — ajoute-la en recette maison (⚙️ plus bas) pour calculer ses compos.": "⚠️ Unknown materials for this recipe (incomplete game data) — add it as a house recipe (⚙️ below) to compute its materials."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -854,7 +855,7 @@
     [/enregistré par /g, "saved by "],
     [/besoin : /g, "needed: "],
     [/fourni : /g, "provided: "],
-    [/⚠️ sans recette : /g, "⚠️ no recipe: "],
+    [/⚠️ sans compos connues : /g, "⚠️ unknown materials: "],
     [/\bobjet\(s\)/g, "item(s)"],
     [/\bartisan\(s\)/g, "crafter(s)"],
     [/qui : /g, "who: "],
