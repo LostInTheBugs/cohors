@@ -81,8 +81,24 @@
   #toast.on { opacity:1; }
   #adm .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
   #adm .tab { cursor:pointer; }
+
+  /* ---- Menu à gauche de Paramètres (v2026.09.113) ---- */
+  .slayout { display:grid; grid-template-columns:232px minmax(0,1fr); gap:18px; align-items:start; }
+  .smenu { display:flex; flex-direction:column; gap:5px; position:sticky; top:12px; }
+  .smenu .sbtn { display:flex; align-items:center; gap:9px; text-align:left; width:100%;
+        background:transparent; border:1px solid transparent; color:var(--mut); padding:9px 13px;
+        border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; }
+  .smenu .sbtn:hover { color:var(--fg); border-color:var(--line); }
+  .smenu .sbtn.on { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); }
+  .smenu .stitle { color:var(--mut); font-size:11.5px; text-transform:uppercase; letter-spacing:.7px; margin:14px 6px 3px; }
+  @media (max-width:760px) {
+    .slayout { grid-template-columns:1fr; gap:12px; }
+    .smenu { flex-direction:row; flex-wrap:wrap; position:static; }
+    .smenu .sbtn { width:auto; border-color:var(--line); }
+    .smenu .stitle { width:100%; margin:6px 0 0; }
+  }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.112">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.113">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -102,7 +118,21 @@
   </header>
   <nav class="tabs" id="navmain"></nav>
 
-  <div class="card">
+  <div class="slayout">
+    <aside class="smenu" id="smenu">
+      <button class="sbtn on" type="button" data-sec="sec-profil">👤 Profil</button>
+      <button class="sbtn" type="button" data-sec="sec-vocal">🎧 Vocal (TeamSpeak)</button>
+      <button class="sbtn" type="button" data-sec="sec-pw">🔒 Mot de passe</button>
+      <div class="stitle hidden" id="smenu-adm">🛡️ Administration</div>
+      <button class="sbtn hidden" type="button" data-sec="sec-invitations" id="sbtn-invitations">✉️ Invitations</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-comptes" id="sbtn-comptes">👤 Comptes</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-bot" id="sbtn-bot">🤖 Bot Discord</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-identite" id="sbtn-identite">🎨 Identité</button>
+    </aside>
+    <div class="spanel">
+
+  <div id="sec-profil">
+<div class="card">
     <h2>👤 Profil</h2>
     <div class="row">
       <span class="plab">Langue :</span>
@@ -118,7 +148,10 @@
     <p class="note">Langue et nom sont liés à ton compte (ils te suivent sur tous tes appareils).</p>
   </div>
 
-  <div class="card">
+  <div id="sec-vocal" class="hidden">
+  </div>
+
+<div class="card">
     <h2>🎧 Vocal (TeamSpeak)</h2>
     <div class="row">
       <input type="text" id="voice-nick" maxlength="60" placeholder="Pseudo dans le vocal">
@@ -127,8 +160,10 @@
     </div>
     <p class="note">Par défaut : le nom de ton personnage principal (fiche 👥 Personnages). Ce pseudo est pré-rempli quand tu rejoins le vocal depuis l'app.</p>
   </div>
+  </div>
 
-  <div class="card">
+<div id="sec-pw" class="hidden">
+<div class="card">
     <h2>🔒 Mot de passe</h2>
     <div class="row">
       <input type="password" id="pw-cur" placeholder="Mot de passe actuel" autocomplete="current-password">
@@ -140,18 +175,11 @@
     </div>
     <p class="note">⚠️ Tes autres appareils seront déconnectés. <span id="pw-msg"></span></p>
   </div>
+  </div>
 
-
-  <div id="adm" class="hidden">
-    <h2 style="margin-top:24px">🛡️ Administration</h2>
-    <nav class="tabs">
-      <button class="tab active" id="tab-invitations" type="button">✉️ Invitations</button>
-      <button class="tab" id="tab-comptes" type="button">👤 Comptes</button>
-      <button class="tab" id="tab-bot" type="button">🤖 Bot Discord</button>
-      <button class="tab" id="tab-identite" type="button">🎨 Identité</button>
-    </nav>
+<div id="adm">
   
-    <div id="sec-invitations">
+    <div id="sec-invitations" class="hidden">
       <div class="card">
         <h2>Créer une invitation</h2>
         <div class="row">
@@ -245,11 +273,14 @@
     </div>
 <div id="toast"></div>
 
+    </div>
+  </div>
+
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.112"></script>
-<script src="/static/branding.js?v=2026.09.112"></script>
-<script src="/static/i18n.js?v=2026.09.112"></script>
+<script src="/static/nav.js?v=2026.09.113"></script>
+<script src="/static/branding.js?v=2026.09.113"></script>
+<script src="/static/i18n.js?v=2026.09.113"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -423,15 +454,27 @@ async function loadUsers() {
   }));
 }
 
-document.querySelectorAll("nav.tabs .tab").forEach((tb) => tb.addEventListener("click", () => {
-  document.querySelectorAll("nav.tabs .tab").forEach((o) => o.classList.toggle("active", o === tb));
-  $("#sec-invitations").classList.toggle("hidden", tb.id !== "tab-invitations");
-  $("#sec-comptes").classList.toggle("hidden", tb.id !== "tab-comptes");
-  $("#sec-bot").classList.toggle("hidden", tb.id !== "tab-bot");
-  $("#sec-identite").classList.toggle("hidden", tb.id !== "tab-identite");
-  if (tb.id === "tab-bot") loadBot();
-  if (tb.id === "tab-identite") loadBrand();
+// ---- Menu à gauche : sections de Paramètres (v2026.09.113) ----
+function showSec(id) {
+  document.querySelectorAll("#sec-profil, #sec-vocal, #sec-pw, #adm > div[id^=sec-]").forEach((d) => {
+    d.classList.toggle("hidden", d.id !== id);
+  });
+}
+document.querySelectorAll(".smenu .sbtn").forEach((b) => b.addEventListener("click", () => {
+  showSec(b.dataset.sec);
+  document.querySelectorAll(".smenu .sbtn").forEach((o) => o.classList.toggle("on", o === b));
+  if (b.dataset.sec === "sec-invitations") loadInvites();
+  if (b.dataset.sec === "sec-comptes" && IM_ADMIN) loadUsers();
+  if (b.dataset.sec === "sec-bot") loadBot();
+  if (b.dataset.sec === "sec-identite") loadBrand();
+  try { history.replaceState(null, "", "#" + b.dataset.sec.replace(/^sec-/, "")); } catch (e) {}
 }));
+function openFromHash() {
+  const h = (location.hash || "").replace(/^#/, "");
+  if (!h) return;
+  const b = document.querySelector('.smenu .sbtn[data-sec="sec-' + h + '"]');
+  if (b && !b.classList.contains("hidden")) b.click();
+}
 
 $("#inv-email").addEventListener("input", () => {
   const has = $("#inv-email").value.trim().length > 0;
@@ -626,15 +669,18 @@ $("#bi-reset").addEventListener("click", async () => {
   // ---- Administration (officiers et admin) ----
   ME = me; IM_ADMIN = !!me.is_admin;
   const staff = !!me.is_admin || me.role === "officer";
-  if (!staff) return;
-  $("#adm").classList.remove("hidden");
-  if (!IM_ADMIN) {
-    $("#tab-comptes").classList.add("hidden");
-    $("#tab-bot").classList.add("hidden");
-    $("#tab-identite").classList.add("hidden");
+  if (staff) {
+    $("#smenu-adm").classList.remove("hidden");
+    $("#sbtn-invitations").classList.remove("hidden");
+    if (IM_ADMIN) {
+      $("#sbtn-comptes").classList.remove("hidden");
+      $("#sbtn-bot").classList.remove("hidden");
+      $("#sbtn-identite").classList.remove("hidden");
+    }
+    loadInvites();
+    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); }
+    openFromHash();
   }
-  loadInvites();
-  if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); }
 })();
 </script>
 </body>

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.113 - 2026-09-19
+
+### Changed
+- Settings now use a left-hand menu (Profil, Vocal, Mot de passe, then Administration for staff: Invitations, Accounts, Discord bot, Identity) instead of stacked cards and top tabs; deep links like /settings#identite open the matching section. Help unchanged.
+
 ## 2026.09.112 - 2026-09-19
 
 ### Changed
