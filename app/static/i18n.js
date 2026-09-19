@@ -962,7 +962,28 @@
  "Clés refusées par Battle.net.": "Keys rejected by Battle.net.",
  "Clés refusées par Warcraft Logs.": "Keys rejected by Warcraft Logs.",
  "Jeton obtenu — les clés fonctionnent.": "Token obtained — the keys work.",
- "🟢 Configurée (serveur)": "🟢 Configured (server)"
+ "🟢 Configurée (serveur)": "🟢 Configured (server)",
+ "🔄 Synchronisations": "🔄 Synchronisations",
+ "Cadence des tâches automatiques du site : relevés de personnages (niveaux, équipement, métiers) et passages du bot Discord (rapports de raid, mouvements de guilde). Les valeurs remplacent celles du serveur ; le prochain passage les prend en compte.": "Cadence of the site's automatic tasks: character snapshots (levels, gear, professions) and Discord bot runs (raid reports, guild movements). The values override the server ones; the next run picks them up.",
+ "📊 Relevés des personnages": "📊 Character snapshots",
+ "tâche active": "task enabled",
+ "Passage toutes les": "Run every ",
+ "Perso lié : re-relevé toutes les": "Linked char: re-snapshot every ",
+ "Roster : toutes les": "Roster: every ",
+ "persos par passage": " chars per run",
+ "Historique conservé": "History kept ",
+ "jours": " days",
+ "Métiers toutes les": "Professions every ",
+ "▶ Lancer maintenant": "▶ Run now",
+ "Passage lancé — l'état se met à jour dans un instant.": "Run started — the status will update shortly.",
+ "🤖 Bot Discord — cadence": "🤖 Discord bot — cadence",
+ "Le bot s'active et se règle dans la section": "The bot is enabled and configured in the",
+ "(salon, annonces, message de test).": "(channel, notifications, test message) section.",
+ "jamais lancée": "never run",
+ "🔴 erreur": "🔴 error",
+ "dernier passage": "last run",
+ "Réglages enregistrés ✓": "Settings saved ✓",
+ "<li><b>Synchronisations (administration)</b> : la cadence des tâches automatiques — relevés des personnages (niveau, équipement, métiers) et passages du bot Discord — se règle dans <i>Paramètres → Administration → 🔄 Synchronisations</i> : intervalle, fréquence de re-relevé (personnages liés / roster), nombre de personnages par passage, durée de conservation de l'historique. La page affiche l'heure du dernier passage et un bouton <b>▶ Lancer maintenant</b>. Un intervalle plus court = davantage d'appels API ; la conservation reste limitée à 30 jours (conditions Blizzard).</li>": "<li><b>Sync jobs (administration)</b>: the cadence of automatic tasks — character snapshots (level, gear, professions) and Discord bot runs — is set in <i>Settings → Administration → 🔄 Sync jobs</i>: interval, re-snapshot frequency (linked chars / roster), characters per run, history retention. The page shows the last run time and a <b>▶ Run now</b> button. A shorter interval means more API calls; retention stays capped at 30 days (Blizzard terms).</li>"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

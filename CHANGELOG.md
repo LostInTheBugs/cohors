@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.133 - 2026-09-19
+
+### Fixed
+- Sync jobs: the "task enabled" checkbox reads and saves its state correctly.
+
+## 2026.09.132 - 2026-09-19
+
+### Added
+- Administration: sync jobs are now configurable (Settings -> Administration -> Sync jobs): snapshot cadence and re-snapshot delays, characters per run, history retention, professions refresh, Discord bot interval. Shows the last run time, errors, and a "Run now" button for the snapshot pass.
+
 ## 2026.09.131 - 2026-09-19
 
 ### Fixed

@@ -98,7 +98,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.131">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.133">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -128,6 +128,7 @@
       <button class="sbtn hidden" type="button" data-sec="sec-comptes" id="sbtn-comptes">👤 Comptes</button>
       <button class="sbtn hidden" type="button" data-sec="sec-bot" id="sbtn-bot">🤖 Bot Discord</button>
       <button class="sbtn hidden" type="button" data-sec="sec-api" id="sbtn-api">🔑 Clés API</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-jobs" id="sbtn-jobs">🔄 Synchronisations</button>
       <button class="sbtn hidden" type="button" data-sec="sec-identite" id="sbtn-identite">🎨 Identité</button>
     </aside>
     <div class="spanel">
@@ -256,6 +257,47 @@
       </div>
     </div>
 
+    <div id="sec-jobs" class="hidden">
+      <div class="card">
+        <h2>🔄 Synchronisations</h2>
+        <p class="sub" style="margin:4px 0 14px">Cadence des tâches automatiques du site : relevés de personnages (niveaux, équipement, métiers) et passages du bot Discord (rapports de raid, mouvements de guilde). Les valeurs remplacent celles du serveur ; le prochain passage les prend en compte.</p>
+
+        <div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px; margin-bottom:12px;">
+          <div class="row" style="justify-content:space-between"><b>📊 Relevés des personnages</b><span class="badge" id="job-snap-badge">…</span></div>
+          <div class="row" style="margin-top:10px">
+            <label class="chk"><input type="checkbox" id="j-snap_enabled"> tâche active</label>
+          </div>
+          <div class="row" style="margin-top:8px; flex-wrap:wrap">
+            <label class="fld">Passage toutes les <input type="number" id="j-snap_interval_min" min="1" max="1440" style="width:80px"> min</label>
+            <label class="fld">Perso lié : re-relevé toutes les <input type="number" id="j-snap_linked_h" min="1" max="168" style="width:80px"> h</label>
+            <label class="fld">Roster : toutes les <input type="number" id="j-snap_roster_h" min="1" max="720" style="width:80px"> h</label>
+          </div>
+          <div class="row" style="margin-top:8px; flex-wrap:wrap">
+            <label class="fld">Max <input type="number" id="j-snap_max_tick" min="1" max="500" style="width:80px"> persos par passage</label>
+            <label class="fld">Historique conservé <input type="number" id="j-snap_keep_days" min="2" max="30" style="width:80px"> jours</label>
+            <label class="fld">Métiers toutes les <input type="number" id="j-prof_days" min="1" max="60" style="width:80px"> j</label>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="small" id="job-snap-save">💾 Enregistrer</button>
+            <button class="small ghost" id="job-snap-run">▶ Lancer maintenant</button>
+            <span class="note" id="job-snap-msg"></span>
+          </div>
+          <p class="note" style="margin:8px 0 0" id="job-snap-status">…</p>
+        </div>
+
+        <div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px;">
+          <div class="row" style="justify-content:space-between"><b>🤖 Bot Discord — cadence</b><span class="badge" id="job-bot-badge">…</span></div>
+          <div class="row" style="margin-top:8px; flex-wrap:wrap">
+            <label class="fld">Passage toutes les <input type="number" id="j-bot_interval_min" min="1" max="1440" style="width:80px"> min</label>
+            <button class="small" id="job-bot-save">💾 Enregistrer</button>
+            <span class="note" id="job-bot-msg"></span>
+          </div>
+          <p class="note" style="margin:8px 0 0" id="job-bot-status">…</p>
+          <p class="note" style="margin:6px 0 0">Le bot s'active et se règle dans la section <b>🤖 Bot Discord</b> (salon, annonces, message de test).</p>
+        </div>
+      </div>
+    </div>
+
     <div id="sec-identite" class="hidden">
       <div class="card">
         <h2>🎨 Identité de la guilde</h2>
@@ -288,9 +330,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.131"></script>
-<script src="/static/branding.js?v=2026.09.131"></script>
-<script src="/static/i18n.js?v=2026.09.131"></script>
+<script src="/static/nav.js?v=2026.09.133"></script>
+<script src="/static/branding.js?v=2026.09.133"></script>
+<script src="/static/i18n.js?v=2026.09.133"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -569,6 +611,59 @@ $("#bot-guilds").addEventListener("click", async () => {
   } catch (e) {}
 });
 
+// ---- Synchronisations (jobs) ----
+function jobStatusLine(st, badgeId, statusId) {
+  const badge = $(badgeId), line = $(statusId);
+  if (!st) { badge.textContent = "jamais lancée"; badge.className = "badge"; line.textContent = ""; return; }
+  const ran = st.last_run ? `dernier passage ${ago(st.last_run)}` : "jamais lancée";
+  if (st.error) { badge.textContent = "🔴 erreur"; badge.className = "badge b-off"; }
+  else { badge.textContent = "🟢 OK"; badge.className = "badge b-used"; }
+  line.innerHTML = `${esc(ran)}${st.detail ? " · " + esc(st.detail) : ""}` +
+    (st.error ? ` · <span style="color:var(--err)">⚠ ${esc(st.error)}</span>` : "");
+}
+
+async function loadJobs() {
+  const d = await api("GET", "/api/admin/jobs");
+  for (const [k, v] of Object.entries(d.config || {})) {
+    const el = $("#j-" + k);
+    if (!el) continue;
+    if (el.type === "checkbox") el.checked = v === "1";
+    else el.value = v;
+  }
+  jobStatusLine((d.status || {}).snapshots, "#job-snap-badge", "#job-snap-status");
+  jobStatusLine((d.status || {}).bot, "#job-bot-badge", "#job-bot-status");
+}
+
+async function saveJobKeys(keys, msgSel) {
+  const msg = $(msgSel);
+  const values = {};
+  for (const k of keys) {
+    const el = $("#j-" + k);
+    if (!el) continue;
+    values[k] = el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value;
+  }
+  try {
+    await api("POST", "/api/admin/jobs", { values });
+    msg.textContent = "✅ Enregistré.";
+    toast("Réglages enregistrés ✓");
+    loadJobs();
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
+}
+
+const SNAP_KEYS = ["snap_enabled", "snap_interval_min", "snap_linked_h", "snap_roster_h",
+                   "snap_max_tick", "snap_keep_days", "prof_days"];
+$("#job-snap-save").addEventListener("click", () => saveJobKeys(SNAP_KEYS, "#job-snap-msg"));
+$("#job-bot-save").addEventListener("click", () => saveJobKeys(["bot_interval_min"], "#job-bot-msg"));
+$("#job-snap-run").addEventListener("click", async () => {
+  const msg = $("#job-snap-msg");
+  try {
+    await api("POST", "/api/admin/jobs/run", { slug: "snapshots" });
+    msg.textContent = "Passage lancé — l'état se met à jour dans un instant.";
+    setTimeout(loadJobs, 8000);
+    setTimeout(loadJobs, 25000);
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
+});
+
 // ---- Clés API (Battle.net, Warcraft Logs) ----
 async function loadApiKeys() {
   const d = await api("GET", "/api/admin/api-keys");
@@ -743,10 +838,11 @@ $("#bi-reset").addEventListener("click", async () => {
       $("#sbtn-comptes").classList.remove("hidden");
       $("#sbtn-bot").classList.remove("hidden");
       $("#sbtn-api").classList.remove("hidden");
+      $("#sbtn-jobs").classList.remove("hidden");
       $("#sbtn-identite").classList.remove("hidden");
     }
     loadInvites();
-    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); }
+    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); loadJobs(); }
     openFromHash();
   }
 })();

@@ -178,6 +178,25 @@ def _init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS job_config (
+                key     TEXT PRIMARY KEY,
+                value   TEXT NOT NULL DEFAULT '',
+                updated REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS job_status (
+                slug     TEXT PRIMARY KEY,
+                last_run REAL NOT NULL DEFAULT 0,
+                detail   TEXT NOT NULL DEFAULT '',
+                error    TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS api_keys (
                 provider      TEXT PRIMARY KEY,
                 client_id     TEXT NOT NULL DEFAULT '',
@@ -4041,16 +4060,22 @@ def _snap_tick() -> None:
                      key=lambda t: not t[2])  # persos liés d'abord
     now = time.time()
     done_this_tick = 0
+    snapped = 0
+    profs = 0
+    limit_linked = _job_int("snap_linked_h") * 60
+    limit_roster = _job_int("snap_roster_h") * 60
+    max_tick = _job_int("snap_max_tick")
+    prof_days = _job_int("prof_days")
     for realm, name, is_linked in targets:
         k = f"{realm}|{name.lower()}"
         last = latest.get(k)
-        limit_min = SNAP_REFRESH_MIN if is_linked else SNAP_REFRESH_MIN_OTHER
+        limit_min = limit_linked if is_linked else limit_roster
         need_snap = not (last and now - last < limit_min * 60)
         plast = prof_latest.get(k)
-        need_prof = not (plast and now - plast < PROF_REFRESH_DAYS * 86400)
+        need_prof = not (plast and now - plast < prof_days * 86400)
         if not need_snap and not need_prof:
             continue
-        if done_this_tick >= SNAP_MAX_PER_TICK:
+        if done_this_tick >= max_tick:
             break  # borne le temps du passage ; le reste au tick suivant
         done_this_tick += 1
         if need_snap:
@@ -4089,19 +4114,29 @@ def _snap_tick() -> None:
         if need_prof:
             try:
                 _prof_store(realm, name)
+                profs += 1
             except bnet.BnetError as exc:
                 print(f"[snap] prof {name}: {exc}")
-    cutoff = _snap_day(now - (SNAP_KEEP_DAYS - 1) * 86400)
+        if need_snap:
+            snapped += 1
+    cutoff = _snap_day(now - (_job_int("snap_keep_days") - 1) * 86400)
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM char_snapshots WHERE day < ?", (cutoff,))
+    return {"snapped": snapped, "profs": profs, "checked": done_this_tick, "cutoff": cutoff}
 
 
 def _snap_loop() -> None:
     time.sleep(20)
     first = True
     while True:
+        if _job_conf("snap_enabled") in ("0", "false", "no", ""):
+            _job_status_set("snapshots", detail="en pause (administration)")
+            time.sleep(max(30, _job_int("snap_interval_min") * 60))
+            continue
         try:
-            _snap_tick()
+            res = _snap_tick()
+            _job_status_set("snapshots", detail=f'{res.get("snapped", 0)} relevé(s), '
+                                                f'{res.get("profs", 0)} métier(s)')
             if first:
                 first = False
                 with _db_lock, _db() as conn:
@@ -4117,7 +4152,8 @@ def _snap_loop() -> None:
                             )
         except Exception as exc:  # noqa: BLE001
             print(f"[snap] tick: {exc}")
-        time.sleep(SNAP_POLL_S)
+            _job_status_set("snapshots", error=str(exc))
+        time.sleep(max(30, _job_int("snap_interval_min") * 60))
 
 
 def _is_tracked_char(realm: str, name: str) -> bool:
@@ -4369,6 +4405,69 @@ API_PROVIDERS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Jobs de synchronisation — réglages (administration) + état du dernier passage
+# ---------------------------------------------------------------------------
+JOB_DEFAULTS = {
+    # relevés des personnages (char_snapshots) + métiers
+    "snap_enabled": "1",
+    "snap_interval_min": str(max(1, int(SNAP_POLL_S // 60))),
+    "snap_linked_h": str(max(1, int(SNAP_REFRESH_MIN // 60))),
+    "snap_roster_h": str(max(1, int(SNAP_REFRESH_MIN_OTHER // 60))),
+    "snap_max_tick": str(SNAP_MAX_PER_TICK),
+    "snap_keep_days": str(SNAP_KEEP_DAYS),
+    "prof_days": str(max(1, int(PROF_REFRESH_DAYS))),
+    # bot Discord (rapports + mouvements de guilde)
+    "bot_interval_min": str(max(1, BOT_POLL_S // 60)),
+}
+# bornes de saisie (min, max) par réglage
+JOB_BOUNDS = {
+    "snap_interval_min": (1, 1440), "snap_linked_h": (1, 168), "snap_roster_h": (1, 720),
+    "snap_max_tick": (1, 500), "snap_keep_days": (2, 30), "prof_days": (1, 60),
+    "bot_interval_min": (1, 1440),
+}
+
+
+def _job_rows() -> dict:
+    with _db_lock, _db() as conn:
+        return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM job_config").fetchall()}
+
+
+def _job_conf(key: str) -> str:
+    """Réglage effectif : valeur de l'administration, sinon défaut (constante d'environnement)."""
+    return _job_rows().get(key) or JOB_DEFAULTS.get(key, "")
+
+
+def _job_int(key: str) -> int:
+    try:
+        return int(float(_job_conf(key)))
+    except (TypeError, ValueError):
+        return int(float(JOB_DEFAULTS.get(key, "0") or 0))
+
+
+def _job_status_set(slug: str, detail: str = "", error: str = "") -> None:
+    with _db_lock, _db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO job_status (slug, last_run, detail, error) VALUES (?,?,?,?)",
+            (slug, time.time(), detail[:200], error[:200]))
+
+
+def _job_status_rows() -> dict:
+    with _db_lock, _db() as conn:
+        return {r["slug"]: {"last_run": r["last_run"], "detail": r["detail"], "error": r["error"]}
+                for r in conn.execute("SELECT * FROM job_status").fetchall()}
+
+
+def _snap_tick_job() -> None:
+    """Passage des relevés déclenché depuis l'administration."""
+    try:
+        res = _snap_tick()
+        _job_status_set("snapshots", detail=f'{res.get("snapped", 0)} relevé(s), '
+                                            f'{res.get("profs", 0)} métier(s)')
+    except Exception as exc:  # noqa: BLE001
+        _job_status_set("snapshots", error=str(exc))
+
+
 def _api_keys_rows() -> dict:
     with _db_lock, _db() as conn:
         return {r["provider"]: r for r in conn.execute("SELECT * FROM api_keys").fetchall()}
@@ -4586,9 +4685,11 @@ def _bot_loop() -> None:
     while True:
         try:
             _bot_tick()
+            _job_status_set("bot", detail="passage OK")
         except Exception as exc:  # noqa: BLE001
             print(f"[bot] tick: {exc}")
-        time.sleep(BOT_POLL_S)
+            _job_status_set("bot", error=str(exc))
+        time.sleep(max(60, _job_int("bot_interval_min") * 60))
 
 
 @app.get("/api/addon")
@@ -5972,6 +6073,60 @@ def api_gcal_relance(event_id: int, request: Request):
     except discord_bot.DiscordError as exc:
         raise HTTPException(400, f"Discord — {exc}")
     return {"ok": True, "count": len(waiting)}
+
+
+@app.get("/api/admin/jobs")
+def admin_jobs_get(request: Request):
+    _require_admin(request)
+    return {"config": {k: _job_conf(k) for k in JOB_DEFAULTS},
+            "bounds": JOB_BOUNDS,
+            "defaults": JOB_DEFAULTS,
+            "status": _job_status_rows()}
+
+
+class JobConfigRequest(BaseModel):
+    values: dict[str, str] = {}
+
+
+@app.post("/api/admin/jobs")
+def admin_jobs_save(payload: JobConfigRequest, request: Request):
+    _require_admin(request)
+    saved = {}
+    for key, value in (payload.values or {}).items():
+        if key not in JOB_DEFAULTS:
+            continue
+        val = str(value).strip()
+        if key.endswith("_enabled"):
+            saved[key] = "1" if val in ("1", "true", "on", "yes") else "0"
+            continue
+        try:
+            num = int(float(val))
+        except (TypeError, ValueError):
+            raise HTTPException(400, f"Valeur invalide pour {key}.")
+        lo, hi = JOB_BOUNDS.get(key, (1, 100000))
+        if not (lo <= num <= hi):
+            raise HTTPException(400, f"{key} doit être entre {lo} et {hi}.")
+        saved[key] = str(num)
+    if saved:
+        with _db_lock, _db() as conn:
+            for k, v in saved.items():
+                conn.execute("INSERT OR REPLACE INTO job_config (key, value, updated) VALUES (?,?,?)",
+                             (k, v, time.time()))
+    return {"ok": True, "saved": saved}
+
+
+class JobRunRequest(BaseModel):
+    slug: str = Field(..., max_length=30)
+
+
+@app.post("/api/admin/jobs/run")
+def admin_jobs_run(payload: JobRunRequest, request: Request):
+    _require_admin(request)
+    slug = payload.slug.strip().lower()
+    if slug == "snapshots":
+        threading.Thread(target=_snap_tick_job, daemon=True, name="snap-manual").start()
+        return {"ok": True, "started": True}
+    raise HTTPException(400, "Ce job ne peut pas être lancé à la demande.")
 
 
 @app.get("/api/admin/api-keys")
