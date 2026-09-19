@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.122 - 2026-09-19
+
+### Added
+- Gear advice: new mode "all items at max upgrade rank" (each item modelled at the highest version published by Wowhead, cached in item_max_ilvl), a "Mode" selector, a note that the selected build's talents are applied, and reference links (Wowhead, Icy Veins, Archon).
+
+## 2026.09.121 - 2026-09-19
+
+### Added
+- Gear advice: healing stat priorities are now per content (Raid / Mythic+ / Delves) and cover all healing specs (Shaman, Druid, Paladin, Holy & Discipline Priest, Mistweaver, Preservation Evoker), each with its Wowhead source and a short note; Delves use the Mythic+ order (no delve-specific priority is published) — the page states this. Sims show their settings per content (Delves: short 90 s solo fight, no raid buffs).
+
 ## 2026.09.120 - 2026-09-19
 
 ### Fixed

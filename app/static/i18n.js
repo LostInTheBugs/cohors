@@ -886,7 +886,29 @@
  "<b>Spés de soin</b> : SimulationCraft ne sait pas simuler les soins. Les pièces sont donc classées par <b>niveau d'objet</b> puis par <b>priorité de statistiques</b> du guide de la spécialisation (source citée sur la page).": "<b>Healing specs</b>: SimulationCraft cannot simulate healing. Items are therefore ranked by <b>item level</b> then by the spec guide's <b>stat priority</b> (source linked on the page).",
  "<b>Spés DPS</b> : vraies simulations — chaque pièce de tes sacs est portée à tour de rôle et comparée à ton équipement actuel (comme le Top Stuff).": "<b>DPS specs</b>: real simulations — each item in your bags is equipped in turn and compared to your current gear (like Top Stuff).",
  "Les pièces que ton personnage ne peut pas porter (autre type d'armure, autre classe) sont écartées automatiquement. Les paires d'armes (arme à deux mains / main gauche) sont comparées emplacement par emplacement, pas en combinaison.": "Items your character cannot wear (wrong armour type, wrong class) are skipped automatically. Weapon pairs (two-hander / off-hand) are compared slot by slot, not combined.",
- "Pense à réexporter ton personnage quand tu changes de stuff : la page travaille toujours sur le dernier export enregistré.": "Remember to re-export your character when your gear changes: the page always works from the latest saved export."
+ "Pense à réexporter ton personnage quand tu changes de stuff : la page travaille toujours sur le dernier export enregistré.": "Remember to re-export your character when your gear changes: the page always works from the latest saved export.",
+ "Réglages : donjon (DungeonSlice)": "Settings: dungeon (DungeonSlice)",
+ "Réglages : combat de 5 min, buffs de raid": "Settings: 5 min fight, raid buffs",
+ "Réglages : combat court (90 s), sans buffs de raid (solo)": "Settings: short fight (90 s), no raid buffs (solo)",
+ "Critique d'abord ; Hâte et Polyvalence très proches ; Maîtrise en dernier. Identiques en Totémique et Farseer. La Hâte est mise en avant en Mythique+ et en gouffres (combats courts).": "Critical Strike first; Haste and Versatility very close; Mastery last. Identical for Totemic and Farseer. Haste is favoured in Mythic+ and Delves (short fights).",
+ "Hâte d'abord, puis Maîtrise, Polyvalence, et Critique en dernier.": "Haste first, then Mastery, Versatility, and Critical Strike last.",
+ "Maîtrise d'abord, puis Hâte et Critique (à égalité), Polyvalence en dernier.": "Mastery first, then Haste and Crit (tied), Versatility last.",
+ "En raid : Critique puis Polyvalence/Maîtrise. En Mythique+/gouffres : Polyvalence d'abord (survie et dégâts), puis Critique.": "In raid: Crit, then Versatility/Mastery. In Mythic+/Delves: Versatility first (survival and damage), then Crit.",
+ "Hâte d'abord, puis Maîtrise, Critique, Polyvalence. Identiques en Oracle et Voidweaver.": "Haste first, then Mastery, Crit, Versatility. Identical for Oracle and Voidweaver.",
+ "Hâte d'abord. En raid : Critique puis Polyvalence. En Mythique+/gouffres : Maîtrise puis Critique (dégâts).": "Haste first. In raid: Crit then Versatility. In Mythic+/Delves: Mastery then Crit (damage).",
+ "Critique d'abord. En raid : Maîtrise avant Hâte. En Mythique+/gouffres : Hâte avant Maîtrise.": "Crit first. In raid: Mastery before Haste. In Mythic+/Delves: Haste before Mastery.",
+ "<b>Spés de soin</b> : SimulationCraft ne sait pas simuler les soins. Les pièces sont donc classées par <b>niveau d'objet</b> puis par <b>priorité de statistiques</b> du guide de la spécialisation (source citée sur la page) — une priorité par contenu quand le guide en donne une (Chaman, Druide, Paladin, Prêtre Sacré/Discipline, Moine, Évocateur).": "<b>Healing specs</b>: SimulationCraft cannot simulate healing. Items are therefore ranked by <b>item level</b> then by the spec guide's <b>stat priority</b> (source linked on the page) — a per-content priority when the guide provides one (Shaman, Druid, Paladin, Holy/Disc Priest, Monk, Evoker).",
+ "<li><b>Spés DPS</b> : vraies simulations — chaque pièce de tes sacs est portée à tour de rôle et comparée à ton équipement actuel (comme le Top Stuff). Le <b>contenu</b> change les réglages : donjon (DungeonSlice) en Mythique+, combat de 5 min avec buffs de raid en Raid, combat court de 90 s <b>sans buffs de raid</b> (solo) en Gouffres — les chiffres diffèrent donc bien d'un contenu à l'autre.</li>": "<li><b>DPS specs</b>: real simulations — each item in your bags is equipped in turn and compared to your current gear (like Top Stuff). The <b>content</b> changes the settings: dungeon (DungeonSlice) for Mythic+, a 5 min fight with raid buffs for Raid, a short 90 s fight <b>without raid buffs</b> (solo) for Delves — so the numbers really differ per content.</li>",
+ "<b>Gouffres</b> : aucune priorité de stats spécifique aux gouffres n'est publiée par les guides — la page utilise donc celle du Mythique+ (combats courts) et te le dit dans le résultat ; côté DPS le calcul est bien un combat solo et court, différent du raid.": "<b>Delves</b>: no delve-specific stat priority is published by the guides — the page therefore uses the Mythic+ one (short fights) and tells you so in the result; on the DPS side the simulation really is a solo short fight, different from raid.",
+ "Mode": "Mode",
+ "Pièces à leur niveau actuel": "Items at their current level",
+ "Toutes les pièces au rang d'amélioration max": "All items at max upgrade rank",
+ "Le build choisi est appliqué au calcul (talents inclus). Pour les soins, les guides donnent la même priorité de stats quel que soit l'arbre héroïque.": "The chosen build is applied to the calculation (talents included). For healers, the guides give the same stat priority regardless of the hero tree.",
+ "Références :": "References: ",
+ "Moteur :": "Engine: ",
+ "<li><b>Deux modes</b> : « Pièces à leur niveau actuel » (ce que tu portes aujourd'hui) ou « <b>Toutes les pièces au rang d'amélioration max</b> » — chaque pièce est alors modélisée à sa version la plus haute publiée par Wowhead (le résultat indique combien de pièces ont été remontées, ex. 308 → 334).</li>": "<li><b>Two modes</b>: \"Items at their current level\" (what you wear today) or \"<b>All items at max upgrade rank</b>\" — each item is then modelled at the highest version published by Wowhead (the result shows how many items were raised, e.g. 308 → 334).</li>",
+ "<li>Le <b>build</b> choisi est appliqué au calcul (les talents du build sont utilisés) ; pour les soins, les guides donnent la même priorité de statistiques quel que soit l'arbre héroïque.</li>": "<li>The chosen <b>build</b> is applied to the calculation (the build's talents are used); for healers, the guides give the same stat priority regardless of the hero tree.</li>",
+ "<li>Références utilisées : <b>Wowhead</b>, <b>Icy Veins</b> et <b>Archon</b> (guides de classe et données de saison) — liens en bas de la page.</li>": "<li>References used: <b>Wowhead</b>, <b>Icy Veins</b> and <b>Archon</b> (class guides and season data) — links at the bottom of the page.</li>"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1064,6 +1086,8 @@
     [/(\d+ )?pièce\(s\) dans les sacs/g, "item(s) in bags"],
     [/(\d+ )?build\(s\) détecté\(s\)/g, "build(s) detected"],
     [/itérations/g, "iterations"],
+    [/Rang max : /g, "Max rank: "],
+    [/pièce\(s\) au niveau maximum/g, "item(s) at max level"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();

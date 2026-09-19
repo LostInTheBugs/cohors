@@ -44,7 +44,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.120">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.122">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -206,9 +206,13 @@
     <ul>
       <li>Choisis un de tes exports <b>/simc</b> (enregistrés sur la page Simulateur — ils contiennent ton équipement, les pièces de tes sacs et tes builds sauvegardés), puis un <b>build</b> (ceux que tu as enregistrés en jeu) et un <b>contenu</b> : Mythique+, Raid ou Gouffres.</li>
       <li>Le site te dit alors quelles pièces <b>de ce que tu possèdes déjà</b> tu devrais porter, emplacement par emplacement, avec la raison (niveau d'objet, statistiques).</li>
-      <li><b>Spés de soin</b> : SimulationCraft ne sait pas simuler les soins. Les pièces sont donc classées par <b>niveau d'objet</b> puis par <b>priorité de statistiques</b> du guide de la spécialisation (source citée sur la page).</li>
-      <li><b>Spés DPS</b> : vraies simulations — chaque pièce de tes sacs est portée à tour de rôle et comparée à ton équipement actuel (comme le Top Stuff).</li>
+      <li><b>Spés de soin</b> : SimulationCraft ne sait pas simuler les soins. Les pièces sont donc classées par <b>niveau d'objet</b> puis par <b>priorité de statistiques</b> du guide de la spécialisation (source citée sur la page) — une priorité par contenu quand le guide en donne une (Chaman, Druide, Paladin, Prêtre Sacré/Discipline, Moine, Évocateur).</li>
+      <li><b>Spés DPS</b> : vraies simulations — chaque pièce de tes sacs est portée à tour de rôle et comparée à ton équipement actuel (comme le Top Stuff). Le <b>contenu</b> change les réglages : donjon (DungeonSlice) en Mythique+, combat de 5 min avec buffs de raid en Raid, combat court de 90 s <b>sans buffs de raid</b> (solo) en Gouffres — les chiffres diffèrent donc bien d'un contenu à l'autre.</li>
       <li>Les pièces que ton personnage ne peut pas porter (autre type d'armure, autre classe) sont écartées automatiquement. Les paires d'armes (arme à deux mains / main gauche) sont comparées emplacement par emplacement, pas en combinaison.</li>
+      <li><b>Gouffres</b> : aucune priorité de stats spécifique aux gouffres n'est publiée par les guides — la page utilise donc celle du Mythique+ (combats courts) et te le dit dans le résultat ; côté DPS le calcul est bien un combat solo et court, différent du raid.</li>
+      <li><b>Deux modes</b> : « Pièces à leur niveau actuel » (ce que tu portes aujourd'hui) ou « <b>Toutes les pièces au rang d'amélioration max</b> » — chaque pièce est alors modélisée à sa version la plus haute publiée par Wowhead (le résultat indique combien de pièces ont été remontées, ex. 308 → 334).</li>
+      <li>Le <b>build</b> choisi est appliqué au calcul (les talents du build sont utilisés) ; pour les soins, les guides donnent la même priorité de statistiques quel que soit l'arbre héroïque.</li>
+      <li>Références utilisées : <b>Wowhead</b>, <b>Icy Veins</b> et <b>Archon</b> (guides de classe et données de saison) — liens en bas de la page.</li>
       <li>Pense à réexporter ton personnage quand tu changes de stuff : la page travaille toujours sur le dernier export enregistré.</li>
     </ul>
   </section>
@@ -321,9 +325,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.120"></script>
-<script src="/static/branding.js?v=2026.09.120"></script>
-<script src="/static/i18n.js?v=2026.09.120"></script>
+<script src="/static/nav.js?v=2026.09.122"></script>
+<script src="/static/branding.js?v=2026.09.122"></script>
+<script src="/static/i18n.js?v=2026.09.122"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 (async () => {

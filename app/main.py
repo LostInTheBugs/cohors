@@ -34,6 +34,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from worker.simrun import run_sim
+import httpx
 
 from app import bnet, discord_bot, mailer, wcl
 
@@ -861,6 +862,10 @@ def _run_stuff(row: sqlite3.Row) -> None:
             d = dict(it)
             d["equipped"] = False
             items.append(d)
+        boosted, examples = 0, []
+        if plan.get("max_rank"):
+            with _db_lock, _db() as conn:
+                boosted, examples = _stuff_max_levels(items, conn)
         stats, dropped, crashed = _stuff_fetch_stats(items, parsed["cls"], parsed["spec"], workdir)
         for it in items:
             it["stats"] = stats.get(it.get("actor"))
@@ -868,10 +873,11 @@ def _run_stuff(row: sqlite3.Row) -> None:
         is_heal = parsed["spec"] in HEAL_SPECS
         if is_heal:
             prio = dict(STUFF_HEAL_PRIO.get(f'{parsed["cls"]}/{parsed["spec"]}')
-                        or {"order": [], "source": "", "source_fr": ""})
-            prio["known"] = bool(prio.get("order"))
+                        or {"orders": {}, "source": "", "source_fr": ""})
+            prio["known"] = bool(prio.get("orders"))
             results = _stuff_rank_heal(parsed, items, prio, content)
             results["prio_known"] = prio["known"]
+            results["note_fr"] = prio.get("note_fr") or ""
             note = None if prio["known"] else "Classé au niveau d'objet : priorités de stats pas encore répertoriées pour cette spécialisation."
         else:
             equipped_by_slot = {it["slot"]: it for it in items if it.get("equipped")}
@@ -915,6 +921,10 @@ def _run_stuff(row: sqlite3.Row) -> None:
             results = {"mode": "sim", "content": content, "baseline": base,
                        "iterations": STUFF_ITERATIONS, "items": items_res,
                        "candidates": n_cands, "report": bool(res.get("html"))}
+        results["sim_settings"] = STUFF_CONTENTS.get(content, {}).get("sim_fr", "")
+        results["max_rank"] = bool(plan.get("max_rank"))
+        results["boosted"] = boosted
+        results["boost_examples"] = examples
         results["equipped_count"] = len(parsed["equipped"])
         results["bag_count"] = len(parsed["bags"])
         results["valid_count"] = sum(1 for it in items if it.get("stats"))
@@ -1386,22 +1396,152 @@ STUFF_SLOTS = ("head", "neck", "shoulder", "back", "chest", "wrist", "hands", "w
 STUFF_ITERATIONS = 800
 STUFF_MAX_CANDIDATES = 30
 STUFF_CONTENTS = {
-    "mplus": {"opts": ["fight_style=DungeonSlice"], "label_fr": "Mythique+", "label_en": "Mythic+"},
-    "raid": {"opts": ["fight_style=Patchwerk", "max_time=300"], "label_fr": "Raid", "label_en": "Raid"},
+    "mplus": {"opts": ["fight_style=DungeonSlice"], "label_fr": "Mythique+", "label_en": "Mythic+",
+              "sim_fr": "donjon (DungeonSlice)", "sim_en": "dungeon (DungeonSlice)"},
+    "raid": {"opts": ["fight_style=Patchwerk", "max_time=300"], "label_fr": "Raid", "label_en": "Raid",
+             "sim_fr": "combat de 5 min, buffs de raid", "sim_en": "5 min fight, raid buffs"},
     "delves": {"opts": ["fight_style=Patchwerk", "max_time=90", "optimal_raid=0"],
-               "label_fr": "Gouffres", "label_en": "Delves"},
+               "label_fr": "Gouffres", "label_en": "Delves",
+               "sim_fr": "combat court (90 s), sans buffs de raid (solo)",
+               "sim_en": "short fight (90 s), no raid buffs (solo)"},
 }
 # Spés de soin (le moteur ne les simule pas) — classement par stats pondérées.
 HEAL_SPECS = {"restoration", "holy", "discipline", "mistweaver", "preservation"}
-# Priorité des stats secondaires par spé : niveau d'objet d'abord, puis cet ordre.
-# Sources : guides de classe Icy Veins (patch 12.1), pages « Stat Priority ».
+# Priorité des stats secondaires par spé et par contenu : niveau d'objet d'abord,
+# puis cet ordre (les deux premières stats portées pèsent le plus).
+# Sources : guides Wowhead « Stat Priority » (patch 12.1, août-sept. 2026) ;
+# pour le chaman, croisé avec Icy Veins « Restoration Shaman Stat Priority » (12.1).
+# Les gouffres n'ont pas de priorité publiée : on utilise celle du Mythique+ (combats courts).
 STUFF_HEAL_PRIO = {
     "shaman/restoration": {
-        "order": ["crit", "vers", "haste", "mast"],
-        "source": "https://www.icy-veins.com/wow/restoration-shaman-pve-healing-stat-priority",
-        "source_fr": "Guide Icy Veins — Chaman Restauration (12.1)",
+        "orders": {"raid": ["crit", "vers", "haste", "mast"],
+                   "mplus": ["crit", "haste", "vers", "mast"],
+                   "delves": ["crit", "haste", "vers", "mast"]},
+        "source": "https://www.wowhead.com/guide/classes/shaman/restoration/stat-priority-pve-healer",
+        "source_fr": "Guide Wowhead — Chaman Restauration (12.1)",
+        "note_fr": "Critique d'abord ; Hâte et Polyvalence très proches ; Maîtrise en dernier. Identiques en Totémique et Farseer. La Hâte est mise en avant en Mythique+ et en gouffres (combats courts).",
+    },
+    "druid/restoration": {
+        "orders": {"raid": ["haste", "mast", "vers", "crit"],
+                   "mplus": ["haste", "mast", "vers", "crit"],
+                   "delves": ["haste", "mast", "vers", "crit"]},
+        "source": "https://www.wowhead.com/guide/classes/druid/restoration/stat-priority-pve-healer",
+        "source_fr": "Guide Wowhead — Druide Restauration (12.1)",
+        "note_fr": "Hâte d'abord, puis Maîtrise, Polyvalence, et Critique en dernier.",
+    },
+    "paladin/holy": {
+        "orders": {"raid": ["mast", "haste", "crit", "vers"],
+                   "mplus": ["mast", "haste", "crit", "vers"],
+                   "delves": ["mast", "haste", "crit", "vers"]},
+        "source": "https://www.wowhead.com/guide/classes/paladin/holy/stat-priority-pve-healer",
+        "source_fr": "Guide Wowhead — Paladin Sacré (12.1)",
+        "note_fr": "Maîtrise d'abord, puis Hâte et Critique (à égalité), Polyvalence en dernier.",
+    },
+    "priest/holy": {
+        "orders": {"raid": ["crit", "vers", "mast", "haste"],
+                   "mplus": ["vers", "crit", "haste", "mast"],
+                   "delves": ["vers", "crit", "haste", "mast"]},
+        "source": "https://www.wowhead.com/guide/classes/priest/holy/stat-priority-pve-healer",
+        "source_fr": "Guide Wowhead — Prêtre Sacré (12.1)",
+        "note_fr": "En raid : Critique puis Polyvalence/Maîtrise. En Mythique+/gouffres : Polyvalence d'abord (survie et dégâts), puis Critique.",
+    },
+    "priest/discipline": {
+        "orders": {"raid": ["haste", "mast", "crit", "vers"],
+                   "mplus": ["haste", "mast", "crit", "vers"],
+                   "delves": ["haste", "mast", "crit", "vers"]},
+        "source": "https://www.wowhead.com/guide/classes/priest/discipline/stat-priority-pve-healer",
+        "source_fr": "Guide Wowhead — Prêtre Discipline (12.1)",
+        "note_fr": "Hâte d'abord, puis Maîtrise, Critique, Polyvalence. Identiques en Oracle et Voidweaver.",
+    },
+    "monk/mistweaver": {
+        "orders": {"raid": ["haste", "crit", "vers", "mast"],
+                   "mplus": ["haste", "mast", "crit", "vers"],
+                   "delves": ["haste", "mast", "crit", "vers"]},
+        "source": "https://www.wowhead.com/guide/classes/monk/mistweaver/stat-priority-pve-healer",
+        "source_fr": "Guide Wowhead — Moine Tisse-brume (12.1)",
+        "note_fr": "Hâte d'abord. En raid : Critique puis Polyvalence. En Mythique+/gouffres : Maîtrise puis Critique (dégâts).",
+    },
+    "evoker/preservation": {
+        "orders": {"raid": ["crit", "mast", "haste", "vers"],
+                   "mplus": ["crit", "haste", "mast", "vers"],
+                   "delves": ["crit", "haste", "mast", "vers"]},
+        "source": "https://www.wowhead.com/guide/classes/evoker/preservation/stat-priority-pve-healer",
+        "source_fr": "Guide Wowhead — Évocateur Préservation (12.1)",
+        "note_fr": "Critique d'abord. En raid : Maîtrise avant Hâte. En Mythique+/gouffres : Hâte avant Maîtrise.",
     },
 }
+
+
+# Niveau maximum d'une pièce : Wowhead publie, pour chaque objet, la version la plus
+# haute qui existe (« Item Level X · Upgrade Level: <Piste> Y/6 »). On s'en sert pour le
+# mode « tout au rang maximum » (aucune table de saison inventée : les valeurs viennent
+# de l'objet lui-même).
+WH_TOOLTIP = "https://nether.wowhead.com/tooltip/item/{iid}?dataEnv=1&locale=0"
+WH_ILVL_RE = re.compile(r"Item Level <!--ilvl-->(\d+)")
+WH_UP_RE = re.compile(r"Upgrade Level: ([A-Za-z ]+) <!--uindex-->(\d+)/(\d+)")
+
+
+def _stuff_wh_version(iid: int) -> dict | None:
+    """Version maximum publiée par Wowhead pour une pièce : {ilvl, track, rank, label}."""
+    try:
+        r = httpx.get(WH_TOOLTIP.format(iid=int(iid)), timeout=20,
+                      headers={"User-Agent": "LOTP-Stuff/1.0 (+lotp.gensbien.fr)"})
+        r.raise_for_status()
+        tip = (r.json() or {}).get("tooltip") or ""
+    except Exception:  # noqa: BLE001
+        return None
+    mi = WH_ILVL_RE.search(tip)
+    if not mi:
+        return None
+    out = {"ilvl": int(mi.group(1)), "track": "", "rank": 0, "label": ""}
+    mu = WH_UP_RE.search(tip)
+    if mu:
+        out["track"] = mu.group(1).strip()
+        out["rank"] = int(mu.group(2))
+        out["label"] = f'{out["track"]} {mu.group(2)}/{mu.group(3)}'
+    return out
+
+
+def _stuff_max_levels(items: list[dict], conn) -> tuple[int, list[str]]:
+    """Complète chaque pièce avec son niveau maximum (cache en base). Renvoie (nb modifiés, exemples)."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS item_max_ilvl (
+               item_id   INTEGER PRIMARY KEY,
+               ilvl      INTEGER NOT NULL,
+               label     TEXT NOT NULL DEFAULT '',
+               fetched   REAL NOT NULL DEFAULT 0)""")
+    ids = sorted({int(re.search(r"id=(\d+)", it.get("opts") or "").group(1))
+                  for it in items if re.search(r"id=(\d+)", it.get("opts") or "")})
+    known = {r["item_id"]: r for r in conn.execute("SELECT * FROM item_max_ilvl").fetchall()}
+    missing = [i for i in ids if i not in known]
+    if missing:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(_stuff_wh_version, missing))
+        for iid, res in zip(missing, results):
+            if res:
+                conn.execute(
+                    "INSERT OR REPLACE INTO item_max_ilvl (item_id, ilvl, label, fetched) VALUES (?,?,?,?)",
+                    (iid, res["ilvl"], res["label"], time.time()))
+                known[iid] = {"ilvl": res["ilvl"], "label": res["label"]}
+        conn.commit()
+    changed, examples = 0, []
+    for it in items:
+        m = re.search(r"id=(\d+)", it.get("opts") or "")
+        if not m:
+            continue
+        info = known.get(int(m.group(1)))
+        it["max_ilvl"] = (info or {}).get("ilvl")
+        it["max_label"] = (info or {}).get("label") or ""
+        cur = int(it.get("ilvl") or 0)
+        if it["max_ilvl"] and it["max_ilvl"] > cur:
+            it["was_ilvl"] = cur
+            it["ilvl"] = it["max_ilvl"]
+            it["opts"] = f'{it["opts"]},ilevel={it["max_ilvl"]}'
+            changed += 1
+            if len(examples) < 3:
+                examples.append(f'{it.get("name") or "?"} {cur}→{it["max_ilvl"]}')
+    return changed, examples
 
 
 def _stuff_parse_export(txt: str) -> dict:
@@ -1540,7 +1680,8 @@ def _stuff_item_public(item: dict) -> dict:
 
 def _stuff_rank_heal(parsed: dict, items: list[dict], prio: dict, content: str) -> dict:
     """Classement des pièces pour une spé de soin (niveau d'objet puis priorité des stats)."""
-    order = prio["order"]
+    orders = prio.get("orders") or {}
+    order = orders.get(content) or orders.get("raid") or []
     by_slot_cur: dict[str, dict] = {}
     by_slot_bags: dict[str, list[dict]] = {}
     for it in items:
@@ -1700,13 +1841,15 @@ def stuff_profile(pid: int, request: Request):
             "level": parsed["level"], "loadouts": [l["name"] for l in parsed["loadouts"]],
             "equipped": len(parsed["equipped"]), "bags": len(parsed["bags"]),
             "heal": parsed["spec"] in HEAL_SPECS,
-            "prio_known": f'{parsed["cls"]}/{parsed["spec"]}' in STUFF_HEAL_PRIO}
+            "prio_known": f'{parsed["cls"]}/{parsed["spec"]}' in STUFF_HEAL_PRIO,
+            "prio_note": (STUFF_HEAL_PRIO.get(f'{parsed["cls"]}/{parsed["spec"]}') or {}).get("note_fr", "")}
 
 
 class StuffRequest(BaseModel):
     profile_id: int
     loadout: str = ""
     content: str = "raid"
+    max_rank: bool = False
 
 
 @app.post("/api/stuff")
@@ -1738,9 +1881,10 @@ def submit_stuff(payload: StuffRequest, request: Request):
         input_file = sim_dir / "input.simc"
         input_file.write_text("")
         plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
-                "spec": parsed["spec"], "loadout": loadout or {}, "content": payload.content}
+                "spec": parsed["spec"], "loadout": loadout or {}, "content": payload.content,
+                "max_rank": bool(payload.max_rank)}
         label = f'{prof["name"]} · {STUFF_CONTENTS[payload.content]["label_fr"]}' + \
-                (f' · {loadout["name"]}' if loadout else "")
+                (f' · {loadout["name"]}' if loadout else "") + (" · rang max" if payload.max_rank else "")
         conn.execute(
             """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
                                  user_email, user_name, kind, plan)
