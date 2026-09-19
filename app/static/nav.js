@@ -9,6 +9,7 @@
       { href: "/mesrecettes", label: "📖 Mes recettes" },
       { href: "/messtats", label: "📊 Mes statistiques" },
       { href: "/alertes", label: "🔔 Alertes MM+" },
+      { href: "/mesindispos", label: "🚫 Mes indispos" },
       { href: "/wishlist", label: "🎯 Ma wishlist" }
     ] },
     { label: "⚔️ Simulation", items: [

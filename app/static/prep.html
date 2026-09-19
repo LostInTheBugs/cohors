@@ -65,6 +65,11 @@
   .napport input { width: 84px; padding: 6px 8px; }
   .napport button { padding: 6px 11px; font-size: 13px; }
   .bar { flex: 1 1 100%; height: 5px; border-radius: 3px; background: var(--card2); overflow: hidden; margin-top: 2px; }
+  .avrow { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 7px 9px; border-radius: 8px; border-left: 3px solid transparent; }
+  .avrow + .avrow { margin-top: 2px; }
+  .avrow.conflict { border-left-color: var(--warn); background: rgba(251,191,36,.06); }
+  .avrow .avst { color: var(--mut); font-size: 13px; }
+  .avrow.conflict .avwarn { color: var(--warn); font-size: 12.5px; font-weight: 600; }
   .bar i { display: block; height: 100%; background: var(--ok); }
   .mic { background: transparent; border: 0; color: var(--mut); cursor: pointer; font-size: 15px; padding: 4px 6px; }
   .mic:hover { color: var(--err); }
@@ -79,7 +84,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.089">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.090">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -111,6 +116,11 @@
         <button class="btn ghost" id="objreset" title="Vide le plan et les apports (les recettes sont gardées)">♻️ Réinitialiser</button>
       </div>
     </div>
+  </div>
+
+  <div class="card" id="availcard">
+    <h2>🚫 Indisponibilités <span class="pc" id="availmeta"></span></h2>
+    <div id="avail"><div class="empty">Chargement…</div></div>
   </div>
 
   <div class="card">
@@ -156,8 +166,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.089"></script>
-<script src="/static/i18n.js?v=2026.09.089"></script>
+<script src="/static/nav.js?v=2026.09.090"></script>
+<script src="/static/i18n.js?v=2026.09.090"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -375,12 +385,44 @@ async function loadEvents() {
   } catch (e) {}
 }
 
+const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
+const AVST = { ok: "✅ a accepté le raid", maybe: "❓ peut-être", no: "❌ a refusé", wait: "⏳ sans réponse", "": "" };
+function renderAvail() {
+  const u = DATA.unavail || { event: null, mode: "upcoming", rows: [], counts: {} };
+  const meta = $("#availmeta"), box = $("#avail");
+  if (u.event) {
+    meta.textContent = `· ${u.event.title || ""}${u.event.date ? " — " + u.event.date : ""}` +
+      (u.counts && u.counts.conflict ? ` · ⚠️ ${u.counts.conflict}` : "");
+  } else {
+    meta.textContent = (u.rows || []).length ? "· 14 prochains jours" : "";
+  }
+  if (!u.rows || !u.rows.length) {
+    box.innerHTML = u.event
+      ? `<div class="empty">Aucune indisponibilité déclarée pour ce raid ✓</div>`
+      : `<div class="empty">Choisis un objectif ci-dessus (raid du calendrier) pour croiser les réponses avec les indisponibilités. Aucune période déclarée pour les 14 prochains jours.</div>`;
+    return;
+  }
+  box.innerHTML = u.rows.map(r => {
+    const per = (r.periods || []).map(x =>
+      fmtDay(x.from) + (x.to !== x.from ? " → " + fmtDay(x.to) : "") + (x.note ? ` (${esc(x.note)})` : "")).join(", ");
+    return `<div class="avrow${r.conflict ? " conflict" : ""}">
+      ${r.conflict ? "<span>⚠️</span>" : "<span>🚫</span>"}
+      <b>${esc(r.name)}</b>
+      ${r.user && r.user.toLowerCase() !== r.name.toLowerCase() ? `<span class="meta">(${esc(r.user)})</span>` : ""}
+      ${r.status ? `<span class="avst">${AVST[r.status] || ""}</span>` : ""}
+      <span class="meta">${per}</span>
+      ${r.conflict ? `<span class="avwarn">indispo mais a accepté le raid</span>` : ""}
+    </div>`;
+  }).join("") + ((u.counts && u.counts.conflict)
+    ? `<div class="meta" style="margin-top:6px">⚠️ ${u.counts.conflict} membre(s) indisponible(s) qui ont accepté le raid — à voir avec eux.</div>` : "");
+}
+
 async function load() {
   DATA = await jget("/api/prep");
   CAN = !!DATA.can_edit;
   PLAN = { title: DATA.plan.title || "", event_ts: DATA.plan.event_ts || 0,
            items: (DATA.plan.items || []).map(x => ({ name: x.name, qty: +x.qty || 0 })) };
-  renderObj(); renderItems(); renderNeeds(); renderRecipes();
+  renderObj(); renderItems(); renderNeeds(); renderRecipes(); renderAvail();
 }
 
 $("#logout").addEventListener("click", async (ev) => {

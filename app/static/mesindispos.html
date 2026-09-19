@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LOTP — Mes indispos</title>
+<link rel="icon" type="image/png" href="/static/crest.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#b1002e">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LOTP">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brandname span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 12.5px; }
+  .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+         color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+         border: 1px solid var(--line); background: transparent;
+         transition: border-color .15s, color .15s, background .15s; }
+  .tab:hover { color: var(--fg); border-color: #3a4763; }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  input[type=date], input[type=text] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 10px; padding: 9px 12px; font-size: 14px; color-scheme: dark; }
+  input[type=text] { min-width: 220px; }
+  input:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+  button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+           padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
+  .meta { color: var(--mut); font-size: 13px; }
+  .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
+  .urow { display: flex; gap: 10px; align-items: baseline; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  .urow:last-child { border-bottom: 0; }
+  .urow.past { opacity: .55; }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
+  .err { color: var(--err); font-size: 13px; }
+  .hidden { display: none !important; }
+</style>
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.090">
+</head>
+<body class="wb">
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Mes indispos</span></div>
+        <div class="tagline">Tes périodes d'indisponibilité — visibles dans la préparation de raid.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+
+  <div class="card" id="indispos">
+    <h2>🚫 Mes indispos <span class="pc">raids surtout</span></h2>
+    <div class="meta" style="margin:-4px 0 10px">Indique tes périodes de non-disponibilité (vacances, exams…) — surtout pour les soirs de raid. Elles apparaissent dans la 🧪 Préparation de raid, croisées avec tes réponses du calendrier in-game (⚠️ « indispo mais a accepté le raid »).</div>
+    <div class="row">
+      <span class="meta">du</span><input type="date" id="dfrom">
+      <span class="meta">au</span><input type="date" id="dto">
+      <input type="text" id="dnote" placeholder="Note (facultatif — ex : vacances)">
+      <button id="dadd">➕ Ajouter</button>
+      <span class="spacer"></span>
+      <span class="meta" id="dmsg"></span>
+    </div>
+    <div id="dlist" style="margin-top:10px"><span class="empty">Chargement…</span></div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js?v=2026.09.090"></script>
+<script src="/static/i18n.js?v=2026.09.090"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jreq = async (m, u, b) => { const r = await fetch(u, { method: m,
+  headers: b ? { "Content-Type": "application/json" } : undefined, body: b ? JSON.stringify(b) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
+const dMsg = (t, ok) => { const m = $("#dmsg"); m.textContent = t || ""; m.style.color = ok ? "var(--ok)" : "var(--err)";
+  if (t) setTimeout(() => { if (m.textContent === t) m.textContent = ""; }, 5000); };
+
+async function loadUnavail() {
+  try {
+    const d = await jget("/api/me/unavail");
+    const items = d.items || [];
+    if (!items.length) { $("#dlist").innerHTML = `<div class="empty">Aucune période d'indisponibilité pour l'instant.</div>`; return; }
+    const today = new Date().toISOString().slice(0, 10);
+    $("#dlist").innerHTML = items.map(x => `<div class="urow${x.day_to < today ? " past" : ""}">
+      <b>${x.day_from === x.day_to ? fmtDay(x.day_from) : fmtDay(x.day_from) + " → " + fmtDay(x.day_to)}</b>
+      ${x.note ? `<span class="meta">— ${esc(x.note)}</span>` : ""}
+      <span class="spacer"></span>
+      <a class="hlink" data-udel="${x.id}" style="cursor:pointer;font-size:13px">supprimer</a></div>`).join("");
+    $("#dlist").querySelectorAll("[data-udel]").forEach(a => a.addEventListener("click", async () => {
+      try { await jreq("DELETE", `/api/me/unavail/${a.dataset.udel}`); await loadUnavail(); dMsg("Période retirée.", true); }
+      catch (e) { dMsg(e.message); }
+    }));
+  } catch (e) { $("#dlist").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+$("#dadd").addEventListener("click", async () => {
+  const from = $("#dfrom").value, to = $("#dto").value, note = $("#dnote").value.trim();
+  if (!from) { dMsg("Choisis une date de début."); return; }
+  try {
+    await jreq("POST", "/api/me/unavail", { day_from: from, day_to: to || from, note });
+    $("#dfrom").value = ""; $("#dto").value = ""; $("#dnote").value = "";
+    await loadUnavail(); dMsg("Période ajoutée ✓", true);
+  } catch (e) { dMsg(e.message); }
+});
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  loadUnavail();
+})();
+</script>
+</body>
+</html>

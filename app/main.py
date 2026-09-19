@@ -443,6 +443,19 @@ def _init_db() -> None:
             )
             """
         )
+        # v2026.09.090 — périodes d'indisponibilité des membres (croisées avec le raid en préparation).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS unavails (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                email    TEXT NOT NULL,
+                day_from TEXT NOT NULL,
+                day_to   TEXT NOT NULL,
+                note     TEXT NOT NULL DEFAULT '',
+                created  REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
         # v2026.09.087 — alertes MM+ (clés recherchées) & notifications personnelles.
         conn.execute(
             """
@@ -787,6 +800,7 @@ _MOI_PAGES = {
     "mesrecettes": "mesrecettes.html",
     "messtats": "messtats.html",
     "alertes": "alertes.html",
+    "mesindispos": "mesindispos.html",
 }
 
 
@@ -794,6 +808,7 @@ _MOI_PAGES = {
 @app.api_route("/mesrecettes", methods=["GET", "HEAD"])
 @app.api_route("/messtats", methods=["GET", "HEAD"])
 @app.api_route("/alertes", methods=["GET", "HEAD"])
+@app.api_route("/mesindispos", methods=["GET", "HEAD"])
 def moi_pages(request: Request):
     """Pages 🙋 Moi — personnages, recettes, statistiques, alertes MM+ (une par sujet)."""
     if _get_session_user(request) is None:
@@ -3617,7 +3632,76 @@ def api_prep_get(request: Request):
         # les artisans sont connus par le nom FR (exports addon) — l'appariement reste FR
         ent["crafters"] = known_by_item.get(str(ent.get("item_fr") or ent["item"]).casefold(), [])
     game_list = sorted(game_cat.values(), key=lambda e: (str(e["prof"]), str(e["item"]).casefold()))
+    # 🚫 Indisponibilités : croisées avec l'objectif (événement du calendrier in-game).
+    unavail_block: dict = {"event": None, "mode": "upcoming", "rows": [],
+                           "counts": {"members": 0, "conflict": 0}}
+    with _db_lock, _db() as conn:
+        unavails = [dict(r) for r in conn.execute(
+            "SELECT email, day_from, day_to, note FROM unavails ORDER BY day_from").fetchall()]
+        links = {r["name"]: r["user_email"] for r in conn.execute(
+            "SELECT user_email, name FROM char_links").fetchall()}
+        unames = {(r["name"] or "").lower(): r["email"] for r in conn.execute(
+            "SELECT email, name FROM users WHERE active=1").fetchall()}
+        uname_by_email = {r["email"]: (r["name"] or r["email"]) for r in conn.execute(
+            "SELECT email, name FROM users").fetchall()}
+        grow = conn.execute("SELECT data FROM gcal_import WHERE id=1").fetchone()
+    by_email: dict = {}
+    for urow in unavails:
+        by_email.setdefault(urow["email"], []).append(urow)
+    if p.get("event_ts"):
+        try:
+            events = (json.loads(grow["data"]) or {}).get("events") if grow else []
+        except (ValueError, TypeError):
+            events = []
+        ev = None
+        for e in (events or []):
+            try:
+                if abs(float(e.get("ts") or 0) - float(p["event_ts"])) < 60:
+                    ev = e
+                    break
+            except (TypeError, ValueError):
+                continue
+        if ev:
+            day = _snap_day(float(ev.get("ts") or p["event_ts"]))
+            status_map = {1: "ok", 3: "ok", 2: "no", 8: "maybe"}
+            rows = []
+            for m in (ev.get("inv") or []):
+                nm = str(m.get("n") or "").strip()
+                if not nm:
+                    continue
+                owner = links.get(nm.lower()) or unames.get(nm.lower())
+                periods = [x for x in by_email.get(owner, [])
+                           if x["day_from"] <= day <= x["day_to"]] if owner else []
+                if not periods:
+                    continue
+                st = status_map.get(m.get("s"), "wait")
+                rows.append({"name": nm, "user": uname_by_email.get(owner, "") if owner else "",
+                             "status": st,
+                             "periods": [{"from": x["day_from"], "to": x["day_to"], "note": x["note"] or ""}
+                                         for x in periods],
+                             "conflict": st == "ok"})
+            rows.sort(key=lambda r: (not r["conflict"], r["name"].casefold()))
+            unavail_block = {"event": {"title": ev.get("title") or "", "date": ev.get("date") or "",
+                                       "ts": float(ev.get("ts") or 0)},
+                             "mode": "event", "rows": rows,
+                             "counts": {"members": len(rows),
+                                        "conflict": sum(1 for r in rows if r["conflict"])}}
+    if unavail_block["mode"] == "upcoming" and unavails:
+        today = _snap_day()
+        limit = _snap_day(time.time() + 14 * 86400)
+        rows = []
+        for email, periods in by_email.items():
+            ps = [x for x in periods if x["day_to"] >= today and x["day_from"] <= limit]
+            if ps:
+                rows.append({"name": uname_by_email.get(email, email), "user": "", "status": "",
+                             "periods": [{"from": x["day_from"], "to": x["day_to"], "note": x["note"] or ""}
+                                         for x in ps],
+                             "conflict": False})
+        rows.sort(key=lambda r: r["periods"][0]["from"])
+        unavail_block["rows"] = rows
+        unavail_block["counts"] = {"members": len(rows), "conflict": 0}
     return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
+            "unavail": unavail_block,
             "catalog": cat_list, "exps": exps_list, "crafters": sorted({c["crafter"] for c in crafts}),
             "game": game_list, "game_sync": _game_sync_report(float(gts_row["ts"] or 0)),
             "me": {"name": user["name"] if "name" in user.keys() else user["email"]},
@@ -4311,6 +4395,58 @@ def api_gcal_import(payload: GcalImportRequest, request: Request):
             (time.time(), str(data.get("player") or "")[:60], blob),
         )
     return {"ok": True, "events": len(events), "responses": responses}
+
+
+class UnavailRequest(BaseModel):
+    day_from: str = Field(..., min_length=10, max_length=10)
+    day_to: str = Field("", max_length=10)
+    note: str = Field("", max_length=120)
+
+
+@app.get("/api/me/unavail")
+def api_my_unavail(request: Request):
+    """Mes périodes d'indisponibilité (surtout pour les raids)."""
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT id, day_from, day_to, note FROM unavails WHERE email=? ORDER BY day_from",
+            (user["email"],)).fetchall()]
+    return {"items": rows}
+
+
+@app.post("/api/me/unavail")
+def api_my_unavail_add(body: UnavailRequest, request: Request):
+    user = _require_user(request)
+    try:
+        d1 = datetime.strptime(body.day_from.strip(), "%Y-%m-%d").date()
+        d2 = datetime.strptime((body.day_to.strip() or body.day_from.strip()), "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(400, "Dates invalides (format attendu : AAAA-MM-JJ).")
+    if d2 < d1:
+        d1, d2 = d2, d1
+    if (d2 - d1).days > 180:
+        raise HTTPException(400, "Période trop longue (180 jours maximum).")
+    note = body.note.strip()[:120]
+    with _db_lock, _db() as conn:
+        n = conn.execute("SELECT COUNT(*) AS n FROM unavails WHERE email=?",
+                         (user["email"],)).fetchone()["n"]
+        if n >= 20:
+            raise HTTPException(400, "Trop de périodes (20 maximum).")
+        dup = conn.execute(
+            "SELECT 1 AS x FROM unavails WHERE email=? AND day_from=? AND day_to=? AND note=?",
+            (user["email"], d1.isoformat(), d2.isoformat(), note)).fetchone()
+        if dup is None:
+            conn.execute("INSERT INTO unavails (email, day_from, day_to, note, created) VALUES (?,?,?,?,?)",
+                         (user["email"], d1.isoformat(), d2.isoformat(), note, time.time()))
+    return {"ok": True}
+
+
+@app.delete("/api/me/unavail/{uid}")
+def api_my_unavail_del(uid: int, request: Request):
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM unavails WHERE id=? AND email=?", (uid, user["email"]))
+    return {"ok": True}
 
 
 @app.post("/api/gcal/relance/{event_id}")

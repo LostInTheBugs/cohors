@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.090 - 2026-09-19
+
+### Added
+- 🙋 Me → new "🚫 My time off" page (`/mesindispos`): declare unavailability periods (dates + optional note). API: `GET/POST /api/me/unavail`, `DELETE /api/me/unavail/{id}`.
+- Raid preparation (`/prep`): new "🚫 Unavailability" block under the objective — lists members unavailable on that raid's date, cross-checked with their in-game calendar answers (✅ accepted / ❓ maybe / ❌ declined / ⏳ no answer); contradictions (⚠️ "unavailable but accepted the raid") are highlighted. Members are matched through their linked characters.
+
 ## 2026.09.089 - 2026-09-19
 
 ### Changed
