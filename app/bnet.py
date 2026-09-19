@@ -21,6 +21,11 @@ GUILD_REALM = os.environ.get("BNET_GUILD_REALM", "hyjal")
 GUILD_SLUG = os.environ.get("BNET_GUILD_SLUG", "lords-of-the-pit")
 LOCALE = os.environ.get("BNET_LOCALE", "fr_FR")
 
+
+def _loc(locale: str | None = None) -> str:
+    """Locale API : celle demandée, sinon la locale par défaut du serveur."""
+    return locale or LOCALE
+
 TOKEN_URL = "https://oauth.battle.net/token"
 TTL = 1800.0          # cache des données : 30 min
 MIN_FORCE_S = 60.0    # délai minimum entre deux rafraîchissements forcés
@@ -136,16 +141,17 @@ def roster(force: bool = False) -> tuple[dict, float]:
     return data, _store("roster", data)
 
 
-def character(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
-    """Résumé de personnage (niveau, spé, classe, ilvl, dernier jeu)."""
+def character(realm: str, name: str, force: bool = False, locale: str | None = None) -> tuple[dict, float]:
+    """Résumé de personnage (niveau, spé, classe, ilvl, dernier jeu) — localisé."""
+    loc = _loc(locale)
     realm, name = realm.lower(), name.lower()
-    key = f"char/{realm}/{name}"
+    key = f"char/{loc}/{realm}/{name}"
     hit = _cached(key, force)
     if hit:
         return hit["data"], hit["ts"]
     raw = _get(
         f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}",
-        {"namespace": f"profile-{REGION}", "locale": LOCALE},
+        {"namespace": f"profile-{REGION}", "locale": loc},
     )
     data = {
         "name": raw.get("name"),
@@ -159,21 +165,24 @@ def character(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
         "ilvl_avg": raw.get("average_item_level"),
         "achievement_points": raw.get("achievement_points"),
         "last_login": raw.get("last_login_timestamp"),
-        "armory": f"https://worldofwarcraft.blizzard.com/fr-fr/character/{REGION}/{realm}/{name}",
+        "armory": "https://worldofwarcraft.blizzard.com/"
+        + ("en-gb" if loc.startswith("en") else "fr-fr")
+        + f"/character/{REGION}/{realm}/{name}",
     }
     return data, _store(key, data)
 
 
-def equipment(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
-    """Équipement porté (pièces + item level + identifiants Wowhead)."""
+def equipment(realm: str, name: str, force: bool = False, locale: str | None = None) -> tuple[dict, float]:
+    """Équipement porté (pièces + item level + identifiants Wowhead) — localisé."""
+    loc = _loc(locale)
     realm, name = realm.lower(), name.lower()
-    key = f"gear/{realm}/{name}"
+    key = f"gear/{loc}/{realm}/{name}"
     hit = _cached(key, force)
     if hit:
         return hit["data"], hit["ts"]
     raw = _get(
         f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}/equipment",
-        {"namespace": f"profile-{REGION}", "locale": LOCALE},
+        {"namespace": f"profile-{REGION}", "locale": loc},
     )
     items = []
     for it in raw.get("equipped_items", []):
@@ -203,16 +212,21 @@ PROF_FR = {
 }
 
 
-def professions(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
-    """Métiers du personnage (primaires + secondaires) — palier le plus récent."""
+def professions(realm: str, name: str, force: bool = False, locale: str | None = None) -> tuple[dict, float]:
+    """Métiers du personnage (primaires + secondaires) — palier le plus récent.
+
+    L'API renvoie les noms en anglais quelle que soit la locale : on expose `name_en`
+    (brut) + `name_fr`/`name` (FR via PROF_FR) et on sert selon la langue demandée.
+    """
+    loc = _loc(locale)
     realm, name = realm.lower(), name.lower()
-    key = f"prof/{realm}/{name}"
+    key = f"prof/{loc}/{realm}/{name}"
     hit = _cached(key, force)
     if hit:
         return hit["data"], hit["ts"]
     raw = _get(
         f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}/professions",
-        {"namespace": f"profile-{REGION}", "locale": LOCALE},
+        {"namespace": f"profile-{REGION}", "locale": loc},
     )
     profs = []
     for p in (raw.get("primaries") or []) + (raw.get("secondaries") or []):
@@ -224,8 +238,11 @@ def professions(realm: str, name: str, force: bool = False) -> tuple[dict, float
         if points is None and maxp is None:
             # métiers sans paliers (ex. Archéologie) : points au niveau racine
             points, maxp = p.get("skill_points"), p.get("max_skill_points")
+        raw_name = prof.get("name") or "?"
         profs.append({
-            "name": PROF_FR.get(prof.get("name") or "", prof.get("name") or "?"),
+            "name": (raw_name if loc.startswith("en") else PROF_FR.get(raw_name, raw_name)),
+            "name_fr": PROF_FR.get(raw_name, raw_name),
+            "name_en": raw_name,
             "id": prof.get("id"),
             "tier": (tier.get("tier") or {}).get("name"),
             "points": points,
@@ -235,7 +252,7 @@ def professions(realm: str, name: str, force: bool = False) -> tuple[dict, float
     return data, _store(key, data)
 
 
-def extras(realm: str, name: str, force: bool = False) -> tuple[dict, float]:
+def extras(realm: str, name: str, force: bool = False, locale: str | None = None) -> tuple[dict, float]:
     """Fiche enrichie : hauts faits, collections (montures / mascottes) et rating M+."""
     realm, name = realm.lower(), name.lower()
     key = f"extras/{realm}/{name}"
@@ -298,6 +315,20 @@ SLOT_FR = {
     "trinket1": "Bijou 1", "trinket2": "Bijou 2",
 }
 # inventory_type Blizzard -> emplacement(s) SimC (les doubles = deux profilesets)
+SLOT_EN = {
+    "head": "Head", "neck": "Neck", "shoulder": "Shoulders", "chest": "Chest",
+    "waist": "Waist", "legs": "Legs", "feet": "Feet", "wrist": "Wrist",
+    "hands": "Hands", "back": "Back", "finger1": "Ring 1", "finger2": "Ring 2",
+    "trinket1": "Trinket 1", "trinket2": "Trinket 2",
+}
+
+
+def slot_label(slot: str, locale: str | None = None) -> str:
+    """Libellé d'emplacement SimC dans la langue demandée (FR par défaut)."""
+    m = SLOT_EN if _loc(locale).startswith("en") else SLOT_FR
+    return m.get(slot or "", slot or "")
+
+
 INV_TO_SLOTS = {
     "HEAD": ["head"], "NECK": ["neck"], "SHOULDER": ["shoulder"],
     "CHEST": ["chest"], "ROBE": ["chest"], "BODY": ["chest"],
@@ -310,17 +341,17 @@ INV_TO_SLOTS = {
 # ---------------------------------------------------------------------------
 # Recettes du jeu (Game Data — base « préparation de raid »)
 # ---------------------------------------------------------------------------
-def game_profession(prof_id: int) -> dict:
+def game_profession(prof_id: int, locale: str | None = None) -> dict:
     """Métier du jeu + ses paliers d'extension (noms localisés)."""
     return _get(f"/data/wow/profession/{int(prof_id)}",
-                {"namespace": f"static-{REGION}", "locale": LOCALE},
+                {"namespace": f"static-{REGION}", "locale": _loc(locale)},
                 not_found="Métier introuvable.")
 
 
-def game_tier_recipes(prof_id: int, tier_id: int) -> list[dict]:
+def game_tier_recipes(prof_id: int, tier_id: int, locale: str | None = None) -> list[dict]:
     """Recettes d'un palier d'extension (id + nom)."""
     raw = _get(f"/data/wow/profession/{int(prof_id)}/skill-tier/{int(tier_id)}",
-               {"namespace": f"static-{REGION}", "locale": LOCALE},
+               {"namespace": f"static-{REGION}", "locale": _loc(locale)},
                not_found="Palier introuvable.")
     out = []
     for cat in raw.get("categories") or []:
@@ -330,10 +361,10 @@ def game_tier_recipes(prof_id: int, tier_id: int) -> list[dict]:
     return out
 
 
-def game_recipe(recipe_id: int) -> dict:
+def game_recipe(recipe_id: int, locale: str | None = None) -> dict:
     """Détail d'une recette : objet fabriqué + compos (quantités)."""
     return _get(f"/data/wow/recipe/{int(recipe_id)}",
-                {"namespace": f"static-{REGION}", "locale": LOCALE},
+                {"namespace": f"static-{REGION}", "locale": _loc(locale)},
                 not_found="Recette introuvable.")
 
 
@@ -387,15 +418,16 @@ def mplus_dungeons() -> tuple[dict, float]:
     return data, _store(key, data)
 
 
-def item(item_id: int) -> dict:
-    """Objet (nom, qualité, emplacement, icône) depuis l'API Blizzard — cache 30 min."""
-    key = f"item/{int(item_id)}"
+def item(item_id: int, locale: str | None = None) -> dict:
+    """Objet (nom, qualité, emplacement, icône) depuis l'API Blizzard — localisé, cache 30 min."""
+    loc = _loc(locale)
+    key = f"item/{loc}/{int(item_id)}"
     hit = _cached(key, False)
     if hit:
         return hit["data"]
     raw = _get(
         f"/data/wow/item/{int(item_id)}",
-        {"namespace": f"static-{REGION}", "locale": LOCALE},
+        {"namespace": f"static-{REGION}", "locale": loc},
         not_found="Pièce introuvable (identifiant invalide ?).",
     )
     inv = raw.get("inventory_type") or {}

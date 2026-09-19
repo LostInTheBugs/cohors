@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.085 - 2026-09-19
+
+### Added
+- Localized game data: Blizzard API data is now fetched in the account's language — "en" accounts get the English data (en_US) straight from the API, everyone else French (fr_FR). Live pages follow the account language (character sheet, equipment, roster summaries, comparator, items / Top Stuff, wishlist, professions, M+ dungeons, game recipe catalog), and the daily snapshots now store class/spec/item/slot names in FR **and** EN so the history views (evolution, gear comparison, attendance, progression, availability) are readable in both languages. Warcraft Logs data was already English (no locale on their side); user-entered content (raids, prep plan, MM+ posts, guild info) stays as typed.
+- Class colors on character views now use the API class key (`class_key`), working with English and French data alike.
+
+### Changed
+- Professions and the game recipe catalog now carry both FR and EN names (`name_en`, `item_en`, `mats_en`, `tier_en`); stored FR fields are pinned to `fr_FR` explicitly.
+- One-shot migration (`meta.loc_en_profs_v1` / `loc_en_recipes_v1`) forces a re-fetch of already-stored professions and recipes so English names appear without waiting for the weekly refresh.
+- Prep catalog expansion chips handle both "Cuisine de Midnight" (FR) and "Midnight Cooking" (EN).
+
+### Fixed
+- Gear comparison (snapdiff) slot labels now use the English slot name when the stored snapshot has one.
+
 ## 2026.09.084 - 2026-09-19
 
 ### Added

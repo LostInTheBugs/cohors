@@ -422,7 +422,11 @@ def _init_db() -> None:
                 item_id  INTEGER NOT NULL DEFAULT 0,
                 rank_no  INTEGER NOT NULL DEFAULT 1,
                 mats     TEXT NOT NULL DEFAULT '[]',
-                updated  REAL NOT NULL DEFAULT 0
+                updated  REAL NOT NULL DEFAULT 0,
+                item_en  TEXT NOT NULL DEFAULT '',
+                tier_en  TEXT NOT NULL DEFAULT '',
+                prof_en  TEXT NOT NULL DEFAULT '',
+                mats_en  TEXT NOT NULL DEFAULT '[]'
             )
             """
         )
@@ -442,11 +446,23 @@ def _init_db() -> None:
         for _stmt in (
             "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE game_recipes ADD COLUMN item_en TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE game_recipes ADD COLUMN tier_en TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE game_recipes ADD COLUMN prof_en TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE game_recipes ADD COLUMN mats_en TEXT NOT NULL DEFAULT '[]'",
         ):
             try:
                 conn.execute(_stmt)
             except Exception:
                 pass
+        # v2026.09.085 — données bilingues : force un re-relevé (noms EN) des métiers et recettes déjà stockés.
+        for _key, _stmt in (
+            ("loc_en_profs_v1", "UPDATE char_professions SET ts = 0"),
+            ("loc_en_recipes_v1", "UPDATE game_recipes SET updated = 0"),
+        ):
+            if conn.execute("SELECT value FROM meta WHERE key=?", (_key,)).fetchone() is None:
+                conn.execute(_stmt)
+                conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (_key, str(int(time.time()))))
 
 
 def _hash_password(password: str) -> str:
@@ -545,6 +561,12 @@ def _user_lang(user: sqlite3.Row) -> str:
     except (IndexError, KeyError):
         lang = ""
     return lang if lang in ("fr", "en") else ""
+
+
+def _user_locale(request: Request) -> str:
+    """Locale des données de jeu selon la langue du compte (« en » → en_US, sinon fr_FR)."""
+    user = _get_session_user(request)
+    return "en_US" if (user is not None and _user_lang(user) == "en") else "fr_FR"
 
 
 def _require_admin(request: Request) -> sqlite3.Row:
@@ -937,7 +959,7 @@ GEAR_MAX_ITEMS = 15
 ITEM_REF_RE = re.compile(r"(?<!\d)(\d{4,7})(?!\d)")
 
 
-def _build_gear_input(profile_text: str, items_text: str) -> tuple[str, list[str]]:
+def _build_gear_input(profile_text: str, items_text: str, locale: str | None = None) -> tuple[str, list[str]]:
     """Ajoute les profilesets « Top Stuff » au profil — renvoie (input, avertissements)."""
     refs: list[int] = []
     seen: set[int] = set()
@@ -955,7 +977,7 @@ def _build_gear_input(profile_text: str, items_text: str) -> tuple[str, list[str
     lines: list[str] = []
     for iid in refs:
         try:
-            it = bnet.item(iid)
+            it = bnet.item(iid, locale=locale)
         except bnet.BnetError as exc:
             warnings.append(f"{iid} : pièce ignorée ({exc}).")
             continue
@@ -965,7 +987,7 @@ def _build_gear_input(profile_text: str, items_text: str) -> tuple[str, list[str
             continue
         clean = it["name"].replace('"', "'")[:48]
         for slot in slots:
-            lines.append(f'profileset."{clean} · {bnet.SLOT_FR[slot]} [{slot}:{iid}]"={slot}=,id={iid}')
+            lines.append(f'profileset."{clean} · {bnet.slot_label(slot, locale)} [{slot}:{iid}]"={slot}=,id={iid}')
     if not lines:
         raise HTTPException(400, "Aucune pièce exploitable parmi celles fournies.")
     return profile_text + "\n\n" + "\n".join(lines) + "\n", warnings
@@ -991,7 +1013,7 @@ def submit_sim(payload: SimRequest, request: Request):
     label = payload.label.strip()[:60]
     warnings: list[str] = []
     if kind == "gear":
-        text, warnings = _build_gear_input(text, payload.items)
+        text, warnings = _build_gear_input(text, payload.items, locale=_user_locale(request))
     ip = _client_ip(request)
     now = time.time()
 
@@ -1087,6 +1109,7 @@ def list_sims(request: Request):
 @app.get("/api/sims/{sim_id}")
 def get_sim(sim_id: str, request: Request):
     _require_user(request)
+    loc = _user_locale(request)
     with _db_lock, _db() as conn:
         r = conn.execute("SELECT * FROM sims WHERE id=?", (sim_id,)).fetchone()
     if r is None:
@@ -1103,14 +1126,14 @@ def get_sim(sim_id: str, request: Request):
             info = {}
             if item_id:
                 try:
-                    info = bnet.item(item_id)
+                    info = bnet.item(item_id, locale=loc)
                 except bnet.BnetError:
                     info = {}
             dps = float(g.get("dps") or 0.0)
             enriched.append({
                 "label": label,
                 "slot": slot,
-                "slot_fr": bnet.SLOT_FR.get(slot, slot or ""),
+                "slot_fr": bnet.slot_label(slot, loc),
                 "item_id": item_id,
                 "name": info.get("name") or label,
                 "icon": info.get("icon"),
@@ -1151,13 +1174,15 @@ _REALM_RE = re.compile(r"^[a-z0-9-]{2,40}$")
 _CHARNAME_RE = re.compile(r"^[A-Za-z\u00c0-\u00ff][A-Za-z\u00c0-\u00ff'\-]{1,23}$")
 
 
-def _bnet_call(fn, realm: str, name: str, refresh: int = 0) -> dict:
+def _bnet_call(fn, realm: str, name: str, refresh: int = 0, locale: str | None = None) -> dict:
     _valid_char(realm, name)
     try:
-        data, ts = fn(realm, name, force=bool(refresh))
+        data, ts = fn(realm, name, force=bool(refresh), locale=locale)
     except bnet.BnetError as exc:
         raise HTTPException(exc.status if exc.status in (400, 404) else 502, str(exc))
     data = dict(data)
+    if data.get("class"):
+        data["class_key"] = CLASS_KEY_FR.get(data["class"]) or re.sub(r"\s+", "", data["class"])
     data["fetched_at"] = ts
     return data
 
@@ -1187,19 +1212,19 @@ def api_roster(request: Request, refresh: int = 0):
 @app.get("/api/char/{realm}/{name}/summary")
 def api_char_summary(realm: str, name: str, request: Request, refresh: int = 0):
     _require_user(request)
-    return _bnet_call(bnet.character, realm, name, refresh)
+    return _bnet_call(bnet.character, realm, name, refresh, locale=_user_locale(request))
 
 
 @app.get("/api/char/{realm}/{name}/extras")
 def api_char_extras(realm: str, name: str, request: Request, refresh: int = 0):
     _require_user(request)
-    return _bnet_call(bnet.extras, realm, name, refresh)
+    return _bnet_call(bnet.extras, realm, name, refresh, locale=_user_locale(request))
 
 
 @app.get("/api/char/{realm}/{name}/equipment")
 def api_char_equipment(realm: str, name: str, request: Request, refresh: int = 0):
     _require_user(request)
-    return _bnet_call(bnet.equipment, realm, name, refresh)
+    return _bnet_call(bnet.equipment, realm, name, refresh, locale=_user_locale(request))
 
 
 # ---------------------------------------------------------------------------
@@ -1245,7 +1270,10 @@ def api_compare(request: Request, chars: str = "", refresh: int = 0):
         _valid_char(realm, name)
         entry: dict = {"realm": realm.lower(), "name": name}
         try:
-            summary, _ts = bnet.character(realm, name, force=bool(refresh))
+            summary, _ts = bnet.character(realm, name, force=bool(refresh), locale=_user_locale(request))
+            if summary.get("class"):
+                summary = dict(summary)
+                summary["class_key"] = CLASS_KEY_FR.get(summary["class"]) or re.sub(r"\s+", "", summary["class"])
             entry["summary"] = summary
         except bnet.BnetError as exc:
             entry["summary"] = None
@@ -1607,13 +1635,14 @@ def _build_leaderboard() -> dict:
     return data
 
 
-def _progression_data(days: int = 30) -> dict:
+def _progression_data(days: int = 30, locale: str = "fr_FR") -> dict:
     """Classement des progressions (relevés quotidiens) + courbe iLvl moyen.
 
     Fenêtre glissante de « days » jours (7 ou 30). Les gains comparent le premier et
     le dernier relevé de chaque personnage dans la fenêtre.
     """
     days = 7 if int(days) == 7 else 30
+    want_en = locale.startswith("en")
     cutoff = _snap_day(time.time() - (days - 1) * 86400)
     with _db_lock, _db() as conn:
         rows = conn.execute(
@@ -1651,7 +1680,8 @@ def _progression_data(days: int = 30) -> dict:
             continue
         out_rows.append({
             "realm": realm, "name": name,
-            "class": l.get("class") or f.get("class"), "spec": l.get("spec") or f.get("spec"),
+            "class": _pick(l, "class", want_en) or _pick(f, "class", want_en),
+            "spec": _pick(l, "spec", want_en) or _pick(f, "spec", want_en),
             "class_key": CLASS_KEY_FR.get((l.get("class") or f.get("class")) or ""),
             "first_day": fd, "last_day": ld,
             "ilvl0": f.get("ilvl"), "ilvl1": l.get("ilvl"),
@@ -1684,7 +1714,7 @@ def _progression_data(days: int = 30) -> dict:
 def api_progression(request: Request, days: int = 30):
     """Classement des progressions (relevés quotidiens) + courbe iLvl moyen (7 ou 30 j)."""
     _require_user(request)
-    return _progression_data(days)
+    return _progression_data(days, _user_locale(request))
 
 
 # Clés de classe anglaises (couleurs côté front) ↔ libellés Blizzard localisés (données stockées).
@@ -1693,6 +1723,21 @@ CLASS_KEY_FR = {
     "Évocateur": "Evoker", "Chasseur": "Hunter", "Mage": "Mage", "Moine": "Monk", "Paladin": "Paladin",
     "Prêtre": "Priest", "Voleur": "Rogue", "Chaman": "Shaman", "Démoniste": "Warlock", "Guerrier": "Warrior",
 }
+
+
+def _pick(d: dict, key: str, want_en: bool):
+    """Valeur d'un relevé dans la langue demandée (version EN si dispo, sinon FR)."""
+    v = d.get(key)
+    return (d.get(key + "_en") or v) if want_en else v
+
+
+def _att_localized(data: dict, locale: str) -> dict:
+    """Assiduité : sert la classe dans la langue demandée (les clés/parcours restent FR)."""
+    if not locale.startswith("en"):
+        return data
+    out = dict(data)
+    out["rows"] = [dict(r, **{"class": r.get("class_en") or r.get("class")}) for r in (data.get("rows") or [])]
+    return out
 
 _ATT_CACHE: dict = {"ts": 0.0, "days": 0, "data": None}
 ATT_TTL = 900.0
@@ -1706,23 +1751,26 @@ def api_attendance(request: Request, days: int = 30, refresh: int = 0):
     now = time.time()
     if (not refresh and _ATT_CACHE["data"] is not None and _ATT_CACHE["days"] == days
             and now - _ATT_CACHE["ts"] < ATT_TTL):
-        return _ATT_CACHE["data"]
+        return _att_localized(_ATT_CACHE["data"], _user_locale(request))
     try:
         rl, _ts = wcl.reports(limit=50, force=bool(refresh))
     except wcl.WclError as exc:
         return {"error": str(exc)}
     cutoff = now - days * 86400
     cls_by_name: dict[str, str] = {}
+    cls_en_by_name: dict[str, str] = {}
     with _db_lock, _db() as conn:
         for row in conn.execute(
             "SELECT name, data FROM char_snapshots WHERE day = ?", (_snap_day(),)
         ).fetchall():
             try:
-                c = (json.loads(row["data"]) or {}).get("class")
+                d_snap = json.loads(row["data"]) or {}
             except (ValueError, TypeError):
-                c = None
-            if c:
-                cls_by_name[row["name"]] = c
+                d_snap = {}
+            if d_snap.get("class"):
+                cls_by_name[row["name"]] = d_snap["class"]
+            if d_snap.get("class_en"):
+                cls_en_by_name[row["name"]] = d_snap["class_en"]
     roster: dict[str, dict] = {}
     try:
         rl2, _t = bnet.roster()
@@ -1768,7 +1816,7 @@ def api_attendance(request: Request, days: int = 30, refresh: int = 0):
         rows.append({
             "name": d["name"], "key": key,
             "realm": mem.get("realm") or bnet.GUILD_REALM,
-            "class": cls_by_name.get(key),
+            "class": cls_by_name.get(key), "class_en": cls_en_by_name.get(key),
             "class_key": CLASS_KEY_FR.get(cls_by_name.get(key) or ""),
             "nights": d["nights"], "pct": round(100 * d["nights"] / total) if total else 0,
             "last_day": d["last_day"], "guest": key not in roster,
@@ -1778,7 +1826,7 @@ def api_attendance(request: Request, days: int = 30, refresh: int = 0):
             "evenings": [{k: v for k, v in e.items() if k != "players"} for e in evenings],
             "rows": rows}
     _ATT_CACHE.update({"ts": now, "days": days, "data": data})
-    return data
+    return _att_localized(data, _user_locale(request))
 
 
 # Spécialisations (noms FR renvoyés par l'API) → rôle : tank / heal / dps.
@@ -1798,6 +1846,7 @@ SPEC_ROLE = {
 def api_avail(request: Request, hours: int = 24):
     """Dispo pour jouer : persos niveau max vus récemment (relevé du jour), groupés par rôle."""
     _require_user(request)
+    want_en = _user_locale(request).startswith("en")
     hours = hours if hours in (24, 48, 168) else 24
     cutoff = time.time() - hours * 3600
     with _db_lock, _db() as conn:
@@ -1831,7 +1880,7 @@ def api_avail(request: Request, hours: int = 24):
         out.append({
             "name": disp.get(k) or k, "key": k, "realm": r["realm"],
             "class_key": CLASS_KEY_FR.get(d.get("class") or ""),
-            "spec": d.get("spec"), "role": SPEC_ROLE.get(d.get("spec") or ""),
+            "spec": _pick(d, "spec", want_en), "role": SPEC_ROLE.get(d.get("spec") or ""),
             "ilvl": d.get("ilvl"), "level": lvl, "seen": seen_s,
         })
     out.sort(key=lambda x: -(x.get("ilvl") or 0))
@@ -1841,12 +1890,14 @@ def api_avail(request: Request, hours: int = 24):
 PROF_ORDER = ["Alchimie", "Calligraphie", "Couture", "Dépeçage", "Enchantement", "Forge",
               "Herboristerie", "Ingénierie", "Joaillerie", "Minéralogie", "Travail du cuir",
               "Archéologie", "Cuisine", "Pêche"]
+PROF_EN = {v: k for k, v in bnet.PROF_FR.items()}  # libellé FR → nom anglais (API)
 
 
 @app.get("/api/craft")
 def api_craft(request: Request):
     """Annuaire d'artisanat : qui peut crafter quoi (métiers de tout le roster)."""
     _require_user(request)
+    want_en = _user_locale(request).startswith("en")
     with _db_lock, _db() as conn:
         rows = [dict(r) for r in conn.execute(
             "SELECT realm, name, ts, data FROM char_professions").fetchall()]
@@ -1882,14 +1933,17 @@ def api_craft(request: Request):
         with_profs += 1
         k = r["name"]
         for p in profs:
-            nm = p.get("name") or "?"
+            nm = (_pick(p, "name", want_en)) or "?"
+            if want_en:
+                nm = PROF_EN.get(nm, nm)  # lignes pas encore rafraîchies : libellé FR → nom anglais
             groups.setdefault(nm, []).append({
                 "name": disp.get(k) or k, "key": k,
                 "realm": realms.get(k) or r["realm"],
                 "class_key": CLASS_KEY_FR.get(cls_by_name.get(k) or ""),
                 "points": p.get("points"), "max": p.get("max"), "tier": p.get("tier"),
             })
-    order = {n: i for i, n in enumerate(PROF_ORDER)}
+    order = {n: i for i, n in enumerate(
+        [PROF_EN.get(x, x) if want_en else x for x in PROF_ORDER])}
     profs_out = []
     for nm, lst in groups.items():
         lst.sort(key=lambda x: (-(x.get("points") or 0), (x["name"] or "").lower()))
@@ -1961,6 +2015,7 @@ def wishlist_page(request: Request):
 @app.get("/api/wishlist")
 def api_wishlist(request: Request):
     user = _require_user(request)
+    loc = _user_locale(request)
     with _db_lock, _db() as conn:
         rows = conn.execute(
             "SELECT item_id, name, slot, quality, icon, added FROM wishlist WHERE user_email=? ORDER BY added DESC",
@@ -1970,14 +2025,19 @@ def api_wishlist(request: Request):
             "SELECT realm, name, display, is_main FROM char_links WHERE user_email=? ORDER BY is_main DESC, name",
             (user["email"],),
         ).fetchall()
-    items = [
-        {
-            "item_id": r["item_id"], "name": r["name"],
-            "slot": r["slot"], "slot_fr": bnet.SLOT_FR.get(r["slot"], r["slot"] or ""),
+    items = []
+    for r in rows:
+        nm = r["name"]
+        if loc.startswith("en") and r["item_id"]:
+            try:
+                nm = bnet.item(r["item_id"], locale=loc).get("name") or nm
+            except bnet.BnetError:
+                pass
+        items.append({
+            "item_id": r["item_id"], "name": nm,
+            "slot": r["slot"], "slot_fr": bnet.slot_label(r["slot"], loc),
             "quality": r["quality"], "icon": r["icon"], "added": r["added"],
-        }
-        for r in rows
-    ]
+        })
     chars_out = [dict(c) for c in chars]
     for ch in chars_out:
         try:
@@ -2000,10 +2060,12 @@ def api_wishlist_add(payload: WishlistAdd, request: Request):
     if not m:
         raise HTTPException(400, "Indique une pièce (identifiant ou lien Wowhead).")
     iid = int(m.group(1))
+    loc = _user_locale(request)
     try:
-        it = bnet.item(iid)
+        it = bnet.item(iid, locale=loc)
     except bnet.BnetError as exc:
         raise HTTPException(400, str(exc))
+    it_fr = it if loc.startswith("fr") else bnet.item(iid)
     slot = (bnet.INV_TO_SLOTS.get(it["inv_type"]) or [""])[0]
     with _db_lock, _db() as conn:
         exists = conn.execute(
@@ -2013,7 +2075,7 @@ def api_wishlist_add(payload: WishlistAdd, request: Request):
             return {"ok": True, "already": True, "name": it["name"]}
         conn.execute(
             "INSERT INTO wishlist (user_email, item_id, name, slot, inv_type, quality, icon, added) VALUES (?,?,?,?,?,?,?,?)",
-            (user["email"], iid, it["name"], slot, it["inv_type"], it["quality"], it.get("icon"), time.time()),
+            (user["email"], iid, it_fr["name"], slot, it["inv_type"], it["quality"], it.get("icon"), time.time()),
         )
         count = conn.execute(
             "SELECT COUNT(*) AS c FROM wishlist WHERE user_email=?", (user["email"],)
@@ -2602,7 +2664,7 @@ def _snap_day(ts: float | None = None) -> str:
 
 def _prof_store(realm: str, name: str) -> None:
     """Enregistre (ou remplace) les métiers d'un personnage."""
-    data, ts = bnet.professions(realm, name)
+    data, ts = bnet.professions(realm, name, locale="fr_FR")
     with _db_lock, _db() as conn:
         conn.execute(
             "INSERT INTO char_professions (realm, name, ts, data) VALUES (?,?,?,?) "
@@ -2643,21 +2705,38 @@ def _char_alert(name: str, prev: dict, new: dict) -> None:
 
 
 def _char_snapshot(realm: str, name: str) -> dict:
-    """État d'un personnage (résumé + équipement + collections) pour un relevé quotidien."""
-    s, _ = bnet.character(realm, name)
-    g, _ = bnet.equipment(realm, name)
+    """État d'un personnage (résumé + équipement + collections) pour un relevé quotidien.
+
+    Les noms (classe, spé, objets, emplacements) sont relevés en FR **et** en EN :
+    l'historique reste lisible dans la langue du compte au moment de la consultation.
+    """
+    s, _ = bnet.character(realm, name, locale="fr_FR")
+    g, _ = bnet.equipment(realm, name, locale="fr_FR")
     x, _ = bnet.extras(realm, name)
+    s_en: dict = {}
+    g_en: dict = {}
+    try:
+        s_en, _ = bnet.character(realm, name, locale="en_US")
+        g_en, _ = bnet.equipment(realm, name, locale="en_US")
+    except bnet.BnetError as exc:
+        print(f"[snap] versions EN indisponibles pour {name}: {exc}")
+    en_items = {it.get("item_id"): it for it in (g_en.get("items") or [])}
+    items = []
+    for it in (g.get("items") or []):
+        e = en_items.get(it.get("item_id")) or {}
+        items.append({
+            "slot": it.get("slot"), "slot_en": e.get("slot"),
+            "name": it.get("name"), "name_en": e.get("name"),
+            "ilvl": it.get("ilvl"), "q": it.get("quality"), "id": it.get("item_id"),
+        })
     return {
-        "level": s.get("level"), "spec": s.get("spec"), "class": s.get("class"),
+        "level": s.get("level"), "spec": s.get("spec"), "spec_en": s_en.get("spec"),
+        "class": s.get("class"), "class_en": s_en.get("class"),
         "ilvl": s.get("ilvl_equipped"), "ilvl_avg": s.get("ilvl_avg"),
         "last_login": s.get("last_login"),
         "achv": s.get("achievement_points"),
         "mounts": x.get("mounts"), "pets": x.get("pets"), "mplus": x.get("mplus_rating"),
-        "items": [
-            {"slot": it.get("slot"), "name": it.get("name"), "ilvl": it.get("ilvl"),
-             "q": it.get("quality"), "id": it.get("item_id")}
-            for it in (g.get("items") or [])
-        ],
+        "items": items,
     }
 
 
@@ -2684,6 +2763,9 @@ def _snap_capture(realm: str, name: str) -> None:
 WCL_SLOTS = ["Tête", "Cou", "Épaules", "Chemise", "Torse", "Taille", "Jambes", "Pieds",
              "Poignets", "Mains", "1er anneau", "2e anneau", "1er bijou", "2e bijou",
              "Dos", "Main droite", "Main gauche", "Tabard"]
+WCL_SLOTS_EN = ["Head", "Neck", "Shoulders", "Shirt", "Chest", "Waist", "Legs", "Feet",
+                "Wrists", "Hands", "Ring 1", "Ring 2", "Trinket 1", "Trinket 2",
+                "Back", "Main Hand", "Off Hand", "Tabard"]
 
 
 def _snap_backfill(days: int = 30, force: bool = False) -> dict:
@@ -2735,7 +2817,8 @@ def _snap_backfill(days: int = 30, force: bool = False) -> dict:
             if k in have:
                 continue
             items = [
-                {"slot": WCL_SLOTS[i], "id": g.get("id"), "ilvl": g.get("itemLevel")}
+                {"slot": WCL_SLOTS[i], "slot_en": WCL_SLOTS_EN[i],
+                 "id": g.get("id"), "ilvl": g.get("itemLevel")}
                 for i, g in enumerate(gear)
                 if g and g.get("id") and i < len(WCL_SLOTS)
             ]
@@ -2746,11 +2829,16 @@ def _snap_backfill(days: int = 30, force: bool = False) -> dict:
         items = []
         for it in entry["items"]:
             try:
-                meta = bnet.item(it["id"])
+                meta = bnet.item(it["id"], locale="fr_FR")
                 nm, q = meta.get("name"), meta.get("quality")
             except bnet.BnetError:
                 nm, q = f"Objet {it['id']}", None
-            items.append({"slot": it["slot"], "name": nm, "ilvl": it["ilvl"], "q": q, "id": it["id"]})
+            try:
+                nm_en = bnet.item(it["id"], locale="en_US").get("name")
+            except bnet.BnetError:
+                nm_en = None
+            items.append({"slot": it["slot"], "slot_en": it.get("slot_en"), "name": nm, "name_en": nm_en,
+                          "ilvl": it["ilvl"], "q": q, "id": it["id"]})
         ilvls = [it["ilvl"] for it in items if it.get("ilvl") and it["ilvl"] > 1]
         data = {
             "level": None, "spec": None, "class": None,
@@ -2886,9 +2974,10 @@ def _is_tracked_char(realm: str, name: str) -> bool:
     return any((m.get("name") or "").lower() == name for m in (roster.get("members") or []))
 
 
-def _snap_summary(day: str, ts: float, d: dict) -> dict:
-    return {"day": day, "ts": ts, "level": d.get("level"), "spec": d.get("spec"),
-            "class": d.get("class"), "ilvl": d.get("ilvl"), "ilvl_avg": d.get("ilvl_avg"),
+def _snap_summary(day: str, ts: float, d: dict, want_en: bool = False) -> dict:
+    return {"day": day, "ts": ts, "level": d.get("level"),
+            "spec": _pick(d, "spec", want_en), "class": _pick(d, "class", want_en),
+            "ilvl": d.get("ilvl"), "ilvl_avg": d.get("ilvl_avg"),
             "achv": d.get("achv"), "mounts": d.get("mounts"), "pets": d.get("pets"),
             "mplus": d.get("mplus"), "src": d.get("src")}
 
@@ -2897,6 +2986,7 @@ def _snap_summary(day: str, ts: float, d: dict) -> dict:
 def api_char_history(realm: str, name: str, request: Request):
     """Relevés quotidiens (résumés) d'un personnage — du plus ancien au plus récent."""
     _require_user(request)
+    want_en = _user_locale(request).startswith("en")
     realm, name = realm.lower(), name.lower()
     with _db_lock, _db() as conn:
         rows = conn.execute(
@@ -2906,7 +2996,7 @@ def api_char_history(realm: str, name: str, request: Request):
     days = []
     for r in rows:
         try:
-            days.append(_snap_summary(r["day"], r["ts"], json.loads(r["data"])))
+            days.append(_snap_summary(r["day"], r["ts"], json.loads(r["data"]), want_en))
         except ValueError:
             continue
     # personnage suivi et relevé du jour manquant → capture à la volée (sans bloquer la réponse)
@@ -2926,6 +3016,7 @@ def admin_snap_backfill(request: Request, days: int = 30):
 def api_char_snapdiff(realm: str, name: str, request: Request):
     """Différence entre deux relevés (?from=YYYY-MM-DD&to=YYYY-MM-DD ; défaut : début → fin)."""
     _require_user(request)
+    want_en = _user_locale(request).startswith("en")
     realm, name = realm.lower(), name.lower()
     frm = (request.query_params.get("from") or "").strip()
     to = (request.query_params.get("to") or "").strip()
@@ -2960,15 +3051,25 @@ def api_char_snapdiff(realm: str, name: str, request: Request):
 
     a_items = {it.get("slot"): it for it in (a.get("items") or [])}
     b_items = {it.get("slot"): it for it in (b.get("items") or [])}
+
+    def _loc_item(it):
+        if not it:
+            return it
+        out = dict(it)
+        out["slot"] = _pick(it, "slot", want_en)
+        out["name"] = _pick(it, "name", want_en)
+        return out
+
     items = []
     for slot in list(dict.fromkeys(list(a_items.keys()) + list(b_items.keys()))):
         fa, fb = a_items.get(slot), b_items.get(slot)
+        slot_lbl = ((fa or {}).get("slot_en") or (fb or {}).get("slot_en") or slot) if want_en else slot
         changed = not (fa and fb and fa.get("id") == fb.get("id") and fa.get("ilvl") == fb.get("ilvl"))
-        items.append({"slot": slot, "from": fa, "to": fb, "changed": changed})
+        items.append({"slot": slot_lbl, "from": _loc_item(fa), "to": _loc_item(fb), "changed": changed})
     return {
         "ok": True,
-        "from": _snap_summary(a_day, a_ts, a),
-        "to": _snap_summary(b_day, b_ts, b),
+        "from": _snap_summary(a_day, a_ts, a, want_en),
+        "to": _snap_summary(b_day, b_ts, b, want_en),
         "deltas": {k: delta(k) for k in ("level", "ilvl", "ilvl_avg", "achv", "mounts", "pets", "mplus")},
         "items": items,
     }
@@ -3371,7 +3472,8 @@ def api_prep_get(request: Request):
         crafts = [dict(r) for r in conn.execute(
             "SELECT crafter, profession, item, item_id, expansion, exp_rank, mats FROM craft_recipes").fetchall()]
         game = [dict(r) for r in conn.execute(
-            "SELECT prof, tier, exp_rank, item, item_id, rank_no, mats FROM game_recipes").fetchall()]
+            "SELECT prof, tier, exp_rank, item, item_id, rank_no, mats, "
+            "item_en, tier_en, prof_en, mats_en FROM game_recipes").fetchall()]
         gts_row = conn.execute("SELECT MAX(updated) AS ts FROM game_recipes").fetchone()
     for r in recipes:
         try:
@@ -3436,20 +3538,25 @@ def api_prep_get(request: Request):
     known_by_item: dict = {}
     for ent_g in catalog.values():
         known_by_item.setdefault(str(ent_g["item"]).casefold(), []).extend(ent_g["crafters"])
+    want_en = _user_locale(request).startswith("en")
     game_cat: dict = {}
     for c in game:
-        key = (str(c["item"]).casefold(), c["prof"])
+        item_nm = (c.get("item_en") or c.get("item")) if want_en else c.get("item")
+        prof_nm = (c.get("prof_en") or c.get("prof")) if want_en else c.get("prof")
+        exp_nm = (c.get("tier_en") or c.get("tier")) if want_en else c.get("tier")
+        key = (str(item_nm).casefold(), prof_nm)
         try:
-            gmats = json.loads(c["mats"] or "[]")
+            gmats = json.loads(((c.get("mats_en") or c.get("mats")) if want_en else c.get("mats")) or "[]")
         except ValueError:
             gmats = []
         ent = game_cat.get(key)
         if ent is None or int(c["rank_no"] or 1) < int(ent["rank"] or 1):
-            game_cat[key] = {"item": c["item"], "item_id": c["item_id"] or 0, "prof": c["prof"],
-                             "exp": c["tier"] or "", "exp_rank": c["exp_rank"] or 0,
-                             "rank": c["rank_no"] or 1, "mats": gmats}
+            game_cat[key] = {"item": item_nm, "item_id": c["item_id"] or 0, "prof": prof_nm,
+                             "exp": exp_nm or "", "exp_rank": c["exp_rank"] or 0,
+                             "rank": c["rank_no"] or 1, "mats": gmats, "item_fr": c["item"]}
     for ent in game_cat.values():
-        ent["crafters"] = known_by_item.get(str(ent["item"]).casefold(), [])
+        # les artisans sont connus par le nom FR (exports addon) — l'appariement reste FR
+        ent["crafters"] = known_by_item.get(str(ent.get("item_fr") or ent["item"]).casefold(), [])
     game_list = sorted(game_cat.values(), key=lambda e: (str(e["prof"]), str(e["item"]).casefold()))
     return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
             "catalog": cat_list, "exps": exps_list, "crafters": sorted({c["crafter"] for c in crafts}),
@@ -3616,6 +3723,8 @@ def api_mplus(request: Request):
         dungeons = dun.get("dungeons") or []
     except bnet.BnetError:
         dungeons = []
+    if _user_locale(request).startswith("en"):
+        dungeons = [dict(x, name=(x.get("en") or x.get("name"))) for x in dungeons]
     return {"posts": posts, "dungeons": dungeons,
             "my_chars": [{"name": c["name"], "display": c["display"], "is_main": bool(c["is_main"])}
                          for c in mine],
@@ -3662,39 +3771,57 @@ def _game_sync(profs=None) -> None:
     total_written = 0
     try:
         for pid, nom in cibles:
-            prof = bnet.game_profession(pid)
+            prof = bnet.game_profession(pid, locale="fr_FR")
+            try:
+                prof_en = bnet.game_profession(pid, locale="en_US")
+            except bnet.BnetError:
+                prof_en = {}
             tiers = (prof.get("skill_tiers") or [])[-2:]  # les 2 paliers les plus récents
+            tiers_en = {t.get("id"): (t.get("name") or "") for t in (prof_en.get("skill_tiers") or [])}
             st["prof"] = nom
             rows_all = []
             for rank, tier in enumerate(reversed(tiers)):  # rang 0 = la plus récente extension
-                recs = bnet.game_tier_recipes(pid, tier["id"])
+                recs = bnet.game_tier_recipes(pid, tier["id"], locale="fr_FR")
                 st["total"] = (st["total"] or 0) + len(recs)
                 for r in recs:
                     try:
-                        d = bnet.game_recipe(r["id"])
+                        d = bnet.game_recipe(r["id"], locale="fr_FR")
                     except bnet.BnetError:
                         continue  # recette non exposée — ignorée
+                    try:
+                        d_en = bnet.game_recipe(r["id"], locale="en_US")
+                    except bnet.BnetError:
+                        d_en = {}
                     ci = d.get("crafted_item") or {}
-                    mats = []
+                    ci_en = d_en.get("crafted_item") or {}
+                    mats, mats_en = [], []
                     for m in d.get("reagents") or []:
                         rr = m.get("reagent") or {}
                         mats.append({"id": rr.get("id") or 0, "name": rr.get("name") or "",
                                      "qty": float(m.get("quantity") or 0)})
+                    for m in d_en.get("reagents") or []:
+                        rr = m.get("reagent") or {}
+                        mats_en.append({"id": rr.get("id") or 0, "name": rr.get("name") or "",
+                                        "qty": float(m.get("quantity") or 0)})
                     try:
                         rrank = int(d.get("rank") or 1)
                     except (TypeError, ValueError):
                         rrank = 1
                     rows_all.append((int(d.get("id") or r["id"]), nom, tier.get("name") or "", rank,
                                      ci.get("name") or d.get("name") or "", ci.get("id") or 0, rrank,
-                                     json.dumps(mats, ensure_ascii=False), time.time()))
+                                     json.dumps(mats, ensure_ascii=False), time.time(),
+                                     ci_en.get("name") or d_en.get("name") or "",
+                                     tiers_en.get(tier["id"]) or "",
+                                     prof_en.get("name") or "",
+                                     json.dumps(mats_en, ensure_ascii=False)))
                     st["done"] += 1
                     if st["done"] % 4 == 0:
                         time.sleep(0.02)  # politesse (limite Blizzard : 100 req/s)
             with _db_lock, _db() as conn:
                 conn.execute("DELETE FROM game_recipes WHERE prof=?", (nom,))
                 conn.executemany(
-                    "INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats, updated) "
-                    "VALUES (?,?,?,?,?,?,?,?,?)", rows_all)
+                    "INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats, updated, "
+                    "item_en, tier_en, prof_en, mats_en) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", rows_all)
             total_written += len(rows_all)
         st.update({"state": "done", "ts": time.time()})
         print(f"[game-recipes] synchro OK : {total_written} recettes", flush=True)

@@ -281,7 +281,13 @@ function renderCatalog() {
   const q = ($("#catq").value || "").trim().toLowerCase();
   const src = mode === "game" ? game : cat;
 
-  const stripProf = (x) => (x.exp || '').startsWith(x.prof + ' de ') ? x.exp.slice(x.prof.length + 4) : (x.exp || '');
+  const stripProf = (x) => {
+    const e = x.exp || '';
+    if (!x.prof) return e;
+    if (e.startsWith(x.prof + ' de ')) return e.slice(x.prof.length + 4);   // FR : « Cuisine de Midnight »
+    if (e.endsWith(' ' + x.prof)) return e.slice(0, -(x.prof.length + 1));  // EN : « Midnight Cooking »
+    return e;
+  };
   if (mode === "game") {
     const tiers = [...new Set(game.map(stripProf).filter(Boolean))].slice(0, 3);
     let meta = game.length
