@@ -3545,6 +3545,7 @@ def api_gcal_get(request: Request):
             e["meta"] = None
         if ts > 0:
             day = _snap_day(ts)
+            ovr_map = (e.get("meta") or {}).get("ovr") or {}
             for mem in (e.get("inv") or []):
                 nm = str(mem.get("n") or "").strip()
                 if not nm:
@@ -3554,7 +3555,7 @@ def api_gcal_get(request: Request):
                            if x["day_from"] <= day <= x["day_to"]] if owner else []
                 if not periods:
                     continue
-                st = status_map.get(mem.get("s"), "wait")
+                st = ovr_map.get(nm) or status_map.get(mem.get("s"), "wait")
                 conf = st == "ok"
                 if conf:
                     conflicts += 1
@@ -3587,6 +3588,8 @@ class GcalEventMetaRequest(BaseModel):
     raids: list[str] = []
     bosses: list[str] = []
     start: str = ""
+    roles: dict[str, str] = {}
+    ovr: dict[str, str] = {}
 
 
 @app.post("/api/gcal/event/{key}")
@@ -3599,15 +3602,21 @@ def api_gcal_event_meta(key: str, body: GcalEventMetaRequest, request: Request):
     raids = [str(x).strip()[:80] for x in (body.raids or []) if str(x).strip()][:30]
     bosses = [str(x).strip()[:80] for x in (body.bosses or []) if str(x).strip()][:60]
     start = (body.start or "").strip()[:80]
+    roles = {str(k).strip()[:60]: str(v).strip().lower() for k, v in (body.roles or {}).items()
+             if str(k).strip() and str(v).strip().lower() in ("tank", "heal", "dps")}
+    ovr = {str(k).strip()[:60]: str(v).strip().lower() for k, v in (body.ovr or {}).items()
+           if str(k).strip() and str(v).strip().lower() in ("ok", "no")}
+    roles, ovr = dict(list(roles.items())[:120]), dict(list(ovr.items())[:120])
     with _db_lock, _db() as conn:
-        if not raids and not bosses and not start:
+        if not raids and not bosses and not start and not roles and not ovr:
             conn.execute("DELETE FROM gcal_meta WHERE event_key=?", (key,))
         else:
             conn.execute(
                 "INSERT INTO gcal_meta (event_key, data, updated, updated_by) VALUES (?,?,?,?) "
                 "ON CONFLICT(event_key) DO UPDATE SET data=excluded.data, updated=excluded.updated, "
                 "updated_by=excluded.updated_by",
-                (key, json.dumps({"raids": raids, "bosses": bosses, "start": start}, ensure_ascii=False),
+                (key, json.dumps({"raids": raids, "bosses": bosses, "start": start,
+                                  "roles": roles, "ovr": ovr}, ensure_ascii=False),
                  time.time(), user["email"]))
     return {"ok": True, "key": key}
 
@@ -4694,6 +4703,8 @@ def api_gcal_relance(event_id: int, request: Request):
         raise HTTPException(400, "Bot Discord non configuré ou inactif (Admin → Bot Discord).")
     with _db_lock, _db() as conn:
         row = conn.execute("SELECT data FROM gcal_import WHERE id=1").fetchone()
+        mrow = conn.execute("SELECT data FROM gcal_meta WHERE event_key=?",
+                            ("id:" + str(event_id),)).fetchone()
     if row is None:
         raise HTTPException(404, "Aucun import du calendrier in-game.")
     try:
@@ -4703,7 +4714,14 @@ def api_gcal_relance(event_id: int, request: Request):
     ev = next((e for e in events if _int_any(e.get("id")) == event_id), None)
     if ev is None:
         raise HTTPException(404, "Événement introuvable dans le dernier import.")
-    waiting = [i.get("n") for i in (ev.get("inv") or []) if int(i.get("s", -1)) not in (1, 2, 3, 8)]
+    forced = {}
+    if mrow is not None:
+        try:
+            forced = (json.loads(mrow["data"]) or {}).get("ovr") or {}
+        except ValueError:
+            forced = {}
+    waiting = [i.get("n") for i in (ev.get("inv") or [])
+               if int(i.get("s", -1)) not in (1, 2, 3, 8) and i.get("n") not in forced]
     if not waiting:
         raise HTTPException(400, "Tout le monde a répondu 👍")
     link = f"{PUBLIC_BASE_URL}/calendar" if PUBLIC_BASE_URL else ""

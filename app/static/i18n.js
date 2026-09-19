@@ -696,7 +696,7 @@
  "Les relevés sont quotidiens et automatiques ; les jours marqués « ° » sont reconstruits d'après les logs de raid (Warcraft Logs).": "Snapshots are daily and automatic; days marked « ° » are rebuilt from the raid logs (Warcraft Logs).",
  "📋 « Assiduité » : la présence de chaque joueur sur les 14, 30 ou 60 derniers jours — soirées présentes, pourcentage et dernier raid.": "📋 « Attendance »: each player's presence over the last 14, 30 or 60 days — evenings attended, percentage and last raid.",
  "📈 « Progression » : les gains sur 7 ou 30 jours — ilvl, hauts faits, montures, mascottes — et la courbe d'ilvl moyen de la guilde.": "📈 « Progression »: gains over 7 or 30 days — iLvl, achievements, mounts, pets — and the guild's average iLvl curve.",
- "🗓️ « Prochains raids » : les officiers importent le calendrier de guilde de WoW (addon LOTP → /lotp → « Exporter ») — les raids, les réponses des membres et les indisponibilités déclarées apparaissent directement (création et invitations en jeu uniquement). Sur chaque date, les officiers peuvent préciser le ou les raids visés, les boss, et le raid de départ 🚩 (bouton ✏️).": "🗓️ « Upcoming raids »: officers import WoW's guild calendar (LOTP addon → /lotp → « Export ») — raids, members' answers and declared unavailabilities show up directly (creation and invites happen in-game only). For each date, officers can specify the targeted raid(s), the bosses, and the starting raid 🚩 (✏️ button).",
+ "🗓️ « Prochains raids » : les officiers importent le calendrier de guilde de WoW (addon LOTP → /lotp → « Exporter ») — les raids, les réponses des membres et les indisponibilités déclarées apparaissent directement (création et invitations en jeu uniquement). Sur chaque date, les officiers peuvent préciser le ou les raids visés, les boss, et le raid de départ 🚩 (bouton ✏️) ; ils y définissent aussi le rôle des présents (🛡️ tank / 💚 heal / ⚔️ dps) et peuvent forcer les réponses (accepter ou refuser quelqu'un qui ne répond jamais en jeu).": "🗓️ « Upcoming raids »: officers import WoW's guild calendar (LOTP addon → /lotp → « Export ») — raids, members' answers and declared unavailabilities show up directly (creation and invites happen in-game only). For each date, officers can specify the targeted raid(s), the bosses, and the starting raid 🚩 (✏️ button); there they also set attendees' roles (🛡️ tank / 💚 heal / ⚔️ dps) and can force answers (accept or decline someone who never answers in-game).",
  "🚫 Indisponibilités : tu vois qui est indisponible pour chaque raid, croisé avec les réponses in-game — ⚠️ signale « indispo mais a accepté le raid ». Ça se déclare dans 🙋 Moi → 🚫 Mes indispos.": "🚫 Unavailability: see who is unavailable for each raid, cross-checked with the in-game answers — ⚠️ flags « unavailable but accepted the raid ». Declare yours in 🙋 Me → 🚫 My time off.",
  "« 📣 Relancer » (officiers, si le bot Discord est actif) poste une relance dans Discord pour les membres qui n'ont pas encore répondu.": "« 📣 Remind » (officers, with the Discord bot active) posts a reminder on Discord for members who haven't answered yet.",
  "🗓️ « Prochain raid » : la date du prochain raid issu du calendrier in-game, avec les compteurs de réponses (dispo · non · sans réponse).": "🗓️ « Next raid »: the next raid date from the in-game calendar, with the answer counters (available · no · no answer).",
@@ -811,7 +811,11 @@
  "🧹 Effacer": "🧹 Clear",
  "Raids & boss visés": "Raids & bosses targeted",
  "Effacer les raids/boss visés pour cette date ?": "Clear the raids/bosses targeted for this date?",
- "Raids/boss enregistrés ✓": "Raids/bosses saved ✓"
+ "Raids/boss enregistrés ✓": "Raids/bosses saved ✓",
+ "Forcer présent": "Force attending",
+ "Forcer absent": "Force not attending",
+ "Réponse du jeu": "In-game answer",
+ "Enregistré ✓": "Saved ✓"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -867,6 +871,8 @@
   [/(\d+) non lue\(s\)/g, "$1 unread"],
     [/⏳ sans réponse : /g, "⏳ no answer yet: "],
     [/🚩 départ : /g, "🚩 start: "],
+    [/\(officier\)/g, "(officer)"],
+    [/👥 Joueurs — rôles & réponses \((\d+)\)/g, "👥 Players — roles & answers ($1)"],
     [/— indispo mais a accepté le raid ·/g, "— unavailable but accepted the raid ·"],
     [/Relance envoyée pour (\d+) membre\(s\)/g, "Reminder sent for $1 member(s)"],
     [/Import OK — (\d+) événement\(s\), (\d+) réponse\(s\)/g, "Import OK — $1 event(s), $2 answer(s)"],

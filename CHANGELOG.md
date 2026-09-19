@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.103 - 2026-09-19
+
+### Added
+- Calendar "Upcoming raids", officer editor ✏️: set each attendee's role (🛡️ tank / 💚 heal / ⚔️ dps — shown with the names and counted in the badge) and force answers (✅ force attending / ❌ force not attending / ↺ back to the in-game answer), for the players who never reply in-game. Forced members are skipped by the Discord reminder. Stored per event (same gcal_meta row).
+
 ## 2026.09.102 - 2026-09-19
 
 ### Changed

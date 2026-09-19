@@ -68,9 +68,16 @@
   .chip.on { border-color: var(--acc2); color: var(--acc2); font-weight: 600; }
   select { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; }
   .gedit { border:1px dashed var(--line); border-radius:11px; padding:10px 12px; margin:-4px 0 9px; }
+  .erow { display:flex; align-items:center; gap:8px; padding:3px 0; flex-wrap:wrap; }
+  .erow b { min-width:120px; font-size:13.5px; }
+  .erow .est { width:18px; text-align:center; }
+  .erow select { padding:3px 8px; font-size:12.5px; border-radius:8px; }
+  .ebtns { display:flex; gap:4px; margin-left:auto; }
+  .eb { padding:2px 8px; font-size:12.5px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--mut); cursor:pointer; }
+  .eb.on { border-color:var(--acc2); color:var(--acc2); font-weight:700; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.102">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.103">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -116,8 +123,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.102"></script>
-<script src="/static/i18n.js?v=2026.09.102"></script>
+<script src="/static/nav.js?v=2026.09.103"></script>
+<script src="/static/i18n.js?v=2026.09.103"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -159,7 +166,26 @@ async function loadGcal() {
   catch (e) { $("#glist").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 
-function editHTML() {
+function playerRows(e) {
+  const ORD = { ok: 0, maybe: 1, no: 2, wait: 3 };
+  const stOf = (i) => EDBOX.ovr[i.n] || (i.s === 1 || i.s === 3 ? "ok" : i.s === 8 ? "maybe" : i.s === 2 ? "no" : "wait");
+  const SE = { ok: "✅", maybe: "❓", no: "❌", wait: "⏳" };
+  const rows = [...(e.inv || [])].sort((a, b) => (ORD[stOf(a)] - ORD[stOf(b)]) || String(a.n).localeCompare(String(b.n)));
+  return rows.map(i => {
+    const st = stOf(i), r = EDBOX.roles[i.n] || "", ov = EDBOX.ovr[i.n] || "";
+    const sel = (v, lab) => `<option value="${v}"${r === v ? " selected" : ""}>${lab}</option>`;
+    return `<div class="erow">
+      <span class="est">${SE[st]}</span><b>${esc(i.n)}</b>
+      <select data-rname="${esc(i.n)}">${sel("", "—")}${sel("tank", "🛡️ tank")}${sel("heal", "💚 heal")}${sel("dps", "⚔️ dps")}</select>
+      <span class="ebtns">
+        <button class="eb${ov === "ok" ? " on" : ""}" data-fname="${esc(i.n)}" data-fv="ok" title="Forcer présent">✅</button>
+        <button class="eb${ov === "no" ? " on" : ""}" data-fname="${esc(i.n)}" data-fv="no" title="Forcer absent">❌</button>
+        <button class="eb${ov ? "" : " on"}" data-fname="${esc(i.n)}" data-fv="" title="Réponse du jeu">↺</button>
+      </span></div>`;
+  }).join("") || `<div class="empty">Aucun invité.</div>`;
+}
+
+function editHTML(e) {
   const ra = (GCAL_CAT.raids || []);
   const sel = ra.filter(r => EDBOX.raids.includes(r.name));
   const bs = [];
@@ -180,6 +206,9 @@ function editHTML() {
       ${EDBOX.existing ? `<button class="small ghost" id="eclear">🧹 Effacer</button>` : ""}
       <button class="small ghost" id="ecancel">Annuler</button>
     </div>
+    <details style="margin-top:8px"><summary class="meta" style="cursor:pointer">👥 Joueurs — rôles & réponses (${(e.inv || []).length})</summary>
+      <div style="margin-top:6px;max-height:320px;overflow:auto">${playerRows(e)}</div>
+    </details>
   </div>`;
 }
 
@@ -194,16 +223,25 @@ function renderGcal() {
   const box = $("#glist");
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
   box.innerHTML = evs.map(e => {
+    const mt = e.meta || {};
+    const ROLES = mt.roles || {}, OVR = mt.ovr || {};
+    const REMO = { tank: "🛡️", heal: "💚", dps: "⚔️" };
+    const stOf = (i) => OVR[i.n] || (i.s === 1 || i.s === 3 ? "ok" : i.s === 8 ? "maybe" : i.s === 2 ? "no" : "wait");
+    const nmTxt = (n) => esc(n) + (ROLES[n] ? " " + (REMO[ROLES[n]] || "") : "") + (OVR[n] ? " (officier)" : "");
     const c = { ok: 0, maybe: 0, no: 0, wait: 0 };
     const lists = { ok: [], maybe: [], no: [] }, wait = [];
+    const rc2 = { tank: 0, heal: 0, dps: 0 };
     for (const i of (e.inv || [])) {
-      if (i.s === 1 || i.s === 3) { c.ok++; lists.ok.push(i.n); }
-      else if (i.s === 8) { c.maybe++; lists.maybe.push(i.n); }
-      else if (i.s === 2) { c.no++; lists.no.push(i.n); }
-      else { c.wait++; wait.push(i.n); }
+      const st = stOf(i);
+      if (st === "ok") { c.ok++; lists.ok.push(nmTxt(i.n)); if (ROLES[i.n]) rc2[ROLES[i.n]]++; }
+      else if (st === "maybe") { c.maybe++; lists.maybe.push(nmTxt(i.n)); }
+      else if (st === "no") { c.no++; lists.no.push(nmTxt(i.n)); }
+      else { c.wait++; wait.push(nmTxt(i.n)); }
     }
-    const line = (emo, arr) => arr.length ? `<span class="meta">${emo} ${arr.map(esc).join(", ")}</span>` : "";
-    const mt = e.meta || {};
+    const line = (emo, arr) => arr.length ? `<span class="meta">${emo} ${arr.join(", ")}</span>` : "";
+    const roleTxt = (rc2.tank || rc2.heal || rc2.dps)
+      ? [rc2.tank ? `🛡️ ${rc2.tank}` : "", rc2.heal ? `💚 ${rc2.heal}` : "", rc2.dps ? `⚔️ ${rc2.dps}` : ""].filter(Boolean).join(" · ")
+      : "";
     const mTxt = (mt.raids && mt.raids.length) || mt.start
       ? `🗺️ ${(mt.raids || []).map(esc).join(" · ")}${mt.start ? ` · 🚩 départ : <b>${esc(mt.start)}</b>` : ""}` : "";
     return `<div class="item"><div class="main">
@@ -217,10 +255,10 @@ function renderGcal() {
       ${mTxt ? `<span class="meta">${mTxt}</span>` : ""}
       ${mt.bosses && mt.bosses.length ? `<span class="meta">⚔️ ${mt.bosses.map(esc).join(" · ")}</span>` : ""}
     </div>
-    <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}${(e.unav || []).length ? ` · 🚫 ${e.unav.length}` : ""}</span>
+    <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}${(e.unav || []).length ? ` · 🚫 ${e.unav.length}` : ""}${roleTxt ? ` · ${roleTxt}` : ""}</span>
     ${wait.length && CAN_IMP ? `<button class="small ghost" data-rel="${e.id}">📣 Relancer</button>` : ""}
     ${CAN_IMP ? `<button class="small ghost" data-ed="${esc(e.key)}" title="Raids & boss visés">✏️</button>` : ""}
-    </div>` + (EDBOX && EDBOX.key === e.key ? editHTML() : "");
+    </div>` + (EDBOX && EDBOX.key === e.key ? editHTML(e) : "");
   }).join("");
   box.querySelectorAll("button[data-rel]").forEach(b => b.addEventListener("click", async () => {
     b.disabled = true;
@@ -233,7 +271,8 @@ function renderGcal() {
     if (!e) return;
     EDBOX = { key: e.key, existing: !!e.meta,
               raids: [...(((e.meta || {}).raids) || [])], bosses: [...(((e.meta || {}).bosses) || [])],
-              start: (e.meta || {}).start || "" };
+              start: (e.meta || {}).start || "",
+              roles: { ...(((e.meta || {}).roles) || {}) }, ovr: { ...(((e.meta || {}).ovr) || {}) } };
     renderGcal();
   }));
   if (EDBOX) {
@@ -254,13 +293,24 @@ function renderGcal() {
     }));
     const dep = $("#edep");
     if (dep) dep.addEventListener("change", () => { EDBOX.start = dep.value || ""; });
+    box.querySelectorAll("[data-rname]").forEach(sl => sl.addEventListener("change", () => {
+      const nm = sl.dataset.rname;
+      if (sl.value) EDBOX.roles[nm] = sl.value; else delete EDBOX.roles[nm];
+    }));
+    box.querySelectorAll("button[data-fname]").forEach(bt => bt.addEventListener("click", () => {
+      const nm = bt.dataset.fname, v = bt.dataset.fv;
+      if (v) EDBOX.ovr[nm] = v; else delete EDBOX.ovr[nm];
+      bt.closest(".ebtns").querySelectorAll("button[data-fname]").forEach(x =>
+        x.classList.toggle("on", (EDBOX.ovr[nm] || "") === x.dataset.fv));
+    }));
     const sv = $("#esave");
     if (sv) sv.addEventListener("click", async () => {
       sv.disabled = true;
       try {
         await jpost("POST", "/api/gcal/event/" + encodeURIComponent(EDBOX.key),
-                    { raids: EDBOX.raids, bosses: EDBOX.bosses, start: ($("#edep") || {}).value || "" });
-        setMsg("#gmsg", "Raids/boss enregistrés ✓", true);
+                    { raids: EDBOX.raids, bosses: EDBOX.bosses, start: ($("#edep") || {}).value || "",
+                      roles: EDBOX.roles, ovr: EDBOX.ovr });
+        setMsg("#gmsg", "Enregistré ✓", true);
         EDBOX = null;
         await loadGcal();
       } catch (err) { setMsg("#gmsg", err.message, false); sv.disabled = false; }
@@ -269,7 +319,7 @@ function renderGcal() {
     if (cl) cl.addEventListener("click", async () => {
       if (!confirm("Effacer les raids/boss visés pour cette date ?")) return;
       try {
-        await jpost("POST", "/api/gcal/event/" + encodeURIComponent(EDBOX.key), { raids: [], bosses: [], start: "" });
+        await jpost("POST", "/api/gcal/event/" + encodeURIComponent(EDBOX.key), { raids: [], bosses: [], start: "", roles: {}, ovr: {} });
         EDBOX = null;
         await loadGcal();
       } catch (err) { setMsg("#gmsg", err.message, false); }
