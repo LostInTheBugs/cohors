@@ -204,7 +204,7 @@ VERSION                 Current version
 
 ## Version
 
-Current version: `2026.09.085` (see `CHANGELOG.md`).
+Current version: `2026.09.086` (see `CHANGELOG.md`).
 
 ## License
 

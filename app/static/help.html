@@ -44,7 +44,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.084">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.086">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -96,6 +96,7 @@
       <li>L'accès se fait uniquement sur invitation : le lien reçu par e-mail est valable 7 jours.</li>
       <li>Trois rôles : membre (tout l'outil), officier (gère aussi les invitations et le calendrier), administrateur (tous les droits).</li>
       <li>La langue (FR/EN) se choisit sur la page de connexion, puis dans ⚙️ Paramètres.</li>
+      <li>🌍 La langue choisie s'applique partout : l'interface et les données du jeu (fiches, équipement, artisanat, recettes…). En anglais, ces données sont récupérées telles quelles chez Blizzard — ce ne sont pas des traductions. À noter : les noms de boss et de zones venant de Warcraft Logs restent en anglais dans tous les cas.</li>
     </ul>
   </section>
 
@@ -124,7 +125,7 @@
   <section class="card" id="persos">
     <h2>👥 Personnages</h2>
     <ul>
-      <li>Lie tes personnages de la guilde en un clic — ils s'affichent avec leur équipement.</li>
+      <li>Lie tes personnages de la guilde en un clic — ils s'affichent avec leur équipement. Le champ propose les noms au fil de la frappe (ex. « sala » → Arssalag) : clique sur le bon pour le lier.</li>
       <li>« Détails » sur le roster ouvre la fiche complète : équipement par pièce, succès, montures, mascottes et rating M+.</li>
       <li>Le premier personnage lié devient ton main ; change-le quand tu veux avec « ⭐ définir main ».</li>
       <li>Un seul main par compte : c'est le personnage principal pour le roster et le calendrier.</li>
@@ -212,6 +213,8 @@
     <ul>
       <li>Qui peut crafter quoi : les métiers de toute la guilde, regroupés par profession, avec les points de chaque personnage.</li>
       <li>Recherche un métier ou un personnage, et clique pour ouvrir sa fiche — les métiers se mettent à jour automatiquement depuis le jeu.</li>
+      <li>📖 « Mes recettes connues » : chaque joueur déclare les recettes de ses métiers — en cochant dans la liste récupérée du jeu, ou en important son export d'addon (/lotp recettes).</li>
+      <li>Ce que chacun déclare alimente « Qui peut crafter quoi » et les compos de 🧪 Préparation de raid.</li>
     </ul>
   </section>
 
@@ -220,7 +223,7 @@
     <ul>
       <li>L'atelier du raid : les officiers choisissent les recettes (objet fabriqué → compos), définissent l'objectif (un raid du calendrier) et ajoutent ce qu'on veut fabriquer (objet × quantité).</li>
       <li>La page agrège les compos nécessaires (besoin / fourni, barre de progression) et chaque membre clique « j'apporte » pour annoncer sa part.</li>
-      <li>📚 Catalogue : les recettes du jeu (2 dernières extensions, synchronisées automatiquement) ou les recettes des artisans de la guilde (importées depuis l'addon) — tu vois qui peut crafter quoi.</li>
+      <li>📚 Catalogue : les recettes du jeu (2 dernières extensions, synchronisées automatiquement) ou les recettes des artisans de la guilde (déclarées : import d'addon ou cases cochées sur la page 🔨 Artisanat) — tu vois qui peut crafter quoi.</li>
     </ul>
   </section>
 
@@ -238,7 +241,7 @@
     <ul>
       <li>L'addon LOTP s'installe dans le dossier AddOns de World of Warcraft ; le zip se télécharge depuis la page 🗓️ Calendrier (« ⬇️ Télécharger l'addon »).</li>
       <li>🗓️ Officiers : en jeu, /lotp → « Exporter » lit le calendrier de guilde (raids et réponses) ; colle la chaîne dans la page Calendrier, ou importe le fichier LOTP.lua.</li>
-      <li>📚 Artisans : /lotp recettes (ou le bouton 📚) liste les recettes connues de tes métiers ; l'export vient enrichir le catalogue de 🧪 Préparation de raid.</li>
+      <li>📚 Artisans : /lotp recettes (ou le bouton 📚) liste les recettes connues de tes métiers ; importe l'export toi-même sur la page 🔨 Artisanat (les officiers peuvent le faire pour toi).</li>
     </ul>
   </section>
 
@@ -283,8 +286,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.084"></script>
-<script src="/static/i18n.js?v=2026.09.084"></script>
+<script src="/static/nav.js?v=2026.09.086"></script>
+<script src="/static/i18n.js?v=2026.09.086"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 (async () => {

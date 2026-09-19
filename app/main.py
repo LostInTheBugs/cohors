@@ -569,6 +569,16 @@ def _user_locale(request: Request) -> str:
     return "en_US" if (user is not None and _user_lang(user) == "en") else "fr_FR"
 
 
+def _owns_char(user: sqlite3.Row, name: str) -> bool:
+    """Le personnage (par nom, insensible à la casse) est-il lié au compte ?"""
+    with _db_lock, _db() as conn:
+        row = conn.execute(
+            "SELECT 1 AS x FROM char_links WHERE user_email=? AND name=?",
+            (user["email"], (name or "").lower()),
+        ).fetchone()
+    return row is not None
+
+
 def _require_admin(request: Request) -> sqlite3.Row:
     user = _require_user(request)
     if _user_role(user) != "admin":
@@ -3886,9 +3896,13 @@ def _prep_parse_recipes(text: str) -> dict:
 
 @app.post("/api/prep/import-recipes")
 def api_prep_import_recipes(body: PrepRecipesImportRequest, request: Request):
-    _require_officer(request)
+    """Import d'un export d'addon (/lotp recettes) : officiers, ou chacun pour ses propres personnages."""
+    user = _require_user(request)
     data = _prep_parse_recipes(body.payload)
     crafter = str(data.get("player") or "").strip()[:60] or "?"
+    if _user_role(user) not in ("officer", "admin") and not _owns_char(user, crafter):
+        raise HTTPException(403, "Tu ne peux importer que les recettes de tes propres personnages "
+                                 "(lie-les sur la page Personnages, ou demande à un officier).")
     realm = str(data.get("realm") or "").strip()[:60]
     rows = []
     for prof in (data.get("professions") or [])[:10]:
@@ -3924,6 +3938,117 @@ def api_prep_import_recipes(body: PrepRecipesImportRequest, request: Request):
         )
     return {"ok": True, "crafter": crafter, "recipes": len(rows),
             "professions": len(data.get("professions") or [])}
+
+
+class MyRecipesSave(BaseModel):
+    realm: str = Field(..., min_length=2, max_length=60)
+    name: str = Field(..., min_length=2, max_length=60)
+    prof: str = Field("", max_length=60)
+    items: list[int] = []
+
+
+@app.get("/api/my/recipes")
+def api_my_recipes(request: Request, realm: str = "", name: str = "", prof: str = ""):
+    """Recettes connues d'un de MES personnages + catalogue du jeu du métier choisi (self-service)."""
+    user = _require_user(request)
+    realm_l = realm.strip().lower()
+    name_s = name.strip()[:60]
+    _valid_char(realm_l, name_s)
+    if _user_role(user) not in ("officer", "admin") and not _owns_char(user, name_s):
+        raise HTTPException(403, "Ce personnage n'est pas lié à ton compte.")
+    want_en = _user_locale(request).startswith("en")
+    with _db_lock, _db() as conn:
+        prows = conn.execute(
+            "SELECT data FROM char_professions WHERE realm=? AND name=?",
+            (realm_l, name_s.lower())).fetchone()
+        known_rows = conn.execute(
+            "SELECT item FROM craft_recipes WHERE lower(crafter)=lower(?)", (name_s,)).fetchall()
+        game_profs = [dict(r) for r in conn.execute(
+            "SELECT DISTINCT prof, prof_en FROM game_recipes ORDER BY prof").fetchall()]
+        catalog = []
+        if prof.strip():
+            catalog = [dict(r) for r in conn.execute(
+                "SELECT id, item, item_en, item_id, exp_rank, rank_no, mats, mats_en, tier, tier_en, prof, prof_en "
+                "FROM game_recipes WHERE prof=? ORDER BY item COLLATE NOCASE, rank_no",
+                (prof.strip()[:60],)).fetchall()]
+    profs = []
+    if prows:
+        try:
+            pd = json.loads(prows["data"]) or {}
+        except (ValueError, TypeError):
+            pd = {}
+        for p in (pd.get("profs") or []):
+            key = p.get("name_fr") or p.get("name") or ""
+            if key:
+                profs.append({"key": key, "label": ((p.get("name_en") or key) if want_en else key),
+                              "points": p.get("points"), "max": p.get("max")})
+    known = {str(r["item"]).casefold() for r in known_rows}
+    cat = []
+    seen_items: set = set()
+    for c in catalog:
+        item_key = str(c.get("item")).casefold()
+        if item_key in seen_items:   # un seul exemplaire par objet (rang mini conservé)
+            continue
+        seen_items.add(item_key)
+        try:
+            mats = json.loads(((c.get("mats_en") or c.get("mats")) if want_en else c.get("mats")) or "[]")
+        except ValueError:
+            mats = []
+        cat.append({
+            "id": c["id"],            # id de recette (clé de sélection, unique)
+            "item_id": c["item_id"],
+            "name": ((c.get("item_en") or c.get("item")) if want_en else c.get("item")) or "",
+            "exp": ((c.get("tier_en") or c.get("tier")) if want_en else c.get("tier")) or "",
+            "exp_rank": c.get("exp_rank") or 0,
+            "mats": mats,
+            "known": item_key in known,
+        })
+    return {"char": {"realm": realm_l, "name": name_s}, "professions": profs,
+            "game_profs": [{"key": r["prof"],
+                            "label": ((r.get("prof_en") or r["prof"]) if want_en else r["prof"])}
+                           for r in game_profs],
+            "prof": prof.strip(), "catalog": cat}
+
+
+@app.post("/api/my/recipes")
+def api_my_recipes_save(body: MyRecipesSave, request: Request):
+    """Enregistre (remplace) les recettes connues d'un de MES personnages pour un métier."""
+    user = _require_user(request)
+    realm_l = body.realm.strip().lower()
+    name_s = body.name.strip()[:60]
+    _valid_char(realm_l, name_s)
+    if _user_role(user) not in ("officer", "admin") and not _owns_char(user, name_s):
+        raise HTTPException(403, "Ce personnage n'est pas lié à ton compte.")
+    prof = body.prof.strip()[:60]
+    if not prof:
+        raise HTTPException(400, "Choisis d'abord un métier.")
+    ids: list[int] = []
+    for i in (body.items or [])[:2000]:
+        try:
+            iid = int(i)
+        except (TypeError, ValueError):
+            continue
+        if iid not in ids:
+            ids.append(iid)
+    with _db_lock, _db() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT id, item, item_id, tier, exp_rank, mats FROM game_recipes WHERE prof=?", (prof,)).fetchall()]
+    by_key = {int(r["id"]): r for r in rows}
+    picked = [by_key[i] for i in ids if i in by_key]
+    if ids and not picked:
+        raise HTTPException(400, "Ces recettes ne correspondent pas au métier choisi (ou n'existent pas).")
+    now = time.time()
+    prof_alt = PROF_EN.get(prof, prof)
+    with _db_lock, _db() as conn:
+        conn.execute("DELETE FROM craft_recipes WHERE lower(crafter)=lower(?) AND profession IN (?,?)",
+                     (name_s, prof, prof_alt))
+        if picked:
+            conn.executemany(
+                "INSERT OR REPLACE INTO craft_recipes (crafter, realm, profession, item, item_id, "
+                "expansion, exp_rank, mats, updated) VALUES (?,?,?,?,?,?,?,?,?)",
+                [(name_s, realm_l, prof, r["item"], r["item_id"], r.get("tier") or "",
+                  r.get("exp_rank") or 0, r.get("mats") or "[]", now) for r in picked])
+    return {"ok": True, "saved": len(picked), "prof": prof}
 
 
 @app.post("/api/prep/sync-game")

@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.086 - 2026-09-19
+
+### Added
+- Crafting: players can now declare the recipes their characters know, themselves — from the Crafting page, new "My known recipes" card. Two ways: tick recipes from the in-game catalog fetched from the Blizzard API (per character and trade, with materials shown), or import their own addon export (`/lotp recettes`). Declarations feed "Who can craft what" and the raid prep materials. Members can only declare for their own linked characters (officers keep the ability to import for anyone); API: `GET/POST /api/my/recipes`, self-service addon import on `POST /api/prep/import-recipes`.
+
+### Changed
+- Characters page: the linking field now suggests guild roster names as you type (substring match — type "sala" to find Arssalag); click a suggestion to fill it.
+- Help page: Crafting and Raid-prep sections document the new self-service declarations (addon import and catalog ticking); the First-steps bullet now states the chosen language applies to game data too (fetched as-is from Blizzard).
+
 ## 2026.09.085 - 2026-09-19
 
 ### Added
