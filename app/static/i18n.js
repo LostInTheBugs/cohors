@@ -790,12 +790,20 @@
  "objets suivis": "tracked items",
  "— les pièces que tu veux faire tomber.": "— the items you want to drop.",
  "Ouvrir ma wishlist →": "Open my wishlist →",
- "La section « 🙋 Moi » rassemble tout ce qui t'est personnel : tes personnages liés (liaison, ⭐ main), tes recettes connues, tes statistiques et tes alertes MM+ — plus 🎯 ta wishlist.": "The « 🙋 Me » section gathers everything personal: your linked characters (linking, ⭐ main), your known recipes, your statistics and your Mythic+ alerts — plus 🎯 your wishlist.",
- "🔔 Alertes MM+ : choisis un donjon (ou tous les donjons) et un niveau minimum — dès que quelqu'un annonce une clé correspondante dans ⚔️ MM+, tu reçois une notification sur la page 🙋 Moi (badge dans le menu).": "🔔 Mythic+ alerts: pick a dungeon (or any dungeon) and a minimum level — as soon as someone announces a matching key on ⚔️ Mythic+, you get a notification on the 🙋 Me page (menu badge).",
+ "La section « 🙋 Moi » regroupe des pages dédiées : 🪪 Mes personnages (liaison, ⭐ main), 📖 Mes recettes, 📊 Mes statistiques, 🔔 Alertes MM+ — plus 🎯 Ma wishlist.": "The « 🙋 Me » section gathers dedicated pages: 🪪 My characters (linking, ⭐ main), 📖 My recipes, 📊 My statistics, 🔔 Mythic+ alerts — plus 🎯 My wishlist.",
+ "🔔 Alertes MM+ : choisis un donjon (ou tous les donjons) et un niveau minimum — dès que quelqu'un annonce une clé correspondante dans ⚔️ MM+, tu reçois une notification sur la page Alertes MM+ (badge dans le menu).": "🔔 Mythic+ alerts: pick a dungeon (or any dungeon) and a minimum level — as soon as someone announces a matching key on ⚔️ Mythic+, you get a notification on the Alerts page (menu badge).",
  "📊 Tes statistiques : iLvl (équipé et moyen), présence aux soirées de raid, recettes déclarées et dernière connexion, pour chacun de tes personnages.": "📊 Your statistics: item level (equipped and average), raid evening attendance, declared recipes and last login, for each of your characters.",
- "Liaison, ⭐ main, recettes, statistiques et alertes MM+ : tout se gère sur la page": "Linking, ⭐ main, recipes, statistics and Mythic+ alerts: everything is managed on the",
- "📖 Déclare les recettes que tu connais (ou importe ton export d'addon) sur la page": "📖 Declare the recipes you know (or import your addon export) on the",
- "— elles apparaissent dans « Qui peut crafter quoi ».": "— they show up in « Who can craft what »."
+ "Liaison, ⭐ main, recettes, statistiques et alertes MM+ : tout se gère dans la section": "Linking, ⭐ main, recipes, statistics and Mythic+ alerts: everything lives in the",
+ "📖 Recettes de tes métiers (sélection dans la liste du jeu ou import d'addon) : page": "📖 Your characters' recipes (tick from the in-game list or import your addon export): page",
+ "— elles apparaissent dans « Qui peut crafter quoi ».": "— they show up in « Who can craft what ».",
+ "Mes personnages": "My characters",
+ "Mes recettes": "My recipes",
+ "Mes statistiques": "My statistics",
+ "Alertes MM+": "Mythic+ alerts",
+ "Tes personnages de guilde — liaison, ⭐ main et suggestions du roster.": "Your guild characters — account linking, ⭐ main and roster suggestions.",
+ "Les recettes que tu connais — elles apparaissent dans « Qui peut crafter quoi ».": "The recipes you know — they show up in « Who can craft what ».",
+ "Tes chiffres — iLvl, présence aux raids, recettes et clés MM+.": "Your numbers — item level, raid attendance, recipes and Mythic+ keys.",
+ "Tes recherches de clés — notifié dès qu'on annonce la bonne clé.": "Your key searches — get notified as soon as the right key is announced."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

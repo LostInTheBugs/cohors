@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.088 - 2026-09-19
+
+### Changed
+- The "🙋 Me" section is split into dedicated pages (one topic per page) instead of a single hub: `/mespersos` (characters), `/mesrecettes` (recipes), `/messtats` (statistics), `/alertes` (Mythic+ alerts + notifications); `/moi` now redirects to `/mespersos`. The Crafting and Characters pages point to the matching page, and the unread-notification badge also marks the 🔔 Alerts menu entry.
+
 ## 2026.09.087 - 2026-09-19
 
 ### Added

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LOTP — Mes statistiques</title>
+<link rel="icon" type="image/png" href="/static/crest.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#b1002e">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LOTP">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brandname span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 12.5px; }
+  .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+         color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+         border: 1px solid var(--line); background: transparent;
+         transition: border-color .15s, color .15s, background .15s; }
+  .tab:hover { color: var(--fg); border-color: #3a4763; }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; scroll-margin-top: 12px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  input[type=search], input[type=number] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 10px; padding: 9px 12px; font-size: 14px; }
+  input[type=search] { min-width: 260px; }
+  input:focus, select:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+  select { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 14px; }
+  button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+           padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+                 padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
+  button.ghost:hover { border-color: var(--acc2); color: var(--acc2); }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
+  .meta { color: var(--mut); font-size: 13px; }
+  .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
+  .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
+  .chkline input { accent-color: var(--acc); }
+  .acwrap { position: relative; display: inline-block; }
+  .aclist { position: absolute; z-index: 40; top: 100%; left: 0; min-width: 240px; margin-top: 4px;
+    background: #182130; border: 1px solid var(--line); border-radius: 10px; padding: 4px;
+    max-height: 240px; overflow: auto; box-shadow: 0 8px 24px #0009; }
+  .aclist .acrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px;
+    border-radius: 8px; font-size: 13.5px; cursor: pointer; }
+  .aclist .acrow:hover { background: #22304a; }
+  .aclist .acrow .meta { font-size: 12px; white-space: nowrap; }
+  .mychip { display: inline-flex; gap: 9px; align-items: center; background: var(--card2); border: 1px solid var(--line);
+            border-radius: 999px; padding: 5px 12px; font-size: 13.5px; }
+  .mychip.mm { border-color: #6b4a17; color: var(--acc2); }
+  .mychip a { cursor: pointer; color: var(--mut); font-size: 12.5px; text-decoration: none; }
+  .mychip a:hover { color: var(--acc2); }
+  .rcrow { display: flex; align-items: baseline; gap: 8px; padding: 3px 6px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
+  .rcrow:hover { background: #182130; }
+  .rcrow input { accent-color: var(--acc); transform: translateY(1px); }
+  .rclist { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12.5px; color: var(--mut); padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 6px 10px; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .cname { font-weight: 600; }
+  .chipk { display: inline-flex; gap: 6px; align-items: center; background: var(--card2); border: 1px solid var(--line);
+           border-radius: 999px; padding: 3px 10px; font-size: 12.5px; margin: 2px 6px 2px 0; }
+  .nfr { display: flex; gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 8px; border-left: 3px solid transparent; }
+  .nfr.unseen { border-left-color: var(--acc2); background: rgba(223,165,90,.05); }
+  .nfr .meta { margin-left: auto; white-space: nowrap; }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
+  .err { color: var(--err); font-size: 13px; }
+  .hidden { display: none !important; }
+</style>
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.088">
+</head>
+<body class="wb">
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/crest.png" alt="Lords of the Pit" class="crest">
+      <div>
+        <div class="brandname">LOTP <span>Mes statistiques</span></div>
+        <div class="tagline">Tes chiffres — iLvl, présence aux raids, recettes et clés MM+.</div>
+      </div>
+    </div>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+
+  <div class="card" id="stats">
+    <h2>📊 Mes statistiques</h2>
+    <div id="stbox"><div class="empty">Chargement…</div></div>
+    <div class="meta" id="stkeys" style="margin-top:8px"></div>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js?v=2026.09.088"></script>
+<script src="/static/i18n.js?v=2026.09.088"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  if (s < 86400 * 30) return `il y a ${Math.floor(s / 86400)} j`;
+  return new Date(ts * 1000).toLocaleDateString("fr-FR"); };
+const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+  Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+  Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
+const RANK_LABEL = ["Maître de guilde", "Officier", "Vétéran", "Membre", "Initié", "Recrue"];
+const rankLabel = (r) => RANK_LABEL[r] || "Rang " + r;
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+const jreq = async (m, u, b) => { const r = await fetch(u, { method: m,
+  headers: b ? { "Content-Type": "application/json" } : undefined, body: b ? JSON.stringify(b) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || "Erreur API"); return j; };
+
+// ---- 📊 Mes statistiques ----
+async function loadStats() {
+  try {
+    const d = await jget("/api/me/overview");
+    const chars = d.chars || [];
+    if (!chars.length) { $("#stbox").innerHTML = `<div class="empty">Lie d'abord un personnage (carte 🪪 ci-dessus).</div>`; }
+    else {
+      $("#stbox").innerHTML = `<table><thead><tr>
+        <th>Personnage</th><th>iLvl</th><th>Présence</th><th>Recettes</th><th>Vu</th></tr></thead><tbody>` +
+        chars.map(c => `<tr>
+          <td class="cname" style="color:${CLASS_COLORS[c.class_key] || "var(--fg)"}">${c.is_main ? "⭐ " : ""}${esc(c.display)}
+            <span class="meta">${esc(c.spec || "")}</span></td>
+          <td>${c.ilvl_equipped != null ? `<b>${fmt(c.ilvl_equipped)}</b> <span class="meta">(${fmt(c.ilvl_avg)})</span>` : "—"}</td>
+          <td>${c.att_pct != null ? `${fmt(c.att_pct)} %` : "—"}</td>
+          <td>${fmt(c.recipes)}</td>
+          <td class="meta">${c.last_login ? ago(c.last_login / 1000) : "—"}</td></tr>`).join("") +
+        `</tbody></table>`;
+    }
+    const ks = d.keys || [];
+    $("#stkeys").innerHTML = ks.length
+      ? `<span>🔑 Mes clés annoncées :</span> ` + ks.map(k =>
+          `<span class="chipk">🔑 +${fmt(k.level)} <span>${esc(k.dungeon || "—")}</span>${k.char ? ` <span class="meta">${esc(k.char)}</span>` : ""}</span>`).join("")
+      : `<span>🔑 Mes clés annoncées : aucune</span>`;
+  } catch (e) {
+    $("#stbox").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+  }
+}
+
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  loadStats();
+})();
+</script>
+</body>
+</html>

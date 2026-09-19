@@ -782,12 +782,29 @@ def craft_page(request: Request):
     return FileResponse(STATIC_DIR / "craft.html")
 
 
-@app.api_route("/moi", methods=["GET", "HEAD"])
-def moi_page(request: Request):
-    """Page 🙋 Moi — mes personnages, mes recettes, mes statistiques, mes alertes."""
+_MOI_PAGES = {
+    "mespersos": "mespersos.html",
+    "mesrecettes": "mesrecettes.html",
+    "messtats": "messtats.html",
+    "alertes": "alertes.html",
+}
+
+
+@app.api_route("/mespersos", methods=["GET", "HEAD"])
+@app.api_route("/mesrecettes", methods=["GET", "HEAD"])
+@app.api_route("/messtats", methods=["GET", "HEAD"])
+@app.api_route("/alertes", methods=["GET", "HEAD"])
+def moi_pages(request: Request):
+    """Pages 🙋 Moi — personnages, recettes, statistiques, alertes MM+ (une par sujet)."""
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
-    return FileResponse(STATIC_DIR / "moi.html")
+    name = request.url.path.strip("/")
+    return FileResponse(STATIC_DIR / _MOI_PAGES.get(name, "mespersos.html"))
+
+
+@app.api_route("/moi", methods=["GET", "HEAD"])
+def moi_redirect(request: Request):
+    return RedirectResponse("/mespersos", status_code=302)
 
 
 @app.api_route("/prep", methods=["GET", "HEAD"])

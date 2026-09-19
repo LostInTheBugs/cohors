@@ -5,11 +5,10 @@
   var MENU = [
     { href: "/dashboard", label: "🏠 Tableau de bord" },
     { label: "🙋 Moi", items: [
-      { href: "/moi", label: "🙋 Vue d'ensemble" },
-      { href: "/moi#persos", label: "🪪 Mes personnages" },
-      { href: "/moi#recettes", label: "📖 Mes recettes" },
-      { href: "/moi#stats", label: "📊 Mes statistiques" },
-      { href: "/moi#alertes", label: "🔔 Alertes MM+" },
+      { href: "/mespersos", label: "🪪 Mes personnages" },
+      { href: "/mesrecettes", label: "📖 Mes recettes" },
+      { href: "/messtats", label: "📊 Mes statistiques" },
+      { href: "/alertes", label: "🔔 Alertes MM+" },
       { href: "/wishlist", label: "🎯 Ma wishlist" }
     ] },
     { label: "⚔️ Simulation", items: [
@@ -264,8 +263,9 @@
     if (!n || n <= 0) return;
     var html = '<span data-nbadge="1" style="background:var(--acc,#b1002e);color:#fff;border-radius:999px;padding:0 7px;' +
       'margin-left:6px;font-size:11.5px;font-weight:700">' + n + '</span>';
-    nav.querySelectorAll(".menubtn, .dsec-t").forEach(function (b) {
-      if ((b.textContent || "").indexOf("🙋") !== 0) return;
+    nav.querySelectorAll(".menubtn, .dsec-t, .ditem, .drow").forEach(function (b) {
+      var t = b.textContent || "";
+      if (t.indexOf("🙋") !== 0 && t.indexOf("🔔") !== 0) return;
       b.insertAdjacentHTML("beforeend", html);
       b.setAttribute("title", n + " notification(s) non lue(s)");
     });
