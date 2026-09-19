@@ -1173,6 +1173,10 @@
     [/Jeton \+ API OK — quota (\d+) pts\/h, ([\d.]+) (?:utilisés|useds?) cette heure\./g, "Token + API OK — quota $1 pts/h, $2 used this hour."],
     [/Jeton obtenu — les clés fonctionnent\./g, "Token obtained — the keys work."],
     [/Jeton + API OK/g, "Token + API OK"],
+    [/dernier passage /g, "last run "],
+    [/(\d+) relevé\(s\), (\d+) métier\(s\)/g, "$1 snapshot(s), $2 profession(s)"],
+    [/en pause \(administration\)/g, "paused (administration)"],
+    [/passage OK/g, "run OK"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();

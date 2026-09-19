@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.134 - 2026-09-19
+
+### Fixed
+- Sync jobs: job status lines are fully translated in English mode.
+
 ## 2026.09.133 - 2026-09-19
 
 ### Fixed
