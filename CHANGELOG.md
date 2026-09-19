@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.131 - 2026-09-19
+
+### Fixed
+- API keys: the Warcraft Logs quota test message is fully translated in English mode.
+
 ## 2026.09.130 - 2026-09-19
 
 ### Fixed

@@ -1149,7 +1149,7 @@
     [/pièce\(s\) BIS/g, "BiS item(s)"],
     [/(\d+) pièce\(s\) déjà en poche sur (\d+)/g, "$1 item(s) already owned out of $2"],
     [/Il te manque /g, "You are missing "],
-    [/Jeton \+ API OK — quota (\d+) pts\/h, ([\d.]+) utilisés cette heure\./g, "Token + API OK — quota $1 pts/h, $2 used this hour."],
+    [/Jeton \+ API OK — quota (\d+) pts\/h, ([\d.]+) (?:utilisés|useds?) cette heure\./g, "Token + API OK — quota $1 pts/h, $2 used this hour."],
     [/Jeton obtenu — les clés fonctionnent\./g, "Token obtained — the keys work."],
     [/Jeton + API OK/g, "Token + API OK"],
   ];
