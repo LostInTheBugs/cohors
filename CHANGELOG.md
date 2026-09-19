@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.114 - 2026-09-19
+
+### Fixed
+- Settings: in-page hash links (e.g. /settings#identite) now open the matching section too (hashchange listener).
+
 ## 2026.09.113 - 2026-09-19
 
 ### Changed
