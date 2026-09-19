@@ -2149,6 +2149,41 @@ def api_wishlist(request: Request):
         for lr in conn.execute(
                 "SELECT item_id, kind, inst_fr, inst_en, boss_fr, boss_en FROM item_loot").fetchall():
             loot.setdefault(int(lr["item_id"]), []).append(dict(lr))
+        mychars = [{"k": str(c["name"] or "").strip().lower(),
+                    "disp": (c["display"] or c["name"])} for c in chars]
+        mynames = {c["k"] for c in mychars}
+        my_disp = {c["k"]: c["disp"] for c in mychars}
+        my_profs: dict = {}
+        my_recipes: dict = {}
+        my_recipes_name: dict = {}
+        for pr in conn.execute("SELECT name, data FROM char_professions").fetchall():
+            nmk = str(pr["name"] or "").strip().lower()
+            if nmk not in mynames:
+                continue
+            try:
+                pd2 = json.loads(pr["data"]) or {}
+            except (ValueError, TypeError):
+                continue
+            for pp in (pd2.get("profs") or []):
+                for key in {str(pp.get("name_fr") or pp.get("name") or "").strip().lower(),
+                            str(pp.get("name_en") or "").strip().lower()}:
+                    if key:
+                        lst = my_profs.setdefault(key, [])
+                        if my_disp[nmk] not in lst:
+                            lst.append(my_disp[nmk])
+        for cr2 in conn.execute("SELECT crafter, item, item_id FROM craft_recipes").fetchall():
+            nmk = str(cr2["crafter"] or "").strip().lower()
+            if nmk not in mynames:
+                continue
+            disp = my_disp[nmk]
+            if cr2["item_id"]:
+                lst = my_recipes.setdefault(int(cr2["item_id"]), [])
+                if disp not in lst:
+                    lst.append(disp)
+            if cr2["item"]:
+                lst = my_recipes_name.setdefault(str(cr2["item"]).strip().casefold(), [])
+                if disp not in lst:
+                    lst.append(disp)
         prof_holders: dict = {}
         for pr in conn.execute("SELECT name, data FROM char_professions").fetchall():
             try:
@@ -2186,8 +2221,10 @@ def api_wishlist(request: Request):
                 if bos and bos not in ent["bosses"] and len(ent["bosses"]) < 3:
                     ent["bosses"].append(bos)
             gr = conn.execute(
-                "SELECT item, prof, prof_en, mats, mats_en FROM game_recipes WHERE item_id=? LIMIT 1",
-                (r["item_id"] or 0,)).fetchone()
+                "SELECT item, prof, prof_en, mats, mats_en FROM game_recipes "
+                "WHERE (item_id > 0 AND item_id=?) OR lower(item)=lower(?) OR lower(item_en)=lower(?) "
+                "ORDER BY rank_no LIMIT 1",
+                (r["item_id"] or 0, r["name"] or "", r["name"] or "")).fetchone()
             fr_name = (gr["item"] if gr else r["name"]) or ""
             decl = conn.execute(
                 "SELECT profession, mats FROM craft_recipes "
@@ -2216,11 +2253,20 @@ def api_wishlist(request: Request):
                     holders = [h["name"] for h in hl[:8]]
                 craft = {"prof": prof, "mats": mats, "who": who[:6],
                          "holders": holders, "holders_n": len(hl)}
+            me = None
+            if craft:
+                mchars = my_profs.get((craft["prof"] or "").strip().lower()) or []
+                mrec = (my_recipes.get(int(r["item_id"] or 0))
+                        or my_recipes_name.get(str(fr_name or "").strip().casefold())
+                        or my_recipes_name.get(str(r["name"] or "").strip().casefold())
+                        or [])
+                if mchars or mrec:
+                    me = {"chars": mchars[:3], "recipe": mrec[:3]}
             items.append({
                 "item_id": r["item_id"], "name": nm,
                 "slot": r["slot"], "slot_fr": bnet.slot_label(r["slot"], loc),
                 "quality": r["quality"], "icon": r["icon"], "added": r["added"],
-                "source": src, "craft": craft,
+                "source": src, "craft": craft, "me": me,
             })
         chars_out = [dict(c) for c in chars]
     for ch in chars_out:

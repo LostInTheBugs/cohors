@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.107 - 2026-09-19
+
+### Added
+- Wishlist: personal craft check — if you have the profession, the page tells you whether you can craft the piece (declared recipe) or that you are missing the recipe; game recipes are now also matched by item name (Blizzard omits crafted-item ids for many recipes). Help updated.
+
 ## 2026.09.106 - 2026-09-19
 
 ### Added
