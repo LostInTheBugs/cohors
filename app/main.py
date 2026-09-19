@@ -395,6 +395,17 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_prep_claims ON prep_claims(mat, user)")
+        # v2026.09.093 — stock en banque de guilde par compos (préparation de raid).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS prep_bank (
+                mat        TEXT PRIMARY KEY,
+                qty        REAL NOT NULL DEFAULT 0,
+                updated    REAL NOT NULL DEFAULT 0,
+                updated_by TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
         # v2026.09.080 — recettes des artisans (export addon /lotp recettes).
         conn.execute(
             """
@@ -3547,6 +3558,7 @@ def api_prep_get(request: Request):
             "SELECT id, name, mats, updated FROM prep_recipes ORDER BY name COLLATE NOCASE").fetchall()]
         claims = [dict(r) for r in conn.execute(
             "SELECT mat, qty, user, name FROM prep_claims").fetchall()]
+        bank_rows = [dict(r) for r in conn.execute("SELECT mat, qty FROM prep_bank").fetchall()]
         crafts = [dict(r) for r in conn.execute(
             "SELECT crafter, profession, item, item_id, expansion, exp_rank, mats FROM craft_recipes").fetchall()]
         game = [dict(r) for r in conn.execute(
@@ -3565,7 +3577,36 @@ def api_prep_get(request: Request):
             p[_k] = json.loads(p.get(_k) or "[]")
         except (ValueError, TypeError):
             p[_k] = []
-    needs, unknown = _prep_needs(p["items"], recipes)
+    # Résolution des compos : la première source trouvée gagne pour un objet donné
+    # (artisans, puis recettes du jeu FR + EN, puis recettes maison des officiers).
+    res_list: list = []
+    for c in crafts:
+        try:
+            _m = json.loads(c["mats"] or "[]")
+        except ValueError:
+            _m = []
+        res_list.append({"name": c["item"], "mats": _m})
+    game_best: dict = {}
+    for c in game:
+        try:
+            g_rank = int(c.get("rank_no") or 1)
+        except (TypeError, ValueError):
+            g_rank = 1
+        for it_nm, mats_raw in ((c.get("item"), c.get("mats")), (c.get("item_en"), c.get("mats_en"))):
+            nm = str(it_nm or "").strip()
+            if not nm:
+                continue
+            cur = game_best.get(nm.casefold())
+            if cur is None or g_rank < cur[0]:
+                try:
+                    _gm = json.loads(mats_raw or "[]")
+                except (TypeError, ValueError):
+                    _gm = []
+                game_best[nm.casefold()] = (g_rank, nm, _gm)
+    for _rk, _nm, _gm in sorted(game_best.values(), key=lambda x: x[0]):
+        res_list.append({"name": _nm, "mats": _gm})
+    res_list.extend({"name": r["name"], "mats": r["mats"]} for r in recipes)
+    needs, unknown = _prep_needs(p["items"], res_list)
     by_mat: dict = {}
     for c in claims:
         by_mat.setdefault(str(c["mat"]), []).append(
@@ -3580,6 +3621,10 @@ def api_prep_get(request: Request):
         if mat not in known:
             needs.append({"mat": mat, "need": 0, "claims": cs,
                           "claimed": round(sum(x["qty"] for x in cs), 2)})
+    bank_map = {str(r["mat"]): round(float(r["qty"] or 0), 2) for r in bank_rows}
+    for n in needs:
+        n["bank"] = bank_map.get(str(n["mat"]), 0.0)
+        n["rest"] = round(max(0.0, float(n.get("need") or 0) - float(n.get("claimed") or 0) - n["bank"]), 2)
     can = _user_role(user) in ("officer", "admin")
     catalog: dict = {}
     for c in crafts:
@@ -3722,7 +3767,7 @@ def api_prep_get(request: Request):
     except bnet.BnetError:
         raid_catalog = {"expansion": "", "raids": []}
     return {"plan": p, "recipes": recipes, "needs": needs, "unknown": unknown,
-            "unavail": unavail_block, "raid_catalog": raid_catalog,
+            "unavail": unavail_block, "raid_catalog": raid_catalog, "bank": bank_map,
             "catalog": cat_list, "exps": exps_list, "crafters": sorted({c["crafter"] for c in crafts}),
             "game": game_list, "game_sync": _game_sync_report(float(gts_row["ts"] or 0)),
             "me": {"name": user["name"] if "name" in user.keys() else user["email"]},
@@ -3819,6 +3864,32 @@ def api_prep_claim(body: PrepClaimRequest, request: Request):
                 (mat, qty, user["email"], user["name"] if "name" in user.keys() else "", time.time()),
             )
     return {"ok": True}
+
+
+class PrepBankRequest(BaseModel):
+    mat: str = Field(..., min_length=1, max_length=120)
+    qty: float = 0
+
+
+@app.post("/api/prep/bank")
+def api_prep_bank(body: PrepBankRequest, request: Request):
+    """Officiers : quantité d'une compos déjà en banque de guilde (0 = retirer la ligne)."""
+    user = _require_officer(request)
+    mat = body.mat.strip()[:120]
+    if not mat:
+        raise HTTPException(400, "Compos manquante.")
+    qty = max(0.0, min(999999.0, float(body.qty or 0)))
+    with _db_lock, _db() as conn:
+        if qty <= 0:
+            conn.execute("DELETE FROM prep_bank WHERE mat=?", (mat,))
+        else:
+            conn.execute(
+                "INSERT INTO prep_bank (mat, qty, updated, updated_by) VALUES (?,?,?,?) "
+                "ON CONFLICT(mat) DO UPDATE SET qty=excluded.qty, updated=excluded.updated, "
+                "updated_by=excluded.updated_by",
+                (mat, qty, time.time(), user["name"] if "name" in user.keys() else user["email"]),
+            )
+    return {"ok": True, "mat": mat, "qty": qty}
 
 
 @app.post("/api/prep/reset")

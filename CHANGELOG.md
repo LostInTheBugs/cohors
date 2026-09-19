@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.093 - 2026-09-19
+
+### Changed
+- Raid preparation simplified: the three cards (to craft / materials / recipes) are now a single flow. Officers pick recipes from a dropdown (grouped: house recipes, in-game catalogue, guild crafters — with materials preview), click "＋ Add", set the quantity (also editable inline afterwards). Materials now resolve from the in-game catalogue (FR/EN) and guild imports, not only from manually registered recipes. The old recipes card is folded into a collapsed "house recipes & catalogue" section for officers.
+- New guild bank stock per material (officers): enter what is already in the bank 🏦; the materials list shows needed / bank / contributions / remaining ("reste"), with the progress bar counting bank + contributions.
+
 ## 2026.09.092 - 2026-09-19
 
 ### Changed

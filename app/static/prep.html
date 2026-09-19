@@ -64,6 +64,12 @@
   .napport { display: flex; gap: 6px; align-items: center; margin-left: auto; }
   .napport input { width: 84px; padding: 6px 8px; }
   .napport button { padding: 6px 11px; font-size: 13px; }
+  .nbank { display: inline-flex; align-items: center; gap: 4px; color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .nbank input { width: 66px; padding: 5px 7px; }
+  .nrest { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--mut); font-size: 13px; }
+  .nrest.ok { color: var(--ok); font-weight: 600; }
+  .oqty { width: 76px; padding: 5px 7px; }
+  #inewprev { min-height: 17px; }
   .bar { flex: 1 1 100%; height: 5px; border-radius: 3px; background: var(--card2); overflow: hidden; margin-top: 2px; }
   .avrow { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; padding: 7px 9px; border-radius: 8px; border-left: 3px solid transparent; }
   .avrow + .avrow { margin-top: 2px; }
@@ -89,7 +95,7 @@
           border: 1px solid var(--line); color: var(--mut); }
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.092">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.093">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -141,12 +147,34 @@
     <div id="items"><div class="empty">Chargement…</div></div>
     <div id="itemsedit" class="hidden" style="margin-top:8px;border-top:1px solid var(--line);padding-top:10px">
       <div class="row">
-        <input id="inew" list="reclist" placeholder="Objet à fabriquer (ex : Festin)" style="min-width:230px">
-        <datalist id="reclist"></datalist>
-        <input id="iqty" type="number" min="1" step="1" value="1" style="width:90px">
+        <select id="inew" style="min-width:300px;max-width:460px"></select>
+        <input id="iqty" type="number" min="1" step="1" value="1" style="width:90px" title="Combien en fabriquer">
         <button class="btn" id="iadd">＋ Ajouter</button>
-        <span class="meta">Les objets se choisissent dans les recettes (📚 plus bas).</span>
       </div>
+      <div class="meta" id="inewprev" style="margin-top:4px"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn ghost" id="gsync">🔄 Synchroniser</button>
+        <button class="btn ghost" id="rimpbtn">📥 Importer un export d'artisan</button>
+        <input type="file" id="rfile" accept=".lua,.txt,.json" class="hidden">
+      </div>
+      <details id="advbox" style="margin-top:10px">
+        <summary class="meta" style="cursor:pointer;font-size:13px">⚙️ Recettes maison &amp; catalogue (officier)</summary>
+        <div class="row" style="margin-top:8px">
+          <input id="catq" placeholder="Rechercher un objet connu des artisans…" style="min-width:240px">
+          <select id="catsrc"><option value="game">🎮 Jeu · 2 dernières extensions</option><option value="guild">👥 Artisans de la guilde</option></select>
+          <span class="meta" id="catmeta"></span>
+        </div>
+        <div id="catlist"></div>
+        <div class="meta" id="reclbl" style="margin-top:10px">Vos recettes de préparation (reprises dans le plan) :</div>
+        <div id="reclistbox" style="margin-top:4px"></div>
+        <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+          <div class="row" style="align-items:flex-start">
+            <input id="rname" placeholder="Objet fabriqué (ex : Festin)" style="min-width:200px">
+            <textarea id="rmats" rows="3" placeholder="Compos — une par ligne : Nom = quantité&#10;ex : Viande = 20" style="flex:1;min-width:240px;font:13.5px ui-monospace,SFMono-Regular,Menlo,monospace"></textarea>
+            <button class="btn" id="rsave">💾 Ajouter / MAJ</button>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -155,32 +183,10 @@
     <div id="needs"><div class="empty">Chargement…</div></div>
   </div>
 
-  <div class="card hidden" id="reccard">
-    <h2>📚 Recettes <span class="pc">officiers — objet fabriqué → compos</span></h2>
-    <div class="row" style="margin-bottom:8px">
-      <input id="catq" placeholder="Rechercher un objet connu des artisans…" style="min-width:240px">
-      <select id="catsrc"><option value="game">🎮 Jeu · 2 dernières extensions</option><option value="guild">👥 Artisans de la guilde</option></select>
-      <button class="btn ghost" id="gsync">🔄 Synchroniser</button>
-      <button class="btn ghost" id="rimpbtn">📥 Importer un export d'artisan</button>
-      <input type="file" id="rfile" accept=".lua,.txt,.json" class="hidden">
-      <span class="meta" id="catmeta"></span>
-    </div>
-    <div id="catlist"></div>
-    <div class="meta" id="reclbl" style="margin-top:10px">Vos recettes de préparation (reprises dans le plan) :</div>
-    <div id="reclistbox" style="margin-top:4px"></div>
-    <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
-      <div class="row" style="align-items:flex-start">
-        <input id="rname" placeholder="Objet fabriqué (ex : Festin)" style="min-width:200px">
-        <textarea id="rmats" rows="3" placeholder="Compos — une par ligne : Nom = quantité&#10;ex : Viande = 20" style="flex:1;min-width:240px;font:13.5px ui-monospace,SFMono-Regular,Menlo,monospace"></textarea>
-        <button class="btn" id="rsave">💾 Ajouter / MAJ</button>
-      </div>
-    </div>
-  </div>
-
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.092"></script>
-<script src="/static/i18n.js?v=2026.09.092"></script>
+<script src="/static/nav.js?v=2026.09.093"></script>
+<script src="/static/i18n.js?v=2026.09.093"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -276,6 +282,33 @@ function renderRaids() {
   }));
 }
 
+let OPT_MATS = {};
+function buildSelect() {
+  const groups = [
+    ["🏕️ Recettes maison", (DATA.recipes || []).map(r => ({ item: r.name, prof: "", mats: r.mats, who: [] }))],
+    ["🎮 Recettes du jeu", (DATA.game || []).map(g => ({ item: g.item, prof: g.prof, mats: g.mats, who: g.crafters || [] }))],
+    ["👥 Artisans de la guilde", (DATA.catalog || []).map(c => ({ item: c.item, prof: c.prof, mats: c.mats, who: c.crafters || [] }))]
+  ];
+  OPT_MATS = {};
+  const seen = new Set();
+  const sel = $("#inew");
+  const keep = sel.value;
+  let html = `<option value="">— choisir une recette —</option>`;
+  for (const [label, rows] of groups) {
+    const opts = [];
+    for (const x of rows) {
+      const key = String(x.item || "").toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      OPT_MATS[key] = x;
+      opts.push(`<option value="${esc(x.item)}">${esc(x.item)}${x.prof ? " — " + esc(x.prof) : ""}</option>`);
+    }
+    if (opts.length) html += `<optgroup label="${label}">${opts.join("")}</optgroup>`;
+  }
+  sel.innerHTML = html;
+  sel.value = keep || "";
+}
+
 function renderItems() {
   const box = $("#items");
   const it = PLAN.items || [];
@@ -285,16 +318,20 @@ function renderItems() {
   } else {
     box.innerHTML = it.map((x, i) => `<div class="irow">
       <span class="iname">${esc(x.name)}</span>
-      <span class="qty">× ${fmt(x.qty)}</span>
+      ${CAN ? `<input type="number" class="oqty" data-qi="${i}" value="${+x.qty || 1}" min="1" step="1" title="Quantité à fabriquer">`
+            : `<span class="qty">× ${fmt(x.qty)}</span>`}
       ${CAN ? `<button class="mic" data-ri="${i}" title="Retirer">✕</button>` : ""}
     </div>`).join("");
     if (CAN) box.querySelectorAll("[data-ri]").forEach(b => b.addEventListener("click", async () => {
       PLAN.items.splice(+b.dataset.ri, 1); await savePlan();
     }));
+    if (CAN) box.querySelectorAll("[data-qi]").forEach(inp => inp.addEventListener("change", async () => {
+      PLAN.items[+inp.dataset.qi].qty = Math.max(1, parseInt(inp.value || "1", 10) || 1);
+      await savePlan();
+    }));
   }
   $("#itemsedit").classList.toggle("hidden", !CAN);
-  const dl = $("#reclist");
-  dl.innerHTML = (DATA.recipes || []).map(r => `<option value="${esc(r.name)}">`).join("");
+  buildSelect();
   if (DATA.unknown && DATA.unknown.length) {
     $("#itemsmeta").textContent += ` · ⚠️ sans recette : ${DATA.unknown.join(", ")}`;
   }
@@ -312,21 +349,37 @@ function renderNeeds() {
   }
   box.innerHTML = needs.map(n => {
     const mine = (n.claims || []).find(c => c.mine);
-    const cls = n.need > 0 && n.claimed >= n.need ? "ok" : (n.claimed > 0 ? "warn" : "");
+    const bank = +n.bank || 0;
+    const claimed = +n.claimed || 0;
+    const rest = n.rest != null ? +n.rest : Math.max(0, (n.need || 0) - claimed - bank);
+    const cls = n.need > 0 && rest <= 0 ? "ok" : ((claimed + bank) > 0 ? "warn" : "");
     const claimTxt = (n.claims || []).map(c => `${esc(c.name)} ×${fmt(c.qty)}`).join(", ");
-    const pct = n.need > 0 ? Math.min(100, Math.round(100 * n.claimed / n.need)) : 0;
+    const pct = n.need > 0 ? Math.min(100, Math.round(100 * (claimed + bank) / n.need)) : 0;
     return `<div class="nrow">
       <span class="nmat">${esc(n.mat)}</span>
       <span class="nneed">besoin : ${n.need > 0 ? fmt(n.need) : "—"}</span>
+      <span class="nbank">${CAN
+        ? `🏦 <input type="number" min="0" step="1" value="${bank ? bank : ""}" data-bank="${esc(n.mat)}" placeholder="0" title="Quantité déjà en banque de guilde">`
+        : (bank > 0 ? "🏦 " + fmt(bank) : "")}</span>
       <span class="nclaimed ${cls}">fourni : ${fmt(n.claimed)}${n.need > 0 ? "/" + fmt(n.need) : ""}</span>
+      ${n.need > 0 ? `<span class="nrest ${rest <= 0 ? "ok" : ""}">${rest > 0 ? `reste : ${fmt(rest)}` : "✓ complet"}</span>` : ""}
       <span class="napport">
-        <input type="number" min="0" step="1" value="${mine ? fmt(mine.qty) : ""}" data-mat="${esc(n.mat)}" placeholder="qté" title="Quantité que tu apportes (0 ou vide = retirer ton apport)">
+        <input type="number" min="0" step="1" value="${mine ? (mine.qty || "") : ""}" data-mat="${esc(n.mat)}" placeholder="qté" title="Quantité que tu apportes (0 ou vide = retirer ton apport)">
         <button class="btn ghost" data-claim="${esc(n.mat)}">j'apporte</button>
       </span>
       <span class="nclaims">${claimTxt}</span>
       ${n.need > 0 ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ""}
     </div>`;
   }).join("");
+  box.querySelectorAll("[data-bank]").forEach(inp => inp.addEventListener("change", async () => {
+    const mat = inp.dataset.bank;
+    const qty = parseFloat((inp.value || "0").replace(",", ".")) || 0;
+    try {
+      await jpost("POST", "/api/prep/bank", { mat, qty });
+      setMsg(qty > 0 ? `Banque : ${mat} ×${qty} ✓` : `Banque : ${mat} → 0 ✓`, true);
+      await load();
+    } catch (e) { setMsg(e.message, false); }
+  }));
   box.querySelectorAll("[data-claim]").forEach(b => b.addEventListener("click", async () => {
     const mat = b.dataset.claim;
     const inp = box.querySelector(`input[data-mat="${CSS.escape(mat)}"]`);
@@ -411,7 +464,7 @@ function scheduleSyncPoll() {
 }
 
 function renderRecipes() {
-  $("#reccard").classList.toggle("hidden", !CAN);
+  $("#advbox").classList.toggle("hidden", !CAN);
   if (!CAN) return;
   renderCatalog();
   const rl = DATA.recipes || [];
@@ -483,14 +536,21 @@ $("#objsave").addEventListener("click", async () => {
   collectInputs();
   await savePlan();
 });
+$("#inew").addEventListener("change", () => {
+  const x = OPT_MATS[($("#inew").value || "").toLowerCase()];
+  const p = $("#inewprev");
+  if (!x) { p.textContent = ""; return; }
+  const mats = (x.mats || []).map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ") || "aucune compos";
+  p.textContent = `Compos : ${mats}` + ((x.who || []).length ? ` · qui : ${x.who.join(", ")}` : "");
+});
 $("#iadd").addEventListener("click", async () => {
-  const name = $("#inew").value.trim();
+  const name = ($("#inew").value || "").trim();
   const qty = Math.max(1, parseInt($("#iqty").value || "1", 10) || 1);
-  if (!name) { setMsg("Indique l'objet à fabriquer.", false); return; }
+  if (!name) { setMsg("Choisis une recette à ajouter.", false); return; }
   const found = PLAN.items.find(x => x.name.toLowerCase() === name.toLowerCase());
   if (found) found.qty += qty;
   else PLAN.items.push({ name, qty });
-  $("#inew").value = ""; $("#iqty").value = "1";
+  $("#inew").value = ""; $("#iqty").value = "1"; $("#inewprev").textContent = "";
   await savePlan();
 });
 $("#rsave").addEventListener("click", async () => {

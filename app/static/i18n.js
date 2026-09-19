@@ -664,7 +664,6 @@
  "♻️ Réinitialiser": "♻️ Reset",
  "Objet à fabriquer (ex : Festin)": "Item to craft (e.g. Feast)",
  "＋ Ajouter": "＋ Add",
- "Les objets se choisissent dans les recettes (📚 plus bas).": "Items are picked from the recipes (📚 below).",
  "Objet fabriqué (ex : Festin)": "Crafted item (e.g. Feast)",
  "Compos — une par ligne : Nom = quantité ex : Viande = 20": "Materials — one per line: Name = quantity",
  "💾 Ajouter / MAJ": "💾 Add / update",
@@ -678,7 +677,7 @@
  "Objectif enregistré ✓": "Goal saved ✓",
  "Plan réinitialisé ✓": "Plan reset ✓",
  "Vider le plan et tous les apports ? (les recettes sont conservées)": "Empty the plan and all contributions? (recipes are kept)",
- "Indique l'objet à fabriquer.": "Name the item to craft.",
+ "Choisis une recette à ajouter.": "Pick a recipe to add.",
  "Indique l'objet fabriqué.": "Name the crafted item.",
  "j'apporte": "I bring",
  "Rechercher un objet connu des artisans…": "Search an item known to crafters…",
@@ -734,7 +733,7 @@
  "🎧 La carte « Vocal » montre qui est connecté sur TeamSpeak.": "🎧 The « Voice » tile shows who is connected on TeamSpeak.",
  "Qui peut crafter quoi : les métiers de toute la guilde, regroupés par profession, avec les points de chaque personnage.": "Who can craft what: the whole guild's professions, grouped by trade, with each character's points.",
  "Recherche un métier ou un personnage, et clique pour ouvrir sa fiche — les métiers se mettent à jour automatiquement depuis le jeu.": "Search a profession or a character, and click to open the sheet — professions update automatically from the game.",
- "L'atelier du raid : les officiers choisissent les recettes (objet fabriqué → compos), définissent l'objectif (la date et l'heure de la soirée, le ou les raids et boss visés — catalogue du jeu) et ajoutent ce qu'on veut fabriquer (objet × quantité).": "The raid workshop: officers pick recipes (crafted item → materials), set the objective (the evening's date and time, the raids and bosses targeted — in-game catalogue) and add what we want to craft (item × quantity).",
+ "L'atelier du raid : les officiers définissent l'objectif (la date et l'heure de la soirée, le ou les raids et boss visés — catalogue du jeu), puis choisissent les recettes à fabriquer dans la liste (« ＋ Ajouter » pour en ajouter une autre, avec la quantité voulue). Les compos nécessaires se calculent tout seuls : les officiers notent ce qui est déjà en banque 🏦, chacun peut indiquer ce qu'il apporte, et le reste à réunir se met à jour.": "The raid workshop: officers set the objective (the evening's date and time, the raids and bosses targeted — in-game catalogue), then pick the recipes to craft from the list (« ＋ Add » for another one, with the wanted quantity). The required materials compute themselves: officers mark what's already in the bank 🏦, anyone can say what they bring, and the remaining total updates itself.",
  "La page agrège les compos nécessaires (besoin / fourni, barre de progression) et chaque membre clique « j'apporte » pour annoncer sa part.": "The page aggregates the required materials (needed / provided, progress bar) and every member clicks « I bring » to claim their share.",
  "📚 Catalogue : les recettes du jeu (2 dernières extensions, synchronisées automatiquement) ou les recettes des artisans de la guilde (déclarées : import d'addon ou cases cochées sur la page 🔨 Artisanat) — tu vois qui peut crafter quoi.": "📚 Catalog: game recipes (last 2 expansions, synced automatically) or the guild crafters' recipes (declared: addon import or ticked on the 🔨 Crafting page) — you see who can craft what.",
  "Organise les clés mythiques+ : choisis tes rôles (🛡️ tank / 💚 heal / ⚔️ DPS), tes créneaux (les 14 prochains jours, avec heures) et les clés que tu as (perso, donjon, niveau).": "Organize your Mythic+ keys: pick your roles (🛡️ tank / 💚 heal / ⚔️ DPS), your slots (next 14 days, with hours) and the keys you hold (character, dungeon, level).",
@@ -828,7 +827,13 @@
  "🗺️ Raids de la soirée :": "🗺️ Evening raids:",
  "⚔️ Boss visés :": "⚔️ Target bosses:",
  "— choisis d'abord un ou des raids": "— pick one or more raids first",
- "Catalogue du jeu indisponible pour le moment.": "In-game catalogue unavailable right now."
+ "Catalogue du jeu indisponible pour le moment.": "In-game catalogue unavailable right now.",
+ "— choisir une recette —": "— pick a recipe —",
+ "⚙️ Recettes maison & catalogue (officier)": "⚙️ House recipes & catalogue (officer)",
+ "Quantité déjà en banque de guilde": "Quantity already in the guild bank",
+ "Combien en fabriquer": "How many to craft",
+ "Quantité à fabriquer": "Quantity to craft",
+ "✓ complet": "✓ complete"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -853,6 +858,9 @@
     [/\bobjet\(s\)/g, "item(s)"],
     [/\bartisan\(s\)/g, "crafter(s)"],
     [/qui : /g, "who: "],
+    [/reste : /g, "remaining: "],
+    [/Compos : /g, "Materials: "],
+    [/Banque : /g, "Bank: "],
     [/(\d+) dispo/g, "$1 free"],
     [/Dispos enregistrées ✓/g, "Availability saved ✓"],
     [/Dispos retirées ✓/g, "Availability removed ✓"],
