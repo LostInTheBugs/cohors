@@ -44,7 +44,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.101">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.102">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -205,7 +205,7 @@
       <li>Les officiers créent les raids (date, heure, durée, note).</li>
       <li>Réponds en un clic : ✅ Présent · ❓ Peut-être · ❌ Absent — re-clique pour annuler ta réponse.</li>
       <li>Tu vois qui vient d'un coup d'œil, et le bot Discord relance une heure avant le raid (si activé).</li>
-      <li>🗓️ « Prochains raids » : les officiers importent le calendrier de guilde de WoW (addon LOTP → /lotp → « Exporter ») — les raids, les réponses des membres et les indisponibilités déclarées apparaissent directement (création et invitations en jeu uniquement).</li>
+      <li>🗓️ « Prochains raids » : les officiers importent le calendrier de guilde de WoW (addon LOTP → /lotp → « Exporter ») — les raids, les réponses des membres et les indisponibilités déclarées apparaissent directement (création et invitations en jeu uniquement). Sur chaque date, les officiers peuvent préciser le ou les raids visés, les boss, et le raid de départ 🚩 (bouton ✏️).</li>
       <li>🚫 Indisponibilités : tu vois qui est indisponible pour chaque raid, croisé avec les réponses in-game — ⚠️ signale « indispo mais a accepté le raid ». Ça se déclare dans 🙋 Moi → 🚫 Mes indispos.</li>
       <li>« 📣 Relancer » (officiers, si le bot Discord est actif) poste une relance dans Discord pour les membres qui n'ont pas encore répondu.</li>
     </ul>
@@ -233,7 +233,7 @@
   <section class="card" id="prep">
     <h2>🧪 Préparation de raid</h2>
     <ul>
-      <li>L'atelier du raid : les officiers définissent l'objectif (la date et l'heure de la soirée, le ou les raids et boss visés — catalogue du jeu), puis choisissent les recettes à fabriquer dans un champ de recherche (tape pour filtrer parmi les recettes maison, du jeu et des artisans ; « ＋ Ajouter » pour en ajouter une autre, avec la quantité voulue ; coche « Seulement les recettes connues par les joueurs de la guilde » pour ne garder que ce que la guilde sait fabriquer). Les compos nécessaires se calculent tout seuls : les officiers notent ce qui est déjà en banque 🏦, chacun peut indiquer ce qu'il apporte, et le reste à réunir se met à jour. Si une recette du jeu arrive sans compos connues (données Blizzard incomplètes — souvent du contenu récent), elle est signalée ⚠️ ; dès qu'un artisan importe son export d'addon (🙋 Moi → 📖 Mes recettes), ses vraies compos sont utilisées.</li>
+      <li>L'atelier du raid : les officiers choisissent les recettes à fabriquer dans un champ de recherche (tape pour filtrer parmi les recettes maison, du jeu et des artisans ; « ＋ Ajouter » pour en ajouter une autre, avec la quantité voulue ; coche « Seulement les recettes connues par les joueurs de la guilde » pour ne garder que ce que la guilde sait fabriquer). Les compos nécessaires se calculent tout seuls : les officiers notent ce qui est déjà en banque 🏦, chacun peut indiquer ce qu'il apporte, et le reste à réunir se met à jour. Si une recette du jeu arrive sans compos connues (données Blizzard incomplètes — souvent du contenu récent), elle est signalée ⚠️ ; dès qu'un artisan importe son export d'addon (🙋 Moi → 📖 Mes recettes), ses vraies compos sont utilisées.</li>
       <li>La page agrège les compos nécessaires (besoin / fourni, barre de progression) et chaque membre clique « j'apporte » pour annoncer sa part.</li>
       <li>🔎 Choix des recettes : le champ de recherche puise dans les recettes du jeu (2 dernières extensions, synchronisées automatiquement), les recettes des artisans de la guilde (déclarées sur la page 📖 Mes recettes) et les recettes maison. Coche « Seulement les recettes connues par les joueurs de la guilde » pour ne garder que ce que la guilde sait fabriquer.</li>
       <li>🔄 Recettes du jeu : le catalogue (~1000 recettes et leurs compos) se resynchronise tout seul depuis l'API du jeu — au démarrage, puis au plus une fois par jour. Rien à faire.</li>
@@ -299,8 +299,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.101"></script>
-<script src="/static/i18n.js?v=2026.09.101"></script>
+<script src="/static/nav.js?v=2026.09.102"></script>
+<script src="/static/i18n.js?v=2026.09.102"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 (async () => {

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.102 - 2026-09-19
+
+### Changed
+- Raid preparation: the "🎯 Objective" card is gone (title/date/raid-boss chips removed; the ♻️ Reset button moved next to the recipe tooling).
+- Calendar "Upcoming raids": officers can now set, for each in-game date, the targeted raid(s), the bosses, and the starting raid 🚩 (✏️ editor per event, stored per calendar event id; visible to all members).
+
 ## 2026.09.101 - 2026-09-19
 
 ### Changed

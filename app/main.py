@@ -467,6 +467,17 @@ def _init_db() -> None:
             )
             """
         )
+        # v2026.09.102 — visées des officiers par événement du calendrier in-game (raids/boss/départ).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gcal_meta (
+                event_key  TEXT PRIMARY KEY,
+                data       TEXT NOT NULL DEFAULT '{}',
+                updated    REAL NOT NULL DEFAULT 0,
+                updated_by TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
         # v2026.09.087 — alertes MM+ (clés recherchées) & notifications personnelles.
         conn.execute(
             """
@@ -3477,9 +3488,22 @@ def api_addon(request: Request):
                     headers={"Content-Disposition": 'attachment; filename="LOTP-addon.zip"'})
 
 
+def _gcal_key(e: dict) -> str:
+    """Clé stable d'un événement du calendrier in-game (id Blizzard, sinon horodatage)."""
+    try:
+        if e.get("id"):
+            return "id:" + str(int(e["id"]))
+    except (TypeError, ValueError):
+        pass
+    try:
+        return "ts:" + str(int(float(e.get("ts") or 0)))
+    except (TypeError, ValueError):
+        return "ts:0"
+
+
 @app.get("/api/gcal")
 def api_gcal_get(request: Request):
-    """Dernier import du calendrier in-game (addon) + croisement avec les indispos."""
+    """Dernier import du calendrier in-game (addon) + indispos + visées des officiers."""
     _require_user(request)
     with _db_lock, _db() as conn:
         row = conn.execute("SELECT ts, player, data FROM gcal_import WHERE id=1").fetchone()
@@ -3491,6 +3515,8 @@ def api_gcal_get(request: Request):
             "SELECT email, name FROM users WHERE active=1").fetchall()}
         uname_by_email = {r["email"]: (r["name"] or r["email"]) for r in conn.execute(
             "SELECT email, name FROM users").fetchall()}
+        metas = {r["event_key"]: dict(r) for r in conn.execute(
+            "SELECT event_key, data, updated, updated_by FROM gcal_meta").fetchall()}
     by_email: dict = {}
     for urow in unavails:
         by_email.setdefault(urow["email"], []).append(urow)
@@ -3510,6 +3536,13 @@ def api_gcal_get(request: Request):
             ts = float(e.get("ts") or 0)
         except (TypeError, ValueError):
             ts = 0
+        key = _gcal_key(e)
+        e["key"] = key
+        mrow = metas.get(key)
+        try:
+            e["meta"] = json.loads(mrow["data"]) if mrow else None
+        except (ValueError, TypeError):
+            e["meta"] = None
         if ts > 0:
             day = _snap_day(ts)
             for mem in (e.get("inv") or []):
@@ -3541,9 +3574,42 @@ def api_gcal_get(request: Request):
                           "periods": [{"from": x["day_from"], "to": x["day_to"], "note": x["note"] or ""}
                                       for x in ps]})
     urows.sort(key=lambda r: r["periods"][0]["from"])
+    try:
+        raid_catalog, _jts = bnet.journal_raids(_user_locale(request))
+    except bnet.BnetError:
+        raid_catalog = {"expansion": "", "raids": []}
     return {"imported_at": row["ts"] if row else 0, "player": row["player"] if row else "",
-            "events": events,
+            "events": events, "raid_catalog": raid_catalog,
             "unavail": {"rows": urows, "counts": {"members": len(urows), "conflict": conflicts}}}
+
+
+class GcalEventMetaRequest(BaseModel):
+    raids: list[str] = []
+    bosses: list[str] = []
+    start: str = ""
+
+
+@app.post("/api/gcal/event/{key}")
+def api_gcal_event_meta(key: str, body: GcalEventMetaRequest, request: Request):
+    """Officiers : raids et boss visés pour une date (🚩 raid de départ inclus)."""
+    user = _require_officer(request)
+    key = (key or "").strip()[:48]
+    if not (key.startswith("id:") or key.startswith("ts:")):
+        raise HTTPException(400, "Clé d'événement invalide.")
+    raids = [str(x).strip()[:80] for x in (body.raids or []) if str(x).strip()][:30]
+    bosses = [str(x).strip()[:80] for x in (body.bosses or []) if str(x).strip()][:60]
+    start = (body.start or "").strip()[:80]
+    with _db_lock, _db() as conn:
+        if not raids and not bosses and not start:
+            conn.execute("DELETE FROM gcal_meta WHERE event_key=?", (key,))
+        else:
+            conn.execute(
+                "INSERT INTO gcal_meta (event_key, data, updated, updated_by) VALUES (?,?,?,?) "
+                "ON CONFLICT(event_key) DO UPDATE SET data=excluded.data, updated=excluded.updated, "
+                "updated_by=excluded.updated_by",
+                (key, json.dumps({"raids": raids, "bosses": bosses, "start": start}, ensure_ascii=False),
+                 time.time(), user["email"]))
+    return {"ok": True, "key": key}
 
 
 # ---------------------------------------------------------------------------

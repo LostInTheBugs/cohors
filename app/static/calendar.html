@@ -61,9 +61,16 @@
              padding:9px 12px; font-size:13px; min-width:min(520px,100%); font-family:inherit; }
   input[type=file] { font-size:12.5px; color:var(--mut); }
   code { background:var(--card2); border:1px solid var(--line); border-radius:6px; padding:0 5px; font-size:12px; }
+  .chips { display: inline-flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+  .chip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px;
+          padding: 4px 12px; font-size: 13px; cursor: pointer; color: var(--mut); }
+  .chip:hover { border-color: var(--acc2); }
+  .chip.on { border-color: var(--acc2); color: var(--acc2); font-weight: 600; }
+  select { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; }
+  .gedit { border:1px dashed var(--line); border-radius:11px; padding:10px 12px; margin:-4px 0 9px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.101">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.102">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -109,8 +116,8 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.101"></script>
-<script src="/static/i18n.js?v=2026.09.101"></script>
+<script src="/static/nav.js?v=2026.09.102"></script>
+<script src="/static/i18n.js?v=2026.09.102"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -128,6 +135,8 @@ function setMsg(sel, t, ok) { const e = $(sel); e.textContent = t || ""; e.class
 
 // ---- 🧩 Calendrier in-game (addon LOTP)
 let GCAL = null, CAN_IMP = false;
+let GCAL_CAT = { raids: [] };
+let EDBOX = null;   // édition officier : { key, raids, bosses, start }
 
 const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
 const perTxt = (r) => (r.periods || []).map(x =>
@@ -150,12 +159,37 @@ async function loadGcal() {
   catch (e) { $("#glist").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
 }
 
+function editHTML() {
+  const ra = (GCAL_CAT.raids || []);
+  const sel = ra.filter(r => EDBOX.raids.includes(r.name));
+  const bs = [];
+  sel.forEach(r => (r.bosses || []).forEach(b => { if (!bs.includes(b)) bs.push(b); }));
+  return `<div class="gedit">
+    <div class="row" style="align-items:flex-start"><span class="meta" style="padding-top:5px">🗺️ Raids :</span>
+      <span class="chips">${ra.length
+        ? ra.map(r => `<span class="chip${EDBOX.raids.includes(r.name) ? " on" : ""}" data-er="${esc(r.name)}">${esc(r.name)}</span>`).join("")
+        : `<span class="meta">Catalogue du jeu indisponible pour le moment.</span>`}</span></div>
+    <div class="row" style="margin-top:6px;align-items:flex-start"><span class="meta" style="padding-top:5px">⚔️ Boss :</span>
+      <span class="chips">${sel.length
+        ? bs.map(b => `<span class="chip${EDBOX.bosses.includes(b) ? " on" : ""}" data-eb="${esc(b)}">${esc(b)}</span>`).join("")
+        : `<span class="meta">— choisis d'abord un ou des raids</span>`}</span></div>
+    <div class="row" style="margin-top:8px">
+      <span class="meta">🚩 Départ :</span>
+      <select id="edep"><option value="">—</option>${sel.map(r => `<option value="${esc(r.name)}"${EDBOX.start === r.name ? " selected" : ""}>${esc(r.name)}</option>`).join("")}</select>
+      <button class="small" id="esave">💾 Enregistrer</button>
+      ${EDBOX.existing ? `<button class="small ghost" id="eclear">🧹 Effacer</button>` : ""}
+      <button class="small ghost" id="ecancel">Annuler</button>
+    </div>
+  </div>`;
+}
+
 function renderGcal() {
   const d = GCAL || { events: [], imported_at: 0, player: "" };
   $("#gmeta").textContent = d.imported_at
     ? `· importé ${ago(d.imported_at)} par ${d.player || "?"}`
     : "· aucun import pour le moment";
   renderUnav(d);
+  GCAL_CAT = d.raid_catalog || { raids: [] };
   const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
   const box = $("#glist");
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
@@ -169,6 +203,9 @@ function renderGcal() {
       else { c.wait++; wait.push(i.n); }
     }
     const line = (emo, arr) => arr.length ? `<span class="meta">${emo} ${arr.map(esc).join(", ")}</span>` : "";
+    const mt = e.meta || {};
+    const mTxt = (mt.raids && mt.raids.length) || mt.start
+      ? `🗺️ ${(mt.raids || []).map(esc).join(" · ")}${mt.start ? ` · 🚩 départ : <b>${esc(mt.start)}</b>` : ""}` : "";
     return `<div class="item"><div class="main">
       <span class="name">${esc(e.title)}</span>
       <span class="meta">${e.ts ? dateTxt(e.ts) : esc(e.date || "")}</span>
@@ -177,10 +214,13 @@ function renderGcal() {
       ${(e.unav || []).map(u => u.conflict
         ? `<span class="meta" style="color:var(--warn)">⚠️ ${esc(u.n)} — indispo mais a accepté le raid · ${perTxt(u)}</span>`
         : `<span class="meta">🚫 ${esc(u.n)} · ${perTxt(u)}</span>`).join("")}
+      ${mTxt ? `<span class="meta">${mTxt}</span>` : ""}
+      ${mt.bosses && mt.bosses.length ? `<span class="meta">⚔️ ${mt.bosses.map(esc).join(" · ")}</span>` : ""}
     </div>
     <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}${(e.unav || []).length ? ` · 🚫 ${e.unav.length}` : ""}</span>
     ${wait.length && CAN_IMP ? `<button class="small ghost" data-rel="${e.id}">📣 Relancer</button>` : ""}
-    </div>`;
+    ${CAN_IMP ? `<button class="small ghost" data-ed="${esc(e.key)}" title="Raids & boss visés">✏️</button>` : ""}
+    </div>` + (EDBOX && EDBOX.key === e.key ? editHTML() : "");
   }).join("");
   box.querySelectorAll("button[data-rel]").forEach(b => b.addEventListener("click", async () => {
     b.disabled = true;
@@ -188,6 +228,55 @@ function renderGcal() {
     catch (e) { setMsg("#gmsg", e.message, false); }
     b.disabled = false;
   }));
+  box.querySelectorAll("button[data-ed]").forEach(b => b.addEventListener("click", () => {
+    const e = evs.find(x => String(x.key) === b.dataset.ed);
+    if (!e) return;
+    EDBOX = { key: e.key, existing: !!e.meta,
+              raids: [...(((e.meta || {}).raids) || [])], bosses: [...(((e.meta || {}).bosses) || [])],
+              start: (e.meta || {}).start || "" };
+    renderGcal();
+  }));
+  if (EDBOX) {
+    box.querySelectorAll("[data-er]").forEach(ch => ch.addEventListener("click", () => {
+      const nm = ch.dataset.er;
+      if (EDBOX.raids.includes(nm)) {
+        EDBOX.raids = EDBOX.raids.filter(x => x !== nm);
+        const del = new Set(((GCAL_CAT.raids.find(r => r.name === nm) || {}).bosses) || []);
+        EDBOX.bosses = EDBOX.bosses.filter(b => !del.has(b));
+        if (EDBOX.start === nm) EDBOX.start = "";
+      } else EDBOX.raids.push(nm);
+      renderGcal();
+    }));
+    box.querySelectorAll("[data-eb]").forEach(ch => ch.addEventListener("click", () => {
+      const nm = ch.dataset.eb;
+      EDBOX.bosses = EDBOX.bosses.includes(nm) ? EDBOX.bosses.filter(x => x !== nm) : EDBOX.bosses.concat([nm]);
+      renderGcal();
+    }));
+    const dep = $("#edep");
+    if (dep) dep.addEventListener("change", () => { EDBOX.start = dep.value || ""; });
+    const sv = $("#esave");
+    if (sv) sv.addEventListener("click", async () => {
+      sv.disabled = true;
+      try {
+        await jpost("POST", "/api/gcal/event/" + encodeURIComponent(EDBOX.key),
+                    { raids: EDBOX.raids, bosses: EDBOX.bosses, start: ($("#edep") || {}).value || "" });
+        setMsg("#gmsg", "Raids/boss enregistrés ✓", true);
+        EDBOX = null;
+        await loadGcal();
+      } catch (err) { setMsg("#gmsg", err.message, false); sv.disabled = false; }
+    });
+    const cl = $("#eclear");
+    if (cl) cl.addEventListener("click", async () => {
+      if (!confirm("Effacer les raids/boss visés pour cette date ?")) return;
+      try {
+        await jpost("POST", "/api/gcal/event/" + encodeURIComponent(EDBOX.key), { raids: [], bosses: [], start: "" });
+        EDBOX = null;
+        await loadGcal();
+      } catch (err) { setMsg("#gmsg", err.message, false); }
+    });
+    const cx = $("#ecancel");
+    if (cx) cx.addEventListener("click", () => { EDBOX = null; renderGcal(); });
+  }
 }
 
 $("#gdl").addEventListener("click", () => { location.href = "/api/addon"; });
