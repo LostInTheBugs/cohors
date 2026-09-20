@@ -82,7 +82,7 @@
 <div class="wrap">
   <header class="topbar">
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-      <img src="/branding/logo" alt="Lords of the Pit" class="crest">
+      <img src="/branding/logo" alt="Cohors" class="crest">
       <div>
         <div class="brandname">Cohors <span>MM+</span></div>
         <div class="tagline">Organisez vos clés mythiques+ — dispos, rôles et clés annoncées sur les 2 prochaines semaines.</div>
@@ -194,7 +194,7 @@ function renderSlots() {
 function renderKeys() {
   const box = $("#keys");
   if (!MY.keys.length) {
-    box.innerHTML = `<div class="empty">Aucune clé annoncée — ajoute-la si tu en as une (ex : Chamoisdort · +8 · Flèche de Coursevent).</div>`;
+    box.innerHTML = `<div class="empty">Aucune clé annoncée — ajoute-la si tu en as une (ex : TonPerso · +8 · Flèche de Coursevent).</div>`;
     return;
   }
   const opts = ["", ...DUNGEONS.map(d => d.name)];

@@ -81,7 +81,7 @@
 <div class="wrap">
   <header class="topbar">
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-      <img src="/branding/logo" alt="Lords of the Pit" class="crest">
+      <img src="/branding/logo" alt="Cohors" class="crest">
       <div>
         <div class="brandname">Cohors <span>Comparateur</span></div>
         <div class="tagline">Personnages côte à côte — ilvl &amp; parses</div>
@@ -94,11 +94,11 @@
     </div>
   </header>
   <nav class="tabs" id="navmain"></nav>
-  <p class="sub">Ajoute 2 à 6 personnages de la guilde (royaume Hyjal) pour les comparer : équipement (équipé, dernier jeu) et meilleurs parses Warcraft Logs sur le raid en cours — <b id="zonelabel">chargement…</b>.</p>
+  <p class="sub">Ajoute 2 à 6 personnages de la guilde  pour les comparer : équipement (équipé, dernier jeu) et meilleurs parses Warcraft Logs sur le raid en cours — <b id="zonelabel">chargement…</b>.</p>
 
   <div class="card">
     <div class="row">
-      <input type="text" id="newname" list="rosterlist" placeholder="Nom du personnage (ex. Squall)" maxlength="24" autocomplete="off">
+      <input type="text" id="newname" list="rosterlist" placeholder="Nom du personnage" maxlength="24" autocomplete="off">
       <datalist id="rosterlist"></datalist>
       <button id="add">+ Ajouter</button>
       <span class="spacer"></span>
@@ -139,7 +139,7 @@ const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#
 const DIFF = { 1: "LFR", 2: "Flex", 3: "Normal", 4: "Héroïque", 5: "Mythique", 10: "Défis" };
 const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >= 95 ? "#ff8000" : p >= 75 ? "#a335ee" : p >= 50 ? "#0070dd" : p >= 25 ? "#1eff00" : "#6b6b6b";
 
-const REALM = "hyjal";
+let REALM = "";
 const MAX = 6;
 let sel = [];
 let rosterNames = [];
@@ -229,6 +229,7 @@ $("#logout").addEventListener("click", async (ev) => {
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   try {
     const r = await jget("/api/roster");
+    REALM = (r.realm || "").trim();
     rosterNames = r.members.map(m => m.name);
     $("#rosterlist").innerHTML = rosterNames.map(n => `<option value="${esc(n)}">`).join("");
   } catch (e) {}

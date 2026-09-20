@@ -150,7 +150,7 @@ local function recordEvent(ev, invs)
 end
 
 -- liste des dossiers d'addon « Cohors* » chargés (détection de doublons)
-local function lotpCopies()
+local function cohorsCopies()
     local out = {}
     local ok, n = pcall(function()
         if C_AddOns and C_AddOns.GetNumAddOns then return C_AddOns.GetNumAddOns() end
@@ -442,7 +442,7 @@ f:SetScript("OnEvent", function(_, event, arg1)
             Cohors_DB.loaded_ver = ADDON_VER
             Cohors_DB.loaded_at = time()
             Cohors_DB.loaded_dossier = tostring(ADDON_NAME or "?")
-            local copies = lotpCopies()
+            local copies = cohorsCopies()
             if #copies > 1 then
                 msg("|cffff5555ATTENTION : plusieurs dossiers Cohors détectés (" ..
                     table.concat(copies, ", ") .. ") — supprime les doublons !|r")
@@ -530,7 +530,7 @@ diagLines = function()
     end
     L[#L + 1] = ("collecte : %s"):format(collecting and
         ("en cours depuis " .. dateStr(collectStartAt) .. " · phase " .. tostring(engine and engine.phase)) or "au repos")
-    local copies = lotpCopies()
+    local copies = cohorsCopies()
     L[#L + 1] = "dossiers Cohors : " .. (#copies > 0 and table.concat(copies, ", ") or "?")
     if Cohors_DB.last_error then
         L[#L + 1] = "dernière erreur : " .. tostring(Cohors_DB.last_error)

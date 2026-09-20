@@ -6125,7 +6125,7 @@ def api_gcal_relance(event_id: int, request: Request):
                         f"En attente de réponse : **{', '.join(waiting[:40])}**")
                        + (f"\n\n👉 [Répondre sur le site]({link})" if link else ""),
         "color": discord_bot.COLOR_CRIMSON,
-        "footer": {"text": "Lords Of The Pit · calendrier"},
+        "footer": {"text": f"{_brand_identity()['guild_name']} · calendrier"},
     }
     try:
         discord_bot.send(token, channel, embeds=[emb])
@@ -6275,7 +6275,7 @@ def _guild_normalize(values: dict) -> dict:
         if values.get(key):
             val = str(values[key]).strip().lower()
             if not _GUILD_SLUG_RE.match(val):
-                raise HTTPException(400, f"Le {label} doit être un slug en minuscules (ex. hyjal, lords-of-the-pit).")
+                raise HTTPException(400, f"Le {label} doit être un slug en minuscules (ex. hyjal, ma-guilde).")
             clean[key] = val
     if values.get("wcl_name"):
         name = str(values["wcl_name"]).strip()
