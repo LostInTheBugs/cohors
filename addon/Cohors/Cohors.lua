@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.8.0"
+local ADDON_VER = "1.8.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -538,6 +538,11 @@ end)
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == (ADDON_NAME or "Cohors") then
+            if Cohors_DB.file_ok ~= ADDON_VER then
+                msg("|cffff5555⚠️ chargement INCOMPLET du fichier (des fonctions manquent — " ..
+                    "événements refusés : " .. tostring(Cohors_DB.bad_events or "aucun") ..
+                    "). Signale-le.|r")
+            end
             Cohors_DB.loaded_ver = ADDON_VER
             Cohors_DB.loaded_at = time()
             Cohors_DB.loaded_dossier = tostring(ADDON_NAME or "?")
@@ -559,10 +564,20 @@ f:SetScript("OnEvent", function(_, event, arg1)
         if recEngine and recOnTradeSkillOpened then pcall(recOnTradeSkillOpened) end
     end
 end)
-f:RegisterEvent("ADDON_LOADED")
-f:RegisterEvent("CALENDAR_OPEN_EVENT")
-f:RegisterEvent("TRADE_SKILL_SHOW")
-f:RegisterEvent("TRADE_SKILL_UPDATE")
+-- ⚠️ Inscrire un événement INCONNU fait planter TOUT le chargement du fichier (le client lève
+-- « Attempt to register unknown event »). C'est arrivé en v1.8.0 avec TRADE_SKILL_UPDATE, retiré
+-- du client : l'addon restait à moitié chargé et spammait « attempt to call a nil value ». Toute
+-- inscription passe donc par un pcall, et les refus sont journalisés (visibles dans /cohors diag).
+local function regEvent(ev)
+    local ok, err = pcall(f.RegisterEvent, f, ev)
+    if not ok then
+        Cohors_DB.bad_events = (Cohors_DB.bad_events or "") .. ev .. " "
+        dtrace("événement refusé par le client : " .. ev .. " (" .. tostring(err) .. ")")
+    end
+end
+regEvent("ADDON_LOADED")
+regEvent("CALENDAR_OPEN_EVENT")
+regEvent("TRADE_SKILL_SHOW")
 
 function Cohors_Collect()
     if recEngine then
@@ -722,6 +737,9 @@ diagLines = function()
     if Cohors_DB.rec_diag then
         L[#L + 1] = ("dernier rapport recettes : %s"):format(dateStr(Cohors_DB.rec_diag_at or 0))
         for line in tostring(Cohors_DB.rec_diag):gmatch("[^\n]+") do L[#L + 1] = "  " .. line end
+    end
+    if Cohors_DB.bad_events then
+        L[#L + 1] = "événements refusés par le client : " .. tostring(Cohors_DB.bad_events)
     end
     local ok3, ni = pcall(C_Calendar.GetNumInvites)
     L[#L + 1] = "GetNumInvites (événement ouvert) : " .. tostring(ok3 and ni or "erreur")
@@ -1394,6 +1412,7 @@ function Cohors_Refresh()
 end
 
 -- commande unique et toujours disponible
+Cohors_DB.file_ok = ADDON_VER   -- marqueur : le chargement est ALLÉ JUSQU'AU BOUT du fichier
 msg("v" .. ADDON_VER .. " — fichier execute jusqu au bout (dossier " .. tostring(ADDON_NAME or "?") .. "). Si aucun autre message Cohors n apparait ensuite, le probleme est cote client.")
 
 SLASH_Cohors1 = "/cohors"

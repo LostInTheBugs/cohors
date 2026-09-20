@@ -33,16 +33,30 @@ local M = { t = 100000.0 }              -- temps virtuel (GetTime)
 local barValues = {}                    -- valeurs prises par la barre de progression
 local frames = {}
 
+-- Événements VALIDES dans le client : une inscription d'un nom inconnu lève une erreur qui
+-- INTERROMPT le chargement du fichier en jeu (vécu : TRADE_SKILL_UPDATE en v1.8.0 → addon à
+-- moitié chargée + « attempt to call a nil value » en boucle). Le harnais doit être aussi strict
+-- que le client, sinon ce type d'avarie passe la CI sans être vu.
+local VALID_EVENTS = {
+    ADDON_LOADED = true, CALENDAR_OPEN_EVENT = true,
+    TRADE_SKILL_SHOW = true, TRADE_SKILL_CLOSE = true,
+}
 local function newRegion(kind)
     local r = { _kind = kind, _scripts = {}, _shown = true, _value = 0 }
     local noop = function() end
     for _, m in ipairs({ "SetPoint", "SetSize", "SetFrameStrata", "SetMovable", "EnableMouse",
         "RegisterForDrag", "SetClampedToScreen", "SetAutoFocus", "SetTextInsets", "SetFontObject",
         "SetMultiLine", "SetStatusBarTexture", "SetMinMaxValues", "SetBackdrop", "SetJustifyH",
-        "SetWordWrap", "SetAlpha", "SetScale", "RegisterEvent", "UnregisterEvent",
+        "SetWordWrap", "SetAlpha", "SetScale",
         "StartMoving", "StopMovingOrSizing", "HighlightText", "SetFocus", "ClearFocus" }) do
         r[m] = noop
     end
+    r.RegisterEvent = function(self, ev)
+        if not VALID_EVENTS[ev] then
+            error("Attempt to register unknown event \"" .. tostring(ev) .. "\"")
+        end
+    end
+    r.UnregisterEvent = function() end
     r.SetScript = function(self, ev, fn) self._scripts[ev] = fn end
     r.GetScript = function(self, ev) return self._scripts[ev] end
     r.Show = function(self) self._shown = true end
@@ -381,6 +395,8 @@ else
             tostring(Cohors_DB.recipes_total))
         check((Cohors_DB.rec_diag or ""):find("1 non apprises", 1, true) ~= nil,
             "recette non apprise filtrée (rapport rec_diag)")
+        check(not chat_has("chargement INCOMPLET"), "aucune alerte de chargement partiel")
+        check(Cohors_DB.file_ok ~= nil, "marqueur de chargement complet posé (file_ok)")
     end
     tick(45)
     local pf = progressFrame()

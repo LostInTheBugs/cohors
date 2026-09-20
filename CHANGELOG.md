@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145-c4 - 2026-09-20
+
+### Fixed
+- In-game add-on **1.8.1 — critical load fix**: v1.8.0 registered `TRADE_SKILL_UPDATE`, an event
+  that no longer exists in the current client. Registering an unknown event raises an error that
+  aborts the whole file load, leaving the add-on half-loaded (spamming
+  « attempt to call a nil value » every frame). The bogus registration is removed; all event
+  registrations now go through a safe wrapper that records refused events (shown in
+  `/cohors diag`), and login now warns if the file did not load completely.
+- Offline harness is now as strict as the client about event names (unknown name = hard error at
+  load) — this class of abort can no longer pass CI. All 8 scenarios rerun.
+
 ## 2026.09.145-c3 - 2026-09-20
 
 ### Fixed
