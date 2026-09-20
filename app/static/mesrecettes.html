@@ -71,9 +71,10 @@
   .mychip.mm { border-color: #6b4a17; color: var(--acc2); }
   .mychip a { cursor: pointer; color: var(--mut); font-size: 12.5px; text-decoration: none; }
   .mychip a:hover { color: var(--acc2); }
-  .rcrow { display: flex; align-items: baseline; gap: 8px; padding: 3px 6px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
+  .rcrow { display: flex; align-items: baseline; gap: 8px; padding: 3px 6px; border-radius: 8px; font-size: 13.5px; }
   .rcrow:hover { background: #182130; }
-  .rcrow input { accent-color: var(--acc); transform: translateY(1px); }
+  .rcmark { display: inline-block; width: 14px; text-align: center; color: var(--ok); font-weight: 700; }
+  .rcmark.mut { color: var(--mut); font-weight: 400; }
   .rclist { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px; margin-top: 10px; }
   .rcgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .rccol { min-width: 0; }
@@ -115,13 +116,19 @@
 
   <div class="card" id="recettes">
     <h2>📖 Mes recettes</h2>
-    <div class="meta" style="margin:-4px 0 10px">Les recettes connues apparaissent dans « Qui peut crafter quoi » (préparation de raid). Coche ou décoche, puis « Enregistrer » — le reste s'affiche dans « À apprendre ».</div>
+    <div class="meta" style="margin:-4px 0 10px">Les listes viennent de l'addon in-game : importe ton export ci-dessous (📥). Les recettes connues alimentent « Qui peut crafter quoi » (préparation de raid).</div>
     <div class="row">
       <select id="rcchar"><option value="">— Choisir un personnage —</option></select>
       <select id="rcprof"></select>
       <input type="search" id="rcq" placeholder="Rechercher une recette…">
       <span class="spacer"></span>
       <span class="meta" id="rcmsg"></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="rcimp" style="padding:9px 16px;font-size:14px">📥 Importer mon export d'addon</button>
+      <input type="file" id="rcfile" accept=".lua,.txt,.json" class="hidden">
+      <span class="spacer"></span>
+      <span class="meta">Addon in-game : téléchargement sur la page <a class="hlink" href="/guild">🛡️ Guilde</a> — commande /cohors recettes puis /reload.</span>
     </div>
     <div class="rcgrid hidden" id="rcgrid">
       <div class="rccol">
@@ -132,11 +139,6 @@
         <div class="rchead">⬜ À apprendre <span class="meta" id="rccountu"></span></div>
         <div class="rclist" id="rclistu"></div>
       </div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button id="rcsave">💾 Enregistrer mes recettes</button>
-      <button class="ghost" id="rcimp" style="padding:9px 16px;font-size:14px">📥 Importer mon export d'addon</button>
-      <input type="file" id="rcfile" accept=".lua,.txt,.json" class="hidden">
     </div>
   </div>
 
@@ -176,7 +178,7 @@ const rcUnknownCount = () => RC.catalog.filter(x => !x.known).length;
 function rcRenderList() {
   const q = ($("#rcq").value || "").trim().toLowerCase();
   const match = (x) => !q || (x.name || "").toLowerCase().includes(q);
-  const row = (x) => `<label class="rcrow"><input type="checkbox" data-rc="${x.id}"${x.known ? " checked" : ""}> <b>${esc(x.name)}</b> <span class="meta">${esc(x.exp || "")}${(x.mats && x.mats.length) ? " · " + esc(x.mats.map(m => m.name + " ×" + fmt(m.qty)).join(", ")) : ""}</span></label>`;
+  const row = (x, known) => `<div class="rcrow"><span class="rcmark${known ? "" : " mut"}">${known ? "✓" : "·"}</span> <b>${esc(x.name)}</b> <span class="meta">${esc(x.exp || "")}${(x.mats && x.mats.length) ? " · " + esc(x.mats.map(m => m.name + " ×" + fmt(m.qty)).join(", ")) : ""}</span></div>`;
   if (!RC.catalog.length) {
     $("#rclistk").innerHTML = `<div class="empty">Choisis un personnage et un métier.</div>`;
     $("#rclistu").innerHTML = "";
@@ -185,18 +187,12 @@ function rcRenderList() {
   }
   const klist = RC.catalog.filter(x => x.known && match(x));
   const ulist = RC.catalog.filter(x => !x.known && match(x));
-  $("#rclistk").innerHTML = klist.length ? klist.map(row).join("")
+  $("#rclistk").innerHTML = klist.length ? klist.map(x => row(x, true)).join("")
     : `<div class="empty">${q ? "Aucune recette trouvée." : "Aucune recette connue pour ce métier."}</div>`;
-  $("#rclistu").innerHTML = ulist.length ? ulist.map(row).join("")
+  $("#rclistu").innerHTML = ulist.length ? ulist.map(x => row(x, false)).join("")
     : `<div class="empty">${q ? "Aucune recette trouvée." : "Toutes les recettes de ce métier sont connues 🎉"}</div>`;
   $("#rccountk").textContent = "(" + rcCount() + ")";
   $("#rccountu").textContent = "(" + rcUnknownCount() + ")";
-  document.querySelectorAll("#rcgrid input[data-rc]").forEach(c => c.addEventListener("change", () => {
-    const it = RC.catalog.find(x => x.id === +c.dataset.rc);
-    if (it) it.known = c.checked;
-    rcMsg(rcCount() + " recette(s) connue(s) · " + rcUnknownCount() + " à apprendre");
-    rcRenderList();
-  }));
 }
 async function rcCharChanged() {
   const [realm, name] = ($("#rcchar").value || "").split("|");
@@ -230,19 +226,6 @@ async function rcProfChanged() {
 $("#rcchar").addEventListener("change", rcCharChanged);
 $("#rcprof").addEventListener("change", rcProfChanged);
 $("#rcq").addEventListener("input", rcRenderList);
-$("#rcsave").addEventListener("click", async () => {
-  const [realm, name] = ($("#rcchar").value || "").split("|");
-  const prof = $("#rcprof").value || "";
-  if (!realm || !prof) { rcMsg("Choisis d'abord un personnage et un métier."); return; }
-  rcMsg("Enregistrement…");
-  try {
-    const r = await fetch("/api/my/recipes", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ realm, name, prof, items: RC.catalog.filter(x => x.known).map(x => x.id) }) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.detail || "Erreur");
-    rcMsg(`Recettes enregistrées ✓ (${j.saved})`, true);
-  } catch (e) { rcMsg(e.message); }
-});
 $("#rcimp").addEventListener("click", () => $("#rcfile").click());
 $("#rcfile").addEventListener("change", async () => {
   const f = $("#rcfile").files && $("#rcfile").files[0];
