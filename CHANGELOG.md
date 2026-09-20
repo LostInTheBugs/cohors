@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.146-c1 - 2026-09-20
+
+### Fixed
+- **First-time setup page (`/start`)** — the Help tab fell back to the browser-default blue link (the
+  page was missing the shared tab styles); the step markers are now a uniform rail (green disc / empty
+  ring), and the checklist rows align with the card content.
+- Simulator page — the « Itérations : » label was never translated to English.
+- Setup checklist — singular « 1 membre » (was « 1 membres »).
+
 ## 2026.09.146 - 2026-09-20
 
 ### Added

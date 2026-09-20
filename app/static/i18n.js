@@ -1066,7 +1066,8 @@
  "✅ Configuration terminée — revoir la checklist.": "✅ Setup complete — review the checklist.",
  "Ouvrir la checklist →": "Open the checklist →",
  "en attente": "pending",
- "<li><b>Première configuration (administration)</b> : pour mettre la guilde en route (guilde, clés API, identité, SMTP, bot Discord, premiers membres), suis la checklist <b>🚀 Première configuration</b> — page <i>/start</i>, aussi accessible depuis le tableau de bord (carte administrateur tant que des étapes restent à faire).</li>": "<li><b>First-time setup (administration)</b>: to get the guild running (guild, API keys, identity, SMTP, Discord bot, first members), follow the <b>🚀 First-time setup</b> checklist — page <i>/start</i>, also reachable from the dashboard (admin card shown while steps remain).</li>"
+ "<li><b>Première configuration (administration)</b> : pour mettre la guilde en route (guilde, clés API, identité, SMTP, bot Discord, premiers membres), suis la checklist <b>🚀 Première configuration</b> — page <i>/start</i>, aussi accessible depuis le tableau de bord (carte administrateur tant que des étapes restent à faire).</li>": "<li><b>First-time setup (administration)</b>: to get the guild running (guild, API keys, identity, SMTP, Discord bot, first members), follow the <b>🚀 First-time setup</b> checklist — page <i>/start</i>, also reachable from the dashboard (admin card shown while steps remain).</li>",
+ "Itérations :": "Iterations :"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
