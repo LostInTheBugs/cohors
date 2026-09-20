@@ -6,7 +6,6 @@
 gear advice, raid preparation, Warcraft Logs reports, roster tracking, crafting, wishlist,
 guild calendar and Discord announcements — one web app, one instance per guild.
 
-**Live demo:** https://cohors.cloudfr.net ·
 **Releases:** https://github.com/LostInTheBugs/cohors/releases
 
 > Not affiliated with Blizzard Entertainment, Inc. Game data is provided by Blizzard
