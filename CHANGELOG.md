@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.138 - 2026-09-20
+
+### Changed
+- The app presents itself as simply **Cohors**: the sign-in and registration screens no
+  longer append "Simulateur" — the app does much more than simulations (roster, raids,
+  calendar, crafting, wishlist, suivi...).
+
 ## 2026.09.137 - 2026-09-20
 
 ### Added
