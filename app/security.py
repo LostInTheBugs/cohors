@@ -47,20 +47,29 @@ _BLOCKED_KEYS = ("input", "output", "html", "json", "json2", "apikey")
 _PROFILE_BLOCK_RE = re.compile(r"^\s*(" + "|".join(_BLOCKED_KEYS) + r")\s*=", re.IGNORECASE)
 
 
-def real_client_ip(xff: str | None, peer: str | None) -> str:
-    """Adresse du client derrière notre reverse proxy (Apache, même hôte).
+def real_client_ip(xff: str | None, peer: str | None, hops: int = 1) -> str:
+    """Adresse du client derrière notre chaîne de proxys de confiance.
 
-    Le conteneur n'est jamais exposé directement : le seul intermédiaire est notre proxy,
-    qui AJOUTE l'adresse qu'il voit en DERNIÈRE position d'X-Forwarded-For. Toutes les
-    entrées précédentes viennent du client et sont donc forgeables — lire la première
-    (comme avant) permettait de contourner le rate-limit de connexion en changeant
-    d'en-tête à chaque requête (reproduit en direct sur la démo le 2026-09-20). On ne lit
-    donc que la dernière entrée non vide, avec repli sur l'adresse de la socket.
+    Chaque proxy de la chaîne AJOUTE l'adresse qu'il voit en fin d'X-Forwarded-For ;
+    toutes les entrées écrites par le client lui-même sont donc forgeables — lire la
+    première (comportement d'origine) permettait de contourner le rate-limit de connexion
+    en changeant d'en-tête à chaque requête (reproduit en direct sur la démo le 2026-09-20).
+
+    `hops` = nombre de proxys de confiance devant l'app (variable TRUSTED_PROXY_HOPS,
+    défaut 1 : notre Apache sur le même hôte). On lit l'entrée située `hops` positions
+    depuis la fin ; si l'en-tête est plus court que prévu, on prend la plus ancienne
+    disponible. Sans en-tête, repli sur l'adresse de la socket.
+
+    ⚠️ Si un proxy supplémentaire est ajouté devant (Cloudflare, load balancer), penser à
+    augmenter TRUSTED_PROXY_HOPS, sinon tous les visiteurs partagent le même compteur.
+    Et l'app doit rester liée à 127.0.0.1 derrière le proxy : exposée directement,
+    l'en-tête redevient contrôlé par le client.
     """
     if xff:
         parts = [p.strip() for p in xff.split(",") if p.strip()]
         if parts:
-            return parts[-1]
+            idx = min(max(1, hops), len(parts))
+            return parts[-idx]
     return peer or "?"
 
 

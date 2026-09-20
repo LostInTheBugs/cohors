@@ -39,6 +39,14 @@ def test_real_client_ip_uses_last_hop():
     assert real_client_ip(" , ", "10.0.0.5") == "10.0.0.5"
 
 
+def test_real_client_ip_hops_for_extra_proxies():
+    # Deux proxys de confiance : la vraie IP est deux crans avant la fin.
+    assert real_client_ip("1.1.1.1, 203.0.113.9, 172.16.0.2", None, hops=2) == "203.0.113.9"
+    # Chaîne plus courte que prévu : on retombe sur la plus ancienne disponible, jamais hors bornes.
+    assert real_client_ip("203.0.113.9", None, hops=3) == "203.0.113.9"
+    assert real_client_ip("forge, 203.0.113.9", None, hops=0) == "203.0.113.9"  # borné à 1
+
+
 def test_profile_guard_accepts_real_export_sample():
     sample = (
         "# SimC Addon 12.1.0-01\n"

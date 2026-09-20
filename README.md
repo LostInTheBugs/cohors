@@ -113,8 +113,14 @@ release tag by CI).
   are rejected before the file is written. A `/simc` export never contains them.
 - **Accounts** — passwords are hashed with scrypt (unique salt, constant-time comparison),
   login attempts are rate-limited per IP, sessions are HttpOnly cookies, and registration is
-  invite-only. The client address is read from the **last** `X-Forwarded-For` entry — the one
-  appended by the reverse proxy — so the header cannot be spoofed to dodge the rate limit.
+  invite-only.
+- **Client address & proxy chain** — the address used for IP rate-limits is read from the end of
+  `X-Forwarded-For`: the `TRUSTED_PROXY_HOPS`-th entry from the last one (default `1` — a single
+  reverse proxy appending the real address, e.g. Apache on the same host), so client-supplied
+  entries cannot be spoofed to dodge the limit. Two limits to keep in mind: if you add another
+  proxy in front (Cloudflare, load balancer), raise `TRUSTED_PROXY_HOPS` accordingly or every
+  visitor will share one rate-limit bucket; and keep the app bound to `127.0.0.1` behind the
+  proxy — exposed directly, the header becomes client-controlled again.
 - **Security headers** — every response carries a Content-Security-Policy (no external scripts or
   objects, framing restricted to the app and the configured voice host), `X-Content-Type-Options`,
   `X-Frame-Options` and `Referrer-Policy`. `script-src` still allows inline code since the UI is

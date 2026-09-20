@@ -774,10 +774,14 @@ def _brand_files() -> dict:
 
 
 def _client_ip(request: Request) -> str:
-    # Voir app/security.py:real_client_ip — l'IP réelle est la DERNIÈRE entrée d'X-Forwarded-For
-    # (ajoutée par notre proxy) ; les précédentes sont fournies par le client et forgeables.
+    # Voir app/security.py:real_client_ip — on lit l'IP à TRUSTED_PROXY_HOPS positions de la fin
+    # d'X-Forwarded-For (défaut 1 : notre proxy) ; le reste est fourni par le client et forgeable.
+    try:
+        hops = max(1, int(os.environ.get("TRUSTED_PROXY_HOPS", "1")))
+    except ValueError:
+        hops = 1
     return real_client_ip(request.headers.get("x-forwarded-for"),
-                          request.client.host if request.client else None)
+                          request.client.host if request.client else None, hops=hops)
 
 
 # ---------------------------------------------------------------------------
