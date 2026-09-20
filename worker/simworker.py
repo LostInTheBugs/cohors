@@ -39,7 +39,7 @@ from pathlib import Path
 
 from shared.simvalidate import (validate_container_profile, validate_extra,
                                 validate_iterations, validate_profile_text)
-from worker.simrun import cleanup_orphans, run_sim
+from worker.simrun import cleanup_orphans, purge_job_dirs, run_sim
 
 VERSION = os.environ.get("COHORS_VERSION", "?")
 try:
@@ -62,10 +62,24 @@ MAX_JOBS_KEPT = 200
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
 QUEUE: "queue.Queue[tuple[str, dict]]" = queue.Queue()
+# Jobs annulés : cancel() ne peut pas retirer une entrée déjà mise dans QUEUE — la boucle
+# consulte cet ensemble AVANT d'exécuter et n'écrase jamais l'état « annulé » (revue 20/09).
+CANCELLED: set[str] = set()
+JOBS_KEEP_H = float(os.environ.get("SIM_JOBS_KEEP_H", "168"))
 
 
 def _set(job_id: str, **kw) -> None:
     with JOBS_LOCK:
+        if job_id in JOBS:
+            JOBS[job_id].update(kw)
+
+
+def _complete(job_id: str, **kw) -> None:
+    """Comme _set, mais n'écrase pas un job annulé entre-temps (l'état « annulé » reste)."""
+    with JOBS_LOCK:
+        if job_id in CANCELLED:
+            CANCELLED.discard(job_id)
+            return
         if job_id in JOBS:
             JOBS[job_id].update(kw)
 
@@ -102,13 +116,28 @@ def _worker_loop() -> None:
     while True:
         job_id, spec = QUEUE.get()
         try:
+            with JOBS_LOCK:
+                if job_id in CANCELLED:      # annulé pendant qu'il était encore dans la file
+                    CANCELLED.discard(job_id)
+                    continue
             _set(job_id, state="running")
             result = _execute(job_id, spec)
-            _set(job_id, state="done", result=result)
+            _complete(job_id, state="done", result=result)
         except Exception as exc:  # noqa: BLE001
-            _set(job_id, state="error", error=str(exc)[:500])
+            _complete(job_id, state="error", error=str(exc)[:500])
         finally:
             QUEUE.task_done()
+            # les dossiers de jobs (rapport html + json) ne doivent pas s'accumuler sans fin
+            purge_job_dirs(JOBS_DIR, JOBS_KEEP_H)
+
+
+def _readline_limit() -> int:
+    """Taille max d'une requête sur le socket : dérivée de MAX_PROFILE_KB (revue 20/09).
+
+    ×4 : pire cas d'échappement JSON d'un profil non-ASCII (un caractère 2 octets peut devenir
+    \\uXXXX = 6). +64 Ko pour les autres champs (iterations, extra, timeout…).
+    """
+    return MAX_PROFILE_KB * 1024 * 4 + 65536
 
 
 def _handle_cmd(req: dict) -> dict:
@@ -158,6 +187,11 @@ def _handle_cmd(req: dict) -> dict:
                 "error": job.get("error")}
     if cmd == "cancel":
         job_id = str(req.get("id") or "")
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if job is None or job.get("state") not in ("queued", "running"):
+                return {"ok": True}      # inconnu ou déjà terminé : rien à faire (on n'efface pas un résultat)
+            CANCELLED.add(job_id)        # la boucle ne l'exécutera pas s'il est encore en file
         try:
             subprocess.run(["docker", "kill", "sim-" + job_id], capture_output=True, timeout=60)
             subprocess.run(["docker", "rm", "-f", "sim-" + job_id], capture_output=True, timeout=60)
@@ -181,8 +215,11 @@ class Handler(socketserver.StreamRequestHandler):
         if peer_uid != APP_UID:
             self._reply({"ok": False, "error": f"accès refusé (uid {peer_uid})"})
             return
-        line = self.rfile.readline(4 * 1024 * 1024)
+        line = self.rfile.readline(_readline_limit())
         if not line:
+            return
+        if not line.endswith(b"\n"):   # tronquée par la limite : message utile plutôt qu'« illisible »
+            self._reply({"ok": False, "error": f"requête trop volumineuse (limite : profil ≤ {MAX_PROFILE_KB} Ko)"})
             return
         try:
             req = json.loads(line.decode("utf-8", "replace"))
@@ -217,6 +254,11 @@ def main() -> int:
     if orphans:
         print(f"simworker: ménage — {len(orphans)} conteneur(s) orphelin(s) supprimé(s) : "
               f"{', '.join(orphans)}", flush=True)
+
+    purged = purge_job_dirs(JOBS_DIR, JOBS_KEEP_H)
+    if purged:
+        print(f"simworker: purge — {purged} dossier(s) de job(s) plus vieux que {JOBS_KEEP_H:.0f} h supprimé(s)",
+              flush=True)
 
     server = socketserver.ThreadingUnixStreamServer(str(sock), Handler)
     server.daemon_threads = True

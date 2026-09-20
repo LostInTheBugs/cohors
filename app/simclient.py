@@ -82,7 +82,12 @@ def run_sim(
     while time.monotonic() < deadline:
         st = _call({"cmd": "status", "id": job_id})
         if not st.get("ok"):
-            raise WorkerError(st.get("error") or "job perdu par le worker")
+            err = st.get("error") or "job perdu par le worker"
+            if err == "job inconnu":
+                # Le worker ne garde ses jobs qu'en mémoire : après son redémarrage le suivi est
+                # impossible — message compréhensible plutôt que « job inconnu » (revue 20/09).
+                err = "service de simulation redémarré entre-temps (suivi perdu) — relance la simulation."
+            raise WorkerError(err)
         state = st.get("state")
         if state == "done":
             result = st.get("result") or {}

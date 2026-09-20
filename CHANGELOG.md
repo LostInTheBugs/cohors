@@ -10,6 +10,18 @@ All notable changes to this project are documented in this file.
   recipes can no longer be added or removed by hand — the in-game add-on export is the only
   source (the import button stays, with a pointer to the add-on download). The search filters
   both lists; help text updated.
+- **My recipes lists are read-only** — recipes can no longer be added or removed by hand: the
+  in-game add-on export is the only source; the import button sits above the lists.
+
+### Fixed
+- **Sim worker (external review follow-up)**: a simulation cancelled while still queued no longer
+  runs later (cancelled ids are checked before execution, and a finished job is never
+  overwritten); job directories are purged by age (`SIM_JOBS_KEEP_H`, default 168 h) at startup
+  and after every run; a simulator-service interruption now yields a clear user error, and a
+  stranded "running" simulation after an app service interruption no longer blocks the queue; the
+  app GID is no longer hard-coded in the compose (`APP_GID` drives app + worker); the request
+  size limit derives from `SIM_MAX_PROFILE_KB` (clear message instead of a truncated unreadable
+  request); `SIM_MAX_PROFILE_KB`/`SIM_MAX_ITERATIONS` are forwarded to the worker.
 
 ## 2026.09.147 - 2026-09-20
 

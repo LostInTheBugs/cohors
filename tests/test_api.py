@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -126,3 +127,18 @@ def test_import_recipes_merges_tier_entries_and_dedupes():
     pains = [x for x in rows if x["item"] == "Pain épicé"]
     assert len(pains) == 1, rows[:5]
     assert "Farine simple" in pains[0]["mats"], pains[0]   # dernière occurrence conservée
+
+def test_stale_running_sims_are_recovered():
+    """Régression (revue 20/09) : une sim restée « running » après un redémarrage doit être
+    marquée interrompue — sinon la file des simulations reste bloquée pour toujours."""
+    M._init_db()
+    with M._db_lock, M._db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO sims (id, created, ip, label, iterations, status, input_hash, input_file)"
+            " VALUES ('stale-test', ?, '127.0.0.1', '', 1000, 'running', 'h', '/tmp/x.simc')",
+            (time.time(),))
+    M._recover_stale_sims()
+    with M._db_lock, M._db() as conn:
+        row = conn.execute("SELECT status, error FROM sims WHERE id='stale-test'").fetchone()
+    assert row["status"] == "failed"
+    assert "redémarrage" in row["error"]

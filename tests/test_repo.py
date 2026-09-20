@@ -78,9 +78,15 @@ def test_app_container_has_no_docker_socket_and_runs_non_root():
     assert m, "l'app doit fixer un user: uid:gid (non-root)"
     val = m.group(1).strip().strip('"')
     assert "root" not in val
-    m2 = re.match(r"^(?:\$\{[A-Z_]+:-(\d+)\}|(\d+)):(\d+)$", val)
+    m2 = re.match(r"^(?:\$\{[A-Z_]+:-(\d+)\}|(\d+)):(?:\$\{[A-Z_]+:-(\d+)\}|(\d+))$", val)
     assert m2, f"format user inattendu : {val}"
-    assert (m2.group(1) or m2.group(2)) != "0", "l'app ne doit pas tourner en root"
+    uid, gid = (m2.group(1) or m2.group(2)), (m2.group(3) or m2.group(4))
+    assert uid != "0", "l'app ne doit pas tourner en root"
+    # Le GID ne doit pas être écrit en dur des deux côtés : le worker lit la MÊME variable
+    # (revue 20/09 — sinon on en change un et on oublie l'autre).
+    m3 = re.search(r"SIMWORKER_APP_GID=\$\{APP_GID:-(\d+)\}", worker)
+    assert m3, "le worker doit recevoir SIMWORKER_APP_GID"
+    assert gid == m3.group(1), f"GID app ({gid}) ≠ GID worker ({m3.group(1)})"
     assert "simsock" in app and "simsock" in worker, "socket Unix app ↔ worker manquant"
 
 

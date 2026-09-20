@@ -26,18 +26,22 @@ services:
     environment:
       - SIM_JOBS_DIR=${DATA_DIR:?set DATA_DIR in .env (see .env.example)}/sim-jobs
       - SIMWORKER_APP_UID=${APP_UID:-1000}
+      - SIMWORKER_APP_GID=${APP_GID:-10001}   # même GID que l'app (socket Unix)
       - SIMC_IMAGE=${SIMC_IMAGE:-simulationcraftorg/simc:latest}
       - SIM_MEM=${SIM_MEM:-4g}
       - SIM_PIDS=${SIM_PIDS:-512}
       - SIM_CPUS=${SIM_CPUS:-}
       - SIM_TIMEOUT=${SIM_TIMEOUT:-900}
+      - SIM_MAX_PROFILE_KB=${SIM_MAX_PROFILE_KB:-2048}
+      - SIM_MAX_ITERATIONS=${SIM_MAX_ITERATIONS:-200000}
+      - SIM_JOBS_KEEP_H=${SIM_JOBS_KEEP_H:-168}
 
   app:
     image: ghcr.io/lostinthebugs/cohors:latest
     container_name: cohors-app
     restart: unless-stopped
     # Non-root: no Docker socket here (APP_UID must own DATA_DIR on the host).
-    user: "${APP_UID:-1000}:10001"
+    user: "${APP_UID:-1000}:${APP_GID:-10001}"
     depends_on:
       - worker
     healthcheck:

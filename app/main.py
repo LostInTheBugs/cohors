@@ -1041,6 +1041,22 @@ def _run_stuff(row: sqlite3.Row) -> None:
                          (str(exc)[-2000:], time.time(), sim_id))
 
 
+def _recover_stale_sims() -> None:
+    """Simulations restées « running » après un redémarrage de l'APP : le worker ne connaît pas
+    nos ids et personne ne suit plus ces jobs — sans nettoyage, _next_queued voit toujours une
+    simulation « en cours » et la file reste bloquée pour toujours (trouvé le 20/09, revue)."""
+    try:
+        with _db_lock, _db() as conn:
+            n = conn.execute(
+                "UPDATE sims SET status='failed', error=?, finished=? WHERE status='running'",
+                ("interrompu par un redémarrage du service — relance la simulation.", time.time()),
+            ).rowcount
+        if n:
+            print(f"[sims] {n} simulation(s) restée(s) « running » → marquée(s) interrompue(s)", flush=True)
+    except sqlite3.Error as exc:
+        print(f"[sims] récupération des sims « running » : {exc}")
+
+
 def _worker_loop() -> None:
     while True:
         sim_id = _next_queued()
@@ -1053,6 +1069,7 @@ def _worker_loop() -> None:
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     _init_db()
+    _recover_stale_sims()
     _apply_api_keys()
     try:
         _apply_guild_config()

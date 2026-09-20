@@ -41,6 +41,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -80,6 +81,32 @@ def cleanup_orphans() -> list[str]:
         except Exception:  # noqa: BLE001
             pass
     return killed
+
+
+def purge_job_dirs(jobs_dir: Path, max_age_h: float) -> int:
+    """Supprime les dossiers de jobs (rapport html + json inclus) plus vieux que max_age_h.
+
+    Sans elle, DATA_DIR/sim-jobs grossit à chaque simulation (revue 20/09). L'app sert les
+    rapports depuis ces dossiers : après purge, un ancien lien répond proprement 404
+    « Rapport introuvable ». Appelée au démarrage du worker puis après chaque job.
+    """
+    removed = 0
+    try:
+        cutoff = time.time() - max_age_h * 3600.0
+        for child in Path(jobs_dir).iterdir():
+            try:
+                if child.stat().st_mtime >= cutoff:
+                    continue
+                if child.is_dir():
+                    shutil.rmtree(child, ignore_errors=True)
+                else:
+                    child.unlink()
+                removed += 1
+            except OSError:
+                continue
+    except OSError:
+        pass
+    return removed
 
 
 def parse_scale_factors(log: str, json_path: Path | None = None) -> list[dict] | None:
