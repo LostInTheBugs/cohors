@@ -10,6 +10,9 @@ All notable changes to this project are documented in this file.
   aligned rows of equal buttons with hover tooltips. Every emoji/symbol the game fonts cannot draw
   (they showed as empty squares in game) has been replaced by safe text — the progress window and
   all chat messages follow the same rules.
+- **Add-on 1.10.1** — the collected overview wraps its long lines (a multiline EditBox cannot wrap
+  in game, so the waiting list was clipped at the right edge) and the panel grows with the content
+  (330 → up to ~430 px) so nothing stays hidden at the bottom.
 
 ## 2026.09.146-c1 - 2026-09-20
 

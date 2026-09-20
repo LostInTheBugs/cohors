@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.10.0"
+local ADDON_VER = "1.10.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -67,6 +67,24 @@ end
 local function dateStr(t)
     local ok, s = pcall(date, "%Y-%m-%d %H:%M", t)  -- date() natif du client WoW (os absent en jeu)
     return ok and s or "?"
+end
+
+-- découpe un texte en lignes d'au plus w caractères : un EditBox du jeu ne fait PAS de retour
+-- automatique, une longue ligne serait coupée à droite sans aucun signe visible (vécu 20/09).
+local function wrapTxt(t, w)
+    local out, cur = {}, ""
+    for word in tostring(t):gmatch("%S+") do
+        if #cur == 0 then
+            cur = word
+        elseif #cur + 1 + #word <= w then
+            cur = cur .. " " .. word
+        else
+            out[#out + 1] = cur
+            cur = "   " .. word
+        end
+    end
+    if #cur > 0 then out[#out + 1] = cur end
+    return out
 end
 
 -- conversion (annee, mois, jour, h, min) -> epoch sans os.time (absent du client WoW) :
@@ -1469,16 +1487,29 @@ local function buildPanel()
                             if #waiting < 25 then waiting[#waiting + 1] = inv.n end
                         end
                     end
-                    lines[#lines + 1] = ("%s  %s  —  %d dispo · %d incertain · %d non · %d sans réponse")
+                    local evLine = ("%s  %s  —  %d dispo · %d incertain · %d non · %d sans réponse")
                         :format(e.date or "?", e.title or "?", c.ok, c.maybe, c.no, c.wait)
+                    for _, wl in ipairs(wrapTxt(evLine, 70)) do
+                        lines[#lines + 1] = wl
+                    end
                     if #waiting > 0 then
-                        lines[#lines + 1] = "   en attente : " .. table.concat(waiting, ", ")
+                        for _, wl in ipairs(wrapTxt("   en attente : " .. table.concat(waiting, ", "), 70)) do
+                            lines[#lines + 1] = wl
+                        end
                     end
                 end
                 lines[#lines + 1] = ""
-                lines[#lines + 1] = "Clique « Exporter » puis Ctrl+A / Ctrl+C pour copier la chaîne à coller sur le site."
+                for _, wl in ipairs(wrapTxt("Clique « Exporter » puis Ctrl+A / Ctrl+C pour copier la chaîne à coller sur le site.", 70)) do
+                    lines[#lines + 1] = wl
+                end
             end
-            eb:SetText(table.concat(lines, "\n"))
+            local txt = table.concat(lines, "\n")
+            local nl = 1
+            for _ in txt:gmatch("\n") do nl = nl + 1 end
+            -- la fenêtre grandit avec le contenu (champ 132..232 px, cadre = champ + 198)
+            local boxH = math.max(132, math.min(232, nl * 12 + 20))
+            if ui then pcall(function() ui:SetSize(500, boxH + 198) end) end
+            eb:SetText(txt)
             eb:HighlightText()
             eb:SetFocus()
         end
