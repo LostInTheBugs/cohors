@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.143-c1 - 2026-09-20
+
+### Fixed
+- The add-on download link on the Guild page now uses the same button style as the page's other
+  actions — it referenced CSS classes that only existed on the Calendar page, so it fell back to
+  the browser's default button look.
+
 ## 2026.09.143 - 2026-09-20
 
 ### Added
