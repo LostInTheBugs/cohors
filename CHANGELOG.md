@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.139 - 2026-09-20
+
+### Fixed
+- English mode: several page names in the header stayed French — Characters, Raid reports,
+  Compare, Fun achievements, Mythic+ and Voice now translate.
+
 ## 2026.09.138 - 2026-09-20
 
 ### Changed

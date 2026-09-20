@@ -1027,7 +1027,13 @@
  "Réglages de guilde retirés": "Guild settings removed",
  "Retirer ces réglages ? Le site utilisera les valeurs du fichier serveur.": "Remove these settings? The site will use the server file values.",
  "Le slug du royaume se lit dans l'adresse de la page de guilde sur worldofwarcraft.blizzard.com ; la vérification contrôle que la guilde est trouvée sur Battle.net et sur Warcraft Logs. Un champ vidé revient à la valeur du fichier serveur.": "The realm slug can be read from the guild page address on worldofwarcraft.blizzard.com; the check verifies the guild is found on Battle.net and Warcraft Logs. A cleared field falls back to the server file value.",
- "<li><b>Guilde (administration)</b> : le <b>royaume</b> (slug), la <b>région</b> Battle.net, le <b>slug de guilde</b>, la langue des données et le <b>nom Warcraft Logs</b> se règlent dans <i>Paramètres → Administration → 🏰 Guilde (royaume & WCL)</i> — c'est ce que le site interroge pour le roster, les fiches de personnages et les rapports de raid. Le bouton <b>🔎 Vérifier</b> contrôle que la guilde est trouvée sur les deux services ; indispensable pour réutiliser le site avec une autre guilde.</li>": "<li><b>Guild (administration)</b>: the <b>realm</b> (slug), the Battle.net <b>region</b>, the <b>guild slug</b>, the data language and the <b>Warcraft Logs name</b> are set in <i>Settings → Administration → 🏰 Guild (realm & WCL)</i> — this is what the site queries for the roster, character sheets and raid reports. The <b>🔎 Check</b> button verifies the guild is found on both services; required to reuse the site for another guild.</li>"
+ "<li><b>Guilde (administration)</b> : le <b>royaume</b> (slug), la <b>région</b> Battle.net, le <b>slug de guilde</b>, la langue des données et le <b>nom Warcraft Logs</b> se règlent dans <i>Paramètres → Administration → 🏰 Guilde (royaume & WCL)</i> — c'est ce que le site interroge pour le roster, les fiches de personnages et les rapports de raid. Le bouton <b>🔎 Vérifier</b> contrôle que la guilde est trouvée sur les deux services ; indispensable pour réutiliser le site avec une autre guilde.</li>": "<li><b>Guild (administration)</b>: the <b>realm</b> (slug), the Battle.net <b>region</b>, the <b>guild slug</b>, the data language and the <b>Warcraft Logs name</b> are set in <i>Settings → Administration → 🏰 Guild (realm & WCL)</i> — this is what the site queries for the roster, character sheets and raid reports. The <b>🔎 Check</b> button verifies the guild is found on both services; required to reuse the site for another guild.</li>",
+ "Personnages": "Characters",
+ "Rapports de raid": "Raid reports",
+ "Comparateur": "Compare",
+ "Succès fun": "Fun achievements",
+ "MM+": "Mythic+",
+ "Vocal": "Voice"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
