@@ -379,6 +379,7 @@ end
 -- ------------------------------------------------------------- scénario demandé
 if scenario == "calendar" then
     barValues = {}
+    SlashCmdList["Cohors"]("")   -- panneau ouvert : le champ partagé doit se remplir tout seul
     Cohors_Collect()
     -- exclusion : l'export des recettes doit être refusé pendant la collecte
     Cohors_Recipes()
@@ -396,6 +397,13 @@ if scenario == "calendar" then
     local ex = Cohors_DB.export or ""
     check(ex:find("Raid test", 1, true) ~= nil, "événement « Raid test » dans l'export")
     check(ex:find("Tester", 1, true) ~= nil, "invité « Tester » dans l'export")
+    -- le texte à exporter apparaît dans le champ DÈS la fin de la collecte (plus de bouton « Exporter »)
+    local calField
+    for i = #frames, 1, -1 do
+        if frames[i]._type == "EditBox" then calField = frames[i]; break end
+    end
+    check(calField ~= nil and (calField._text or ""):find('"v":1', 1, true) ~= nil,
+        "chaîne affichée automatiquement dans le champ (sans clic « Exporter »)")
     local increasing = true
     for i = 2, #barValues do
         if barValues[i] < barValues[i - 1] then increasing = false end
@@ -524,13 +532,16 @@ elseif scenario == "slash" then
     end
 
 elseif scenario == "wishlist" then
-    -- v1.12.0 : import de la wishlist du site + alerte d'instance (journal d'aventure simulé)
-    check(pcall(Cohors_Wishlist), "fenêtre wishlist ouvrable")
+    -- v1.12.1 : un seul panneau à onglets — l'import se fait dans le champ partagé
+    SlashCmdList["Cohors"]("wishlist")
+    local uif
+    for _, fr in ipairs(frames) do if fr._name == "CohorsFrame" then uif = fr end end
+    check(uif ~= nil and uif:IsShown(), "« /cohors wishlist » ouvre le panneau (onglet Wishlist)")
     local wlEbF
     for i = #frames, 1, -1 do
         if frames[i]._type == "EditBox" then wlEbF = frames[i]; break end
     end
-    check(wlEbF ~= nil, "champ de collage présent dans la fenêtre wishlist")
+    check(wlEbF ~= nil, "champ partagé présent dans le panneau")
 
     -- import valide : une pièce + une recette
     wlEbF:SetText("CohorsWL1\n111|item|Épaule de test\n-42|recipe|Lame de test\n")
@@ -603,15 +614,25 @@ elseif scenario == "wishlist" then
     SlashCmdList["Cohors"]("ici")
     check(chat_has("tu n'es pas dans une instance"), "« /cohors ici » hors instance : message clair")
 
-    -- panneau principal : boutons Wishlist / Alerte (et bascule de l'alerte)
+    -- menu par onglets : les bons boutons selon l'onglet, et bascule de l'alerte
     SlashCmdList["Cohors"]("")
-    local bWl, bAlert
+    local bWl, bAlert, bCal, bImp, bMenuCol
     for _, fr in ipairs(frames) do
         if fr._text == "Wishlist" then bWl = fr end
         if fr._text == "Alerte : oui" or fr._text == "Alerte : non" then bAlert = fr end
+        if fr._text == "Calendrier" then bCal = fr end
+        if fr._text == "Importer" then bImp = fr end
+        if fr._text == "Collecter" then bMenuCol = fr end
     end
-    check(bWl ~= nil, "bouton « Wishlist » sur le panneau principal")
+    check(bWl ~= nil, "bouton de menu « Wishlist » sur le panneau principal")
     check(bAlert ~= nil, "bouton « Alerte » sur le panneau principal")
+    check(bImp ~= nil and bImp:IsShown() and bCal ~= nil and not bCal:IsShown(),
+        "onglet Wishlist : « Importer » visible, les boutons du calendrier masqués")
+    if bMenuCol and bMenuCol._scripts["OnClick"] then
+        pcall(bMenuCol._scripts["OnClick"], bMenuCol, "LeftButton", false)
+        check(bCal ~= nil and bCal:IsShown() and bImp ~= nil and not bImp:IsShown(),
+            "clic menu « Collecter » : les boutons du calendrier remplacent ceux de la wishlist")
+    end
     if bAlert and bAlert._scripts["OnClick"] then
         local t0 = bAlert:GetText()
         pcall(bAlert._scripts["OnClick"], bAlert, "LeftButton", false)

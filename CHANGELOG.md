@@ -10,8 +10,10 @@ All notable changes to this project are documented in this file.
   compact text block (🎯 Ma wishlist → 📤 Export pour l'addon). Pasted into the add-on, it drives
   an in-game alert: entering a raid or dungeon pops a small window listing the bosses that drop
   something from your wishlist (in-game Encounter Journal lookup), with a toggle to disable it.
-- Add-on **1.12.0**: wishlist import box in the Cohors window, per-instance alert, `/cohors
-  wishlist` and `/cohors ici` commands.
+- Add-on **1.12.1**: single-window menu (Collecter · Wishlist · Outils) with one shared text
+  field — the calendar export appears there as soon as the collection ends (no separate export
+  button), and the wishlist is pasted and imported in that same window; per-instance alert,
+  `/cohors wishlist` and `/cohors ici` commands.
 
 ## 2026.09.149-c3 - 2026-09-20
 

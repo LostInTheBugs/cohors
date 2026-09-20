@@ -10,7 +10,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.12.0"
+local ADDON_VER = "1.12.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -30,6 +30,7 @@ local openedFrame = false
 local watchMonth = nil
 local collectStartAt = 0
 local ui, statusText, eb, showSummary, scrollBar  -- créés plus bas (panneau à la demande)
+local buildPanel, panelShow, showDetails   -- assignés plus bas (référencés AVANT par la wishlist)
 
 -- ---------------------------------------------------------------- utilitaires
 local function msg(text)
@@ -255,6 +256,7 @@ finishCollect = function()
     Cohors_DB.export = buildExport()
     Cohors_DB.export_at = time()
     Cohors_DB.player = UnitName("player")
+    if showDetails then pcall(showDetails) end   -- résumé détaillé au chat (le champ reste copiable)
     local okd, lines = pcall(diagLines)
     if okd and type(lines) == "table" then
         lines[#lines + 1] = ("résultat : %d événement(s) collecté(s)"):format(#results)
@@ -1408,7 +1410,7 @@ end
 -- entrant dans une instance quand un objet de la liste y tombe : les boss sont
 -- retrouvés via le Journal d'aventure du client (rien à maintenir côté addon
 -- quand un raid change — le client sait où ça tombe).
-local wlWin, wlEb, wlStatus, wlChk, wlAlertBtn
+local wlAlertBtn, wlField, panelTab = nil, nil, "collecter"
 local wlAlertWin, wlAlertTxt, wlAlertScroll
 local wlItems, wlRecipes
 local wlLastMap, wlLastAt = nil, 0
@@ -1482,12 +1484,13 @@ local function wlParse(txt)
     return out, nil, bad
 end
 
+-- L'import se fait dans le champ PARTAGÉ du panneau principal (onglet « Wishlist »).
 local function wlImport()
-    local txt = (wlEb and wlEb:GetText()) or ""
+    local txt = (wlField and wlField:GetText()) or ""
     local list, err, bad = wlParse(txt)
     if not list then
         Cohors_DB.wl_error = tostring(err)
-        if wlStatus then wlStatus:SetText("Import refusé — " .. tostring(err)) end
+        if panelRefreshStatus then panelRefreshStatus() end
         msg("import wishlist refusé — " .. tostring(err))
         return
     end
@@ -1496,7 +1499,11 @@ local function wlImport()
     Cohors_DB.wl_bad = bad or 0
     Cohors_DB.wl_error = nil
     wlBuildCache()
-    if wlStatus then wlStatus:SetText(wlStatusText()) end
+    if wlField then
+        wlField:SetText(("Import reussi : %d objet(s)%s dans l'addon.\nL'alerte te preveniendra en entrant dans un raid ou un donjon.")
+            :format(#list, (bad or 0) > 0 and (", " .. tostring(bad) .. " ligne(s) ignoree(s),") or ""))
+    end
+    if panelRefreshStatus then panelRefreshStatus() end
     msg(("wishlist importée : %d objet(s)%s — alerte en instance %s.")
         :format(#list, (bad or 0) > 0 and (", " .. tostring(bad) .. " ligne(s) ignorée(s)") or "",
             Cohors_DB.wl_alert == false and "désactivée" or "activée"))
@@ -1507,8 +1514,8 @@ local function wlClear()
     Cohors_DB.wl_at = nil
     Cohors_DB.wl_bad = 0
     wlBuildCache()
-    if wlEb then wlEb:SetText("") end
-    if wlStatus then wlStatus:SetText(wlStatusText()) end
+    if wlField then wlField:SetText("") end
+    if panelRefreshStatus then panelRefreshStatus() end
     msg("wishlist vidée dans l'addon (celle du site n'est pas touchée).")
 end
 
@@ -1753,126 +1760,18 @@ function Cohors_WLZoneCheck(force)
     end
 end
 
-local function wlBuildWin()
-    if wlWin then return true end
-    local okB, errB = pcall(function()
-        local frame = CreateFrame("Frame", nil, UIParent,
-            BackdropTemplateMixin and "BackdropTemplate" or nil)
-        wlWin = frame
-        frame:SetSize(560, 330)
-        frame:SetPoint("CENTER")
-        frame:SetFrameStrata("DIALOG")
-        frame:SetMovable(true)
-        frame:EnableMouse(true)
-        frame:SetClampedToScreen(true)
-        frame:RegisterForDrag("LeftButton")
-        frame:SetScript("OnDragStart", frame.StartMoving)
-        frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-        if frame.SetBackdrop then
-            frame:SetBackdrop({
-                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-                tile = true, tileSize = 16, edgeSize = 24,
-                insets = { left = 4, right = 4, top = 4, bottom = 4 },
-            })
-        end
-        local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        title:SetPoint("TOPLEFT", 22, -12)
-        title:SetText("Cohors — Wishlist (depuis le site)")
-        local verTxt = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        verTxt:SetPoint("TOPRIGHT", -22, -17)
-        verTxt:SetText("v" .. ADDON_VER)
-        local sub = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        sub:SetPoint("TOPLEFT", 22, -38)
-        sub:SetWidth(516)
-        sub:SetJustifyH("LEFT")
-        sub:SetText("Sur le site : 🎯 Ma wishlist → « Export pour l'addon », copie le texte,\n"
-            .. "colle-le ci-dessous puis clique « Importer ». En entrant dans un raid ou un donjon,\n"
-            .. "l'addon te dira quels boss ont un objet — ou une recette — de ta liste.")
-        local ebBg = CreateFrame("Frame", nil, frame)
-        ebBg:SetPoint("TOPLEFT", 18, -92)
-        ebBg:SetPoint("BOTTOMRIGHT", -18, 66)
-        local bgTx = ebBg:CreateTexture(nil, "BACKGROUND")
-        bgTx:SetAllPoints(true)
-        bgTx:SetColorTexture(0, 0, 0, 0.45)
-        local sf = CreateFrame("ScrollFrame", nil, ebBg, "UIPanelScrollFrameTemplate")
-        sf:SetPoint("TOPLEFT", 6, -6)
-        sf:SetPoint("BOTTOMRIGHT", -26, 6)
-        wlEb = CreateFrame("EditBox", nil, sf)
-        wlEb:SetMultiLine(true)
-        wlEb:SetAutoFocus(false)
-        wlEb:SetFontObject(ChatFontNormal)
-        wlEb:SetWidth(484)
-        wlEb:SetHeight(12)
-        wlEb:SetTextInsets(2, 2, 2, 2)
-        wlEb:SetText("")
-        wlEb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-        sf:SetScrollChild(wlEb)
-        if sf.EnableMouseWheel then sf:EnableMouseWheel(true) end
-        sf:SetScript("OnMouseWheel", function(self, delta)
-            local sb = self.ScrollBar
-            if sb and sb.SetValue then sb:SetValue((sb:GetValue() or 0) - (delta or 0) * 40) end
-        end)
-        wlStatus = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        wlStatus:SetPoint("BOTTOMLEFT", 22, 40)
-        wlStatus:SetText(wlStatusText())
-        wlChk = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
-        wlChk:SetPoint("BOTTOMLEFT", 22, 14)
-        if wlChk.SetChecked then wlChk:SetChecked(Cohors_DB.wl_alert ~= false) end
-        local chkLbl = wlChk:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        chkLbl:SetPoint("LEFT", 26, 0)
-        chkLbl:SetText("Alerte en instance")
-        wlChk:SetScript("OnClick", function(self)
-            local checked = true
-            if self.GetChecked then checked = self:GetChecked() and true or false end
-            Cohors_DB.wl_alert = checked
-            wlSyncAlertBtn()
-        end)
-        local function mk(text, x, w, fn, tip)
-            local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-            b:SetSize(w, 24)
-            b:SetPoint("BOTTOMLEFT", x, 14)
-            b:SetText(text)
-            if tip then
-                b:SetScript("OnEnter", function(self)
-                    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-                    GameTooltip:AddLine(text)
-                    GameTooltip:AddLine(tip, 1, 1, 1, true)
-                    GameTooltip:Show()
-                end)
-                b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            end
-            b:SetScript("OnClick", function()
-                local ok, err = pcall(fn)
-                if not ok then
-                    Cohors_DB.last_error = "wishlist clic « " .. text .. " » : " .. tostring(err)
-                    msg("ERREUR (wishlist — « " .. text .. " ») — " .. tostring(err))
-                end
-            end)
-            return b
-        end
-        mk("Importer", 240, 110, wlImport, "Lit le texte collé et enregistre ta liste.")
-        mk("Vider", 356, 84, wlClear, "Efface la liste de l'addon (le site n'est pas touché).")
-        mk("Fermer", 446, 90, function() if wlWin then wlWin:Hide() end end,
-            "Ferme la fenêtre.")
-    end)
-    if not okB then
-        Cohors_DB.wl_error = "fenêtre wishlist : " .. tostring(errB)
-        wlWin = nil
-        return false
-    end
-    return true
-end
-
+-- La wishlist s'importe dans le panneau principal (onglet « Wishlist ») : plus de 2e fenêtre.
 function Cohors_Wishlist()
-    if not wlBuildWin() then
-        msg("fenêtre wishlist indisponible — /cohors diag pour le rapport.")
+    buildPanel()
+    if not ui then
+        msg("fenêtre indisponible — /cohors diag pour le rapport.")
         return
     end
-    if wlStatus then wlStatus:SetText(wlStatusText()) end
-    wlSyncAlertBtn()
-    wlWin:Show()
+    if not ui:IsShown() then ui:Show() end
+    if panelShow then pcall(panelShow, "wishlist") end
+    if wlSyncAlertBtn then pcall(wlSyncAlertBtn) end
 end
+
 
 Cohors_WLImport = function() pcall(wlImport) end
 Cohors_WLClear = function() pcall(wlClear) end
@@ -1881,7 +1780,7 @@ Cohors_WLToggleAlert = function() pcall(wlToggleAlert) end
 -- ------------------------------------------------------------------- panneau
 -- La fenêtre est construite À LA DEMANDE (jamais au chargement) : si sa
 -- construction échoue, l'addon continue de fonctionner sans fenêtre.
-local function buildPanel()
+buildPanel = function()
     if ui then return true end
     local okB, errB = pcall(function()
         local okF, frame = pcall(CreateFrame, "Frame", "CohorsFrame", UIParent,
@@ -1891,7 +1790,7 @@ local function buildPanel()
             frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
         end
         ui = frame
-        ui:SetSize(500, 366)
+        ui:SetSize(500, 392)
         ui:SetPoint("CENTER")
         ui:SetFrameStrata("DIALOG")
         ui:SetMovable(true)
@@ -1917,16 +1816,32 @@ local function buildPanel()
         verTxt:SetPoint("TOPRIGHT", -22, -17)
         verTxt:SetText("v" .. ADDON_VER)
 
-        local sub = ui:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        sub:SetPoint("TOPLEFT", 22, -38)
-        sub:SetWidth(456)
-        sub:SetJustifyH("LEFT")
-        sub:SetText("Calendrier : clique « Collecter », puis copie la chaîne sur le site (page Calendrier).\n"
-            .. "Recettes : ouvre chaque métier avec « Ouvrir », puis envoie le fichier SavedVariables (Préparation de raid, bouton importer).")
+        -- Menu (onglets) + champ PARTAGÉ : la wishlist s'importe ici, et la chaîne du
+        -- calendrier apparaît dans ce même champ dès la fin de la collecte (plus de bouton
+        -- « Exporter » à cliquer).
+        local menuBtns, groupBtns = {}, {}
+        local intro = ui:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        intro:SetPoint("TOPLEFT", 22, -88)
+        intro:SetWidth(456)
+        intro:SetJustifyH("LEFT")
+        local introTxt = {
+            collecter = "Collecte tes données puis copie le texte vers le site — il apparaît ici dès la fin.",
+            wishlist = "Colle l'export du site ici puis clique « Importer » (page Ma wishlist → Export pour l'addon).",
+            outils = "Utilitaires : réinitialiser la collecte, écrire un rapport de diagnostic.",
+        }
+        local statusDefault = function()
+            if panelTab == "wishlist" then return wlStatusText() end
+            if panelTab == "outils" then return "prêt (v" .. ADDON_VER .. ")" end
+            if Cohors_DB.export then
+                return ("calendrier : chaîne prête (%s) — Ctrl+A puis Ctrl+C pour la copier.")
+                    :format(Cohors_DB.export_at and dateStr(Cohors_DB.export_at) or "?")
+            end
+            return "prêt (v" .. ADDON_VER .. ") — clique « Calendrier » pour collecter."
+        end
 
         local ebBg = CreateFrame("Frame", nil, ui)
-        ebBg:SetPoint("TOPLEFT", 18, -104)
-        ebBg:SetPoint("BOTTOMRIGHT", -18, 128)
+        ebBg:SetPoint("TOPLEFT", 18, -118)
+        ebBg:SetPoint("BOTTOMRIGHT", -18, 96)
         local bgTx = ebBg:CreateTexture(nil, "BACKGROUND")
         bgTx:SetAllPoints(true)
         bgTx:SetColorTexture(0, 0, 0, 0.45)    -- champ visible (avant : grand vide transparent)
@@ -1953,12 +1868,14 @@ local function buildPanel()
             if sb and sb.SetValue then sb:SetValue((sb:GetValue() or 0) - (delta or 0) * 40) end
         end)
         scrollBar = sf
+        wlField = eb                     -- le champ partagé sert aussi à coller la wishlist
 
         statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        statusText:SetPoint("BOTTOMLEFT", 24, 112)
-        statusText:SetText("prêt (v" .. ADDON_VER .. ")")
+        statusText:SetPoint("BOTTOMLEFT", 22, 20)
+        statusText:SetWidth(356)
+        statusText:SetJustifyH("LEFT")
 
-        local function mkButton(text, x, y, w, fn, tip)
+        local function mkButton(text, x, y, w, fn, tip, group)
             local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
             b:SetSize(w, 24)
             b:SetPoint("BOTTOMLEFT", x, y)
@@ -1981,87 +1898,134 @@ local function buildPanel()
                     msg("ERREUR (clic « " .. text .. " ») — " .. t)
                 end
             end)
+            if group then
+                groupBtns[group] = groupBtns[group] or {}
+                groupBtns[group][#groupBtns[group] + 1] = b
+            end
             return b
         end
 
+        -- Le champ reçoit la CHAÎNE À COPIER (rien d'autre) : un texte propre se colle tel quel
+        -- sur le site. Le résumé détaillé (qui n'a pas répondu) part dans le chat.
         showSummary = function()
-            local lines = {}
-            if not Cohors_DB.export then
-                lines[#lines + 1] = "Aucune collecte pour le moment — clique « Collecter »."
-            else
-                local nresp = 0
-                for _, e in ipairs(results) do nresp = nresp + #(e.invites or {}) end
-                lines[#lines + 1] = ("Dernière collecte : %s · %d réponse(s).")
-                    :format(Cohors_DB.export_at and dateStr(Cohors_DB.export_at) or "?", nresp)
-                for _, e in ipairs(results) do
-                    local c = { ok = 0, maybe = 0, no = 0, wait = 0 }
-                    local waiting = {}
-                    for _, inv in ipairs(e.invites or {}) do
-                        if inv.s == 1 or inv.s == 3 then c.ok = c.ok + 1
-                        elseif inv.s == 8 then c.maybe = c.maybe + 1
-                        elseif inv.s == 2 then c.no = c.no + 1
-                        else
-                            c.wait = c.wait + 1
-                            if #waiting < 25 then waiting[#waiting + 1] = inv.n end
-                        end
-                    end
-                    local evLine = ("%s  %s  —  %d dispo · %d incertain · %d non · %d sans réponse")
-                        :format(e.date or "?", e.title or "?", c.ok, c.maybe, c.no, c.wait)
-                    for _, wl in ipairs(wrapTxt(evLine, 62)) do
-                        lines[#lines + 1] = wl
-                    end
-                    if #waiting > 0 then
-                        for _, wl in ipairs(wrapTxt("   en attente : " .. table.concat(waiting, ", "), 62)) do
-                            lines[#lines + 1] = wl
-                        end
-                    end
-                end
-                lines[#lines + 1] = ""
-                for _, wl in ipairs(wrapTxt("Clique « Exporter » puis Ctrl+A / Ctrl+C pour copier la chaîne à coller sur le site.", 62)) do
-                    lines[#lines + 1] = wl
+            if Cohors_DB.export then
+                eb:SetText(Cohors_DB.export)
+                local nl = 1
+                for _ in eb:GetText():gmatch("\n") do nl = nl + 1 end
+                if eb.SetHeight then eb:SetHeight(math.max(12, nl * 13 + 8)) end
+                if scrollBar and scrollBar.ScrollBar and scrollBar.ScrollBar.SetValue then
+                    scrollBar.ScrollBar:SetValue(0)
                 end
             end
-            local txt = table.concat(lines, "\n")
-            local nl = 1
-            for _ in txt:gmatch("\n") do nl = nl + 1 end
-            -- toutes les lignes dans le champ (l'ascenseur gère le reste, la fenêtre reste fixe)
-            if eb.SetHeight then eb:SetHeight(math.max(12, nl * 13 + 8)) end
-            if scrollBar and scrollBar.ScrollBar and scrollBar.ScrollBar.SetValue then
-                scrollBar.ScrollBar:SetValue(0)   -- on revient en haut à chaque affichage
+            if statusText then statusText:SetText(statusDefault()) end
+        end
+        showDetails = function()
+            local nresp = 0
+            for _, e in ipairs(results) do nresp = nresp + #(e.invites or {}) end
+            msg(("collecte : %d événement(s) · %d réponse(s)."):format(#results, nresp))
+            for _, e in ipairs(results) do
+                local c = { ok = 0, maybe = 0, no = 0, wait = 0 }
+                local waiting = {}
+                for _, inv in ipairs(e.invites or {}) do
+                    if inv.s == 1 or inv.s == 3 then c.ok = c.ok + 1
+                    elseif inv.s == 8 then c.maybe = c.maybe + 1
+                    elseif inv.s == 2 then c.no = c.no + 1
+                    else
+                        c.wait = c.wait + 1
+                        if #waiting < 25 then waiting[#waiting + 1] = inv.n end
+                    end
+                end
+                msg(("%s %s — %d dispo · %d incertain · %d non · %d sans réponse")
+                    :format(e.date or "?", e.title or "?", c.ok, c.maybe, c.no, c.wait))
+                if #waiting > 0 then
+                    for _, wl in ipairs(wrapTxt("en attente : " .. table.concat(waiting, ", "), 70)) do
+                        msg(wl)
+                    end
+                end
             end
-            eb:SetText(txt)
-            eb:HighlightText()
-            eb:SetFocus()
+            msg("chaîne prête dans le champ — Ctrl+A puis Ctrl+C pour la copier vers le site.")
         end
 
-        mkButton("Collecter", 22, 80, 146, function() Cohors_Collect() end,
-            "Collecte le calendrier de raids et les réponses des membres.")
-        mkButton("Exporter", 178, 80, 146, function()
-            if not Cohors_DB.export then
-                msg("rien à exporter pour le moment — clique « Collecter ».")
-                return
+        panelShow = function(tab)
+            tab = tab or panelTab
+            if introTxt[tab] == nil then tab = "collecter" end
+            panelTab = tab
+            Cohors_DB.panel_tab = tab
+            intro:SetText(introTxt[tab])
+            for k, list in pairs(groupBtns) do
+                for _, b in ipairs(list) do
+                    if k == tab then
+                        if b.Show then b:Show() end
+                    else
+                        if b.Hide then b:Hide() end
+                    end
+                end
             end
-            eb:SetText(Cohors_DB.export)
-            eb:HighlightText()
-            eb:SetFocus()
-            msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur le site de la guilde (page Calendrier).")
-        end, "Affiche la chaîne à copier sur le site (Ctrl+A puis Ctrl+C).")
-        mkButton("Recettes", 334, 80, 146, function() Cohors_Recipes() end,
-            "Lit les recettes de tes métiers (l'addon te guide, fenêtre par fenêtre).")
-        mkButton("Réinitialiser", 22, 48, 146, function() Cohors_Reset() end,
-            "Efface la collecte en cours et sa dernière sauvegarde.")
-        mkButton("Diag", 178, 48, 146, function()
-            dumpDiag(true)
-        end, "Écrit un rapport de diagnostic dans le fichier Cohors.lua.")
-        mkButton("Fermer", 334, 48, 146, function() ui:Hide() end,
-            "Ferme la fenêtre. Tape /cohors pour la rouvrir.")
-        mkButton("Wishlist", 22, 16, 146, function() Cohors_Wishlist() end,
-            "Colle ici l'export du site (🎯 Ma wishlist) : l'addon t'alerte en instance.")
-        wlAlertBtn = mkButton("Alerte : " .. (Cohors_DB.wl_alert == false and "non" or "oui"), 178, 16, 146,
+            for k, b in pairs(menuBtns) do
+                if k == tab then
+                    if b.Disable then b:Disable() end     -- onglet actif grisé
+                else
+                    if b.Enable then b:Enable() end
+                end
+            end
+            if tab == "collecter" and Cohors_DB.export and eb and (eb:GetText() or "") == "" then
+                showSummary()
+            elseif statusText then
+                statusText:SetText(statusDefault())
+            end
+        end
+        panelRefreshStatus = function()
+            if statusText then statusText:SetText(statusDefault()) end
+        end
+
+        local function mkMenu(label, key, x)
+            local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
+            b:SetSize(146, 24)
+            b:SetPoint("TOPLEFT", x, -58)
+            b:SetText(label)
+            b:SetScript("OnClick", function()
+                dtrace("menu « " .. label .. " »")
+                local ok, err = pcall(function() panelShow(key) end)
+                if not ok then
+                    Cohors_DB.last_error = "menu " .. label .. " : " .. tostring(err)
+                    msg("ERREUR (menu « " .. label .. " ») — " .. tostring(err))
+                end
+            end)
+            menuBtns[key] = b
+            return b
+        end
+        mkMenu("Collecter", "collecter", 22)
+        mkMenu("Wishlist", "wishlist", 178)
+        mkMenu("Outils", "outils", 334)
+
+        -- Onglet Collecter
+        mkButton("Calendrier", 22, 54, 108, function()
+            if statusText then statusText:SetText("collecte du calendrier en cours…") end
+            Cohors_Collect()
+        end, "Collecte le calendrier de raids — la chaîne apparaît ici dès la fin.", "collecter")
+        mkButton("Recettes", 140, 54, 108, function() Cohors_Recipes() end,
+            "Lit tes recettes d'artisanat (l'addon te guide, métier par métier).", "collecter")
+        -- Onglet Wishlist
+        mkButton("Importer", 22, 54, 108, function() Cohors_WLImport() end,
+            "Lit le texte collé dans le champ et enregistre ta liste.", "wishlist")
+        wlAlertBtn = mkButton("Alerte : " .. (Cohors_DB.wl_alert == false and "non" or "oui"), 140, 54, 108,
             function() Cohors_WLToggleAlert() end,
-            "Active ou coupe l'alerte en entrant dans un raid ou un donjon.")
-        mkButton("Vérifier ici", 334, 16, 146, function() Cohors_WLZoneCheck(true) end,
-            "Relance la recherche d'objets de ta wishlist dans l'instance où tu es.")
+            "Active ou coupe l'alerte en entrant dans un raid ou un donjon.", "wishlist")
+        mkButton("Vérifier ici", 258, 54, 108, function() Cohors_WLZoneCheck(true) end,
+            "Relance la recherche d'objets de ta wishlist dans l'instance où tu es.", "wishlist")
+        mkButton("Vider", 376, 54, 108, function() Cohors_WLClear() end,
+            "Efface la liste de l'addon (le site n'est pas touché).", "wishlist")
+        -- Onglet Outils
+        mkButton("Réinitialiser", 22, 54, 108, function() Cohors_Reset() end,
+            "Efface la collecte en cours et sa dernière sauvegarde.", "outils")
+        mkButton("Diag", 140, 54, 108, function()
+            dumpDiag(true)
+        end, "Écrit un rapport de diagnostic dans le fichier Cohors.lua.", "outils")
+        -- Toujours visible
+        mkButton("Fermer", 392, 16, 90, function() ui:Hide() end,
+            "Ferme la fenêtre. Tape /cohors pour la rouvrir.")
+
+        panelShow(Cohors_DB.panel_tab)
     end)
     if not okB then
         Cohors_DB.ui_error = tostring(errB)
@@ -2082,7 +2046,7 @@ function Cohors_TogglePanel()
         ui:Hide()
     else
         ui:Show()
-        if Cohors_DB.export and showSummary then pcall(showSummary) end
+        if panelShow then pcall(panelShow, Cohors_DB.panel_tab) end
     end
 end
 
@@ -2161,12 +2125,13 @@ SlashCmdList["Cohors"] = function(arg)
         if arg == "" then
             buildPanel()
             if ui then ui:Show() end
-            msg(("v%s · dossier « %s » (TOC %s) — « Collecter » = calendrier de raids · « Recettes » = artisanat.")
+            msg(("v%s · dossier « %s » (TOC %s) — menu : « Collecter » (calendrier, recettes) · « Wishlist » (import, alerte) · « Outils ».")
                 :format(ADDON_VER, tostring(ADDON_NAME or "?"), tostring(tocVersion())))
             if Cohors_DB.export and showSummary then pcall(showSummary) end
         elseif arg == "collect" then
             buildPanel()
             if ui then ui:Show() end
+            if panelShow then pcall(panelShow, "collecter") end
             Cohors_Collect()
         elseif arg == "export" then
             buildPanel()
