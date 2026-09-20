@@ -208,6 +208,7 @@ app/mailer.py             Outgoing e-mail (invitations) via SMTP
 app/discord_bot.py        Discord REST client (announcements)
 app/static/               29 pages (FR) + i18n.js FR/EN engine, branding.js, PWA
 app/data/bis.json         Embedded BiS lists (Wowhead guide snapshots, 40 specs)
+tools/refresh-bis.md      How the embedded BiS snapshot is refreshed (procedure + script)
 addon/Cohors/             In-game add-on (guild calendar + professions export)
 worker/simrun.py          SimulationCraft engine wrapper (official Docker image, sandboxed)
 tests/                    pytest suite (security helpers + repo consistency, run by CI)
@@ -253,4 +254,4 @@ MIT — see [LICENSE](LICENSE).
 Simulation engine: [SimulationCraft](https://www.simulationcraft.org/). Raid data:
 [Warcraft Logs](https://www.warcraftlogs.com/). Game data: Blizzard Entertainment.
 Gear guides referenced in the app: Wowhead, Icy Veins and Archon (snapshots stored in
-`app/data/bis.json`).
+`app/data/bis.json`; refresh procedure in `tools/refresh-bis.md`).

@@ -1,5 +1,5 @@
 {
-  "_README": "Listes BIS par spécialisation — instantané des guides Wowhead (le serveur applicatif ne peut pas les récupérer : Cloudflare renvoie 403 depuis le conteneur). Mise à jour : refaire l'instantané depuis un poste qui peut ouvrir les guides (voir skill wow-companion, references/bis-refresh.md) puis redéployer. Les clés suivent 'classe/spé' comme STUFF_HEAL_PRIO.",
+  "_README": "Per-spec BiS lists — dated snapshot of Wowhead gear guides (the app server cannot fetch them itself: Cloudflare answers 403 from the containers). To refresh the snapshot, see tools/refresh-bis.md in the repository, then rebuild/redeploy. Keys are 'class/spec'.",
   "snapshot": "2026-09-19",
   "patch": "12.1",
   "season": "Midnight — Saison 2",

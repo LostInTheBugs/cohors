@@ -20,6 +20,8 @@ All notable changes to this project are documented in this file.
   (scrypt — now in `app/security.py`), the profile guard, and repository consistency
   (VERSION/CHANGELOG/i18n/add-on).
 - `CONTRIBUTING.md` and GitHub issue templates.
+- `tools/refresh-bis.md` + `tools/bis-merge.py`: the (previously internal) procedure and
+  script used to refresh the embedded BiS snapshot — `app/data/bis.json` now points there.
 - Container image published to GHCR on release tags (`.github/workflows/image.yml`).
 - Healthcheck on the app container in `docker-compose.yml` (uses `/api/health`).
 
