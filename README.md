@@ -72,6 +72,17 @@ tools from being islands:
   holding the Docker socket) launches sibling SimulationCraft containers
 - Python 3.11+ (only to run the engine wrapper standalone)
 
+### Sizing
+
+- **Guild-size default (2-4 vCPU, 4-8 GB RAM):** the app, its background jobs and **one simulation at
+  a time** run comfortably. Every SimulationCraft run is capped by `SIM_MEM`, `SIM_CPUS` and
+  `SIM_TIMEOUT`, and the queue limits concurrent runs (`QUEUE_MAX`, `PER_IP_ACTIVE`,
+  `PER_USER_ACTIVE`) — all in `.env.example`.
+- **Heavier use (group sims, several users at once):** more cores help — SimulationCraft is
+  multi-threaded and by default a run takes every core unless `SIM_CPUS` says otherwise.
+- **Disk:** a few GB under `DATA_DIR` (SQLite database + generated reports). Only **outbound HTTPS**
+  is needed (Battle.net and Warcraft Logs APIs).
+
 ## Quick start
 
 ```bash
