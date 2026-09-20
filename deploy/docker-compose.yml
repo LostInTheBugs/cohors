@@ -1,0 +1,61 @@
+# Cohors — guild-officer deployment: prebuilt images only (no git clone, no build).
+# Quick start: README → "Guild-officer quick start (no git, no build)".
+# Keep in sync with ../docker-compose.yml — same paths, isolation and environment knobs; the only
+# difference is that both services pull their published image instead of building from source.
+services:
+  # The simulation worker: the ONLY component that sees /var/run/docker.sock.
+  # The app submits jobs over a shared Unix socket; the worker re-validates everything and builds
+  # every `docker run` itself.
+  worker:
+    image: ghcr.io/lostinthebugs/cohors-simworker:latest
+    container_name: cohors-simworker
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.settimeout(5); s.connect("/run/cohors/simworker.sock"); s.close()']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    volumes:
+      # The Docker socket is mounted ONLY here.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Same absolute path on the host and in the container (passed to the SimulationCraft runs).
+      - ${DATA_DIR:?set DATA_DIR in .env (see .env.example)}:${DATA_DIR:?set DATA_DIR in .env (see .env.example)}
+      # App ↔ worker channel (Unix socket, never exposed anywhere else).
+      - simsock:/run/cohors
+    environment:
+      - SIM_JOBS_DIR=${DATA_DIR:?set DATA_DIR in .env (see .env.example)}/sim-jobs
+      - SIMWORKER_APP_UID=${APP_UID:-1000}
+      - SIMC_IMAGE=${SIMC_IMAGE:-simulationcraftorg/simc:latest}
+      - SIM_MEM=${SIM_MEM:-4g}
+      - SIM_PIDS=${SIM_PIDS:-512}
+      - SIM_CPUS=${SIM_CPUS:-}
+      - SIM_TIMEOUT=${SIM_TIMEOUT:-900}
+
+  app:
+    image: ghcr.io/lostinthebugs/cohors:latest
+    container_name: cohors-app
+    restart: unless-stopped
+    # Non-root: no Docker socket here (APP_UID must own DATA_DIR on the host).
+    user: "${APP_UID:-1000}:10001"
+    depends_on:
+      - worker
+    healthcheck:
+      test: ["CMD", "python", "-c", 'import os,urllib.request,sys; sys.exit(0 if urllib.request.urlopen("http://127.0.0.1:"+os.environ.get("PORT","8030")+"/api/health", timeout=5).status == 200 else 1)']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    env_file: [.env]
+    extra_hosts:
+      # Optional voice gateway (WebSpeak) running on the host: reachable via host.docker.internal.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Same absolute path on the host and in the container (job directories served as reports).
+      - ${DATA_DIR:?set DATA_DIR in .env (see .env.example)}:${DATA_DIR:?set DATA_DIR in .env (see .env.example)}
+      - simsock:/run/cohors
+    ports:
+      - "127.0.0.1:${PORT:-8030}:${PORT:-8030}"
+
+volumes:
+  simsock:

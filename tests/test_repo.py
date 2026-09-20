@@ -90,3 +90,15 @@ def test_app_dockerfile_drops_root_and_docker_cli():
     assert "docker:cli" not in df, "le client docker ne doit plus être dans l'image de l'app"
     wdf = (ROOT / "worker" / "Dockerfile").read_text(encoding="utf-8")
     assert "docker:cli" in wdf, "le client docker doit être dans l'image du worker"
+
+
+def test_officer_compose_uses_prebuilt_images_and_keeps_the_socket_isolated():
+    """Parcours « officier de guilde » : images GHCR uniquement (jamais de build), même isolation."""
+    c = (ROOT / "deploy/docker-compose.yml").read_text(encoding="utf-8")
+    assert "ghcr.io/lostinthebugs/cohors:latest" in c
+    assert "ghcr.io/lostinthebugs/cohors-simworker:latest" in c
+    assert "build:" not in c, "le compose officier ne doit jamais builder"
+    app = _compose_service(c, "app")
+    worker = _compose_service(c, "worker")
+    assert "docker.sock" not in app and "docker.sock" in worker, "isolation du socket Docker"
+    assert "simsock" in app and "simsock" in worker, "socket Unix app ↔ worker manquant"

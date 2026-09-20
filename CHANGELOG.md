@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.146 - 2026-09-20
+
+### Added
+- **First-time setup checklist** (`/start`, administrator) — the eight steps to get a guild running
+  (administrator account, guild identity, Battle.net and Warcraft Logs API keys, site identity, SMTP
+  and Discord bot as optional steps, first members) with their live status and a direct link into
+  each matching Settings section. Admins also get a dashboard card while steps remain.
+- **`deploy/` — guild-officer quick start**: a standalone `docker-compose.yml` running the prebuilt
+  GHCR images (no git clone, no build) plus a minimal `.env.example` (data dir, admin account, public
+  URL — everything else is configured from the app). README section added.
+
 ## 2026.09.145-c8 - 2026-09-20
 
 ### Fixed

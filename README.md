@@ -93,12 +93,32 @@ everything else from inside the app:
 4. **🤖 Discord bot** — optional, create a Discord application and paste its token.
 5. **🎨 Identity** — guild name, short name, logo and background.
 
-Invite members from **Invitations**; they register through their invite link.
+Invite members from **Invitations**; they register through their invite link. The same setup steps
+live in the in-app **🚀 first-time setup checklist** (`/start`, also linked from the dashboard for
+admins until every step is done), with their live status.
 
 Prefer prebuilt images? Replace the app's `build: .` with
 `image: ghcr.io/lostinthebugs/cohors:latest` and the worker's `build:` block with
 `image: ghcr.io/lostinthebugs/cohors-simworker:latest` in `docker-compose.yml` (both are
 published on every release tag by CI).
+
+### Guild-officer quick start (no git, no build)
+
+For a guild: download two files and run the prebuilt images — nothing is compiled on the server.
+
+```bash
+mkdir cohors && cd cohors
+curl -fsSLO https://raw.githubusercontent.com/LostInTheBugs/cohors/main/deploy/docker-compose.yml
+curl -fsSLo .env  https://raw.githubusercontent.com/LostInTheBugs/cohors/main/deploy/.env.example
+# edit .env: DATA_DIR (absolute path, must exist and be writable by APP_UID), ADMIN_EMAIL /
+# ADMIN_PASSWORD (first admin account) and PUBLIC_BASE_URL
+$EDITOR .env
+docker compose up -d          # pulls ghcr.io/lostinthebugs/cohors and .../cohors-simworker
+```
+
+Then sign in as the admin and follow the **🚀 first-time setup checklist** (`/start`): guild
+identity, Battle.net and Warcraft Logs keys, SMTP and Discord bot (optional), first members — each
+step links to the matching Settings section and turns green once it is done.
 
 ## Security
 

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cohors — Première configuration</title>
+<link rel="icon" href="/branding/logo">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#b1002e">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cohors">
+<style>
+  :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+          --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .crest { width:44px; height:44px; border-radius:9px; }
+  .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+  .brandname span { color:var(--acc2); }
+  .tagline { color:var(--mut); font-size:12.5px; }
+  .userbox { display:flex; gap:14px; align-items:center; }
+  .who { color:var(--acc2); font-weight:600; font-size:14px; }
+  .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+  .hlink:hover { text-decoration:underline; }
+  nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .cd { font-size:34px; font-weight:700; letter-spacing:.5px; color:var(--acc2); margin:6px 0 2px; }
+  .note { color:var(--mut); font-size:12.5px; margin:8px 0 0; }
+  .prow { display:flex; gap:12px; align-items:center; padding:9px 2px; border-top:1px solid var(--line); font-size:13.5px; }
+  .prow:first-of-type { border-top:0; }
+  .pname { font-weight:600; }
+  .pspec { color:var(--mut); font-size:12px; margin-top:1px; }
+  .meta { color:var(--mut); font-size:12.5px; }
+  .sdot { width:20px; text-align:center; font-weight:700; flex:none; }
+  .sdot.ok { color:var(--ok); }
+  .sdot.no { color:var(--mut); }
+  .sopt { font-size:11px; border:1px solid var(--line); border-radius:999px; padding:1px 8px; color:var(--mut); font-weight:600; vertical-align:1px; }
+  .recheck { padding:8px 16px; border-radius:999px; border:1px solid var(--line); background:transparent;
+             color:var(--fg); font:inherit; font-weight:600; font-size:14px; cursor:pointer; }
+  .recheck:hover { border-color:#3a4763; }
+  footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+  .hidden { display:none !important; }
+</style>
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.146">
+</head>
+<body class="wb">
+<div class="wrap">
+  <header class="topbar">
+    <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+      <img src="/branding/logo" alt="Cohors" class="crest">
+      <div>
+        <div class="brandname">Cohors <span>Première configuration</span></div>
+        <div class="tagline">Mets la guilde en route en quelques étapes.</div>
+      </div>
+    </a>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+
+  <div class="card" id="maincard" style="display:none">
+    <h2>🚀 Première configuration</h2>
+    <div class="cd" id="pcount">…</div>
+    <p class="note" id="pnote">Vérification…</p>
+    <div id="steps"></div>
+    <p class="note"><button type="button" id="recheck" class="recheck">🔄 Revérifier</button></p>
+  </div>
+
+  <div class="card" id="forbid" style="display:none">
+    <h2>🚀 Première configuration</h2>
+    <p class="note">Cette page aide l'administrateur à mettre la guilde en route. Demande-lui de la consulter.</p>
+    <p class="note"><a class="hlink" href="/dashboard">← Retour à l'application</a></p>
+  </div>
+
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js?v=2026.09.146"></script>
+<script src="/static/branding.js?v=2026.09.146"></script>
+<script src="/static/i18n.js?v=2026.09.146"></script>
+<script src="/static/esc.js?v=2026.09.146"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+
+function renderSteps(s) {
+  $("#pcount").textContent = `${s.done}/${s.total}`;
+  $("#pnote").textContent = "étapes réussies — obligatoires puis optionnelles";
+  $("#steps").innerHTML = s.steps.map((x) => `
+    <div class="prow">
+      <span class="sdot ${x.done ? "ok" : "no"}">${x.done ? "✓" : "○"}</span>
+      <div style="min-width:0">
+        <div class="pname">${esc(x.label)}${x.optional ? ' <span class="sopt">Optionnel</span>' : ""}</div>
+        ${x.hint ? `<div class="pspec">${esc(x.hint)}</div>` : ""}
+      </div>
+      <span style="flex:1"></span>
+      ${x.detail ? `<span class="meta">${esc(x.detail)}</span>` : ""}
+      <a class="hlink" href="${esc(x.href)}">Configurer →</a>
+    </div>`).join("");
+}
+
+async function load() {
+  $("#forbid").style.display = "none";
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+  } catch (e) { location.href = "/login"; return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  try {
+    const s = await jget("/api/setup/status");
+    $("#maincard").style.display = "";
+    renderSteps(s);
+  } catch (e) {
+    if (e && e.status === 403) $("#forbid").style.display = "";
+    else { $("#maincard").style.display = ""; $("#pnote").textContent = String((e && e.message) || e); }
+  }
+}
+$("#recheck").addEventListener("click", load);
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+load();
+</script>
+</body>
+</html>

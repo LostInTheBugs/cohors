@@ -55,7 +55,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.145-c8">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.146">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -76,6 +76,12 @@
   <nav class="tabs" id="navmain"></nav>
 
   <div class="grid">
+    <div class="card hidden" id="setcard">
+      <h2>🚀 Première configuration</h2>
+      <div class="cd" id="setcount"></div>
+      <p class="note" id="setnote"></p>
+      <p class="note"><a class="hlink" href="/start">Ouvrir la checklist →</a></p>
+    </div>
     <div class="card" id="nrcard" style="display:none">
       <h2>🗓️ Prochain raid</h2>
       <div class="cd" id="nrdate"></div>
@@ -102,10 +108,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.145-c8"></script>
-<script src="/static/branding.js?v=2026.09.145-c8"></script>
-<script src="/static/i18n.js?v=2026.09.145-c8"></script>
-<script src="/static/esc.js?v=2026.09.145-c8"></script>
+<script src="/static/nav.js?v=2026.09.146"></script>
+<script src="/static/branding.js?v=2026.09.146"></script>
+<script src="/static/i18n.js?v=2026.09.146"></script>
+<script src="/static/esc.js?v=2026.09.146"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
@@ -136,6 +142,20 @@ const jget = async (u) => { const r = await fetch(u);
     $("#who").textContent = me.name || me.email;
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+
+  // première configuration — carte réservée aux administrateurs
+  try {
+    const me2 = await jget("/api/me");
+    if (me2.role === "admin" || me2.is_admin) {
+      const s = await jget("/api/setup/status");
+      const done = (s.steps || []).filter((x) => x.done).length;
+      $("#setcount").textContent = done + "/" + s.total;
+      $("#setnote").textContent = done >= s.total
+        ? "✅ Configuration terminée — revoir la checklist."
+        : "Il reste des étapes pour mettre la guilde en route — ouvre la checklist.";
+      $("#setcard").classList.remove("hidden");
+    }
+  } catch (e) {}
 
   // vocal (TeamSpeak) — nombre de connectés, bot exclu
   const loadVoice = async () => {
