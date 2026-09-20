@@ -69,6 +69,17 @@
   #adm .b-admin { color:var(--acc2); border-color:#6b4a17; }
   #adm .b-officer { color:#9db8e8; border-color:#33415e; }
   #adm .rolesel { min-width:130px; padding:5px 10px; font-size:12.5px; border-radius:8px; }
+  /* Comptes : grille stable — nom à gauche, actions à droite, détails sur une ligne pleine
+     largeur ; les positions ne dépendent plus de la longueur de l'email / du perso. */
+  #adm .item.ucard { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:14px; row-gap:5px; align-items:center; }
+  #adm .ucard .uacts { display:flex; gap:7px; align-items:center; justify-content:flex-end; }
+  #adm .ucard .meta { grid-column:1 / -1; }
+  #adm .ucard .rolesel.r-admin { color:var(--acc2); border-color:#6b4a17; }
+  #adm .ucard .rolesel.r-officer { color:#9db8e8; border-color:#33415e; }
+  @media (max-width: 760px) {
+    #adm .item.ucard { grid-template-columns:1fr; }
+    #adm .ucard .uacts { justify-content:flex-start; flex-wrap:wrap; }
+  }
   #adm .b-off { color:var(--err); border-color:#5a2626; }
   #adm .linkbox { margin-top:14px; background:var(--card2); border:1px dashed var(--acc); border-radius:10px; padding:12px 14px; }
   #adm .linkbox code { user-select:all; word-break:break-all; font-size:13px; color:var(--acc2); }
@@ -98,7 +109,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.149-c2">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.149-c3">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -437,10 +448,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.149-c2"></script>
-<script src="/static/branding.js?v=2026.09.149-c2"></script>
-<script src="/static/i18n.js?v=2026.09.149-c2"></script>
-<script src="/static/esc.js?v=2026.09.149-c2"></script>
+<script src="/static/nav.js?v=2026.09.149-c3"></script>
+<script src="/static/branding.js?v=2026.09.149-c3"></script>
+<script src="/static/i18n.js?v=2026.09.149-c3"></script>
+<script src="/static/esc.js?v=2026.09.149-c3"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -624,21 +635,26 @@ async function loadUsers() {
     const roleBadge = u.role === "admin" ? '<span class="badge b-admin">Administrateur</span> '
                     : u.role === "officer" ? '<span class="badge b-officer">Officier</span> '
                     : '<span class="badge">Membre</span> ';
-    const badges = roleBadge + (u.active ? '' : '<span class="badge b-off">Désactivé</span>');
+    const isSelf = !!(ME && u.email === ME.email);
+    // Le select de rôle EST l'indicateur de rôle (pas de badge qui répète) ; sur sa propre
+    // ligne : ni select ni actions — l'API refuse toute auto-modification de toute façon.
+    const badges = (isSelf ? roleBadge : "") + (u.active ? '' : '<span class="badge b-off">Désactivé</span>');
     const btnActive = `<button class="small ghost" data-active="${u.id}" data-val="${u.active ? 0 : 1}">${u.active ? "Désactiver" : "Réactiver"}</button>`;
     const btnReset = `<button class="small ghost" data-reset="${u.id}">Lien de réinitialisation</button>`;
     const btnDel = `<button class="small danger" data-del="${u.id}" data-name="${esc(u.name)}">Supprimer</button>`;
-    const roleSel = (IM_ADMIN && (!ME || u.email !== ME.email))
-      ? `<select class="rolesel" data-role="${u.id}" title="Rôle du compte">
+    const roleSel = (!isSelf && IM_ADMIN)
+      ? `<select class="rolesel r-${esc(u.role)}" data-role="${u.id}" title="Rôle du compte">
            <option value="member"${u.role === "member" ? " selected" : ""}>Membre</option>
            <option value="officer"${u.role === "officer" ? " selected" : ""}>Officier</option>
            <option value="admin"${u.role === "admin" ? " selected" : ""}>Administrateur</option>
          </select>`
       : "";
-    return `<div class="item">
-      <div class="main"><span class="name">${esc(u.name || u.email)} ${badges}</span>
-      <span class="meta">${esc(u.email)} · créé le ${onDate(u.created)} · dernière connexion ${ago(u.last_login)} · ${u.sims_count} sim(s)${charInfo(u)}</span></div>
-      <span class="spacer"></span>${roleSel}${btnActive} ${btnReset} ${btnDel}</div>`;
+    const uacts = isSelf ? "" : `${roleSel}${btnActive}${btnReset}${btnDel}`;
+    return `<div class="item ucard">
+      <span class="name">${esc(u.name || u.email)} ${badges}</span>
+      <span class="uacts">${uacts}</span>
+      <span class="meta">${esc(u.email)} · créé le ${onDate(u.created)} · dernière connexion ${ago(u.last_login)} · ${u.sims_count} sim(s)${charInfo(u)}</span>
+    </div>`;
   }).join("");
   box.querySelectorAll("[data-active]").forEach(b => b.addEventListener("click", async () => {
     await api("POST", `/api/admin/users/${b.dataset.active}/active`, { active: b.dataset.val === "1" });

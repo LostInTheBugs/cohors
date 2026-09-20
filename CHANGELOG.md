@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.149-c3 - 2026-09-20
+
+### Fixed
+- **Settings → Administration → Accounts**: each row now uses a stable grid (name left, role and
+  actions right, details on a full-width line below). Buttons and the role select no longer land
+  in different places depending on the length of an email or character name. The role badge is
+  replaced by the role select itself (no duplicated display), and your own row no longer offers
+  self-targeted actions that the API refuses.
+
 ## 2026.09.149-c2 - 2026-09-20
 
 ### Fixed
