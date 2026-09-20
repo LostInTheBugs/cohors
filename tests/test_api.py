@@ -280,18 +280,49 @@ def test_restore_rejects_decompression_bomb(monkeypatch):
     assert "décompressée" in r.json()["detail"]
 
 
+def _purge_rollbacks():
+    """DATA_DIR est partagé sur toute la session pytest : on part d'un état net
+    (filets horodatés, filet simple d'avant les horodatages, annexes -shm/-wal)."""
+    for p in M.DATA_DIR.glob("wow.sqlite.pre-restore*"):
+        p.unlink()
+
+
 def test_restore_keeps_rollback_copy():
-    """Filet : l'ancienne base est renommée wow.sqlite.pre-restore avant l'écrasement."""
+    """Filet horodaté : l'ancienne base est renommée wow.sqlite.pre-restore-<date> avant
+    l'écrasement, et deux restaurations n'écrasent pas le premier filet (revue 20/09)."""
     import sqlite3 as _sq
 
     c = _admin_client("adminrb@test.local", "10.99.12.1")
+    _purge_rollbacks()
     backup = c.get("/api/admin/backup").content
     assert c.post("/api/admin/restore", content=backup).status_code == 200
-    rb = M.DATA_DIR / "wow.sqlite.pre-restore"
-    assert rb.exists() and rb.stat().st_size > 0
-    con = _sq.connect(str(rb))          # c'est une vraie base, complète (WAL checkpointé avant)
+    files = sorted(M.DATA_DIR.glob("wow.sqlite.pre-restore-*"))
+    assert len(files) == 1 and files[0].stat().st_size > 0
+    con = _sq.connect(str(files[0]))    # une vraie base, complète (WAL checkpointé avant)
     assert con.execute("SELECT COUNT(*) FROM users").fetchone()[0] >= 1
     con.close()
+    assert c.post("/api/admin/restore", content=backup).status_code == 200
+    assert len(sorted(M.DATA_DIR.glob("wow.sqlite.pre-restore-*"))) == 2
+
+
+def test_restore_prunes_old_rollback_copies():
+    """Seuls les 3 filets les plus récents sont conservés — les annexes -shm/-wal d'un filet
+    rouvert ne comptent pas comme des filets (bug attrapé le 20/09 : elles faisaient évincer
+    un vrai filet)."""
+    c = _admin_client("adminrb2@test.local", "10.99.16.1")
+    _purge_rollbacks()
+    for i in range(5):
+        (M.DATA_DIR / ("wow.sqlite.pre-restore-2020010%d-000001" % i)).write_bytes(b"vieux")
+    # annexes sqlite à côté d'un vieux filet (comme après un sqlite3.connect dessus)
+    (M.DATA_DIR / "wow.sqlite.pre-restore-20200104-000001-shm").write_bytes(b"stub")
+    (M.DATA_DIR / "wow.sqlite.pre-restore-20200104-000001-wal").write_bytes(b"")
+    backup = c.get("/api/admin/backup").content
+    assert c.post("/api/admin/restore", content=backup).status_code == 200
+    caps = [p for p in sorted(M.DATA_DIR.glob("wow.sqlite.pre-restore-*"))
+            if not p.name.endswith(("-shm", "-wal", "-journal"))]
+    assert len(caps) == 3                     # les 3 plus récents, annexes exclues
+    assert "20200103" in caps[0].name         # les plus vieux sont partis
+    assert not (M.DATA_DIR / "wow.sqlite.pre-restore-20200100-000001").exists()
 
 
 def test_restore_replays_schema_migrations():

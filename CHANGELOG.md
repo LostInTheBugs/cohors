@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.149-c2 - 2026-09-20
+
+### Fixed
+- **Backup & restore robustness (second review pass)** — a member that cannot be read during
+  archive validation now yields a clean 400 instead of a 500; rollback copies are timestamped
+  (`wow.sqlite.pre-restore-<timestamp>`, the three most recent kept), so consecutive restores
+  no longer overwrite the only way back.
+
 ## 2026.09.149-c1 - 2026-09-20
 
 ### Fixed

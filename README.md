@@ -294,8 +294,9 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
   **Settings → Administration → Backup & restore**, and loads it onto a redeployed instance.
   Uploads are validated first (safe archive, decompression and upload size caps, database
   integrity check, non-destructive preview showing what is inside), and the previous database
-  is kept as `wow.sqlite.pre-restore`. A restore replays the schema migrations, so an older
-  backup works on a newer instance.
+  is kept as `wow.sqlite.pre-restore-<timestamp>` (the three most recent copies are kept —
+  that file is the only way back: rename it to `wow.sqlite` to undo a restore). A restore
+  replays the schema migrations, so an older backup works on a newer instance.
 - At the file level: everything stateful lives in `DATA_DIR` (the SQLite database `wow.sqlite`,
   the `reports/` directory). You can also back it up with the app stopped (`docker compose stop`
   → copy the directory → `docker compose start`). The database is the only irreplaceable part;
@@ -307,9 +308,9 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
 
 ## Version
 
-Current version: `2026.09.149-c1` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Current version: `2026.09.149-c2` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
 Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.149` is the 149th build of September 2026;
-corrections add a `-cN` suffix (`2026.09.149-c1`).
+corrections add a `-cN` suffix (`2026.09.149-c2`).
 
 ## License
 

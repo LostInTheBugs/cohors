@@ -1171,7 +1171,7 @@ async def _read_restore_upload(request: Request) -> bytes:
     return data
 
 
-def _extract_backup(data: bytes, dest: Path) -> tuple[dict, Path]:
+def _extract_backup(data: bytes, dest: Path) -> tuple[dict, Path, list]:
     """Extrait et VALIDE l'archive dans un dossier temporaire : retourne (manifest, base extraite).
 
     Rien n'est appliqué ici : chemins contrôlés (pas de « .. » ni d'absolu), manifest + base
@@ -1199,7 +1199,8 @@ def _extract_backup(data: bytes, dest: Path) -> tuple[dict, Path]:
                 raise HTTPException(400, "archive trop volumineuse une fois décompressée "
                                          "(max %d Mo)" % BACKUP_MAX_UNPACKED_MB)
             if name.startswith("branding/"):
-                head = tar.extractfile(m).read(12)
+                ef = tar.extractfile(m)     # None pour un membre exotique : 400 propre, pas 500
+                head = ef.read(12) if ef is not None else b""
                 if not _branding_member_ok(name, head):
                     raise HTTPException(400, "fichier d'identité refusé (%s) — images "
                                              "png/jpg/gif/webp attendues" % name)
@@ -1329,12 +1330,21 @@ async def api_admin_restore(request: Request):
                     ck.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             except sqlite3.Error:
                 pass
-            if DB_PATH.exists():    # filet : retour arrière = renommer ce fichier
-                try:
-                    Path(str(DB_PATH) + ".pre-restore").unlink()
-                except FileNotFoundError:
-                    pass
-                os.replace(str(DB_PATH), str(DB_PATH) + ".pre-restore")
+            if DB_PATH.exists():    # filets horodatés : retour arrière = renommer le fichier
+                rolled = Path(str(DB_PATH) + ".pre-restore-" + time.strftime("%Y%m%d-%H%M%S"))
+                if rolled.exists():     # deux restaurations dans la même seconde
+                    rolled = Path(str(rolled) + "-" + uuid.uuid4().hex[:4])
+                os.replace(str(DB_PATH), str(rolled))
+                # ne garde que les 3 filets les plus récents — en ignorant les fichiers
+                # annexes (-shm/-wal que sqlite peut créer à côté d'un filet rouvert)
+                caps = [p for p in sorted(DATA_DIR.glob("wow.sqlite.pre-restore-*"))
+                        if not p.name.endswith(("-shm", "-wal", "-journal"))]
+                for old in caps[:-3]:
+                    for path in (old, Path(str(old) + "-shm"), Path(str(old) + "-wal")):
+                        try:
+                            path.unlink()   # le filet purgé et ses annexes éventuelles
+                        except OSError:
+                            pass
             _swap_file(db, DB_PATH)
             for suffix in ("-wal", "-shm"):     # résidus de l'ancienne base (mode WAL)
                 try:
