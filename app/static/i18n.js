@@ -634,7 +634,7 @@
  "📥 Importer la chaîne": "📥 Import the string",
  "📣 Relancer": "📣 Remind",
  "…ou colle ici la chaîne exportée (/cohors export → Ctrl+C)": "…or paste the exported string here (/cohors export → Ctrl+C)",
- "En jeu : /cohors → « Exporter » → colle la chaîne ci-dessous (ou importe le fichier SavedVariables/Cohors.lua).": "In game: /cohors → « Exporter » → paste the string below (or import the SavedVariables/Cohors.lua file).",
+ "Addon : page 🛡️ Guilde. En jeu : /cohors → « Exporter » → colle la chaîne ci-dessous (ou importe le fichier SavedVariables/Cohors.lua).": "Add-on: 🛡️ Guild page. In game: /cohors → « Exporter » → paste the string below (or import the SavedVariables/Cohors.lua file).",
  "Choisis d'abord le fichier Cohors.lua": "Pick the Cohors.lua file first",
  "Colle la chaîne exportée en jeu (/cohors export)": "Paste the string exported in game (/cohors export)",
  "Aucun événement in-game à venir.": "No upcoming in-game event.",
@@ -709,7 +709,7 @@
  "Organise les clés mythiques+ : choisis tes rôles (🛡️ tank / 💚 heal / ⚔️ DPS), tes créneaux (les 14 prochains jours, avec heures) et les clés que tu as (perso, donjon, niveau).": "Organize your Mythic+ keys: pick your roles (🛡️ tank / 💚 heal / ⚔️ DPS), your slots (next 14 days, with hours) and the keys you hold (character, dungeon, level).",
  "📅 « Qui est dispo » montre jour par jour qui peut jouer ; 🔑 « Clés annoncées » liste toutes les clés de la guilde, triées par niveau.": "📅 « Who's available » shows day by day who can play; 🔑 « Announced keys » lists every guild key, sorted by level.",
  "La liste des donjons de la saison est récupérée automatiquement (noms français).": "The season's dungeon list is fetched automatically (French names).",
- "L'addon Cohors s'installe dans le dossier AddOns de World of Warcraft ; le zip se télécharge depuis la page 🗓️ Calendrier (« ⬇️ Télécharger l'addon »).": "The Cohors addon installs in World of Warcraft's AddOns folder; the zip is downloaded from the 🗓️ Calendar page (« ⬇️ Download the addon »).",
+ "L'addon Cohors s'installe dans le dossier AddOns de World of Warcraft ; le zip se télécharge depuis la page 🛡️ Guilde (« ⬇️ Télécharger l'addon »).": "The Cohors addon installs in World of Warcraft's AddOns folder; the zip is downloaded from the 🛡️ Guild page (« ⬇️ Download the addon »).",
  "🗓️ Officiers : en jeu, /cohors → « Exporter » lit le calendrier de guilde (raids et réponses) ; colle la chaîne dans la page Calendrier, ou importe le fichier Cohors.lua.": "🗓️ Officers: in game, /cohors → « Export » reads the guild calendar (raids and answers); paste the string on the Calendar page, or import the Cohors.lua file.",
  "📚 Artisans : /cohors recettes (ou le bouton 📚) liste les recettes connues de tes métiers ; importe l'export toi-même depuis la section 🙋 Moi → 📖 Mes recettes.": "📚 Crafters: /cohors recettes (or the 📚 button) lists the recipes known by your professions; import the export yourself from 🙋 Moi → 📖 Mes recipes.",
  "Alertes de personnage : paliers d'ilvl tous les 5 niveaux, nouvelles montures et mascottes des personnages liés.": "Character alerts: iLvl milestones every 5 levels, new mounts and pets of linked characters.",
@@ -1036,7 +1036,9 @@
  "Vocal": "Voice",
  "Tous": "All",
  "⟳ Actualiser": "⟳ Refresh",
- "↻ Actualiser": "↻ Refresh"
+ "↻ Actualiser": "↻ Refresh",
+ "🧩 Addon Cohors (in-game)": "🧩 Cohors add-on (in-game)",
+ "L'addon importe le calendrier des raids (réponses en jeu) et exporte tes recettes de métiers vers l'app. En jeu : /cohors → « Exporter ».": "The add-on imports the raid calendar (in-game answers) and exports your professions recipes to the app. In game: /cohors → « Exporter »."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

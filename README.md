@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/cohors-logo.png" width="112" alt=""></p>
+
 # Cohors
 
 **Guild companion for World of Warcraft — self-hosted.** SimulationCraft simulations,
@@ -123,6 +125,8 @@ release tag by CI).
   Discord), with random non-enumerable ids.
 
 ## WoW add-on (Cohors)
+
+Members download the packaged zip from the app's **Guild** page (`/api/addon`).
 
 `addon/Cohors` is a small in-game add-on that collects the guild calendar (raids and
 answers) and exports it for the site. Members download it as a zip from the **Calendar**

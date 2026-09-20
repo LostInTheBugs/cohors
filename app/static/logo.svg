@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#b1002e"/><stop offset="1" stop-color="#7a0020"/></linearGradient>
+<radialGradient id="vig" cx="0.5" cy="0.42" r="0.75">
+<stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.34"/></radialGradient>
+</defs>
+<rect width="512" height="512" rx="96" fill="url(#bg)"/>
+<rect width="512" height="512" rx="96" fill="url(#vig)"/>
+<circle cx="256" cy="256" r="225" fill="none" stroke="#dfa55a" stroke-width="7"/>
+<circle cx="256" cy="256" r="208" fill="none" stroke="#dfa55a" stroke-width="2" opacity="0.5"/>
+<path d="M 290.3 417.4 A 165 165 0 0 0 386.0 154.4" stroke="#dfa55a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M 0 0 C -8 -7 8 -9 19.0 0 C 8 9 -8 7 0 0 Z" transform="translate(290.3,417.4) rotate(16.0)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 21.333333333333332 0 C 8 9 -8 7 0 0 Z" transform="translate(341.8,396.9) rotate(-3.3)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 23.666666666666668 0 C 8 9 -8 7 0 0 Z" transform="translate(383.6,360.6) rotate(-22.7)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 26.0 0 C 8 9 -8 7 0 0 Z" transform="translate(411.0,312.4) rotate(-42.0)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 23.666666666666668 0 C 8 9 -8 7 0 0 Z" transform="translate(421.0,257.9) rotate(-61.3)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 21.333333333333332 0 C 8 9 -8 7 0 0 Z" transform="translate(412.3,203.2) rotate(-80.7)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 19.0 0 C 8 9 -8 7 0 0 Z" transform="translate(386.0,154.4) rotate(-100.0)" fill="#dfa55a"/>
+<g transform="translate(512,0) scale(-1,1)"><path d="M 290.3 417.4 A 165 165 0 0 0 386.0 154.4" stroke="#dfa55a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M 0 0 C -8 -7 8 -9 19.0 0 C 8 9 -8 7 0 0 Z" transform="translate(290.3,417.4) rotate(16.0)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 21.333333333333332 0 C 8 9 -8 7 0 0 Z" transform="translate(341.8,396.9) rotate(-3.3)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 23.666666666666668 0 C 8 9 -8 7 0 0 Z" transform="translate(383.6,360.6) rotate(-22.7)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 26.0 0 C 8 9 -8 7 0 0 Z" transform="translate(411.0,312.4) rotate(-42.0)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 23.666666666666668 0 C 8 9 -8 7 0 0 Z" transform="translate(421.0,257.9) rotate(-61.3)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 21.333333333333332 0 C 8 9 -8 7 0 0 Z" transform="translate(412.3,203.2) rotate(-80.7)" fill="#dfa55a"/><path d="M 0 0 C -8 -7 8 -9 19.0 0 C 8 9 -8 7 0 0 Z" transform="translate(386.0,154.4) rotate(-100.0)" fill="#dfa55a"/></g>
+<circle cx="256" cy="429" r="7" fill="#dfa55a"/>
+<text x="260" y="262" font-family="Cinzel" font-size="188" font-weight="700" fill="#f2cf9b" text-anchor="middle" dominant-baseline="central">C</text>
+</svg>

@@ -52,7 +52,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.142">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.143">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -100,6 +100,12 @@
     <p class="note hidden" id="web-empty">Client web à venir — un administrateur peut le renseigner.</p>
   </div>
 
+  <div class="card">
+    <h2>🧩 Addon Cohors (in-game)</h2>
+    <p class="txt meta">L'addon importe le calendrier des raids (réponses en jeu) et exporte tes recettes de métiers vers l'app. En jeu : /cohors → « Exporter ».</p>
+    <p><button class="small ghost" id="gdl">⬇️ Télécharger l'addon (zip)</button></p>
+  </div>
+
   <p id="edit-bar" class="hidden"><button class="cbtn" id="edit-btn">✏️ Modifier cette page</button></p>
 
   <div class="card hidden" id="edit-card">
@@ -122,10 +128,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.142"></script>
-<script src="/static/branding.js?v=2026.09.142"></script>
-<script src="/static/i18n.js?v=2026.09.142"></script>
-<script src="/static/esc.js?v=2026.09.142"></script>
+<script src="/static/nav.js?v=2026.09.143"></script>
+<script src="/static/branding.js?v=2026.09.143"></script>
+<script src="/static/i18n.js?v=2026.09.143"></script>
+<script src="/static/esc.js?v=2026.09.143"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u);
@@ -228,6 +234,8 @@ $("#save").addEventListener("click", async () => {
   } catch (e) { setMsg(e.message, false); }
   $("#save").disabled = false;
 });
+
+$("#gdl").addEventListener("click", () => { location.href = "/api/addon"; });
 
 $("#logout").addEventListener("click", async (ev) => {
   ev.preventDefault();

@@ -1098,7 +1098,7 @@ def branding_logo():
     if p is not None:
         return FileResponse(p, media_type=_IMG_MIMES.get(p.suffix.lower().lstrip("."), "image/png"),
                             headers={"Cache-Control": "no-cache"})
-    return FileResponse(STATIC_DIR / "crest.png", media_type="image/png",
+    return FileResponse(STATIC_DIR / "logo.png", media_type="image/png",
                         headers={"Cache-Control": "no-cache"})
 
 

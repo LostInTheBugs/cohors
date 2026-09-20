@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.143 - 2026-09-20
+
+### Added
+- Cohors gets its own identity mark: a new default logo (crimson roundel, gold laurel and « C »,
+  drawn in the app's Cinzel typeface) replaces the guild crest as the shipped default — used as
+  favicon, PWA icons and header logo when a guild has not uploaded its own logo. Source of truth:
+  `app/static/logo.svg`; social-preview art lives in `docs/cohors-social.png`.
+- The add-on download now has its own card on the **Guild** page, next to the Discord/TeamSpeak
+  links — the in-game add-on does more than the calendar (raid signups *and* professions export),
+  so the Guild page is its natural home. The Calendar page keeps the import box and points there.
+
 ## 2026.09.142 - 2026-09-20
 
 ### Security
