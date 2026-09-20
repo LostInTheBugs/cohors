@@ -6,6 +6,7 @@
 --         COHORS_SCENARIO=legacy   lua5.1 tools/addon-harness.lua   (GetAllRecipeIDs absente)
 --         COHORS_SCENARIO=noapi    lua5.1 tools/addon-harness.lua   (aucune API recettes)
 --         COHORS_SCENARIO=closemid lua5.1 tools/addon-harness.lua   (fenêtre fermée en cours de lecture)
+--         COHORS_SCENARIO=openbtn  lua5.1 tools/addon-harness.lua   (le client ne cède qu'au clic « ▶ Ouvrir »)
 --         COHORS_SCENARIO=noprofs  lua5.1 tools/addon-harness.lua
 -- Simule fidèlement le sandbox du client : `os` et `io` sont retirés avant de charger
 -- l'addon (le harnais capture ce dont il a besoin AVANT). Le temps est virtuel (GetTime).
@@ -29,7 +30,7 @@ local function check(cond, fmt, ...)
 end
 
 -- --------------------------------------------------------------- stubs UI/frames
-local M = { t = 100000.0 }              -- temps virtuel (GetTime)
+local M = { t = 100000.0, hardware = false }  -- temps virtuel + « clic » simulé (événement matériel)
 local barValues = {}                    -- valeurs prises par la barre de progression
 local frames = {}
 
@@ -42,7 +43,7 @@ local VALID_EVENTS = {
     TRADE_SKILL_SHOW = true, TRADE_SKILL_CLOSE = true,
 }
 local function newRegion(kind)
-    local r = { _kind = kind, _scripts = {}, _shown = true, _value = 0 }
+    local r = { _kind = kind, _scripts = {}, _shown = true, _value = 0, _enabled = true }
     local noop = function() end
     for _, m in ipairs({ "SetPoint", "SetSize", "SetFrameStrata", "SetMovable", "EnableMouse",
         "RegisterForDrag", "SetClampedToScreen", "SetAutoFocus", "SetTextInsets", "SetFontObject",
@@ -57,6 +58,9 @@ local function newRegion(kind)
         end
     end
     r.UnregisterEvent = function() end
+    r.Enable = function(self) self._enabled = true end
+    r.Disable = function(self) self._enabled = false end
+    r.IsEnabled = function(self) return self._enabled ~= false end
     r.SetScript = function(self, ev, fn) self._scripts[ev] = fn end
     r.GetScript = function(self, ev) return self._scripts[ev] end
     r.Show = function(self) self._shown = true end
@@ -193,9 +197,11 @@ end
 
 C_TradeSkillUI = {
     OpenTradeSkill = function(skillLine)
-        -- comme en jeu : le client ne l'accepte QUE depuis un événement matériel, sinon il ne se
-        -- passe rien (pas d'erreur). Le scénario « apifail » simule un client qui refuse toujours.
+        -- comme en jeu : le client ne l'accepte QUE depuis un événement matériel (clic → M.hardware),
+        -- sinon il refuse en silence. « apifail » refuse toujours ; « openbtn » n'accepte QUE les
+        -- clics (le harnais clique sur « ▶ Ouvrir » comme le ferait le joueur).
         if scenario == "apifail" then return false end
+        if scenario == "openbtn" and not M.hardware then return false end
         TS.open = skillLine; TS.child = nil; TS.pendingShow = true
         return true
     end,
@@ -296,6 +302,12 @@ local function progressFrame()
     end
 end
 
+local function openButton()
+    for _, fr in ipairs(frames) do
+        if fr._name == "CohorsProgressOpenBtn" then return fr end
+    end
+end
+
 -- ------------------------------------------------------------- scénario demandé
 if scenario == "calendar" then
     barValues = {}
@@ -347,6 +359,31 @@ elseif scenario == "closemid" then
     check((Cohors_DB.recipes_total or 0) >= 2, "métiers restants lus après la fermeture (total %s)",
         tostring(Cohors_DB.recipes_total))
 
+elseif scenario == "openbtn" then
+    -- le client refuse toute ouverture hors clic : seul le bouton « ▶ Ouvrir » (cliqué ici, comme
+    -- le joueur) fait avancer l'export — c'est le comportement réel en jeu.
+    barValues = {}
+    Cohors_Recipes()
+    tick(4)
+    local done = false
+    for _ = 1, 4000 do
+        if not tick(1) then break end
+        if (M.t - 100000.0) % 4 < 0.26 then
+            local ob = openButton()
+            if ob and ob:IsEnabled() and ob._scripts["OnClick"] then
+                M.hardware = true
+                pcall(ob._scripts["OnClick"], ob, "LeftButton", false)   -- clic simulé
+                M.hardware = false
+            end
+        end
+        if Cohors_DB.recipes_at then done = true; break end
+    end
+    check(done, "export terminé via les clics sur « ▶ Ouvrir » (%.1f s virtuelles)", M.t - 100000.0)
+    check(Cohors_DB.recipes_total == 7, "7 recettes lues grâce aux clics (total %s)",
+        tostring(Cohors_DB.recipes_total))
+    check(((openButton() and openButton():GetText()) or ""):find("terminé", 1, true) ~= nil,
+        "bouton passé à « ✔ terminé »")
+
 elseif scenario == "slash" then
     -- v1.7.1 : « /cohors » sans argument ouvre le panneau, ne collecte RIEN tout seul.
     SlashCmdList["Cohors"]("")
@@ -362,6 +399,15 @@ else
     Cohors_Collect()
     check(chat_has("attends la fin avant de lancer le calendrier"), "calendrier refusé pendant l'export recettes")
     check(Cohors_DB.export == nil, "aucune collecte calendrier lancée pendant l'export")
+    local ob0 = openButton()
+    check(ob0 ~= nil, "bouton « ▶ Ouvrir » présent dès le départ")
+    check(ob0 and (ob0:GetText() or ""):find("Alchimie", 1, true) ~= nil,
+        "bouton pointe le 1er métier restant (texte : %s)", ob0 and ob0:GetText() or "?")
+    if ob0 and ob0._scripts["OnClick"] then
+        M.hardware = true
+        pcall(ob0._scripts["OnClick"], ob0, "LeftButton", false)
+        M.hardware = false
+    end
     local done = false
     for _ = 1, 4000 do
         if not tick(1) then break end
@@ -397,6 +443,8 @@ else
             "recette non apprise filtrée (rapport rec_diag)")
         check(not chat_has("chargement INCOMPLET"), "aucune alerte de chargement partiel")
         check(Cohors_DB.file_ok ~= nil, "marqueur de chargement complet posé (file_ok)")
+        check(((openButton() and openButton():GetText()) or ""):find("terminé", 1, true) ~= nil,
+            "bouton passé à « ✔ terminé » en fin d'export")
     end
     tick(45)
     local pf = progressFrame()

@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.8.1"
+local ADDON_VER = "1.9.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -312,7 +312,7 @@ end
 -- Elle s'affiche même quand le panneau principal est fermé, se laisse déplacer,
 -- et disparaît quelques secondes après la fin. Toute construction ratée est
 -- sans conséquence (l'addon continue, l'erreur est notée dans le rapport).
-local pWin, pBar, pBarText, pLabel, pHideAt
+local pWin, pBar, pBarText, pLabel, pHideAt, pOpenBtn
 
 local function buildProgress()
     if pWin then return true end
@@ -323,7 +323,7 @@ local function buildProgress()
             frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
         end
         pWin = frame
-        pWin:SetSize(440, 78)
+        pWin:SetSize(440, 100)
         pWin:SetPoint("TOP", UIParent, "TOP", 0, -170)
         pWin:SetFrameStrata("HIGH")
         pWin:SetMovable(true)
@@ -343,13 +343,14 @@ local function buildProgress()
         title:SetPoint("TOP", 0, -8)
         title:SetText("Cohors — progression")
         pLabel = pWin:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        pLabel:SetPoint("TOP", 0, -26)
+        pLabel:SetPoint("TOP", 0, -24)
         pLabel:SetWidth(408)
         pLabel:SetJustifyH("CENTER")
+        pLabel:SetWordWrap(true)
         pLabel:SetText("…")
         pBar = CreateFrame("StatusBar", nil, pWin)
         pBar:SetSize(400, 16)
-        pBar:SetPoint("TOP", 0, -52)
+        pBar:SetPoint("TOP", 0, -54)
         pBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
         pBar:SetMinMaxValues(0, 100)
         pBar:SetValue(0)
@@ -357,6 +358,20 @@ local function buildProgress()
         pBarText = pBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         pBarText:SetPoint("CENTER")
         pBarText:SetText("0 %")
+        -- « ▶ Ouvrir » : son CLIC est un événement matériel — le seul contexte dans lequel le
+        -- client accepte C_TradeSkillUI.OpenTradeSkill. C'est LE moyen d'ouvrir les métiers
+        -- depuis l'addon (un clic par métier).
+        pOpenBtn = CreateFrame("Button", "CohorsProgressOpenBtn", pWin, "UIPanelButtonTemplate")
+        pOpenBtn:SetSize(250, 22)
+        pOpenBtn:SetPoint("TOP", 0, -76)
+        pOpenBtn:SetText("▶ Ouvrir le métier suivant")
+        pOpenBtn:SetScript("OnClick", function()
+            local okN, errN = pcall(Cohors_OpenNext)
+            if not okN then
+                Cohors_DB.last_error = "ouvrir : " .. tostring(errN)
+                msg("erreur (ouvrir) — " .. tostring(errN))
+            end
+        end)
         pWin:Hide()
         pWin:SetScript("OnUpdate", function()
             if pHideAt and GetTime() >= pHideAt then
@@ -388,6 +403,18 @@ progressUpdate = function(label, pct, done)
         local v = math.floor(math.max(0, math.min(1, pct or 0)) * 100 + 0.5)
         pBar:SetValue(v)
         pBarText:SetText(v .. " %")
+    end
+end
+
+-- bouton « ▶ Ouvrir » : met à jour son libellé (métier suivant) et son état.
+local function progressButton(nextName, busy)
+    if not pOpenBtn then return end
+    if nextName then
+        pOpenBtn:SetText("▶ Ouvrir « " .. tostring(nextName) .. " »")
+        pOpenBtn:Enable()
+    else
+        pOpenBtn:SetText(busy and "lecture en cours…" or "✔ terminé")
+        pOpenBtn:Disable()
     end
 end
 
@@ -943,6 +970,7 @@ local function recFinish(note)
         msg("⚠️ API recettes en échec : " .. table.concat(apiNames, ", ") .. " — détail via /cohors diag → fichier.")
     end
     progressUpdate(("recettes — terminé : %d recette(s)"):format(total), 1, true)
+    progressButton(nil, false)
 end
 
 -- --------------------------------------------------------------- mode guidé
@@ -1051,10 +1079,16 @@ recTick = function(now, force)
         elseif not openID then
             e.saidOpen = nil
         end
-        if #recRemaining() == 0 then
+        local left = recRemaining()
+        if #left == 0 then
             dtrace("recettes : terminé")
             recFinish(nil)
             return
+        end
+        if now > (e.remindAt or 0) then
+            e.remindAt = now + 45
+            msg(("⏳ en attente — clique « ▶ Ouvrir « %s » » sur la barre de progression (ou ouvre-le à la main : Livre de sorts → Métiers).")
+                :format(left[1] or "?"))
         end
         -- relance douce : acceptée par le client seulement depuis un clic/commande matériel,
         -- ignorée le reste du temps — jamais d'erreur, jamais bloquant.
@@ -1210,12 +1244,15 @@ recTickSafe = function(force)
                 frac = math.min(1, (ci - 1) / nchild)   -- palier suivant le dernier = métier terminé
             end
             pct = (ndone + frac) / nprogs
+            progressButton(nil, true)
         else
             local left = recRemaining()
-            label = ("recettes — %d/%d métier(s) lu(s) · ouvre un métier · %d recette(s) · %d s")
-                :format(ndone, nprogs, n, elapsed)
-            if #left > 0 then label = label .. " (reste : " .. table.concat(left, ", ") .. ")" end
+            local nxt = left[1]
+            label = ("recettes — %d/%d lu(s) · clique « ▶ »%s · %d recette(s) · %d s")
+                :format(ndone, nprogs, nxt and (" (« " .. nxt .. " »)") or "", n, elapsed)
+            if #left > 1 then label = label .. " · reste : " .. table.concat(left, ", ") end
             pct = ndone / nprogs
+            progressButton(nxt, false)
         end
         progressUpdate(label, pct)
     end
@@ -1236,7 +1273,8 @@ function Cohors_Recipes()
             if #left == 0 then
                 msg("export en cours — dernière étape…")
             else
-                msg(("export en cours — ouvre les métiers restants : %s."):format(table.concat(left, ", ")))
+                msg(("export en cours — reste : %s. Clique « ▶ Ouvrir « %s » » sur la barre de progression.")
+                    :format(table.concat(left, ", "), left[1] or "?"))
                 for _, p in ipairs(recEngine.progs) do
                     if not recEngine.done[p.skillLine] then
                         pcall(C_TradeSkillUI.OpenTradeSkill, p.skillLine)
@@ -1266,10 +1304,35 @@ function Cohors_Recipes()
     for _, p in ipairs(profs) do pnames[#pnames + 1] = p.name end
     msg(("lecture des recettes (%d métier(s) : %s). Ouvre tes fenêtres de métier (Livre de sorts → Métiers) une par une : l'addon lit celle qui est ouverte et enchaîne.")
         :format(#profs, table.concat(pnames, ", ")))
-    msg(("métier(s) à ouvrir : %s — tu peux fermer chaque fenêtre dès que « ✔ » apparaît."):format(table.concat(pnames, ", ")))
-    progressUpdate(("recettes — ouvre un métier : %s"):format(table.concat(pnames, ", ")), 0, false)
+    msg(("métier(s) à ouvrir : %s — ouvre chaque fenêtre (ou clique « ▶ Ouvrir » sur la barre de progression)."):format(table.concat(pnames, ", ")))
+    progressUpdate(("recettes — clique « ▶ » : %s"):format(table.concat(pnames, ", ")), 0, false)
+    progressButton(profs[1].name, false)
     -- tentative immédiate : la commande/le clic est un événement matériel, le client peut accepter
     pcall(C_TradeSkillUI.OpenTradeSkill, profs[1].skillLine)
+end
+
+-- Ouvre le prochain métier restant. À appeler depuis un CLIC (bouton ▶) ou une commande :
+-- événement matériel = seul contexte où le client accepte OpenTradeSkill. Sans acceptation,
+-- on l'explique et le joueur ouvre à la main.
+function Cohors_OpenNext()
+    if not recEngine then
+        msg("lance d'abord « 📚 Recettes » (ou /cohors recettes).")
+        return
+    end
+    local nextProf
+    for _, p in ipairs(recEngine.progs or {}) do
+        if not (recEngine.done or {})[p.skillLine] then nextProf = p break end
+    end
+    if not nextProf then
+        msg("tous les métiers sont lus ✔")
+        return
+    end
+    local okCall, ret = pcall(C_TradeSkillUI.OpenTradeSkill, nextProf.skillLine)
+    local accepted = okCall and ret == true
+    dtrace(("ouverture demandée (clic) : %s — acceptée=%s"):format(nextProf.name, tostring(accepted)))
+    if not accepted then
+        msg(("le client a refusé — ouvre « %s » à la main (Livre de sorts → Métiers)."):format(nextProf.name))
+    end
 end
 
 -- ------------------------------------------------------------------- panneau

@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145-c5 - 2026-09-20
+
+### Changed
+- In-game add-on **1.9.0** — the guided recipes export gains a clickable **« ▶ Ouvrir »** button on
+  the progress window: **one click opens the next profession**. This works because `OpenTradeSkill`
+  is only accepted by the client from a hardware event — a click *is* one (the add-on cannot open
+  windows from its own timers, which is why the bar could sit at « 1/5 » waiting). The progress
+  window now states the next action explicitly (« recettes — 1/5 lu(s) · clique « ▶ » (« Minage ») ·
+  … »), reminds you every 45 s while waiting, and says when the client refused an open so you can
+  open the profession by hand. Opening professions yourself still works exactly as before.
+
+### Fixed
+- Waiting state no longer looks frozen at N/5: the label names the next profession, lists the
+  remaining ones, and the button updates to the profession it will open.
+- Offline harness: new « openbtn » scenario where the client refuses every non-click open — the
+  export only completes through the button. 9 scenarios in CI.
+
 ## 2026.09.145-c4 - 2026-09-20
 
 ### Fixed
