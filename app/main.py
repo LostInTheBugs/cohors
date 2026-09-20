@@ -6439,7 +6439,7 @@ def api_setup_status(request: Request):
     mail_host = (_mail_rows().get("host") or os.environ.get("SMTP_HOST", "")).strip()
     guild_txt = " · ".join(x for x in (str(g.get("realm") or ""), str(g.get("slug") or "")) if x)
     brand_name = (brand.get("guild_name") or "").strip()
-    members_txt = f"{n_users} membres"
+    members_txt = f"{n_users} membre" + ("s" if n_users > 1 else "")
     if n_invites:
         members_txt += f" · {n_invites} invitation" + ("s" if n_invites > 1 else "") + " en attente"
     steps = [

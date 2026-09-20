@@ -1,4 +1,5 @@
 """Tests d'API (TestClient sur base SQLite temporaire). Aucun service externe requis."""
+import json
 import os
 import sys
 import tempfile
@@ -93,3 +94,35 @@ def test_start_page_requires_login_then_serves():
     c = TestClient(M.app)
     r = c.get("/start", follow_redirects=False)
     assert r.status_code == 302 and r.headers["location"] == "/login"
+
+
+def test_import_recipes_merges_tier_entries_and_dedupes():
+    """Régression (bug du 20/09) : les exports « une entrée par palier » (jusqu'à 22 entrées avec
+    chaque recette dupliquée) étaient coupés à 10 entrées et gardaient les doublons. L'import doit
+    tout lire, fusionner par (métier, recette) et conserver la DERNIÈRE occurrence (matériaux les
+    plus complets)."""
+    _make_user("officier@test.local", is_admin=1, role="admin")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "officier@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.3.1"})
+    assert r.status_code == 200, r.text
+
+    profs = [{"name": "Cuisine", "recipes": [
+        {"n": "Pain épicé", "i": 37836, "e": "Midnight", "t": 1, "m": [[30817, "", 1]]}]}]
+    for k in range(12):   # 12 autres entrées « métier » (> l'ancienne coupe à 10)
+        profs.append({"name": f"Métier{k}", "recipes": [
+            {"n": f"Recette{k}", "i": 100 + k, "e": "P", "t": 2, "m": []}]})
+    profs.append({"name": "Cuisine", "recipes": [
+        {"n": "Pain épicé", "i": 37836, "e": "Classic", "t": 3,
+         "m": [[30817, "Farine simple", 1], [2678, "Épices douces", 1]]}]})
+    payload = json.dumps({"v": 1, "player": "Testeur", "realm": "hyjal", "professions": profs},
+                         ensure_ascii=False)
+    r = c.post("/api/prep/import-recipes", json={"payload": payload})
+    assert r.status_code == 200, r.text
+    assert r.json()["recipes"] == 13, r.json()   # 12 métiers + « Pain épicé » une seule fois
+    with M._db_lock, M._db() as conn:
+        rows = [dict(x) for x in conn.execute(
+            "SELECT item, mats FROM craft_recipes WHERE crafter=?", ("Testeur",)).fetchall()]
+    pains = [x for x in rows if x["item"] == "Pain épicé"]
+    assert len(pains) == 1, rows[:5]
+    assert "Farine simple" in pains[0]["mats"], pains[0]   # dernière occurrence conservée

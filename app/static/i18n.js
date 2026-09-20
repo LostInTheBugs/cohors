@@ -1074,6 +1074,7 @@
     [/il y a (\d+) min\b/g, "$1 min ago"],
     [/il y a (\d+) h\b/g, "$1 h ago"],
     [/il y a (\d+) j\b/g, "$1 d ago"],
+    [/\b1 membre\b/g, "1 member"],
     [/(\d[\d\u00a0 ]*) membres\b/g, "$1 members"],
     [/(\d+) relevés/g, "$1 snapshots"],
     [/(\d+) relevé\b/g, "$1 snapshot"],
