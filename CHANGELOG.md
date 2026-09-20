@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145 - 2026-09-20
+
+### Security
+- **The app no longer sees the Docker socket.** A new tiny `worker` service (stdlib only, its own
+  image) is the only component mounting `/var/run/docker.sock`; the app submits restricted jobs
+  over a shared Unix socket (mode 0660, group reserved for the app, caller uid verified with
+  `SO_PEERCRED`) and now runs **non-root** (`user: ${APP_UID}:10001`), with no Docker CLI shipped
+  in its image. This closes the "Docker socket / root" finding of the first external review.
+- The worker re-validates **every** job itself (`shared/simvalidate.py`, copied into both images):
+  profile size cap, iterations bounds, allowlisted `key=value` options and forbidden SimulationCraft
+  directives (`input=`, `output=`, `html=`, `json`/`json2=`, `apikey=`) — now also detected behind
+  `profileset_+=` prefixes, which the 2026.09.141 guard could miss.
+- Job paths come from worker-generated job ids only: no path from the app ever reaches the
+  filesystem. SimC containers run with `--rm` and `sim-<job>` names, are killed explicitly
+  (`docker kill`) on timeout, and leftovers from a crashed worker are removed at startup.
+- New regression tests: the compose app service must not mount the Docker socket, must run
+  non-root, and the app image must not contain the Docker CLI.
+
+### Changed
+- README security section rewritten around the worker architecture; `.env.example` gains
+  `APP_UID` (uid the app runs as — must own `DATA_DIR`) and the worker tuning variables
+  (`SIM_MAX_PROFILE_KB`, `SIM_MAX_ITERATIONS`).
+
 ## 2026.09.144 - 2026-09-20
 
 ### Added

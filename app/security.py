@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import re
 import secrets
+
+from shared.simvalidate import check_profile  # noqa: F401  (re-export)
 
 # ---------------------------------------------------------------------------
 # Mots de passe — scrypt (n=2^14, r=8, p=1) + sel aléatoire par utilisateur,
@@ -37,14 +38,11 @@ def verify_password(password: str, stored: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Profils SimulationCraft — SimulationCraft honore certaines options écrites
-# DANS le fichier de profil (vérifié sur l'image officielle : `input=` lit un
-# fichier du conteneur, `output=` y écrit un fichier). Un export /simc n'en
-# contient jamais : on refuse ces directives avant d'écrire le fichier.
+# Profils SimulationCraft — le garde-fou (directives input=/output=/html=/…)
+# vit désormais dans shared/simvalidate.py, copié dans les DEUX images : l'app
+# l'applique à l'entrée, le worker le re-applique de son côté. Il est
+# re-exporté ci-dessus pour les appelants historiques (app/main.py).
 # ---------------------------------------------------------------------------
-
-_BLOCKED_KEYS = ("input", "output", "html", "json", "json2", "apikey")
-_PROFILE_BLOCK_RE = re.compile(r"^\s*(" + "|".join(_BLOCKED_KEYS) + r")\s*=", re.IGNORECASE)
 
 
 def real_client_ip(xff: str | None, peer: str | None, hops: int = 1) -> str:
@@ -71,12 +69,3 @@ def real_client_ip(xff: str | None, peer: str | None, hops: int = 1) -> str:
             idx = min(max(1, hops), len(parts))
             return parts[-idx]
     return peer or "?"
-
-
-def check_profile(text: str) -> str | None:
-    """Retourne la directive interdite trouvée dans le profil, sinon None."""
-    for line in text.splitlines():
-        m = _PROFILE_BLOCK_RE.match(line)
-        if m:
-            return m.group(1).lower()
-    return None

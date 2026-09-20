@@ -1,20 +1,24 @@
 # syntax=docker/dockerfile:1
 
-# The app talks to the host Docker daemon (mounted socket) to launch
-# SimulationCraft containers, so it needs the Docker CLI inside the image.
-FROM docker:cli AS dockercli
+# L'app ne voit plus /var/run/docker.sock : elle soumet ses simulations au
+# service `worker` via un socket Unix partagé (voir docker-compose.yml). Cette
+# image n'a donc PLUS besoin du client docker, et le conteneur tourne sans
+# droits root (uid/gid : voir la directive USER ci-dessous, surchargée par
+# compose via APP_UID).
 
 FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1
-COPY --from=dockercli /usr/local/bin/docker /usr/local/bin/docker
 
 WORKDIR /app
 COPY requirements.txt VERSION ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY worker ./worker
+COPY shared ./shared
 COPY addon ./addon
+
+# gid 10001 = groupe du socket du worker, partagé avec personne d'autre.
+USER 1000:10001
 
 ARG PORT=8030
 ENV PORT=${PORT}

@@ -33,7 +33,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from worker.simrun import run_sim
+from app.simclient import run_sim  # soumet au worker de simulation (socket Unix, sans docker.sock ici)
 import httpx
 
 from app import bnet, discord_bot, mailer, wcl

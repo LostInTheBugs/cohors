@@ -27,10 +27,13 @@ Environment:
 
 Each simulation runs in a hardened container: no network, read-only root filesystem
 (reports come out through the single mounted volume), memory/process caps and
-no-new-privileges. SimulationCraft honours a few options written INSIDE a profile
-file (`input=` reads files, `output=` writes files — verified against the official
-image), so profile text is checked against a small denylist before it is written
-(see app/security.py: check_profile).
+no-new-privileges, `--rm`, and a name derived from the job id (`sim-<id>`). On
+timeout the container is killed EXPLICITLY (`docker kill`) — killing the docker
+client alone leaves the container running. cleanup_orphans() removes leftover
+`sim-*` containers at startup. SimulationCraft honours a few options written
+INSIDE a profile file (`input=` reads files, `output=` writes files — verified
+against the official image), so profile text is validated before it is written
+(see shared/simvalidate.py; the worker re-checks everything itself).
 """
 from __future__ import annotations
 
@@ -51,6 +54,32 @@ SIM_CPUS = os.environ.get("SIM_CPUS", "").strip()
 DPS_RE = re.compile(r"DPS=([0-9.]+)\s+DPS-Error=([0-9.]+)/([0-9.]+)%")
 SF_WEIGHTS_RE = re.compile(r"Weights\s*:\s*(.+)")
 SF_ITEM_RE = re.compile(r"(\w+)=([0-9.]+)\(([0-9.]+)\)")
+
+# Préfixe des conteneurs de simulation : permet le ménage des orphelins au démarrage.
+CONTAINER_PREFIX = "sim-"
+
+
+def cleanup_orphans() -> list[str]:
+    """Supprime les conteneurs `sim-*` restants d'une exécution précédente.
+
+    Si le worker est tué pendant une simulation, le client docker disparaît mais
+    le conteneur de simulation continue de tourner : on fait le ménage AVANT
+    d'accepter de nouveaux jobs (le worker ne démarre jamais deux fois).
+    """
+    try:
+        out = subprocess.run(["docker", "ps", "-a", "--filter", "name=" + CONTAINER_PREFIX,
+                              "--format", "{{.Names}}"], capture_output=True, text=True, timeout=30)
+    except Exception:  # noqa: BLE001
+        return []
+    names = [n.strip() for n in (out.stdout or "").splitlines() if n.strip().startswith(CONTAINER_PREFIX)]
+    killed: list[str] = []
+    for n in names:
+        try:
+            subprocess.run(["docker", "rm", "-f", n], capture_output=True, timeout=60)
+            killed.append(n)
+        except Exception:  # noqa: BLE001
+            pass
+    return killed
 
 
 def parse_scale_factors(log: str, json_path: Path | None = None) -> list[dict] | None:
@@ -169,6 +198,7 @@ def run_sim(
     outdir: Path | None = None,
     extra: list[str] | None = None,
     timeout: int = 900,
+    container_name: str | None = None,
 ) -> dict:
     """Run one simulation. Returns a dict with ok/rc/dps/report paths/log tail."""
     if bool(profile_path) == bool(container_profile):
@@ -177,7 +207,10 @@ def run_sim(
     outdir = Path(outdir) if outdir else Path(tempfile.mkdtemp(prefix="simc-"))
     outdir.mkdir(parents=True, exist_ok=True)
 
-    cmd = ["docker", "run", "--rm",
+    cmd = ["docker", "run", "--rm"]
+    if container_name:
+        cmd += ["--name", container_name]
+    cmd += [
            "--network", "none",
            "--read-only", "--tmpfs", "/tmp:size=1g",
            "--memory", SIM_MEM, "--pids-limit", str(SIM_PIDS),
@@ -203,7 +236,27 @@ def run_sim(
         cmd += list(extra)
 
     t0 = time.time()
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        # Tuer le client docker ne suffit PAS : le conteneur de simulation continuerait
+        # de tourner. On l'arrête explicitement, puis on retire ce qu'il en reste.
+        if container_name:
+            subprocess.run(["docker", "kill", container_name], capture_output=True, timeout=60)
+            subprocess.run(["docker", "rm", "-f", container_name], capture_output=True, timeout=60)
+        parts = []
+        for stream in (exc.stdout, exc.stderr):
+            if stream:
+                parts.append(stream.decode("utf-8", "replace") if isinstance(stream, bytes) else str(stream))
+        tail = "\n".join("".join(parts).splitlines()[-20:])
+        return {
+            "ok": False, "rc": None, "timeout": True,
+            "dps": None, "dps_error": None, "dps_error_pct": None,
+            "iterations": iterations, "wall_s": round(time.time() - t0, 3),
+            "html": None, "json": None,
+            "log_tail": f"délai dépassé ({timeout} s) — conteneur arrêté de force.\n" + tail,
+            "scale_factors": None, "gear": None, "group": None,
+        }
     wall = time.time() - t0
 
     log = (proc.stdout or "") + (proc.stderr or "")

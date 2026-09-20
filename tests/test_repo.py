@@ -51,3 +51,42 @@ def test_compose_and_env_example_stay_in_sync():
     """Chaque variable documentée dans .env.example et utilisée par le code reste disjointe du compose."""
     compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     assert "DATA_DIR" in compose and "PORT" in compose
+
+
+def _compose_service(text: str, name: str) -> str:
+    """Bloc YAML d'un service (indentation compose : 2 espaces = nom, 4+ = corps)."""
+    out, inside = [], False
+    for ln in text.splitlines():
+        if re.match(r"^  \S", ln):
+            inside = ln.strip().startswith(name + ":")
+            continue
+        if inside and (ln.startswith("    ") or not ln.strip()):
+            out.append(ln)
+    return "\n".join(out)
+
+
+def test_app_container_has_no_docker_socket_and_runs_non_root():
+    """Régression (revue externe) : sans ce test, le compose pourrait remettre root + socket."""
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    app = _compose_service(compose, "app")
+    worker = _compose_service(compose, "worker")
+    assert app, "service app introuvable dans docker-compose.yml"
+    assert worker, "service worker introuvable dans docker-compose.yml"
+    assert "docker.sock" not in app, "l'app ne doit plus monter le socket Docker"
+    assert "docker.sock" in worker, "seul le worker doit monter le socket Docker"
+    m = re.search(r'^\s*user:\s*(.+)$', app, re.M)
+    assert m, "l'app doit fixer un user: uid:gid (non-root)"
+    val = m.group(1).strip().strip('"')
+    assert "root" not in val
+    m2 = re.match(r"^(?:\$\{[A-Z_]+:-(\d+)\}|(\d+)):(\d+)$", val)
+    assert m2, f"format user inattendu : {val}"
+    assert (m2.group(1) or m2.group(2)) != "0", "l'app ne doit pas tourner en root"
+    assert "simsock" in app and "simsock" in worker, "socket Unix app ↔ worker manquant"
+
+
+def test_app_dockerfile_drops_root_and_docker_cli():
+    df = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert re.search(r"^USER\s+\d+:", df, re.M), "USER non-root attendu dans le Dockerfile de l'app"
+    assert "docker:cli" not in df, "le client docker ne doit plus être dans l'image de l'app"
+    wdf = (ROOT / "worker" / "Dockerfile").read_text(encoding="utf-8")
+    assert "docker:cli" in wdf, "le client docker doit être dans l'image du worker"

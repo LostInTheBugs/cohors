@@ -1,9 +1,48 @@
 services:
+  # Le worker de simulation : SEUL composant qui voit /var/run/docker.sock.
+  # L'app lui soumet des jobs via un socket Unix (volume `simsock`, 0660, groupe
+  # réservé à l'app) ; il re-valide tout et construit lui-même chaque `docker run`
+  # (image et montages fixes, identifiant de job généré par lui).
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    image: cohors-simworker:latest
+    container_name: cohors-simworker
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.settimeout(5); s.connect("/run/cohors/simworker.sock"); s.close()']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    volumes:
+      # Le socket Docker n'est monté QUE ici.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Same absolute path on the host and in the container: passed to the
+      # SimulationCraft containers for input and report files.
+      - ${DATA_DIR:?set DATA_DIR in .env (see .env.example)}:${DATA_DIR:?set DATA_DIR in .env (see .env.example)}
+      # Canal app ↔ worker (socket Unix, jamais exposé ailleurs).
+      - simsock:/run/cohors
+    environment:
+      - SIM_JOBS_DIR=${DATA_DIR:?set DATA_DIR in .env (see .env.example)}/sim-jobs
+      - SIMWORKER_APP_UID=${APP_UID:-1000}
+      - SIMC_IMAGE=${SIMC_IMAGE:-simulationcraftorg/simc:latest}
+      - SIM_MEM=${SIM_MEM:-4g}
+      - SIM_PIDS=${SIM_PIDS:-512}
+      - SIM_CPUS=${SIM_CPUS:-}
+      - SIM_TIMEOUT=${SIM_TIMEOUT:-900}
+
   app:
     build: .
     image: cohors-app:latest
     container_name: cohors-app
     restart: unless-stopped
+    # Plus de socket Docker ici, et plus de root : l'app tourne en non-root
+    # (APP_UID doit être le propriétaire de DATA_DIR sur l'hôte).
+    user: "${APP_UID:-1000}:10001"
+    depends_on:
+      - worker
     healthcheck:
       test: ["CMD", "python", "-c", 'import os,urllib.request,sys; sys.exit(0 if urllib.request.urlopen("http://127.0.0.1:"+os.environ.get("PORT","8030")+"/api/health", timeout=5).status == 200 else 1)']
       interval: 30s
@@ -16,10 +55,13 @@ services:
       # joignable depuis le conteneur via host.docker.internal.
       - "host.docker.internal:host-gateway"
     volumes:
-      # Launch sibling SimulationCraft containers from the host daemon.
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Same absolute path on the host and in the container: passed to the
-      # SimulationCraft containers for input and report files.
+      # Same absolute path on the host and in the container: the app serves the
+      # reports the worker wrote there (job directories).
       - ${DATA_DIR:?set DATA_DIR in .env (see .env.example)}:${DATA_DIR:?set DATA_DIR in .env (see .env.example)}
+      # Canal app ↔ worker : le socket Unix (le worker en est propriétaire).
+      - simsock:/run/cohors
     ports:
       - "127.0.0.1:${PORT:-8030}:${PORT:-8030}"
+
+volumes:
+  simsock:
