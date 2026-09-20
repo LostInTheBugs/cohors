@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LOTP — Vocal</title>
+<title>Cohors — Vocal</title>
 <link rel="icon" href="/branding/logo">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#b1002e">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="LOTP">
+<meta name="apple-mobile-web-app-title" content="Cohors">
 <style>
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
           --acc:#b1002e; --acc2:#dfa55a; }
@@ -42,7 +42,7 @@
             border-right:0; box-shadow:0 0 44px rgba(0,0,0,.65); }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.136">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.137">
 </head>
 <body class="wb">
 <div id="shell">
@@ -59,11 +59,11 @@
     </div>
   </aside>
   <main id="mainwrap">
-    <iframe id="mainframe" name="lotp-main" src="/dashboard" title="LOTP — application"></iframe>
+    <iframe id="mainframe" name="cohors-main" src="/dashboard" title="Cohors — application"></iframe>
   </main>
   <button id="reopen" hidden title="Afficher le panneau vocal">🎧</button>
 </div>
-<script src="/static/i18n.js?v=2026.09.136"></script>
+<script src="/static/i18n.js?v=2026.09.137"></script>
 <script>
 (function () {
   if (window.self !== window.top) { location.replace("/dashboard"); return; }
@@ -77,20 +77,24 @@
   $("#reopen").addEventListener("click", function () { setPanel(true); });
   window.addEventListener("message", function (ev) {
     if (ev.origin !== location.origin) return;
-    if (ev.data && ev.data.type === "lotp-voice-toggle") {
+    if (ev.data && ev.data.type === "cohors-voice-toggle") {
       setPanel(document.body.classList.contains("side-hidden"));
     }
   });
+  function openVoice(nick) {
+    fetch("/api/voice/config").then(function (r) { return r.json(); }).then(function (cfg) {
+      var host = (cfg && cfg.host) || "";
+      if (!host) return;
+      $("#vframe").src = host + "/" + (nick ? "#nickname=" + encodeURIComponent(nick) + "&autojoin=1" : "#autojoin=1");
+    }).catch(function () {});
+  }
   fetch("/api/voice/handoff?json=1").catch(function () {}).then(function () {
     return fetch("/api/me").then(function (r) { return r.ok ? r.json() : null; });
   }).then(function (me) {
-    var nick = me && (me.voice_nick || "").trim();
-    $("#vframe").src = "https://ts.gensbien.fr/" + (nick ? "#nickname=" + encodeURIComponent(nick) + "&autojoin=1" : "#autojoin=1");
-  }).catch(function () {
-    $("#vframe").src = "https://ts.gensbien.fr/#autojoin=1";
-  });
+    openVoice((me && (me.voice_nick || "").trim()) || "");
+  }).catch(function () { openVoice(""); });
 })();
 </script>
-<script src="/static/branding.js?v=2026.09.136"></script>
+<script src="/static/branding.js?v=2026.09.137"></script>
 </body>
 </html>

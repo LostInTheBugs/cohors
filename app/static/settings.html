@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LOTP — Paramètres</title>
+<title>Cohors — Paramètres</title>
 <link rel="icon" href="/branding/logo">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#b1002e">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="LOTP">
+<meta name="apple-mobile-web-app-title" content="Cohors">
 <style>
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
@@ -98,7 +98,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.136">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.137">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -106,7 +106,7 @@
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
       <img src="/branding/logo" alt="Lords of the Pit" class="crest">
       <div>
-        <div class="brandname">LOTP <span>Paramètres</span></div>
+        <div class="brandname">Cohors <span>Paramètres</span></div>
         <div class="tagline">Langue, nom, vocal et mot de passe — liés à ton compte.</div>
       </div>
     </a>
@@ -215,7 +215,7 @@
         <details style="background:var(--card2); border:1px dashed var(--line); border-radius:10px; padding:10px 14px; margin-bottom:14px;">
           <summary style="cursor:pointer; font-weight:600; color:var(--acc2);">❓ Créer l'application Discord (une seule fois)</summary>
           <ol style="margin:10px 0 6px; padding-left:22px; color:var(--mut); font-size:13.5px;">
-            <li>Ouvre le <a class="hlink" href="https://discord.com/developers/applications" target="_blank" rel="noopener">Portail développeurs Discord</a> → <b>New Application</b> (nom : « LOTP Simulateur »).</li>
+            <li>Ouvre le <a class="hlink" href="https://discord.com/developers/applications" target="_blank" rel="noopener">Portail développeurs Discord</a> → <b>New Application</b> (nom : « Cohors »).</li>
             <li>Copie l'<b>Application ID</b> (General Information) → colle-le ci-dessous.</li>
             <li>Onglet <b>Bot</b> → <b>Reset Token</b> → copie le <b>token</b> → colle-le ci-dessous (secret).</li>
             <li>Clique <b>📎 Lien d'invitation</b>, ouvre-le et ajoute le bot à ton serveur — il faut la permission « Gérer le serveur » sur le serveur visé (sinon, transmets le lien à un administrateur du serveur).</li>
@@ -400,7 +400,7 @@
         </div>
         <div class="row" style="margin-bottom:12px">
           <label class="fld">Nom de la guilde<br><input type="text" id="bi-name" maxlength="60" placeholder="Lords of the Pit" style="min-width:240px"></label>
-          <label class="fld">Nom court<br><input type="text" id="bi-short" maxlength="24" placeholder="LOTP" style="min-width:110px"></label>
+          <label class="fld">Nom court<br><input type="text" id="bi-short" maxlength="24" placeholder="Cohors" style="min-width:110px"></label>
           <label class="fld">Fond : couleur<br><input type="color" id="bi-color" value="#0b0f17"></label>
           <button class="small ghost" id="bi-color-del" title="Revenir à la couleur par défaut">🗑 Défaut</button>
         </div>
@@ -420,9 +420,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.136"></script>
-<script src="/static/branding.js?v=2026.09.136"></script>
-<script src="/static/i18n.js?v=2026.09.136"></script>
+<script src="/static/nav.js?v=2026.09.137"></script>
+<script src="/static/branding.js?v=2026.09.137"></script>
+<script src="/static/i18n.js?v=2026.09.137"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -437,7 +437,7 @@ $("#logout").addEventListener("click", async () => { await fetch("/api/logout", 
 
 document.querySelectorAll("input[name=lang]").forEach(r => r.addEventListener("change", async () => {
   try {
-    try { localStorage.setItem("lotp_lang", r.value); } catch (e) {}
+    try { localStorage.setItem("cohors_lang", r.value); } catch (e) {}
     await jpost("/api/me/settings", { lang: r.value });
     location.reload();
   } catch (e) { setMsg("#lang-msg", e.message, false); }
@@ -989,7 +989,7 @@ $("#bi-save").addEventListener("click", async () => {
     await saveBrand(false);
     toast("Identité enregistrée ✓");
     await loadBrand();
-    if (window.__lotpBranding) window.__lotpBranding.refresh();
+    if (window.__cohorsBranding) window.__cohorsBranding.refresh();
   } catch (e) { toast(e.message || "Erreur"); }
   $("#bi-save").disabled = false;
 });
@@ -999,7 +999,7 @@ $("#bi-reset").addEventListener("click", async () => {
     await saveBrand(true);
     toast("Identité réinitialisée ✓");
     await loadBrand();
-    if (window.__lotpBranding) window.__lotpBranding.refresh();
+    if (window.__cohorsBranding) window.__cohorsBranding.refresh();
   } catch (e) { toast(e.message || "Erreur"); }
 });
 
@@ -1012,7 +1012,7 @@ $("#bi-reset").addEventListener("click", async () => {
     $("#voice-nick").value = me.voice_nick_raw || "";
     $("#voice-nick").placeholder = "Par défaut : " + (me.voice_default || "…");
     let lang = "";
-    try { lang = localStorage.getItem("lotp_lang") || ""; } catch (e) {}
+    try { lang = localStorage.getItem("cohors_lang") || ""; } catch (e) {}
     if (!lang) lang = document.documentElement.lang === "en" ? "en" : "fr";
     const r = document.querySelector('input[name=lang][value="' + lang + '"]');
     if (r) r.checked = true;

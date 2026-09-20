@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LOTP — Aide</title>
+<title>Cohors — Aide</title>
 <link rel="icon" href="/branding/logo">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#b1002e">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="LOTP">
+<meta name="apple-mobile-web-app-title" content="Cohors">
 <style>
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
@@ -44,7 +44,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.136">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.137">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -52,7 +52,7 @@
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
       <img src="/branding/logo" alt="Lords of the Pit" class="crest">
       <div>
-        <div class="brandname">LOTP <span>Aide</span></div>
+        <div class="brandname">Cohors <span>Aide</span></div>
         <div class="tagline">Toutes les fonctionnalités de l'application et comment s'en servir.</div>
       </div>
     </a>
@@ -228,7 +228,7 @@
       <li>Les officiers créent les raids (date, heure, durée, note).</li>
       <li>Réponds en un clic : ✅ Présent · ❓ Peut-être · ❌ Absent — re-clique pour annuler ta réponse.</li>
       <li>Tu vois qui vient d'un coup d'œil, et le bot Discord relance une heure avant le raid (si activé).</li>
-      <li>🗓️ « Prochains raids » : les officiers importent le calendrier de guilde de WoW (addon LOTP → /lotp → « Exporter ») — les raids, les réponses des membres et les indisponibilités déclarées apparaissent directement (création et invitations en jeu uniquement). Les joueurs y apparaissent aux couleurs de leur classe (comme en jeu) ; et quand les boss visés sont précisés, la page liste les pièces de wishlist de la guilde qui tombent sur ces boss (🎁, avec qui les veut). Sur chaque date, les officiers peuvent préciser le ou les raids visés, les boss, et le raid de départ 🚩 (bouton ✏️) ; ils y définissent aussi le rôle des présents (🛡️ tank / 💚 heal / ⚔️ dps) et peuvent forcer les réponses (accepter ou refuser quelqu'un qui ne répond jamais en jeu).</li>
+      <li>🗓️ « Prochains raids » : les officiers importent le calendrier de guilde de WoW (addon Cohors → /cohors → « Exporter ») — les raids, les réponses des membres et les indisponibilités déclarées apparaissent directement (création et invitations en jeu uniquement). Les joueurs y apparaissent aux couleurs de leur classe (comme en jeu) ; et quand les boss visés sont précisés, la page liste les pièces de wishlist de la guilde qui tombent sur ces boss (🎁, avec qui les veut). Sur chaque date, les officiers peuvent préciser le ou les raids visés, les boss, et le raid de départ 🚩 (bouton ✏️) ; ils y définissent aussi le rôle des présents (🛡️ tank / 💚 heal / ⚔️ dps) et peuvent forcer les réponses (accepter ou refuser quelqu'un qui ne répond jamais en jeu).</li>
       <li>🚫 Indisponibilités : tu vois qui est indisponible pour chaque raid, croisé avec les réponses in-game — ⚠️ signale « indispo mais a accepté le raid ». Ça se déclare dans 🙋 Moi → 🚫 Mes indispos.</li>
       <li>« 📣 Relancer » (officiers, si le bot Discord est actif) poste une relance dans Discord pour les membres qui n'ont pas encore répondu.</li>
     </ul>
@@ -248,7 +248,7 @@
     <ul>
       <li>Qui peut crafter quoi : les métiers de toute la guilde, regroupés par profession, avec les points de chaque personnage.</li>
       <li>Recherche un métier ou un personnage, et clique pour ouvrir sa fiche — les métiers se mettent à jour automatiquement depuis le jeu.</li>
-      <li>📖 « Mes recettes connues » (page 🙋 Moi) : chaque joueur déclare les recettes de ses métiers — en cochant dans la liste récupérée du jeu, ou en important son export d'addon (/lotp recettes).</li>
+      <li>📖 « Mes recettes connues » (page 🙋 Moi) : chaque joueur déclare les recettes de ses métiers — en cochant dans la liste récupérée du jeu, ou en important son export d'addon (/cohors recettes).</li>
       <li>Ce que chacun déclare alimente « Qui peut crafter quoi » et les compos de 🧪 Préparation de raid.</li>
     </ul>
   </section>
@@ -275,9 +275,9 @@
   <section class="card" id="addon">
     <h2>🧩 L'addon in-game</h2>
     <ul>
-      <li>L'addon LOTP s'installe dans le dossier AddOns de World of Warcraft ; le zip se télécharge depuis la page 🗓️ Calendrier (« ⬇️ Télécharger l'addon »).</li>
-      <li>🗓️ Officiers : en jeu, /lotp → « Exporter » lit le calendrier de guilde (raids et réponses) ; colle la chaîne dans la page Calendrier, ou importe le fichier LOTP.lua.</li>
-      <li>📚 Artisans : /lotp recettes (ou le bouton 📚) liste les recettes connues de tes métiers ; importe l'export toi-même depuis la section 🙋 Moi → 📖 Mes recettes.</li>
+      <li>L'addon Cohors s'installe dans le dossier AddOns de World of Warcraft ; le zip se télécharge depuis la page 🗓️ Calendrier (« ⬇️ Télécharger l'addon »).</li>
+      <li>🗓️ Officiers : en jeu, /cohors → « Exporter » lit le calendrier de guilde (raids et réponses) ; colle la chaîne dans la page Calendrier, ou importe le fichier Cohors.lua.</li>
+      <li>📚 Artisans : /cohors recettes (ou le bouton 📚) liste les recettes connues de tes métiers ; importe l'export toi-même depuis la section 🙋 Moi → 📖 Mes recettes.</li>
     </ul>
   </section>
 
@@ -330,9 +330,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.136"></script>
-<script src="/static/branding.js?v=2026.09.136"></script>
-<script src="/static/i18n.js?v=2026.09.136"></script>
+<script src="/static/nav.js?v=2026.09.137"></script>
+<script src="/static/branding.js?v=2026.09.137"></script>
+<script src="/static/i18n.js?v=2026.09.137"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 (async () => {

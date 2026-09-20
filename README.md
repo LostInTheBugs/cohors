@@ -1,95 +1,93 @@
-# WoW Companion (working title)
+# Cohors
 
-Self-hosted companion for World of Warcraft: guild-friendly simulation reports built on
-the official SimulationCraft Docker image, plus a guild roster and character pages fed
-by the Battle.net API and raid reports (parses) from Warcraft Logs.
+**Guild companion for World of Warcraft — self-hosted.** SimulationCraft simulations,
+gear advice, raid preparation, Warcraft Logs reports, roster tracking, crafting, wishlist,
+guild calendar and Discord announcements — one web app, one instance per guild.
 
-> Early development. Not affiliated with Blizzard Entertainment, Inc. Game data is
-> provided by Blizzard Entertainment and Warcraft Logs (see attribution requirements).
+**Live demo:** https://cohors.cloudfr.net ·
+**Releases:** https://github.com/LostInTheBugs/cohors/releases
 
-## Status
+> Not affiliated with Blizzard Entertainment, Inc. Game data is provided by Blizzard
+> Entertainment and by Warcraft Logs. Simulations run on the official SimulationCraft
+> engine (Docker image).
 
-- [x] Simulation engine wrapper (`worker/simrun.py`) — runs a SimulationCraft sim via the
-      official `simulationcraftorg/simc` Docker image, extracts DPS, produces HTML + JSON reports.
-- [x] Web app (`app/`) — `/simc` export submission, FIFO sim queue (one sim at a time),
-      shared result cache, per-IP + per-user quotas, French UI, report archive over HTTP.
-- [x] Accounts — invite-only registration (`/invite/<token>` links), login sessions,
-      admin panel (`/admin`) for invitations and account management.
-- [x] Stat-weights mode ("optimiseur", Mr Robot-style) — scale factors from the same engine.
-- [x] Guild roster & characters (« Personnages ») — Battle.net API: ranks, levels, item
-      level, last seen, per-character equipped items (Wowhead links), 30-min server cache.
-- [x] Raid reports (« Rapports ») — Warcraft Logs v2 API: guild report list, per-report
-      boss pulls (kill/wipe, difficulty, item level) and per-fight parses (role tables,
-      percentile scores), 15–30 min server cache.
-- [x] Member comparison (« Comparateur ») — 2–6 characters side by side: equipped ilvl
-      and last seen (Battle.net) + best Warcraft Logs parses for the current raid
-      (per-boss percentile, best/median averages).
-- [x] Sim profiles (« Profils ») — save a `/simc` export once, reload it in one click,
-      optionally share it with the guild (max 20 per account).
-- [x] Invitation e-mails — send (and re-send) invite links by e-mail from
-      `noreply@ruban-adhesif.com` (SMTP), with a French HTML template.
-- [x] « Top Stuff » — paste Wowhead item links or IDs (max 15): each item is
-      simulated on your character (SimulationCraft profilesets) and ranked by DPS;
-      rings and trinkets are tested on both slots (item data from the Blizzard API).
-- [x] Discord bot (« 🤖 Bot Discord » admin tab) — invite it with a generated
-      OAuth2 link, activate it, pick the announcement channel and let it post new
-      raid reports (Warcraft Logs) and guild roster changes.
-- [x] Account ↔ character links — link your account to your guild characters
-      (⭐ main + alts) from the Personnages page; stars show up in the roster.
-- [x] Roles: membre / officier / administrateur — officers manage invitations,
-      admins handle accounts, roles and the Discord bot.
-- [x] Bilingual UI (FR/EN) — header switcher, remembered choice; English is
-      applied automatically for English-language browsers.
-- [x] Account settings page — language stored on the account, display name,
-      password change (per-account preference follows you everywhere).
-- [x] One main per account (enforced) — first linked character becomes the main;
-      switch it anytime from its chip.
-- [x] Guild dashboard — weekly reset countdown, latest raid summary (top
-      parses), recent roster moves.
-- [x] Raid calendar — officers plan raids, members answer
-      Présent/Peut-être/Absent; the Discord bot announces and reminds.
-- [x] Group simulation — combine members' `/simc` profiles into one
-      multi-actor run (raid buffs) and rank the guild by DPS.
-- [x] Guild page — Discord invite, TeamSpeak details (one-click join),
-      editable by administrators; plus a full Help page.
-- [x] Rankings — best parses (role filter), top-3 by boss and
-      Mythic+ ratings of linked mains.
+## Features
+
+- **Simulator** — paste your in-game `/simc` export: DPS simulations through the official
+  SimulationCraft image, stat-weights mode, sim profiles (save once, reload in one click),
+  group simulations (combine members' profiles with raid buffs).
+- **Gear advice** — « Top Stuff » (simulate Wowhead items on your character, ranked by DPS),
+  « Stuff conseillé » (what to wear among what you already own — three modes: current pieces,
+  every piece at its maximum upgrade rank, or the season's BiS list — for all 40 specs),
+  member comparison.
+- **Roster & characters** — Battle.net roster and character pages (gear, professions,
+  progress), account ↔ character links with one main per account, daily snapshots and
+  progression tracking.
+- **Raids & parses** — Warcraft Logs reports, per-boss parses, guild rankings, and a raid
+  calendar with signups (Present / Maybe / Absent), unavailabilities, reminders and
+  in-game calendar import through the Cohors add-on.
+- **Crafting & wishlist** — guild-known recipes, materials and crafters; wishlist with
+  priorities (BiS marked), drop alerts on the bosses you plan to raid.
+- **Mythic+** — rating tracking and score alerts for the guild.
+- **Discord bot** — announces new raid reports, roster movements, character milestones and
+  a weekly recap; posts raid reminders before start.
+- **Optional voice portal** — browser TeamSpeak client served behind the app login.
+- **Bilingual UI (FR/EN)** — language stored per account; English auto-detected for
+  English browsers.
+- **Admin in the app** — invitations, accounts and roles, API keys (Battle.net /
+  Warcraft Logs), sync cadences, SMTP e-mails, Discord bot, guild identity (name, short
+  name, logo, background) and guild server identity (realm, region, Warcraft Logs guild).
+  No file editing required after installation.
+- **PWA** — installable on desktop and mobile, offline fallback page.
 
 ## Requirements
 
 - Docker Engine with the Compose plugin (app container + SimulationCraft engine image)
-- Python 3.11+ (only for running the engine wrapper standalone)
+- A host with enough CPU for SimulationCraft runs — the app launches sibling SimulationCraft
+  containers through the mounted Docker socket
+- Python 3.11+ (only to run the engine wrapper standalone)
 
-## Quick start (engine wrapper)
-
-```bash
-# Simulate a profile shipped inside the image (works out of the box after a docker pull)
-python3 worker/simrun.py --container-profile profiles/MID2/MID2_Mage_Arcane.simc --iterations 500
-
-# Simulate your own in-game `/simc` export (or any .simc profile file)
-python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir ./out
-```
-
-## Web app (Docker Compose)
+## Quick start
 
 ```bash
-cp .env.example .env    # set DATA_DIR and the ADMIN_* bootstrap variables (see below)
+git clone https://github.com/LostInTheBugs/cohors.git
+cd cohors
+cp .env.example .env     # set DATA_DIR (absolute path, same on host and container) + ADMIN_*
 docker compose up -d --build
 # the app listens on 127.0.0.1:${PORT} (default 8030) — put a reverse proxy in front for TLS
 ```
 
-On first start, an admin account is created from `ADMIN_EMAIL` / `ADMIN_PASSWORD` if no
-admin exists yet. The admin signs in, creates invitation links in `/admin`, and sends them
-to guild members; members register (`/invite/<token>`), then sign in to use the simulator.
+On first start, an admin account is created from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Then set
+everything else from inside the app:
 
-The app container mounts the host Docker socket to launch SimulationCraft containers, so
-`DATA_DIR` must be the same absolute path on the host and inside the container — it is
-passed as-is to the SimulationCraft containers for input/output files.
+1. **Settings → Administration → 🏰 Guild (realm & WCL)** — realm (slug), Battle.net region,
+   guild slug and Warcraft Logs guild name. The **🔎 Check** button verifies the guild is
+   found on both services.
+2. **🔑 API keys** — your Battle.net and Warcraft Logs client credentials (tested on save).
+3. **✉️ E-mail (SMTP)** — optional, for invitation e-mails.
+4. **🤖 Discord bot** — optional, create a Discord application and paste its token.
+5. **🎨 Identity** — guild name, short name, logo and background.
+
+Invite members from **Invitations**; they register through their invite link.
 
 Note: mounting the Docker socket is root-equivalent on the host. Keep the app behind a
-reverse proxy and small until the simulation worker is split out.
+reverse proxy, and run it on a machine you trust.
+
+## WoW add-on (Cohors)
+
+`addon/Cohors` is a small in-game add-on that collects the guild calendar (raids and
+answers) and exports it for the site. Members download it as a zip from the **Calendar**
+page, then in game:
+
+- `/cohors` — open the panel and collect the guild calendar;
+- `/cohors export` — export the data to paste on the Calendar page (or import the
+  `Cohors.lua` SavedVariables file);
+- `/cohors recettes` — export the crafting recipes you know (professions import);
+- `/cohors diag`, `/cohors reset` — diagnostics and reset.
 
 ## Configuration
+
+Most settings can also be edited in the app by an admin — `.env` values are the fallback.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -107,105 +105,92 @@ reverse proxy and small until the simulation worker is split out.
 | `SESSION_DAYS` | `30` | Session cookie lifetime (days) |
 | `INVITE_TTL_DAYS` | `7` | Invitation link validity (days) |
 | `COOKIE_SECURE` | `1` | Set to `0` for plain-HTTP local development only |
-| `BNET_CLIENT_ID` | — | Battle.net API client ID (https://develop.battle.net) — roster page |
-| `BNET_CLIENT_SECRET` | — | Battle.net API client secret |
+| `COOKIE_DOMAIN` | — | Parent cookie domain (voice subdomain, e.g. `.example.org`) |
+| `BNET_CLIENT_ID` / `BNET_CLIENT_SECRET` | — | Battle.net API client (https://develop.battle.net) |
 | `BNET_REGION` | `eu` | Battle.net region |
-| `BNET_GUILD_REALM` | `hyjal` | Guild realm slug |
-| `BNET_GUILD_SLUG` | `lords-of-the-pit` | Guild slug |
-| `WCL_CLIENT_ID` | — | Warcraft Logs API client ID (https://www.warcraftlogs.com/api/clients) |
-| `WCL_CLIENT_SECRET` | — | Warcraft Logs API client secret |
-| `WCL_GUILD_NAME` | `Lords Of The Pit` | Guild name on Warcraft Logs |
-| `WCL_GUILD_REALM` | `hyjal` | Guild realm slug |
-| `WCL_GUILD_REGION` | `EU` | Region |
-| `WCL_RAID_ZONE_ID` | `53` | Warcraft Logs zone id used for character rankings |
-| `SMTP_HOST` | — | SMTP server for outgoing e-mails (e.g. `mail.ruban-adhesif.com`) |
-| `SMTP_PORT` | `587` | SMTP submission port (STARTTLS) |
-| `SMTP_USER` / `SMTP_PASSWORD` | — | SMTP credentials (mailbox used to send) |
-| `SMTP_FROM` | — | From header (e.g. `LOTP Simulateur <noreply@ruban-adhesif.com>`) |
+| `BNET_GUILD_REALM` | — | Guild realm slug (admin UI preferred) |
+| `BNET_GUILD_SLUG` | — | Guild slug (admin UI preferred) |
+| `WCL_CLIENT_ID` / `WCL_CLIENT_SECRET` | — | Warcraft Logs API client |
+| `WCL_GUILD_NAME` | — | Guild name on Warcraft Logs (admin UI preferred) |
+| `WCL_GUILD_REALM` / `WCL_GUILD_REGION` | — / `EU` | Warcraft Logs realm & region |
+| `WCL_RAID_ZONE_ID` | `53` | Zone id used for character rankings |
+| `SMTP_HOST` … `SMTP_FROM` | — | Outgoing e-mail (invitations) |
+| `VOICE_BACKEND` | `http://127.0.0.1:3040` | Voice gateway (optional voice portal) |
+| `VOICE_PUBLIC_HOST` | — | Voice subdomain (served to the UI by the API) |
+| `VOICE_HEADER` | `X-Cohors-Voice` | Gate header set by the voice vhost |
 | `BOT_POLL_S` | `300` | Discord announcement polling interval (seconds) |
+
+See `.env.example` for the full list (quotas, snapshot cadences, retention).
 
 ## API
 
-All endpoints require a signed-in session, except `/api/health`,
-`/api/invite/{token}` (public invitation info) and `/reports/*` (shareable reports).
-`/api/admin/*` requires the admin account.
+All endpoints require a signed-in session, except `/api/health`, `/api/invite/{token}`,
+`/api/voice/config` and `/reports/*` (shareable reports). `/api/admin/*` requires an admin
+account (invitation endpoints accept officers).
 
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/login` / `/api/logout` | POST | Sign in / sign out (session cookie) |
 | `/api/me` | GET | Current account |
-| `/api/register` | POST | Register (or reset a password) from an invitation `{token, name, email?, password}` |
+| `/api/register` | POST | Register (or reset a password) from an invitation |
 | `/api/invite/{token}` | GET | Invitation info (public) |
-| `/api/me/settings` | POST | Save your account settings (language / display name) |
-| `/api/me/password` | POST | Change your password (other sessions signed out) |
-| `/api/admin/users/{id}/role` | POST | Change an account role (`member`/`officer`/`admin`) |
-| `/api/wishlist` | GET / POST / DEL | Wishlist (items + gains) |
-| `/api/leaderboard` | GET | Rankings (parses + M+ mains) |
-| `/api/guild/info` | GET / POST | Guild info (write: admin only) |
-| `/api/group/sim` | POST | Group sim (profiles combined, multi-actor) |
-| `/api/raids` | GET / POST | Raid calendar (create: officer+) |
-| `/api/raids/{id}` | DELETE | Delete a raid (officer+) |
-| `/api/raids/{id}/signup` | POST | Answer yes / no / maybe |
-| `/api/dashboard` | GET | Guild activity (roster moves, roster size) |
-| `/api/me/chars` | GET / POST | Linked characters — POST links one (`{name, main?}`) |
-| `/api/me/chars/{id}` | DELETE | Unlink one of your characters |
-| `/api/me/chars/{id}/main` | POST | Set a linked character as your main |
-| `/api/admin/bot` | GET / POST | Discord bot status / configuration |
-| `/api/admin/bot/guilds` | GET | Servers the bot is in (live) |
-| `/api/admin/bot/guilds/{id}/channels` | GET | Text channels of a server (live) |
-| `/api/admin/bot/test` | POST | Send a test message to the configured channel |
-| `/api/sim` | POST | Submit `{input, iterations, label?, kind?, items?}` (`kind`: `dps`, `weights` or `gear` — `items` = item refs for gear) — returns `{id, status, position?, cached, warnings}` |
-| `/api/sims` | GET | Last 50 simulations (summary) |
-| `/api/sims/{id}` | GET | One simulation (full record) |
+| `/api/me/settings` / `/api/me/password` | POST | Account settings / password change |
+| `/api/sim` | POST | Submit a simulation (`dps`, `weights`, `gear`, `stuff` kinds) |
+| `/api/sims` / `/api/sims/{id}` | GET | Simulation list / one simulation |
 | `/reports/{id}/report.html` | GET | SimulationCraft HTML report (public) |
-| `/reports/{id}/report.json` | GET | SimulationCraft JSON report (public) |
-| `/api/roster` | GET | Guild roster — `?refresh=1` forces a refetch (1×/min max) |
+| `/api/roster` | GET | Guild roster (Battle.net, cached) |
 | `/api/char/{realm}/{name}/summary` | GET | Character summary (Battle.net) |
-| `/api/char/{realm}/{name}/equipment` | GET | Equipped items (Battle.net) |
-| `/api/wcl/reports` | GET | Recent guild reports (Warcraft Logs) — `?refresh=1` forces |
-| `/api/wcl/report/{code}` | GET | One report: boss pulls + parses (Warcraft Logs) |
-| `/api/compare` | GET | Side-by-side characters `?chars=realm:name,…` (Battle.net + WCL) |
-| `/api/profiles` | GET / POST | List sim profiles / create one (`{name, input, shared}`) |
-| `/api/profiles/{id}` | GET / PATCH / DELETE | Read / update / delete a sim profile |
-| `/api/admin/invites` | GET / POST | List / create invitations (`send_email` to mail the link) |
-| `/api/admin/invites/{token}/send` | POST | Re-send a pending invitation by e-mail |
-| `/api/admin/invites/{token}` | DELETE | Revoke an invitation |
-| `/api/admin/users` | GET | List accounts |
-| `/api/admin/users/{id}/active` | POST | Activate / deactivate an account |
-| `/api/admin/users/{id}/reset-link` | POST | Generate a password-reset link |
-| `/api/admin/users/{id}` | DELETE | Delete an account |
+| `/api/wcl/reports` / `/api/wcl/report/{code}` | GET | Raid reports & parses (Warcraft Logs) |
+| `/api/stuff` | POST | « Stuff conseillé » (current / max-rank / BiS modes) |
+| `/api/profiles` (+ `/{id}`) | GET / POST / PATCH / DELETE | Sim profiles |
+| `/api/raids` (+ signup) | GET / POST / DELETE | Raid calendar & signups |
+| `/api/me/chars` (+ `/{id}`) | GET / POST / DELETE | Linked characters, main |
+| `/api/wishlist` | GET / POST / DELETE | Wishlist (priorities, BiS) |
+| `/api/addon` | GET | The Cohors add-on as a zip |
+| `/api/admin/invites` (+ send/revoke) | GET / POST / DELETE | Invitations (officer+) |
+| `/api/admin/users` (+ role/active/…) | GET / POST / DELETE | Accounts (admin) |
+| `/api/admin/api-keys` / `jobs` / `mail` / `bot` / `guild` | GET / POST | In-app administration |
 | `/api/health` | GET | Health + version + queue state (public) |
-
-Allowed iteration counts: `1000, 5000, 10000, 25000, 50000`.
 
 ## Project structure
 
 ```
-app/main.py             FastAPI app (auth, admin, sim queue, reports)
-app/static/index.html   Simulator UI (French)
-app/static/login.html   Login page
-app/static/register.html Invitation registration page
-app/static/admin.html   Admin panel (invitations + accounts)
-app/static/characters.html Guild roster & character pages (French)
-app/bnet.py             Battle.net API client (roster, characters, 30-min cache)
-app/wcl.py              Warcraft Logs v2 client (raid reports, parses)
-app/static/raids.html   Raid reports page (French)
-app/static/compare.html Member comparison page (French)
-app/mailer.py           Outgoing e-mail (invitations) via SMTP
-app/static/gear.html    « Top Stuff » gear comparison page (French)
-app/static/i18n.js      FR/EN translation engine (dictionary + DOM translation)
-app/discord_bot.py      Discord REST client (bot announcements, no dependencies)
-worker/simrun.py        SimulationCraft engine wrapper (official Docker image)
-Dockerfile              App image (Python + Docker CLI)
-docker-compose.yml      App deployment (Docker socket + data dir, both required)
-CHANGELOG.md            Release history
-VERSION                 Current version
+app/main.py               FastAPI app (auth, admin, sim queue, pages, APIs)
+app/bnet.py               Battle.net API client (roster, characters, items)
+app/wcl.py                Warcraft Logs v2 client (reports, parses)
+app/mailer.py             Outgoing e-mail (invitations) via SMTP
+app/discord_bot.py        Discord REST client (announcements)
+app/static/               29 pages (FR) + i18n.js FR/EN engine, branding.js, PWA
+app/data/bis.json         Embedded BiS lists (Wowhead guide snapshots, 40 specs)
+addon/Cohors/             In-game add-on (guild calendar + professions export)
+worker/simrun.py          SimulationCraft engine wrapper (official Docker image)
+Dockerfile                App image (Python + Docker CLI)
+docker-compose.yml        App deployment (Docker socket + data dir, both required)
+CHANGELOG.md              Release history
+VERSION                   Current version
+```
+
+## Development (engine wrapper)
+
+```bash
+# Simulate a profile shipped inside the image (works out of the box after a docker pull)
+python3 worker/simrun.py --container-profile profiles/MID2/MID2_Mage_Arcane.simc --iterations 500
+
+# Simulate your own in-game `/simc` export (or any .simc profile file)
+python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir ./out
 ```
 
 ## Version
 
-Current version: `2026.09.136` (see `CHANGELOG.md`).
+Current version: `2026.09.137` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Credits
+
+Simulation engine: [SimulationCraft](https://www.simulationcraft.org/). Raid data:
+[Warcraft Logs](https://www.warcraftlogs.com/). Game data: Blizzard Entertainment.
+Gear guides referenced in the app: Wowhead, Icy Veins and Archon (snapshots stored in
+`app/data/bis.json`).

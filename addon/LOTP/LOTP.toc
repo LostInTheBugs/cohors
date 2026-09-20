@@ -1,8 +1,0 @@
-## Interface: 120100
-## Title: LOTP — Calendrier de guilde
-## Notes: Collecte le calendrier de guilde (raids + réponses) et l'exporte vers lotp.gensbien.fr
-## Author: LostInTheBugs
-## Version: 1.5.1
-## SavedVariables: LOTP_DB
-## IconTexture: Interface\Icons\INV_Misc_Note_01
-LOTP.lua

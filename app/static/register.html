@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LOTP — Inscription</title>
+<title>Cohors — Inscription</title>
 <link rel="icon" href="/branding/logo">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#b1002e">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="LOTP">
+<meta name="apple-mobile-web-app-title" content="Cohors">
 <style>
   :root { --bg:#0b0e14; --card:#131a26; --line:#232d42; --fg:#e7ebf5; --mut:#8c96ad; --acc:#b1002e; --acc2:#dfa55a; --err:#f87171; --ok:#34d399; }
   * { box-sizing: border-box; }
@@ -40,12 +40,12 @@
   .langrow a { color:var(--mut); text-decoration:none; margin:0 5px; }
   .langrow a.on { color:var(--acc2); font-weight:700; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.136">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.137">
 </head>
 <body>
 <div class="wrap">
   <img src="/branding/logo" alt="Lords of the Pit" class="crest-big">
-  <h1>LOTP <span>Simulateur</span></h1>
+  <h1>Cohors <span>Simulateur</span></h1>
   <div id="loading" class="sub">Chargement de l'invitation…</div>
 
   <div id="invalid" class="card hidden">
@@ -75,7 +75,7 @@
 
   <footer>Moteur : SimulationCraft · Données de jeu fournies par Blizzard Entertainment · Outil non affilié</footer>
 </div>
-<script src="/static/i18n.js?v=2026.09.136"></script>
+<script src="/static/i18n.js?v=2026.09.137"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const token = location.pathname.split("/").filter(Boolean).pop();
@@ -102,7 +102,7 @@ async function submit() {
   try {
     const r = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, name, email, password: pw,
-        lang: (function () { try { return localStorage.getItem("lotp_lang") || ""; } catch (e) { return ""; } })() }) });
+        lang: (function () { try { return localStorage.getItem("cohors_lang") || ""; } catch (e) { return ""; } })() }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur."; $("#go").disabled = false; return; }
     msg.className = "msg-ok"; msg.textContent = "Compte créé — redirection…";
@@ -112,14 +112,14 @@ async function submit() {
 $("#go").addEventListener("click", submit);
 document.querySelectorAll(".langrow a").forEach(a => {
   let cur = "";
-  try { cur = localStorage.getItem("lotp_lang") || ""; } catch (e) {}
+  try { cur = localStorage.getItem("cohors_lang") || ""; } catch (e) {}
   if (!cur) cur = String(navigator.language || "fr").toLowerCase().startsWith("en") ? "en" : "fr";
   if (a.dataset.lang === cur) a.classList.add("on");
   a.addEventListener("click", (ev) => { ev.preventDefault();
-    try { localStorage.setItem("lotp_lang", a.dataset.lang); } catch (e) {}
+    try { localStorage.setItem("cohors_lang", a.dataset.lang); } catch (e) {}
     location.reload(); });
 });
 </script>
-<script src="/static/branding.js?v=2026.09.136"></script>
+<script src="/static/branding.js?v=2026.09.137"></script>
 </body>
 </html>

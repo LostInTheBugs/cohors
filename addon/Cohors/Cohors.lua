@@ -1,7 +1,7 @@
--- LOTP — Calendrier de guilde → lotp.gensbien.fr
+-- Cohors — Calendrier de guilde → le site de la guilde
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
 -- une chaîne à coller sur le site (page Calendrier → « Importer »).
--- Commandes : /lotp · /lotp collect · /lotp export · /lotp diag · /lotp reset
+-- Commandes : /cohors · /cohors collect · /cohors export · /cohors diag · /cohors reset
 --
 -- Lecture du calendrier : même méthode que l'UI Blizzard — on affiche le mois
 -- (SetAbsMonth/SetMonth) puis on lit les jours (GetNumDayEvents/GetDayEvent),
@@ -17,7 +17,7 @@ local OPEN_WAIT = 0.5           -- attente après positionnement avant OpenEvent
 local EVENT_TIMEOUT = 3.0       -- attente maximale de CALENDAR_OPEN_EVENT
 local GLOBAL_TIMEOUT = 90       -- durée maximale d'une collecte
 
-LOTP_DB = LOTP_DB or {}
+Cohors_DB = Cohors_DB or {}
 
 local f = CreateFrame("Frame")
 f:Show()
@@ -32,7 +32,7 @@ local ui, statusText, eb, showSummary  -- créés plus bas (panneau à la demand
 
 -- ---------------------------------------------------------------- utilitaires
 local function msg(text)
-    DEFAULT_CHAT_FRAME:AddMessage("|cffdfa55aLOTP|r " .. tostring(text))
+    DEFAULT_CHAT_FRAME:AddMessage("|cffdfa55aCohors|r " .. tostring(text))
 end
 
 local function clientIface()
@@ -44,9 +44,9 @@ end
 local function tocVersion()
     local ok, v = pcall(function()
         if C_AddOns and C_AddOns.GetAddOnMetadata then
-            return C_AddOns.GetAddOnMetadata(ADDON_NAME or "LOTP", "Version")
+            return C_AddOns.GetAddOnMetadata(ADDON_NAME or "Cohors", "Version")
         end
-        return GetAddOnMetadata and GetAddOnMetadata(ADDON_NAME or "LOTP", "Version")
+        return GetAddOnMetadata and GetAddOnMetadata(ADDON_NAME or "Cohors", "Version")
     end)
     return (ok and v and tostring(v)) or "?"
 end
@@ -133,7 +133,7 @@ local function restoreCalendar()
 end
 
 local function dtrace(s)
-    LOTP_DB.trace = tostring(LOTP_DB.trace or ("trace — " .. dateStr(time()))) .. "\n- " .. tostring(s)
+    Cohors_DB.trace = tostring(Cohors_DB.trace or ("trace — " .. dateStr(time()))) .. "\n- " .. tostring(s)
 end
 
 local function positionView(shift)
@@ -149,7 +149,7 @@ local function recordEvent(ev, invs)
                               etype = ev.etype, invites = invs or {} }
 end
 
--- liste des dossiers d'addon « LOTP* » chargés (détection de doublons)
+-- liste des dossiers d'addon « Cohors* » chargés (détection de doublons)
 local function lotpCopies()
     local out = {}
     local ok, n = pcall(function()
@@ -162,7 +162,7 @@ local function lotpCopies()
             if C_AddOns and C_AddOns.GetAddOnInfo then return select(1, C_AddOns.GetAddOnInfo(i)) end
             return select(1, GetAddOnInfo(i))
         end)
-        if okn and type(name) == "string" and name:upper():find("^LOTP") then
+        if okn and type(name) == "string" and name:upper():find("^Cohors") then
             local okv, ver = pcall(function()
                 if C_AddOns and C_AddOns.GetAddOnMetadata then return C_AddOns.GetAddOnMetadata(name, "Version") end
                 return GetAddOnMetadata(name, "Version")
@@ -229,9 +229,9 @@ finishCollect = function()
     collecting = false
     engine = nil
     restoreCalendar()
-    LOTP_DB.export = buildExport()
-    LOTP_DB.export_at = time()
-    LOTP_DB.player = UnitName("player")
+    Cohors_DB.export = buildExport()
+    Cohors_DB.export_at = time()
+    Cohors_DB.player = UnitName("player")
     local okd, lines = pcall(diagLines)
     if okd and type(lines) == "table" then
         lines[#lines + 1] = ("résultat : %d événement(s) collecté(s)"):format(#results)
@@ -243,23 +243,23 @@ finishCollect = function()
         end
         lines[#lines + 1] = ""
         lines[#lines + 1] = "— trace —"
-        lines[#lines + 1] = tostring(LOTP_DB.trace or "?")
-        LOTP_DB.diag = table.concat(lines, "\n")
-        LOTP_DB.diag_at = time()
+        lines[#lines + 1] = tostring(Cohors_DB.trace or "?")
+        Cohors_DB.diag = table.concat(lines, "\n")
+        Cohors_DB.diag_at = time()
     end
     local nresp = 0
     for _, e in ipairs(results) do
         nresp = nresp + #(e.invites or {})
     end
     if #results == 0 then
-        msg("aucun événement trouvé. Ouvre le calendrier du jeu (touche C) pour vérifier, puis /lotp. "
-            .. "(rapport enregistré : /reload puis envoie le fichier LOTP.lua)")
+        msg("aucun événement trouvé. Ouvre le calendrier du jeu (touche C) pour vérifier, puis /cohors. "
+            .. "(rapport enregistré : /reload puis envoie le fichier Cohors.lua)")
     else
-        msg(("%d raid(s) collecté(s), %d réponse(s). • /lotp export pour la chaîne à coller sur le site.")
+        msg(("%d raid(s) collecté(s), %d réponse(s). • /cohors export pour la chaîne à coller sur le site.")
             :format(#results, nresp))
     end
     if statusText then statusText:SetText("prêt") end
-    if LOTP_Refresh then LOTP_Refresh() end
+    if Cohors_Refresh then Cohors_Refresh() end
 end
 
 -- Scan du mois affiché : renvoie les événements avec (shift du mois, jour, index).
@@ -420,7 +420,7 @@ local function engineTickSafe(force)
     local ok, err = pcall(engineTick, GetTime(), force)
     if not ok then
         local t = tostring(err)
-        LOTP_DB.last_error = "moteur : " .. t
+        Cohors_DB.last_error = "moteur : " .. t
         dtrace("ERREUR moteur : " .. t)
         msg("erreur (moteur) — " .. t)
         pcall(finishCollect)
@@ -438,19 +438,19 @@ end)
 -- (chaque clic sur « Collecter » force une étape, même si l'affichage ne tourne pas)
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
-        if arg1 == (ADDON_NAME or "LOTP") then
-            LOTP_DB.loaded_ver = ADDON_VER
-            LOTP_DB.loaded_at = time()
-            LOTP_DB.loaded_dossier = tostring(ADDON_NAME or "?")
+        if arg1 == (ADDON_NAME or "Cohors") then
+            Cohors_DB.loaded_ver = ADDON_VER
+            Cohors_DB.loaded_at = time()
+            Cohors_DB.loaded_dossier = tostring(ADDON_NAME or "?")
             local copies = lotpCopies()
             if #copies > 1 then
-                msg("|cffff5555ATTENTION : plusieurs dossiers LOTP détectés (" ..
+                msg("|cffff5555ATTENTION : plusieurs dossiers Cohors détectés (" ..
                     table.concat(copies, ", ") .. ") — supprime les doublons !|r")
             end
             msg(("v%s chargée (client %s · dossier « %s ») — %s"):format(ADDON_VER, tostring(clientIface()),
                 tostring(ADDON_NAME or "?"),
-                LOTP_DB.export and ("dernier export : " .. dateStr(LOTP_DB.export_at or 0) ..
-                    " • /lotp pour ouvrir") or "/lotp pour collecter le calendrier de guilde"))
+                Cohors_DB.export and ("dernier export : " .. dateStr(Cohors_DB.export_at or 0) ..
+                    " • /cohors pour ouvrir") or "/cohors pour collecter le calendrier de guilde"))
         end
     elseif event == "CALENDAR_OPEN_EVENT" then
         if engine and engine.current then
@@ -461,7 +461,7 @@ end)
 f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CALENDAR_OPEN_EVENT")
 
-function LOTP_Collect()
+function Cohors_Collect()
     if engine then
         local age = GetTime() - (engine.startedAt or 0)
         if age > 60 then
@@ -483,8 +483,8 @@ function LOTP_Collect()
     collecting = true
     results = {}
     collectStartAt = time()
-    LOTP_DB.last_error = nil
-    LOTP_DB.trace = ("trace — %s (addon v%s · client %s · dossier « %s »)"):format(dateStr(time()),
+    Cohors_DB.last_error = nil
+    Cohors_DB.trace = ("trace — %s (addon v%s · client %s · dossier « %s »)"):format(dateStr(time()),
         ADDON_VER, tostring(clientIface()), tostring(ADDON_NAME or "?"))
     dtrace("collecte démarrée")
     local now = GetTime()
@@ -507,7 +507,7 @@ function LOTP_Collect()
     if statusText then statusText:SetText("⏳ préparation…") end
 end
 
-function LOTP_Reset()
+function Cohors_Reset()
     if engine or collecting then
         engine = nil
         collecting = false
@@ -522,18 +522,18 @@ end
 -- ------------------------------------------------------------------ diagnostic
 diagLines = function()
     local L = {}
-    L[#L + 1] = "LOTP diag — " .. dateStr(time())
+    L[#L + 1] = "Cohors diag — " .. dateStr(time())
     L[#L + 1] = ("addon v%s (TOC %s) · client %s · dossier « %s »"):format(ADDON_VER, tostring(tocVersion()),
         tostring(clientIface()), tostring(ADDON_NAME or "?"))
-    if LOTP_DB.ui_error then
-        L[#L + 1] = "erreur fenêtre : " .. tostring(LOTP_DB.ui_error)
+    if Cohors_DB.ui_error then
+        L[#L + 1] = "erreur fenêtre : " .. tostring(Cohors_DB.ui_error)
     end
     L[#L + 1] = ("collecte : %s"):format(collecting and
         ("en cours depuis " .. dateStr(collectStartAt) .. " · phase " .. tostring(engine and engine.phase)) or "au repos")
     local copies = lotpCopies()
-    L[#L + 1] = "dossiers LOTP : " .. (#copies > 0 and table.concat(copies, ", ") or "?")
-    if LOTP_DB.last_error then
-        L[#L + 1] = "dernière erreur : " .. tostring(LOTP_DB.last_error)
+    L[#L + 1] = "dossiers Cohors : " .. (#copies > 0 and table.concat(copies, ", ") or "?")
+    if Cohors_DB.last_error then
+        L[#L + 1] = "dernière erreur : " .. tostring(Cohors_DB.last_error)
     end
     L[#L + 1] = ("joueur %s — %s"):format(tostring(UnitName("player")), tostring(GetRealmName()))
     local okS, shown = pcall(function() return CalendarFrame and (CalendarFrame:IsShown() and "affiché" or "existe (fermé)") end)
@@ -603,7 +603,7 @@ diagLines = function()
         for _, s in ipairs(samples) do L[#L + 1] = "   " .. s end
     end
     L[#L + 1] = ("recettes exportées : %s (total %s)"):format(
-        LOTP_DB.recipes and (dateStr(LOTP_DB.recipes_at or 0)) or "aucune", tostring(LOTP_DB.recipes_total or 0))
+        Cohors_DB.recipes and (dateStr(Cohors_DB.recipes_at or 0)) or "aucune", tostring(Cohors_DB.recipes_total or 0))
     local ok3, ni = pcall(C_Calendar.GetNumInvites)
     L[#L + 1] = "GetNumInvites (événement ouvert) : " .. tostring(ok3 and ni or "erreur")
     return L
@@ -615,17 +615,17 @@ local function dumpDiag(writeFile)
         msg(line)
     end
     if writeFile then
-        LOTP_DB.diag = table.concat(L, "\n")
-        LOTP_DB.diag_at = time()
+        Cohors_DB.diag = table.concat(L, "\n")
+        Cohors_DB.diag_at = time()
         msg("rapport enregistré — tape /reload puis envoie le fichier "
-            .. "WTF/Account/<compte>/SavedVariables/LOTP.lua")
+            .. "WTF/Account/<compte>/SavedVariables/Cohors.lua")
     end
 end
 
 -- ------------------------------------------------- recettes des artisans (export)
 -- Lit les recettes connues du personnage, PAR MÉTIER ET PAR EXTENSION
 -- (paliers GetChildProfessionInfos, comme l'interface des métiers), et les
--- écrit dans LOTP_DB.recipes pour l'import sur le site (Préparation de raid).
+-- écrit dans Cohors_DB.recipes pour l'import sur le site (Préparation de raid).
 local recEngine = nil
 local recResults = {}
 local REC_TOTAL_TIMEOUT = 240
@@ -713,8 +713,8 @@ local function recSave()
         parts[#parts + 1] = "]}"
     end
     parts[#parts + 1] = "]}"
-    LOTP_DB.recipes = table.concat(parts)
-    LOTP_DB.recipes_at = time()
+    Cohors_DB.recipes = table.concat(parts)
+    Cohors_DB.recipes_at = time()
 end
 
 local function recFinish(note)
@@ -729,8 +729,8 @@ local function recFinish(note)
             if r.e and r.e ~= "" and not exts[r.e] then exts[r.e] = true end
         end
     end
-    LOTP_DB.recipes_total = total
-    msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/LOTP.lua au site (Préparation de raid → 📥 importer).")
+    Cohors_DB.recipes_total = total
+    msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/Cohors.lua au site (Préparation de raid → 📥 importer).")
         :format(total, note and (" (" .. tostring(note) .. ")") or ""))
     if statusText then statusText:SetText("prêt (v" .. ADDON_VER .. ")") end
 end
@@ -846,7 +846,7 @@ recTickSafe = function(force)
     local ok, err = pcall(recTick, GetTime(), force)
     if not ok then
         local t2 = tostring(err)
-        LOTP_DB.last_error = "recettes : " .. t2
+        Cohors_DB.last_error = "recettes : " .. t2
         dtrace("ERREUR recettes : " .. t2)
         msg("erreur (recettes) — " .. t2)
         pcall(recFinish, "erreur")
@@ -856,7 +856,7 @@ recTickSafe = function(force)
     end
 end
 
-function LOTP_Recipes()
+function Cohors_Recipes()
     if recEngine then
         local age = GetTime() - (recEngine.started or 0)
         if age > 150 then
@@ -870,7 +870,7 @@ function LOTP_Recipes()
         end
     end
     local profs = recProfs()
-    LOTP_DB.rec_trace = ("recettes — %s (addon v%s · client %s)"):format(dateStr(time()), ADDON_VER,
+    Cohors_DB.rec_trace = ("recettes — %s (addon v%s · client %s)"):format(dateStr(time()), ADDON_VER,
         tostring(clientIface()))
     if #profs == 0 then
         msg("aucun métier détecté sur ce personnage.")
@@ -893,7 +893,7 @@ end
 local function buildPanel()
     if ui then return true end
     local okB, errB = pcall(function()
-        local okF, frame = pcall(CreateFrame, "Frame", "LOTPFrame", UIParent,
+        local okF, frame = pcall(CreateFrame, "Frame", "CohorsFrame", UIParent,
             BackdropTemplateMixin and "BackdropTemplate" or nil)
         if not okF or not frame then
             -- nom déjà pris (vieille copie ?) : fenêtre sans nom, on ne plante jamais
@@ -921,11 +921,11 @@ local function buildPanel()
 
         local title = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         title:SetPoint("TOP", 0, -14)
-        title:SetText("LOTP v" .. ADDON_VER .. " — Calendrier de guilde")
+        title:SetText("Cohors v" .. ADDON_VER .. " — Calendrier de guilde")
 
         local sub = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         sub:SetPoint("TOP", 0, -36)
-        sub:SetText("Collecte les raids + réponses, puis colle la chaîne exportée sur lotp.gensbien.fr (page Calendrier).")
+        sub:SetText("Collecte les raids + réponses, puis colle la chaîne exportée sur le site de la guilde (page Calendrier).")
 
         eb = CreateFrame("EditBox", nil, ui)
         eb:SetMultiLine(true)
@@ -951,7 +951,7 @@ local function buildPanel()
                 local ok, err = pcall(fn)
                 if not ok then
                     local t = tostring(err)
-                    LOTP_DB.last_error = "clic " .. text .. " : " .. t
+                    Cohors_DB.last_error = "clic " .. text .. " : " .. t
                     msg("ERREUR (clic « " .. text .. " ») — " .. t)
                 end
             end)
@@ -960,13 +960,13 @@ local function buildPanel()
 
         showSummary = function()
             local lines = {}
-            if not LOTP_DB.export then
+            if not Cohors_DB.export then
                 lines[#lines + 1] = "Aucune collecte pour le moment — clique « Collecter »."
             else
                 local nresp = 0
                 for _, e in ipairs(results) do nresp = nresp + #(e.invites or {}) end
                 lines[#lines + 1] = ("Dernière collecte : %s · %d réponse(s).")
-                    :format(LOTP_DB.export_at and dateStr(LOTP_DB.export_at) or "?", nresp)
+                    :format(Cohors_DB.export_at and dateStr(Cohors_DB.export_at) or "?", nresp)
                 for _, e in ipairs(results) do
                     local c = { ok = 0, maybe = 0, no = 0, wait = 0 }
                     local waiting = {}
@@ -993,83 +993,83 @@ local function buildPanel()
             eb:SetFocus()
         end
 
-        mkButton("Collecter", 20, 100, function() LOTP_Collect() end)
-        mkButton("Réinitialiser", 128, 110, function() LOTP_Reset() end)
+        mkButton("Collecter", 20, 100, function() Cohors_Collect() end)
+        mkButton("Réinitialiser", 128, 110, function() Cohors_Reset() end)
         mkButton("Exporter", 246, 100, function()
-            if not LOTP_DB.export then
+            if not Cohors_DB.export then
                 msg("rien à exporter pour le moment — clique « Collecter ».")
                 return
             end
-            eb:SetText(LOTP_DB.export)
+            eb:SetText(Cohors_DB.export)
             eb:HighlightText()
             eb:SetFocus()
-            msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur lotp.gensbien.fr (page Calendrier).")
+            msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur le site de la guilde (page Calendrier).")
         end)
         mkButton("Diag → fichier", 354, 120, function()
             dumpDiag(true)
         end)
-        mkButton("📚 Recettes", 582, 100, function() LOTP_Recipes() end)
+        mkButton("📚 Recettes", 582, 100, function() Cohors_Recipes() end)
         mkButton("Fermer", 482, 90, function() ui:Hide() end)
     end)
     if not okB then
-        LOTP_DB.ui_error = tostring(errB)
-        msg("interface impossible : " .. tostring(errB) .. " — mode sans fenêtre (/lotp diag → fichier)")
+        Cohors_DB.ui_error = tostring(errB)
+        msg("interface impossible : " .. tostring(errB) .. " — mode sans fenêtre (/cohors diag → fichier)")
         ui = nil
         return false
     end
     return true
 end
 
-function LOTP_Refresh()
+function Cohors_Refresh()
     if ui and ui:IsShown() and not collecting and showSummary then
         pcall(showSummary)
     end
 end
 
 -- commande unique et toujours disponible
-msg("v" .. ADDON_VER .. " — fichier execute jusqu au bout (dossier " .. tostring(ADDON_NAME or "?") .. "). Si aucun autre message LOTP n apparait ensuite, le probleme est cote client.")
+msg("v" .. ADDON_VER .. " — fichier execute jusqu au bout (dossier " .. tostring(ADDON_NAME or "?") .. "). Si aucun autre message Cohors n apparait ensuite, le probleme est cote client.")
 
-SLASH_LOTP1 = "/lotp"
-SlashCmdList["LOTP"] = function(arg)
+SLASH_Cohors1 = "/cohors"
+SlashCmdList["Cohors"] = function(arg)
     arg = (arg or ""):lower()
-    dtrace("commande : /lotp " .. arg)
+    dtrace("commande : /cohors " .. arg)
     local okAll, errAll = pcall(function()
         if arg == "" then
             buildPanel()
             if ui then ui:Show() end
-            msg(("v%s · dossier « %s » (TOC %s) — « Collecter » lance la collecte (ou /lotp collect).")
+            msg(("v%s · dossier « %s » (TOC %s) — « Collecter » lance la collecte (ou /cohors collect).")
                 :format(ADDON_VER, tostring(ADDON_NAME or "?"), tostring(tocVersion())))
-            if LOTP_DB.export and showSummary then pcall(showSummary) end
-            if not engine and (time() - (LOTP_DB.export_at or 0)) > 120 then
-                LOTP_Collect()
+            if Cohors_DB.export and showSummary then pcall(showSummary) end
+            if not engine and (time() - (Cohors_DB.export_at or 0)) > 120 then
+                Cohors_Collect()
             end
         elseif arg == "collect" then
             buildPanel()
             if ui then ui:Show() end
-            LOTP_Collect()
+            Cohors_Collect()
         elseif arg == "export" then
             buildPanel()
-            if ui and eb and LOTP_DB.export then
+            if ui and eb and Cohors_DB.export then
                 ui:Show()
-                eb:SetText(LOTP_DB.export)
+                eb:SetText(Cohors_DB.export)
                 eb:HighlightText()
                 eb:SetFocus()
-            elseif LOTP_DB.export then
-                msg("pas de fenêtre — utilise /lotp diag puis envoie le fichier.")
+            elseif Cohors_DB.export then
+                msg("pas de fenêtre — utilise /cohors diag puis envoie le fichier.")
             else
-                msg("aucune donnée — /lotp collect d'abord.")
+                msg("aucune donnée — /cohors collect d'abord.")
             end
         elseif arg == "diag" then
             dumpDiag(true)
         elseif arg == "recettes" then
-            LOTP_Recipes()
+            Cohors_Recipes()
         elseif arg == "reset" then
-            LOTP_Reset()
+            Cohors_Reset()
         else
-            msg("commandes : /lotp · /lotp collect · /lotp export · /lotp recettes · /lotp diag · /lotp reset")
+            msg("commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors diag · /cohors reset")
         end
     end)
     if not okAll then
-        msg("ERREUR (/lotp " .. arg .. ") — " .. tostring(errAll))
+        msg("ERREUR (/cohors " .. arg .. ") — " .. tostring(errAll))
     end
 end

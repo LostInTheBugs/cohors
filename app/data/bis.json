@@ -1,0 +1,4063 @@
+{
+  "_README": "Listes BIS par spécialisation — instantané des guides Wowhead (le serveur applicatif ne peut pas les récupérer : Cloudflare renvoie 403 depuis le conteneur). Mise à jour : refaire l'instantané depuis un poste qui peut ouvrir les guides (voir skill wow-companion, references/bis-refresh.md) puis redéployer. Les clés suivent 'classe/spé' comme STUFF_HEAL_PRIO.",
+  "snapshot": "2026-09-19",
+  "patch": "12.1",
+  "season": "Midnight — Saison 2",
+  "specs": {
+    "shaman/restoration": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/shaman/restoration/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chaman Restauration (12.1, guide mis à jour le 26/08/2026)",
+      "updated_fr": "26/08/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271483,
+          "src_fr": "Raid & Coffre",
+          "src_en": "Raid & Vault"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek (Raid)",
+          "src_en": "Ula'tek (Raid)"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271481,
+          "src_fr": "The Coiled Altar (Raid) & Catalyseur",
+          "src_en": "The Coiled Altar (Raid) & Catalyst"
+        },
+        {
+          "slot": "back",
+          "id": 268248,
+          "src_fr": "Nek'zali the Soulcoiler (Raid)",
+          "src_en": "Nek'zali the Soulcoiler (Raid)"
+        },
+        {
+          "slot": "chest",
+          "id": 271486,
+          "src_fr": "King's Rest & Catalyseur",
+          "src_en": "King's Rest & Catalyst"
+        },
+        {
+          "slot": "wrist",
+          "id": 159380,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "hands",
+          "id": 271484,
+          "src_fr": "The Blinding Vale & Catalyseur",
+          "src_en": "The Blinding Vale & Catalyst"
+        },
+        {
+          "slot": "waist",
+          "id": 268216,
+          "src_fr": "Nek'zali the Soulcoiler (Raid)",
+          "src_en": "Nek'zali the Soulcoiler (Raid)"
+        },
+        {
+          "slot": "legs",
+          "id": 271482,
+          "src_fr": "Temple of Sethraliss & Catalyseur",
+          "src_en": "Temple of Sethraliss & Catalyst"
+        },
+        {
+          "slot": "feet",
+          "id": 251125,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak (Raid)",
+          "src_en": "Sszorak (Raid)"
+        },
+        {
+          "slot": "finger2",
+          "id": 251148,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270162,
+          "src_fr": "Nek'zali the Soulcoiler (Raid)",
+          "src_en": "Nek'zali the Soulcoiler (Raid)"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavebinder (Raid)",
+          "src_en": "Nymrissa Wavebinder (Raid)"
+        },
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek (Raid)",
+          "src_en": "Ula'tek (Raid)"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268196,
+          "src_fr": "The Lost Explorers (Raid)",
+          "src_en": "The Lost Explorers (Raid)"
+        }
+      ]
+    },
+    "druid/restoration": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/druid/restoration/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Druide Restauration (12.1, guide mis à jour le 08/09/2026)",
+      "updated_fr": "08/09/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271528,
+          "src_fr": "Ula'tek & Catalyseur",
+          "src_en": "Ula'tek & Catalyst"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 244572,
+          "src_fr": "Travail du cuir",
+          "src_en": "Leatherworking"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Alter",
+          "src_en": "The Coiled Alter"
+        },
+        {
+          "slot": "chest",
+          "id": 271531,
+          "src_fr": "Nek'zali the Soulcoiler & Catalyseur",
+          "src_en": "Nek'zali the Soulcoiler & Catalyst"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Travail du cuir",
+          "src_en": "Leatherworking"
+        },
+        {
+          "slot": "hands",
+          "id": 271529,
+          "src_fr": "Entomed Sentinels",
+          "src_en": "Entomed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Alter",
+          "src_en": "The Coiled Alter"
+        },
+        {
+          "slot": "legs",
+          "id": 271527,
+          "src_fr": "The Coiled Alter & Catalyseur",
+          "src_en": "The Coiled Alter & Catalyst"
+        },
+        {
+          "slot": "feet",
+          "id": 244569,
+          "src_fr": "Travail du cuir",
+          "src_en": "Leatherworking"
+        },
+        {
+          "slot": "finger1",
+          "id": 268266,
+          "src_fr": "Nymrissa Wavebinder",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavebinder",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270162,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268197,
+          "src_fr": "Entomed Sentinels",
+          "src_en": "Entomed Sentinels"
+        }
+      ]
+    },
+    "evoker/preservation": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/evoker/preservation/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Évocateur Préservation (12.1, guide mis à jour le 16/08/2026)",
+      "updated_fr": "16/08/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271501,
+          "src_fr": "Temple of Sethraliss & Catalyseur",
+          "src_en": "Temple of Sethraliss & Catalyst"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271499,
+          "src_fr": "The Coiled Altar & Catalyseur",
+          "src_en": "The Coiled Altar & Catalyst"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271504,
+          "src_fr": "Ula'tek & Catalyseur",
+          "src_en": "Ula'tek & Catalyst"
+        },
+        {
+          "slot": "wrist",
+          "id": 268217,
+          "src_fr": "Nymrissa Wavebinder",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "hands",
+          "id": 271502,
+          "src_fr": "Kings Rest & Catalyseur",
+          "src_en": "Kings Rest & Catalyst"
+        },
+        {
+          "slot": "waist",
+          "id": 268254,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "legs",
+          "id": 271500,
+          "src_fr": "The Coiled Altar & Catalyseur",
+          "src_en": "The Coiled Altar & Catalyst"
+        },
+        {
+          "slot": "feet",
+          "id": 159388,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270162,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268197,
+          "src_fr": "Entomed Sentinels",
+          "src_en": "Entomed Sentinels"
+        }
+      ]
+    },
+    "mage/arcane": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/mage/arcane/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Mage Arcanes (12.1, guide mis à jour le 18/08/2026)",
+      "updated_fr": "18/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 245769,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "head",
+          "id": 271564,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271562,
+          "src_fr": "The Twin Fangs",
+          "src_en": "The Twin Fangs"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271567,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271565,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "waist",
+          "id": 268257,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "legs",
+          "id": 271563,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "feet",
+          "id": 268255,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "finger1",
+          "id": 268266,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        },
+        {
+          "slot": "finger2",
+          "id": 251148,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "trinket1",
+          "id": 250215,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        }
+      ]
+    },
+    "monk/mistweaver": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/monk/mistweaver/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Moine Tisse-brume (12.1, guide mis à jour le 15/09/2026)",
+      "updated_fr": "15/09/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271519,
+          "src_fr": "Ula'tek & Catalyseur",
+          "src_en": "Ula'tek & Catalyst"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271517,
+          "src_fr": "Den of Nalorakk & Catalyseur",
+          "src_en": "Den of Nalorakk & Catalyst"
+        },
+        {
+          "slot": "back",
+          "id": 193763,
+          "src_fr": "Ruby Life Pools",
+          "src_en": "Ruby Life Pools"
+        },
+        {
+          "slot": "chest",
+          "id": 271522,
+          "src_fr": "Voidscar Arena & Catalyseur",
+          "src_en": "Voidscar Arena & Catalyst"
+        },
+        {
+          "slot": "wrist",
+          "id": 251135,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "hands",
+          "id": 271520,
+          "src_fr": "Murder Row & Catalyseur",
+          "src_en": "Murder Row & Catalyst"
+        },
+        {
+          "slot": "waist",
+          "id": 251189,
+          "src_fr": "The Blinding Vale",
+          "src_en": "The Blinding Vale"
+        },
+        {
+          "slot": "legs",
+          "id": 271518,
+          "src_fr": "Kings' Rest & Catalyseur",
+          "src_en": "Kings' Rest & Catalyst"
+        },
+        {
+          "slot": "feet",
+          "id": 268247,
+          "src_fr": "Nymrissa Wavebinder",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "finger1",
+          "id": 268266,
+          "src_fr": "Nymrissa Wavebinder",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "finger2",
+          "id": 159459,
+          "src_fr": "Kings' Rest",
+          "src_en": "Kings' Rest"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavebinder",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270162,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "main_hand",
+          "id": 268211,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 159667,
+          "src_fr": "Kings' Rest",
+          "src_en": "Kings' Rest"
+        }
+      ]
+    },
+    "paladin/holy": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/paladin/holy/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Paladin Sacré (12.1, guide mis à jour le 25/08/2026)",
+      "updated_fr": "25/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268211,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268262,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        },
+        {
+          "slot": "head",
+          "id": 271465,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271463,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271468,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "wrist",
+          "id": 268239,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "hands",
+          "id": 271466,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271464,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 268260,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270162,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        }
+      ]
+    },
+    "priest/discipline": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/priest/discipline/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Prêtre Discipline (12.1, guide mis à jour le 18/08/2026)",
+      "updated_fr": "18/08/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271874,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271553,
+          "src_fr": "Vexhul",
+          "src_en": "Vexhul"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "Seigneur des maléfices Malacrass",
+          "src_en": "Hex Lord Malacrass"
+        },
+        {
+          "slot": "chest",
+          "id": 271558,
+          "src_fr": "Allée du meurtre",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271556,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "waist",
+          "id": 239649,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "legs",
+          "id": 271554,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "feet",
+          "id": 268255,
+          "src_fr": "Seigneur des maléfices Malacrass",
+          "src_en": "Hex Lord Malacrass"
+        },
+        {
+          "slot": "finger1",
+          "id": 268266,
+          "src_fr": "Nymrissa Mande-vagues",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Arène de la Cicatrice du Vide",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270167,
+          "src_fr": "Nymrissa Mande-vagues",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270162,
+          "src_fr": "Nek'zali l'Entortillâme",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 159667,
+          "src_fr": "Repos des rois",
+          "src_en": "Kings' Rest"
+        }
+      ]
+    },
+    "priest/holy": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/priest/holy/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Prêtre Sacré (12.1, guide mis à jour le 24/08/2026)",
+      "updated_fr": "24/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268263,
+          "src_fr": "Nymrissa Mande-vagues",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "head",
+          "id": 271874,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271553,
+          "src_fr": "Mor'zahi",
+          "src_en": "Mor'zahi"
+        },
+        {
+          "slot": "back",
+          "id": 251132,
+          "src_fr": "Allée du meurtre",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "chest",
+          "id": 271558,
+          "src_fr": "Nymrissa Mande-vagues",
+          "src_en": "Nymrissa Wavebinder"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271556,
+          "src_fr": "Souffle d'Ula'tek",
+          "src_en": "Ula'tek's Breath"
+        },
+        {
+          "slot": "waist",
+          "id": 239649,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "legs",
+          "id": 271554,
+          "src_fr": "Repos des rois",
+          "src_en": "Kings' Rest"
+        },
+        {
+          "slot": "feet",
+          "id": 268218,
+          "src_fr": "Nek'zali l'Entortillâme",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger2",
+          "id": 251148,
+          "src_fr": "Antre de Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "Mor'zahi",
+          "src_en": "Mor'zahi"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270162,
+          "src_fr": "Nek'zali l'Entortillâme",
+          "src_en": "Nek'zali the Soulcoiler"
+        }
+      ]
+    },
+    "shaman/elemental": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/shaman/elemental/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chaman élémentaire (12.1, guide mis à jour le 17/08/2026)",
+      "updated_fr": "17/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268262,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        },
+        {
+          "slot": "head",
+          "id": 271483,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271481,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271486,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 244584,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271484,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268254,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "legs",
+          "id": 271482,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "feet",
+          "id": 244577,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 273796,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        }
+      ]
+    },
+    "shaman/enhancement": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/shaman/enhancement/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chaman Amélioration (12.1, guide mis à jour le 24/08/2026)",
+      "updated_fr": "24/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268209,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 237850,
+          "src_fr": "Forge",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "head",
+          "id": 271483,
+          "src_fr": "Catalyseur & Voidscar Arena",
+          "src_en": "Catalyst & Voidscar Arena"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271481,
+          "src_fr": "Catalyseur & The Coiled Altar",
+          "src_en": "Catalyst & The Coiled Altar"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271486,
+          "src_fr": "Catalyseur & Ula'tek",
+          "src_en": "Catalyst & Ula'tek"
+        },
+        {
+          "slot": "wrist",
+          "id": 244584,
+          "src_fr": "Travail du cuir",
+          "src_en": "Leatherworking"
+        },
+        {
+          "slot": "hands",
+          "id": 271484,
+          "src_fr": "Token & Entombed Sentinels",
+          "src_en": "Token & Entombed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 268254,
+          "src_fr": "Vashnik",
+          "src_en": "Vashnik"
+        },
+        {
+          "slot": "legs",
+          "id": 271482,
+          "src_fr": "Catalyseur & The Coiled Altar",
+          "src_en": "Catalyst & The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 268258,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "finger1",
+          "id": 273792,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        },
+        {
+          "slot": "finger2",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        }
+      ]
+    },
+    "death-knight/blood": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/death-knight/blood/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chevalier de la mort Sang (12.1, guide mis à jour le 20/08/2026)",
+      "updated_fr": "20/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268213,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "head",
+          "id": 271474,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271472,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271477,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "wrist",
+          "id": 237834,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271475,
+          "src_fr": "King's Rest",
+          "src_en": "King's Rest"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271878,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 273777,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        },
+        {
+          "slot": "finger1",
+          "id": 240949,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "finger2",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        }
+      ]
+    },
+    "death-knight/frost": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/death-knight/frost/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chevalier de la mort Givre (12.1, guide mis à jour le 02/09/2026)",
+      "updated_fr": "02/09/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268202,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268209,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "head",
+          "id": 271474,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271472,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271477,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "wrist",
+          "id": 237834,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271475,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271878,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 268260,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 251513,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "death-knight/unholy": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/death-knight/unholy/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chevalier de la mort Impie (12.1, guide mis à jour le 08/09/2026)",
+      "updated_fr": "08/09/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268213,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "head",
+          "id": 271474,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271472,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271477,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 237834,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271475,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271878,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 237828,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik",
+          "src_en": "Vashnik"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        }
+      ]
+    },
+    "demon-hunter/devourer": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/demon-hunter/devourer/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chasseur de démons Dévoration (12.1, guide mis à jour le 17/08/2026)",
+      "updated_fr": "17/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268211,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "head",
+          "id": 271537,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271535,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271540,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271538,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271536,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 244569,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "trinket1",
+          "id": 250215,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        }
+      ]
+    },
+    "demon-hunter/havoc": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/demon-hunter/havoc/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chasseur de démons Dévastation (12.1, guide mis à jour le 28/08/2026)",
+      "updated_fr": "28/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268209,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 237840,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "head",
+          "id": 271875,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271535,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271540,
+          "src_fr": "King's Rest",
+          "src_en": "King's Rest"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271538,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271536,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 159327,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "finger1",
+          "id": 251136,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "finger2",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270168,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "demon-hunter/vengeance": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/demon-hunter/vengeance/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chasseur de démons Vengeance (12.1, guide mis à jour le 05/09/2026)",
+      "updated_fr": "05/09/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268209,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 237840,
+          "src_fr": "Crafted",
+          "src_en": "Crafted"
+        },
+        {
+          "slot": "head",
+          "id": 271537,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271535,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271540,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Crafted",
+          "src_en": "Crafted"
+        },
+        {
+          "slot": "hands",
+          "id": 271538,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271536,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 251153,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger2",
+          "id": 159459,
+          "src_fr": "King's Rest",
+          "src_en": "King's Rest"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "druid/balance": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/druid/balance/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Druide Équilibre (12.1, guide mis à jour le 14/09/2026)",
+      "updated_fr": "14/09/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 245769,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "head",
+          "id": 271875,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 268246,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 251159,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 268234,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 268225,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 268261,
+          "src_fr": "The Twin Fangs",
+          "src_en": "The Twin Fangs"
+        },
+        {
+          "slot": "finger1",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "finger2",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        },
+        {
+          "slot": "trinket2",
+          "id": 273796,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        }
+      ]
+    },
+    "druid/feral": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/druid/feral/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Druide Féral (12.1, guide mis à jour le 12/08/2026)",
+      "updated_fr": "12/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268215,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "head",
+          "id": 271528,
+          "src_fr": "Catalyseur",
+          "src_en": "Catalyst"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271526,
+          "src_fr": "Catalyseur",
+          "src_en": "Catalyst"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271531,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 244575,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271527,
+          "src_fr": "Catalyseur",
+          "src_en": "Catalyst"
+        },
+        {
+          "slot": "feet",
+          "id": 268261,
+          "src_fr": "The Twin Fangs",
+          "src_en": "The Twin Fangs"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "druid/guardian": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/druid/guardian/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Druide Gardien (12.1, guide mis à jour le 30/08/2026)",
+      "updated_fr": "30/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268215,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "head",
+          "id": 271875,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271526,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271531,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 268240,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "hands",
+          "id": 271529,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271527,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "feet",
+          "id": 268261,
+          "src_fr": "The Twin Fangs",
+          "src_en": "The Twin Fangs"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger2",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        }
+      ]
+    },
+    "evoker/augmentation": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/evoker/augmentation/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Évocateur Augmentation (12.1, guide mis à jour le 19/09/2026)",
+      "updated_fr": "19/09/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268197,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "head",
+          "id": 271501,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271499,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271504,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 244584,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271502,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 244581,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "legs",
+          "id": 271500,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "feet",
+          "id": 268233,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270168,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 250224,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        }
+      ]
+    },
+    "evoker/devastation": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/evoker/devastation/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Évocateur Dévastation (12.1, guide mis à jour le 31/08/2026)",
+      "updated_fr": "31/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 245769,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "head",
+          "id": 271501,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271499,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271504,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 244584,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271502,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268254,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "legs",
+          "id": 271500,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "feet",
+          "id": 268233,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        }
+      ]
+    },
+    "hunter/beast-mastery": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/hunter/beast-mastery/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chasseur Bêtes (12.1, guide mis à jour le 09/09/2026)",
+      "updated_fr": "09/09/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268207,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "head",
+          "id": 271492,
+          "src_fr": "The Twin Fangs",
+          "src_en": "The Twin Fangs"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271490,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271495,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "wrist",
+          "id": 244584,
+          "src_fr": "Travail du cuir",
+          "src_en": "Leatherworking"
+        },
+        {
+          "slot": "hands",
+          "id": 271493,
+          "src_fr": "King's Rest",
+          "src_en": "King's Rest"
+        },
+        {
+          "slot": "waist",
+          "id": 244581,
+          "src_fr": "Travail du cuir",
+          "src_en": "Leatherworking"
+        },
+        {
+          "slot": "legs",
+          "id": 271491,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 159388,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "hunter/marksmanship": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/hunter/marksmanship/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chasseur Précision (12.1, guide mis à jour le 09/09/2026)",
+      "updated_fr": "09/09/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268207,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "head",
+          "id": 271492,
+          "src_fr": "Catalyseur & Nek'zali the Soulcoiler",
+          "src_en": "Catalyst & Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271490,
+          "src_fr": "Catalyseur & The Coiled Altar",
+          "src_en": "Catalyst & The Coiled Altar"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271495,
+          "src_fr": "Catalyseur & Ula'tek",
+          "src_en": "Catalyst & Ula'tek"
+        },
+        {
+          "slot": "wrist",
+          "id": 244584,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271493,
+          "src_fr": "Catalyseur & Ruby Life Pools",
+          "src_en": "Catalyst & Ruby Life Pools"
+        },
+        {
+          "slot": "waist",
+          "id": 244581,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "legs",
+          "id": 271491,
+          "src_fr": "Catalyseur & The Coiled Altar",
+          "src_en": "Catalyst & The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 268258,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "finger1",
+          "id": 251136,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "finger2",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270168,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "hunter/survival": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/hunter/survival/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Chasseur Survie (12.1, guide mis à jour le 21/08/2026)",
+      "updated_fr": "21/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268215,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "head",
+          "id": 271492,
+          "src_fr": "Tier Set & Voidscar Arena",
+          "src_en": "Tier Set & Voidscar Arena"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271490,
+          "src_fr": "Tier Set & The Coiled Altar",
+          "src_en": "Tier Set & The Coiled Altar"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271876,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "wrist",
+          "id": 244584,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271493,
+          "src_fr": "Tier Set & King's Rest",
+          "src_en": "Tier Set & King's Rest"
+        },
+        {
+          "slot": "waist",
+          "id": 244581,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "legs",
+          "id": 271491,
+          "src_fr": "Tier Set & The Coiled Altar",
+          "src_en": "Tier Set & The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 268233,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger1",
+          "id": 273792,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        }
+      ]
+    },
+    "mage/fire": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/mage/fire/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Mage Feu (12.1, guide mis à jour le 24/08/2026)",
+      "updated_fr": "24/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 245769,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "head",
+          "id": 271564,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271562,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271567,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271565,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268257,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "legs",
+          "id": 271563,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "feet",
+          "id": 268255,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "finger1",
+          "id": 268266,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        },
+        {
+          "slot": "finger2",
+          "id": 159459,
+          "src_fr": "King's Rest",
+          "src_en": "King's Rest"
+        },
+        {
+          "slot": "trinket1",
+          "id": 273796,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        }
+      ]
+    },
+    "mage/frost": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/mage/frost/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Mage Givre (12.1, guide mis à jour le 18/08/2026)",
+      "updated_fr": "18/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268263,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        },
+        {
+          "slot": "head",
+          "id": 271564,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271562,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271567,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271565,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 239649,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "legs",
+          "id": 271563,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "feet",
+          "id": 268255,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        }
+      ]
+    },
+    "monk/brewmaster": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/monk/brewmaster/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Moine Maître brasseur (12.1, guide mis à jour le 27/08/2026)",
+      "updated_fr": "27/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268215,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "head",
+          "id": 271519,
+          "src_fr": "Catalyseur & Raid & Coffre",
+          "src_en": "Catalyst & Raid & Vault"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271517,
+          "src_fr": "Catalyseur & Mythic+ & Coffre",
+          "src_en": "Catalyst & Mythic+ & Vault"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271522,
+          "src_fr": "Catalyseur & Mythic+ & Coffre",
+          "src_en": "Catalyst & Mythic+ & Vault"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Leatherworking",
+          "src_en": "Leatherworking"
+        },
+        {
+          "slot": "hands",
+          "id": 271520,
+          "src_fr": "Catalyseur & Mythic+ & Coffre",
+          "src_en": "Catalyst & Mythic+ & Vault"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271518,
+          "src_fr": "Catalyseur & Raid & Coffre",
+          "src_en": "Catalyst & Raid & Vault"
+        },
+        {
+          "slot": "feet",
+          "id": 159304,
+          "src_fr": "Kings' Rest",
+          "src_en": "Kings' Rest"
+        },
+        {
+          "slot": "finger1",
+          "id": 251148,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "finger2",
+          "id": 251513,
+          "src_fr": "Jewelcrafting",
+          "src_en": "Jewelcrafting"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        }
+      ]
+    },
+    "monk/windwalker": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/monk/windwalker/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Moine Marche-vent (12.1, guide mis à jour le 25/08/2026)",
+      "updated_fr": "25/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268215,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "head",
+          "id": 271875,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271517,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 268235,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 251124,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 268225,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 244569,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "finger1",
+          "id": 158366,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "finger2",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        }
+      ]
+    },
+    "paladin/protection": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/paladin/protection/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Paladin Protection (12.1, guide mis à jour le 30/08/2026)",
+      "updated_fr": "30/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268209,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268196,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "head",
+          "id": 271465,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271463,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271468,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 237834,
+          "src_fr": "Crafting Blacksmithing",
+          "src_en": "Crafting Blacksmithing"
+        },
+        {
+          "slot": "hands",
+          "id": 271466,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271878,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 237828,
+          "src_fr": "Crafting Blacksmithing",
+          "src_en": "Crafting Blacksmithing"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger2",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "paladin/retribution": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/paladin/retribution/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Paladin Retribution (12.1, guide mis à jour le 25/08/2026)",
+      "updated_fr": "25/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268213,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "head",
+          "id": 271465,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271463,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271468,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 237834,
+          "src_fr": "Blacksmithing",
+          "src_en": "Blacksmithing"
+        },
+        {
+          "slot": "hands",
+          "id": 271466,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271464,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 268260,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger1",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger2",
+          "id": 251513,
+          "src_fr": "Jewelcrafting",
+          "src_en": "Jewelcrafting"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "priest/shadow": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/priest/shadow/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Prêtre Ombre (12.1, guide mis à jour le 31/08/2026)",
+      "updated_fr": "31/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268197,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "head",
+          "id": 271555,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 239045,
+          "src_fr": "King's Rest",
+          "src_en": "King's Rest"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271558,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271556,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "waist",
+          "id": 239649,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "legs",
+          "id": 271554,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "feet",
+          "id": 268255,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "finger1",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "finger2",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        },
+        {
+          "slot": "trinket2",
+          "id": 250215,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        }
+      ]
+    },
+    "rogue/assassination": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/rogue/assassination/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Voleur Assassinat (12.1, guide mis à jour le 06/09/2026)",
+      "updated_fr": "06/09/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271510,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271508,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271513,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271511,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271509,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 244569,
+          "src_fr": "Crafted",
+          "src_en": "Crafted"
+        },
+        {
+          "slot": "finger1",
+          "id": 273792,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        },
+        {
+          "slot": "finger2",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "main_hand",
+          "id": 271093,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 275070,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270168,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "rogue/outlaw": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/rogue/outlaw/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Voleur Hors-la-loi (12.1, guide mis à jour le 01/09/2026)",
+      "updated_fr": "01/09/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271875,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271508,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268248,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "chest",
+          "id": 271513,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 268240,
+          "src_fr": "Nek'zali the Soulcoiler",
+          "src_en": "Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "hands",
+          "id": 271511,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 244573,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "legs",
+          "id": 271509,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "feet",
+          "id": 244569,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "finger1",
+          "id": 268266,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        },
+        {
+          "slot": "finger2",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "main_hand",
+          "id": 268209,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 271093,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "rogue/subtlety": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/rogue/subtlety/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Voleur Finesse (12.1, guide mis à jour le 02/09/2026)",
+      "updated_fr": "02/09/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271510,
+          "src_fr": "Tier Set & Ula'tek",
+          "src_en": "Tier Set & Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271508,
+          "src_fr": "Tier Set & Vashnik the Malignant",
+          "src_en": "Tier Set & Vashnik the Malignant"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271513,
+          "src_fr": "Tier Set & Nek'zali the Soulcoiler",
+          "src_en": "Tier Set & Nek'zali the Soulcoiler"
+        },
+        {
+          "slot": "wrist",
+          "id": 244576,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "hands",
+          "id": 271511,
+          "src_fr": "Tier Set & Sszorak",
+          "src_en": "Tier Set & Sszorak"
+        },
+        {
+          "slot": "waist",
+          "id": 268256,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271509,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "feet",
+          "id": 159304,
+          "src_fr": "King's Rest",
+          "src_en": "King's Rest"
+        },
+        {
+          "slot": "finger1",
+          "id": 251194,
+          "src_fr": "Blinding Vale",
+          "src_en": "Blinding Vale"
+        },
+        {
+          "slot": "finger2",
+          "id": 162544,
+          "src_fr": "Temple of Sethraliss",
+          "src_en": "Temple of Sethraliss"
+        },
+        {
+          "slot": "main_hand",
+          "id": 271093,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 237837,
+          "src_fr": "Crafting/Misc",
+          "src_en": "Crafting/Misc"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    },
+    "warlock/affliction": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/warlock/affliction/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Démoniste Affliction (12.1, guide mis à jour le 23/08/2026)",
+      "updated_fr": "23/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 273779,
+          "src_fr": "L'Ophidien ondulant",
+          "src_en": "L'Ophidien ondulant"
+        },
+        {
+          "slot": "head",
+          "id": 271874,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271544,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271549,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271547,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 239649,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "legs",
+          "id": 271545,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "feet",
+          "id": 268255,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger2",
+          "id": 273792,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 273649,
+          "src_fr": "Roi Dazar",
+          "src_en": "Roi Dazar"
+        }
+      ]
+    },
+    "warlock/demonology": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/warlock/demonology/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Démoniste Démonologie (12.1, guide mis à jour le 08/09/2026)",
+      "updated_fr": "08/09/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268197,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "head",
+          "id": 271874,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271544,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271549,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271547,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 239649,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "legs",
+          "id": 271545,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "feet",
+          "id": 268255,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger2",
+          "id": 158366,
+          "src_fr": "Galvazzt",
+          "src_en": "Galvazzt"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 273796,
+          "src_fr": "Rav'i",
+          "src_en": "Rav'i"
+        }
+      ]
+    },
+    "warlock/destruction": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/warlock/destruction/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Démoniste Destruction (12.1, guide mis à jour le 18/08/2026)",
+      "updated_fr": "18/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 271092,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "off_hand",
+          "id": 273779,
+          "src_fr": "L'Ophidien ondulant",
+          "src_en": "L'Ophidien ondulant"
+        },
+        {
+          "slot": "head",
+          "id": 271874,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271544,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271549,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "wrist",
+          "id": 239648,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "hands",
+          "id": 271547,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 239649,
+          "src_fr": "Crafting",
+          "src_en": "Crafting"
+        },
+        {
+          "slot": "legs",
+          "id": 271545,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "feet",
+          "id": 268255,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger2",
+          "id": 273792,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270164,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270167,
+          "src_fr": "Nymrissa Wavecaller",
+          "src_en": "Nymrissa Wavecaller"
+        }
+      ]
+    },
+    "warrior/arms": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/warrior/arms/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Guerrier Armes (12.1, guide mis à jour le 26/08/2026)",
+      "updated_fr": "26/08/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271456,
+          "src_fr": "The Twin Fangs",
+          "src_en": "The Twin Fangs"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271454,
+          "src_fr": "BoE Trash Drop",
+          "src_en": "BoE Trash Drop"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271459,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "wrist",
+          "id": 237834,
+          "src_fr": "Crafted",
+          "src_en": "Crafted"
+        },
+        {
+          "slot": "hands",
+          "id": 271457,
+          "src_fr": "Entombed Sentinels",
+          "src_en": "Entombed Sentinels"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271455,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 237828,
+          "src_fr": "Crafted",
+          "src_en": "Crafted"
+        },
+        {
+          "slot": "finger1",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "finger2",
+          "id": 273792,
+          "src_fr": "Altar of Fangs",
+          "src_en": "Altar of Fangs"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "main_hand",
+          "id": 268213,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        }
+      ]
+    },
+    "warrior/fury": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/warrior/fury/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Guerrier Fureur (12.1, guide mis à jour le 26/08/2026)",
+      "updated_fr": "26/08/2026",
+      "slots": [
+        {
+          "slot": "head",
+          "id": 271456,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271454,
+          "src_fr": "Murder Row",
+          "src_en": "Murder Row"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271459,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "wrist",
+          "id": 237834,
+          "src_fr": "Crafted",
+          "src_en": "Crafted"
+        },
+        {
+          "slot": "hands",
+          "id": 271457,
+          "src_fr": "Den of Nalorakk",
+          "src_en": "Den of Nalorakk"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271455,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 268260,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "finger1",
+          "id": 252258,
+          "src_fr": "Voidscar Arena",
+          "src_en": "Voidscar Arena"
+        },
+        {
+          "slot": "finger2",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "main_hand",
+          "id": 268213,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 237846,
+          "src_fr": "Crafted",
+          "src_en": "Crafted"
+        }
+      ]
+    },
+    "warrior/protection": {
+      "source_url": "https://www.wowhead.com/fr/guide/classes/warrior/protection/bis-gear",
+      "source_label_fr": "Guide Wowhead BiS — Guerrier Protection (12.1, guide mis à jour le 30/08/2026)",
+      "updated_fr": "30/08/2026",
+      "slots": [
+        {
+          "slot": "main_hand",
+          "id": 268209,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "off_hand",
+          "id": 268196,
+          "src_fr": "The Lost Explorers",
+          "src_en": "The Lost Explorers"
+        },
+        {
+          "slot": "head",
+          "id": 271456,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "neck",
+          "id": 268265,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "shoulder",
+          "id": 271454,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "back",
+          "id": 268253,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "chest",
+          "id": 271459,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "wrist",
+          "id": 237834,
+          "src_fr": "Crafting Blacksmithing",
+          "src_en": "Crafting Blacksmithing"
+        },
+        {
+          "slot": "hands",
+          "id": 271457,
+          "src_fr": "Tier Set",
+          "src_en": "Tier Set"
+        },
+        {
+          "slot": "waist",
+          "id": 268259,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "legs",
+          "id": 271878,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        },
+        {
+          "slot": "feet",
+          "id": 237828,
+          "src_fr": "Crafting Blacksmithing",
+          "src_en": "Crafting Blacksmithing"
+        },
+        {
+          "slot": "finger1",
+          "id": 268252,
+          "src_fr": "Sszorak",
+          "src_en": "Sszorak"
+        },
+        {
+          "slot": "finger2",
+          "id": 268249,
+          "src_fr": "Vashnik the Malignant",
+          "src_en": "Vashnik the Malignant"
+        },
+        {
+          "slot": "trinket1",
+          "id": 270173,
+          "src_fr": "The Coiled Altar",
+          "src_en": "The Coiled Altar"
+        },
+        {
+          "slot": "trinket2",
+          "id": 270175,
+          "src_fr": "Ula'tek",
+          "src_en": "Ula'tek"
+        }
+      ]
+    }
+  },
+  "_verify": "0 anomalie(s) sur 469 entrées vérifiées"
+}

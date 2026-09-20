@@ -45,7 +45,7 @@ def _req(method: str, path: str, token: str, body: dict | None = None, retry: bo
         headers={
             "Authorization": f"Bot {token}",
             "Content-Type": "application/json",
-            "User-Agent": "LOTP-Simulateur (lotp.gensbien.fr)",
+            "User-Agent": "Cohors (https://github.com/LostInTheBugs/cohors)",
         },
         data=json.dumps(body).encode() if body is not None else None,
     )
@@ -106,7 +106,7 @@ def send(token: str, channel_id: str, embeds: list[dict] | None = None, content:
 # ---------------------------------------------------------------------------
 # Embeds « annonces de guilde » (français)
 # ---------------------------------------------------------------------------
-def report_embed(report: dict) -> dict:
+def report_embed(report: dict, guild: str = "la guilde") -> dict:
     """Embed « nouveau rapport de raid » (Warcraft Logs)."""
     code = str(report.get("code") or "")
     zone = (report.get("zone") or {}).get("name") or "Raid"
@@ -121,11 +121,11 @@ def report_embed(report: dict) -> dict:
             {"name": "Zone", "value": zone, "inline": True},
             {"name": "Date", "value": date_txt, "inline": True},
         ],
-        "footer": {"text": "LOTP Simulateur · Warcraft Logs"},
+        "footer": {"text": f"{guild} · Warcraft Logs"},
     }
 
 
-def roster_embed(kind: str, member: dict) -> dict:
+def roster_embed(kind: str, member: dict, guild: str = "la guilde") -> dict:
     """Embed « arrivée » / « départ » de guilde."""
     name = str(member.get("name") or "?")
     if kind == "join":
@@ -137,17 +137,17 @@ def roster_embed(kind: str, member: dict) -> dict:
             "description": f"**{name}** rejoint la guilde !",
             "color": COLOR_GOLD,
             "fields": fields,
-            "footer": {"text": "Lords Of The Pit · roster Battle.net"},
+            "footer": {"text": f"{guild} · roster Battle.net"},
         }
     return {
         "title": "😢 Départ",
         "description": f"**{name}** a quitté la guilde.",
         "color": COLOR_MUTED,
-        "footer": {"text": "Lords Of The Pit · roster Battle.net"},
+        "footer": {"text": f"{guild} · roster Battle.net"},
     }
 
 
-def char_embed(name: str, changes: dict) -> dict:
+def char_embed(name: str, changes: dict, guild: str = "la guilde") -> dict:
     """Embed « progression de personnage » (palier d'iLvl, nouvelles montures / mascottes)."""
     bits = []
     if changes.get("ilvl_from") or changes.get("ilvl_to"):
@@ -160,28 +160,28 @@ def char_embed(name: str, changes: dict) -> dict:
         "title": "📈 Progression de personnage",
         "description": f"**{str(name)[:80]}** — " + " · ".join(bits),
         "color": COLOR_GOLD,
-        "footer": {"text": "Lords Of The Pit · suivi quotidien"},
+        "footer": {"text": f"{guild} · suivi quotidien"},
     }
 
 
-def weekly_embed(fields: list[dict], link: str = "") -> dict:
+def weekly_embed(fields: list[dict], link: str = "", guild: str = "la guilde") -> dict:
     """Embed « récap hebdomadaire » de la guilde."""
     desc = "La semaine de la guilde en un coup d'œil :"
     if link:
         desc += f"\n\n👉 [Voir les classements]({link})"
     return {
-        "title": "📰 Récap hebdo — Lords Of The Pit",
+        "title": f"📰 Récap hebdo — {guild}",
         "description": desc,
         "color": COLOR_CRIMSON,
         "fields": fields[:6],
-        "footer": {"text": "Lords Of The Pit · récap hebdomadaire"},
+        "footer": {"text": f"{guild} · récap hebdomadaire"},
     }
 
 
 # ---------------------------------------------------------------------------
 # Embeds « calendrier des raids » (français)
 # ---------------------------------------------------------------------------
-def raid_embed(raid: dict, link: str = "") -> dict:
+def raid_embed(raid: dict, link: str = "", guild: str = "la guilde") -> dict:
     """Embed « nouveau raid planifié »."""
     starts = float(raid.get("starts") or 0.0)
     date_txt = time.strftime("%d/%m/%Y à %H:%M", time.localtime(starts)) if starts else "?"
@@ -199,11 +199,12 @@ def raid_embed(raid: dict, link: str = "") -> dict:
         "description": desc,
         "color": COLOR_GOLD,
         "fields": fields,
-        "footer": {"text": "Lords Of The Pit · Calendrier"},
+        "footer": {"text": f"{guild} · Calendrier"},
     }
 
 
-def raid_reminder_embed(raid: dict, counts: dict | None = None, link: str = "") -> dict:
+def raid_reminder_embed(raid: dict, counts: dict | None = None, link: str = "",
+                        guild: str = "la guilde") -> dict:
     """Embed « rappel de raid » (moins d'une heure avant le début)."""
     starts = float(raid.get("starts") or 0.0)
     date_txt = time.strftime("%d/%m/%Y à %H:%M", time.localtime(starts)) if starts else "?"
@@ -218,5 +219,5 @@ def raid_reminder_embed(raid: dict, counts: dict | None = None, link: str = "") 
         "description": desc,
         "color": COLOR_CRIMSON,
         "fields": [{"name": "Début", "value": date_txt, "inline": True}],
-        "footer": {"text": "Lords Of The Pit · Calendrier"},
+        "footer": {"text": f"{guild} · Calendrier"},
     }

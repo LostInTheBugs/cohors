@@ -1,7 +1,7 @@
 {
-  "name": "LOTP — Lords Of The Pit",
-  "short_name": "LOTP",
-  "description": "Simulateur de guilde WoW — simulation, raids, classements et suivi.",
+  "name": "Cohors — Compagnon de guilde",
+  "short_name": "Cohors",
+  "description": "Compagnon de guilde World of Warcraft — simulations, roster, raids, artisanat et suivi.",
   "lang": "fr",
   "start_url": "/dashboard",
   "scope": "/",

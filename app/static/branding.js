@@ -1,4 +1,4 @@
-/* LOTP — identité de la guilde (v2026.09.111) : logo, nom et fond personnalisables.
+/* Cohors — identité de la guilde (v2026.09.111) : logo, nom et fond personnalisables.
    Applique /api/branding sur toutes les pages (connexion incluse).
    Réversible : si l'identité revient aux valeurs par défaut, les remplacements
    sont annulés (les valeurs d'origine sont mémorisées par élément). */
@@ -12,21 +12,21 @@
     var short = CF.short || "", full = CF.name || "";
     try {
       var ap = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-      if (short && short !== "LOTP") {
+      if (short && short !== "Cohors") {
         LAST = short;
         document.querySelectorAll(".brandname").forEach(function (el) {
           var t = el.childNodes[0];
           if (t && t.nodeType === 3) {
             if (el.dataset.borig == null) el.dataset.borig = t.nodeValue;
-            t.nodeValue = el.dataset.borig.replace("LOTP", short);
+            t.nodeValue = el.dataset.borig.replace("Cohors", short);
           }
         });
         document.querySelectorAll(".dhead span").forEach(function (s) {
           if (s.dataset.borig == null) s.dataset.borig = s.textContent;
-          if (s.dataset.borig.trim() === "LOTP") s.textContent = s.dataset.borig.replace("LOTP", short);
+          if (s.dataset.borig.trim() === "Cohors") s.textContent = s.dataset.borig.replace("Cohors", short);
         });
-        if (document.title.indexOf("LOTP") !== -1) document.title = document.title.replace("LOTP", short);
-        if (ap && ap.getAttribute("content") === "LOTP") ap.setAttribute("content", short);
+        if (document.title.indexOf("Cohors") !== -1) document.title = document.title.replace("Cohors", short);
+        if (ap && ap.getAttribute("content") === "Cohors") ap.setAttribute("content", short);
       } else {
         document.querySelectorAll(".brandname").forEach(function (el) {
           var t = el.childNodes[0];
@@ -35,13 +35,13 @@
         document.querySelectorAll(".dhead span").forEach(function (s) {
           if (s.dataset.borig != null) s.textContent = s.dataset.borig;
         });
-        if (LAST && document.title.indexOf(LAST) !== -1) document.title = document.title.replace(LAST, "LOTP");
-        if (ap && LAST && ap.getAttribute("content") === LAST) ap.setAttribute("content", "LOTP");
+        if (LAST && document.title.indexOf(LAST) !== -1) document.title = document.title.replace(LAST, "Cohors");
+        if (ap && LAST && ap.getAttribute("content") === LAST) ap.setAttribute("content", "Cohors");
         LAST = "";
       }
       document.querySelectorAll("img.crest").forEach(function (im) {
         if (im.dataset.borigalt == null) im.dataset.borigalt = im.getAttribute("alt") || "";
-        im.alt = (full && full !== "Lords of the Pit") ? full : im.dataset.borigalt;
+        im.alt = full ? full : im.dataset.borigalt;
       });
       if (CF.bg) {
         document.body.style.setProperty("background-image", "url('" + CF.bg + "')", "important");
@@ -57,7 +57,7 @@
     } catch (e) {}
   }
 
-  window.__lotpBranding = { refresh: load, get: function () { return CF; } };
+  window.__cohorsBranding = { refresh: load, get: function () { return CF; } };
   function load() {
     fetch("/api/branding", { cache: "no-store" }).then(function (r) { return r.json(); })
       .then(function (d) { CF = d || {}; apply(); setTimeout(apply, 400); })

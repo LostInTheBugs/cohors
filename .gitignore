@@ -10,6 +10,6 @@ dist/
 build/
 *.sqlite3
 *.db
-data/
+/data/
 out/
 recon/

@@ -19,8 +19,8 @@ import urllib.request
 # Défauts du fichier serveur — surchargés depuis l'administration (set_guild_info).
 _ENV = {
     "region": os.environ.get("BNET_REGION", "eu"),
-    "realm": os.environ.get("BNET_GUILD_REALM", "hyjal"),
-    "slug": os.environ.get("BNET_GUILD_SLUG", "lords-of-the-pit"),
+    "realm": os.environ.get("BNET_GUILD_REALM", ""),
+    "slug": os.environ.get("BNET_GUILD_SLUG", ""),
     "locale": os.environ.get("BNET_LOCALE", "fr_FR"),
 }
 REGION = _ENV["region"]
@@ -281,6 +281,8 @@ def journal_loot() -> list[dict]:
 
 def roster(force: bool = False) -> tuple[dict, float]:
     """Roster de la guilde (membres, rangs, niveaux)."""
+    if not GUILD_REALM or not GUILD_SLUG:
+        raise BnetError(500, "Guilde non configurée — renseigne-la dans Paramètres → Administration → 🏰 Guilde.")
     hit = _cached("roster", force)
     if hit:
         return hit["data"], hit["ts"]
@@ -547,7 +549,7 @@ def mplus_dungeons() -> tuple[dict, float]:
         try:
             req = urllib.request.Request(
                 f"https://raider.io/api/v1/mythic-plus/static-data?expansion_id={exp_id}",
-                headers={"User-Agent": "lotp-guild-app/1.0"},
+                headers={"User-Agent": "cohors/1.0"},
             )
             with urllib.request.urlopen(req, timeout=25) as resp:
                 data = json.load(resp)

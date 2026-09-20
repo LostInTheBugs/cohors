@@ -1,8 +1,8 @@
 services:
   app:
     build: .
-    image: wow-companion-app:latest
-    container_name: wow-app
+    image: cohors-app:latest
+    container_name: cohors-app
     restart: unless-stopped
     env_file: [.env]
     extra_hosts:

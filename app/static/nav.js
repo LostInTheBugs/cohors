@@ -1,4 +1,4 @@
-/* Navigation LOTP — menu structuré (liens directs + sous-menus déroulants).
+/* Navigation Cohors — menu structuré (liens directs + sous-menus déroulants).
    Desktop : pilules avec sous-menus. Mobile (<=760px) : bouton ☰ + panneau latéral complet.
    Rendue automatiquement dans <nav class="tabs" id="navmain"></nav>. */
 (function () {
@@ -83,7 +83,7 @@
       '<button id="navburger" type="button" aria-label="Menu" aria-expanded="false">☰&nbsp;Menu</button>' +
       '<div id="navscrim"></div>' +
       '<aside id="navdrawer" aria-hidden="true">' +
-        '<div class="dhead"><a class="dlogo" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px"><img src="/branding/logo" alt=""><span>LOTP</span></a>' +
+        '<div class="dhead"><a class="dlogo" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px"><img src="/branding/logo" alt=""><span>Cohors</span></a>' +
           '<button id="navclose" type="button" aria-label="Fermer">✕</button></div>' +
         '<nav class="dlist">' + rows + '</nav>' +
         '<div class="dfoot">' +
@@ -125,7 +125,7 @@
         try {
           if (window.self !== window.top) {
             ev.preventDefault();
-            window.top.postMessage({ type: "lotp-voice-toggle" }, "*");
+            window.top.postMessage({ type: "cohors-voice-toggle" }, "*");
           }
         } catch (e) {}
       });
@@ -271,7 +271,7 @@
       b.setAttribute("title", n + " notification(s) non lue(s)");
     });
   }
-  window.__lotpSetUnread = function (n) { UNREAD = n || 0; decorateNotifs(UNREAD); };
+  window.__cohorsSetUnread = function (n) { UNREAD = n || 0; decorateNotifs(UNREAD); };
   fetch("/api/me/notifs").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
     if (j && j.unread > 0) { UNREAD = j.unread; decorateNotifs(UNREAD); }
   }).catch(function () {});

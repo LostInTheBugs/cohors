@@ -1,4 +1,4 @@
-"""LOTP Simulateur — web app (FastAPI).
+"""Cohors — compagnon de guilde World of Warcraft (web app FastAPI).
 
 Accounts: invitation-only registration (admin-generated links), login sessions
 (signed random token in an HttpOnly cookie), admin panel (invites + users).
@@ -56,7 +56,7 @@ ITER_CHOICES = (1000, 5000, 10000, 25000, 50000)
 DEFAULT_ITERATIONS = 10000
 MAX_INPUT_CHARS = 200_000
 
-SESSION_COOKIE = "lotp_session"
+SESSION_COOKIE = "cohors_session"
 SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
 INVITE_TTL_DAYS = int(os.environ.get("INVITE_TTL_DAYS", "7"))
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
@@ -412,7 +412,7 @@ def _init_db() -> None:
             " updated_by TEXT NOT NULL DEFAULT '')")
         if "last_recap" not in bcols:
             conn.execute("ALTER TABLE bot_config ADD COLUMN last_recap REAL NOT NULL DEFAULT 0")
-        # v2026.09.064 — import du calendrier in-game (addon LOTP).
+        # v2026.09.064 — import du calendrier in-game (addon Cohors).
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS gcal_import (
@@ -471,7 +471,7 @@ def _init_db() -> None:
             )
             """
         )
-        # v2026.09.080 — recettes des artisans (export addon /lotp recettes).
+        # v2026.09.080 — recettes des artisans (export addon /cohors recettes).
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS craft_recipes (
@@ -1072,7 +1072,7 @@ async def _lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="LOTP Simulateur", version=VERSION, lifespan=_lifespan, docs_url=None, redoc_url=None)
+app = FastAPI(title="Cohors", version=VERSION, lifespan=_lifespan, docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -1083,8 +1083,8 @@ def api_branding(request: Request):
         row = _brand_row(conn)
     d = dict(row)
     files = _brand_files()
-    short = (d.get("guild_short") or "LOTP").strip()[:24] or "LOTP"
-    name = (d.get("guild_name") or "Lords of the Pit").strip()[:60] or "Lords of the Pit"
+    short = (d.get("guild_short") or "Cohors").strip()[:24] or "Cohors"
+    name = (d.get("guild_name") or "").strip()[:60]
     v = int(d.get("updated") or 0)
     return {
         "name": name, "short": short,
@@ -1613,7 +1613,7 @@ def _stuff_wh_version(iid: int) -> dict | None:
     """Version maximum publiée par Wowhead pour une pièce : {ilvl, track, rank, label}."""
     try:
         r = httpx.get(WH_TOOLTIP.format(iid=int(iid)), timeout=20,
-                      headers={"User-Agent": "LOTP-Stuff/1.0 (+lotp.gensbien.fr)"})
+                      headers={"User-Agent": "Cohors-Stuff/1.0"})
         r.raise_for_status()
         tip = (r.json() or {}).get("tooltip") or ""
     except Exception:  # noqa: BLE001
@@ -2955,12 +2955,12 @@ class PrioSet(BaseModel):
 @app.api_route("/manifest.webmanifest", methods=["GET", "HEAD"])
 def pwa_manifest(request: Request):
     """Manifeste PWA dynamique : nom, nom court et icône suivent l'identité de la guilde."""
-    short, name = "LOTP", "Lords Of The Pit"
+    short, name = "Cohors", ""
     try:
         with _db_lock, _db() as conn:
             row = _brand_row(conn)
-        short = (row["guild_short"] or "LOTP").strip()[:24] or "LOTP"
-        name = (row["guild_name"] or "Lords Of The Pit").strip()[:60] or "Lords Of The Pit"
+        short = (row["guild_short"] or "Cohors").strip()[:24] or "Cohors"
+        name = (row["guild_name"] or "").strip()[:60]
     except sqlite3.Error:
         pass
     icons = []
@@ -2972,9 +2972,9 @@ def pwa_manifest(request: Request):
         {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
     ]
     man = {
-        "name": f"{short} — {name}",
+        "name": f"{short} — {name}" if name else "Cohors — Compagnon de guilde",
         "short_name": short,
-        "description": "Simulateur de guilde WoW — simulation, raids, classements et suivi.",
+        "description": "Compagnon de guilde World of Warcraft — simulations, roster, raids, artisanat et suivi.",
         "lang": "fr",
         "start_url": "/dashboard",
         "scope": "/",
@@ -3724,7 +3724,7 @@ def api_dashboard(request: Request):
         out["members"] = {"count": len(data.get("members") or []), "fetched": ts}
     except bnet.BnetError:
         pass
-    # prochain raid d'apres le calendrier in-game importe (addon LOTP)
+    # prochain raid d'apres le calendrier in-game importe (addon Cohors)
     try:
         if gcal is not None:
             evs = (json.loads(gcal["data"]) or {}).get("events") or []
@@ -3905,7 +3905,7 @@ def _char_alert(name: str, prev: dict, new: dict) -> None:
             or not (cfg["token"] or "").strip() or not (cfg["channel_id"] or "").strip()):
         return
     try:
-        discord_bot.send(cfg["token"], cfg["channel_id"], embeds=[discord_bot.char_embed(name, ch)])
+        discord_bot.send(cfg["token"], cfg["channel_id"], embeds=[discord_bot.char_embed(name, ch, _brand_identity()["guild_name"])])
     except Exception as exc:  # noqa: BLE001
         print(f"[snap] alerte {name}: {exc}")
 
@@ -4381,7 +4381,7 @@ def _int_any(v) -> int:
 
 
 def _gcal_parse(text: str) -> dict:
-    """Extrait les données d'un import : JSON brut (chaîne collée) ou fichier SavedVariables (LOTP.lua)."""
+    """Extrait les données d'un import : JSON brut (chaîne collée) ou fichier SavedVariables (Cohors.lua)."""
     t = (text or "").strip()
     if not t:
         raise HTTPException(400, "Contenu vide.")
@@ -4405,14 +4405,14 @@ def _gcal_parse(text: str) -> dict:
         snippet = " ".join(t[:90].split())
         raise HTTPException(400, "Format non reconnu (reçu : %d caractères — « %s… »). Copie la chaîne qui commence par "
                                  "{\"v\":1 avec le bouton « Exporter » de l'addon (Ctrl+A puis Ctrl+C), ou choisis le "
-                                 "fichier WTF/Account/<compte>/SavedVariables/LOTP.lua." % (len(t), snippet))
+                                 "fichier WTF/Account/<compte>/SavedVariables/Cohors.lua." % (len(t), snippet))
     # tolérance : le client WoW écrit certains ids 64 bits en hexadécimal (0x1F45…), invalide en JSON strict
     raw = re.sub(r"(\s*:\s*)0x([0-9A-Fa-f]+)", r'\1"0x\2"', raw)
     try:
         data = json.loads(raw)
     except ValueError:
         raise HTTPException(400, "Données illisibles (JSON invalide) — recopie la chaîne avec « Exporter » "
-                                 "(Ctrl+A puis Ctrl+C) ou importe le fichier LOTP.lua.")
+                                 "(Ctrl+A puis Ctrl+C) ou importe le fichier Cohors.lua.")
     if not isinstance(data, dict) or not isinstance(data.get("events"), list):
         raise HTTPException(400, "Données inattendues (aucun événement).")
     return data
@@ -4613,7 +4613,8 @@ def _weekly_recap_embed() -> dict | None:
         pass
     if not fields:
         return None
-    return discord_bot.weekly_embed(fields, f"{PUBLIC_BASE_URL}/rankings" if PUBLIC_BASE_URL else "")
+    return discord_bot.weekly_embed(fields, f"{PUBLIC_BASE_URL}/rankings" if PUBLIC_BASE_URL else "",
+                                   _brand_identity()["guild_name"])
 
 
 def _bot_tick() -> None:
@@ -4641,7 +4642,7 @@ def _bot_tick() -> None:
                     key=lambda r: float(r.get("startTime") or 0.0),
                 )
                 for r in fresh[:5]:
-                    discord_bot.send(token, channel, embeds=[discord_bot.report_embed(r)])
+                    discord_bot.send(token, channel, embeds=[discord_bot.report_embed(r, _brand_identity()["guild_name"])])
                 updates["last_report_t"] = newest
                 notes.append(f"{min(len(fresh), 5)} annonce(s) « rapport »")
         except Exception as exc:  # noqa: BLE001
@@ -4661,7 +4662,7 @@ def _bot_tick() -> None:
                     (now, now + 3600),
                 ).fetchall()
             for r in to_announce:
-                discord_bot.send(token, channel, embeds=[discord_bot.raid_embed(dict(r), link)])
+                discord_bot.send(token, channel, embeds=[discord_bot.raid_embed(dict(r), link, _brand_identity()["guild_name"])])
                 with _db_lock, _db() as conn:
                     if float(r["starts"]) <= now + 3600:
                         conn.execute("UPDATE raids SET announced=1, reminded=1 WHERE id=?", (r["id"],))
@@ -4675,7 +4676,7 @@ def _bot_tick() -> None:
                         (r["id"],),
                     ).fetchall()
                 counts = {x["status"]: x["c"] for x in su}
-                discord_bot.send(token, channel, embeds=[discord_bot.raid_reminder_embed(dict(r), counts, link)])
+                discord_bot.send(token, channel, embeds=[discord_bot.raid_reminder_embed(dict(r), counts, link, _brand_identity()["guild_name"])])
                 with _db_lock, _db() as conn:
                     conn.execute("UPDATE raids SET reminded=1 WHERE id=?", (r["id"],))
                 notes.append("rappel « raid »")
@@ -4707,9 +4708,9 @@ def _bot_tick() -> None:
                 notes.append(f"roster : +{len(added)} / -{len(gone)}")
                 if bot_on and cfg["notify_roster"]:
                     for n in added[:5]:
-                        discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("join", members[n])])
+                        discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("join", members[n], _brand_identity()["guild_name"])])
                     for n in gone[:5]:
-                        discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("leave", {"name": n})])
+                        discord_bot.send(token, channel, embeds=[discord_bot.roster_embed("leave", {"name": n}, _brand_identity()["guild_name"])])
     except Exception as exc:  # noqa: BLE001
         errs.append(f"roster — {exc}")
 
@@ -4752,21 +4753,21 @@ def _bot_loop() -> None:
 
 @app.get("/api/addon")
 def api_addon(request: Request):
-    """Addon WoW « LOTP » (zip) — collecte le calendrier de guilde en jeu."""
+    """Addon WoW « Cohors » (zip) — collecte le calendrier de guilde en jeu."""
     _require_user(request)
     import io as _io
     import zipfile as _zip
-    src = Path(__file__).resolve().parent.parent / "addon" / "LOTP"
+    src = Path(__file__).resolve().parent.parent / "addon" / "Cohors"
     if not src.is_dir():
         raise HTTPException(404, "Addon introuvable sur le serveur.")
     buf = _io.BytesIO()
     with _zip.ZipFile(buf, "w", _zip.ZIP_DEFLATED) as z:
         for fp in sorted(src.glob("*")):
             if fp.is_file():
-                z.write(fp, f"LOTP/{fp.name}")
+                z.write(fp, f"Cohors/{fp.name}")
     buf.seek(0)
     return Response(buf.read(), media_type="application/zip",
-                    headers={"Content-Disposition": 'attachment; filename="LOTP-addon.zip"'})
+                    headers={"Content-Disposition": 'attachment; filename="Cohors-addon.zip"'})
 
 
 def _gcal_key(e: dict) -> str:
@@ -5810,8 +5811,8 @@ def _prep_parse_recipes(text: str) -> dict:
             raw = t[j:k + 1]
     if raw is None:
         snippet = " ".join(t[:90].split())
-        raise HTTPException(400, "Format non reconnu (reçu : %d caractères — « %s… »). En jeu : /lotp recettes, "
-                                 "puis /reload, puis choisis le fichier WTF/Account/<compte>/SavedVariables/LOTP.lua."
+        raise HTTPException(400, "Format non reconnu (reçu : %d caractères — « %s… »). En jeu : /cohors recettes, "
+                                 "puis /reload, puis choisis le fichier WTF/Account/<compte>/SavedVariables/Cohors.lua."
                                  % (len(t), snippet))
     raw = re.sub(r"(\s*:\s*)0x([0-9A-Fa-f]+)", r'\1"0x\2"', raw)
     try:
@@ -5825,7 +5826,7 @@ def _prep_parse_recipes(text: str) -> dict:
 
 @app.post("/api/prep/import-recipes")
 def api_prep_import_recipes(body: PrepRecipesImportRequest, request: Request):
-    """Import d'un export d'addon (/lotp recettes) : officiers, ou chacun pour ses propres personnages."""
+    """Import d'un export d'addon (/cohors recettes) : officiers, ou chacun pour ses propres personnages."""
     user = _require_user(request)
     data = _prep_parse_recipes(body.payload)
     crafter = str(data.get("player") or "").strip()[:60] or "?"
@@ -5993,7 +5994,7 @@ def api_prep_sync_game(body: PrepSyncGameRequest, request: Request):
 
 @app.post("/api/gcal/import")
 def api_gcal_import(payload: GcalImportRequest, request: Request):
-    """Importe un export du calendrier in-game (JSON collé ou fichier SavedVariables LOTP.lua)."""
+    """Importe un export du calendrier in-game (JSON collé ou fichier SavedVariables Cohors.lua)."""
     _require_officer(request)
     data = _gcal_parse(payload.payload)
     events: list[dict] = []
@@ -6208,7 +6209,7 @@ def admin_mail_test(payload: MailTestRequest, request: Request):
     if "@" not in to or " " in to or len(to) < 6:
         raise HTTPException(400, "Adresse e-mail invalide.")
     ident = _brand_identity()
-    title = f"{ident['short_name'] or ident['guild_name']} Simulateur"
+    title = (ident["short_name"] or ident["guild_name"]).strip()
     try:
         mailer.send_mail(to, f"Test — {title}",
                          f"Ceci est un e-mail de test envoyé depuis {title} "
@@ -6587,7 +6588,7 @@ def admin_bot_test(request: Request):
         raise HTTPException(400, "Configure d'abord le token et le salon (Enregistrer).")
     try:
         discord_bot.send(token, channel, embeds=[{
-            "title": "✅ LOTP Simulateur — test",
+            "title": "✅ Cohors — test",
             "description": "Le bot est correctement configuré : les annonces de la guilde arriveront dans ce salon.",
             "color": 0xDFA55A,
         }])
@@ -6666,16 +6667,18 @@ def health():
 
 
 # ---------------------------------------------------------------------------
-# Portail vocal (ts.gensbien.fr) — réservé aux membres connectés
+# Portail vocal (sous-domaine dédié : VOICE_PUBLIC_HOST) — réservé aux membres
 # ---------------------------------------------------------------------------
-# Le vhost Apache de ts.gensbien.fr pose l'en-tête X-LOTP-Voice puis proxyfie
-# vers cette app : les requêtes marquées sont réécrites vers /__voice* où la
-# session est vérifiée avant tout relais vers le client web interne (WebSpeak).
+# Le vhost du sous-domaine vocal pose l'en-tête VOICE_HEADER (ex. X-Cohors-Voice)
+# puis proxyfie vers cette app : les requêtes marquées sont réécrites vers
+# /__voice* où la session est vérifiée avant tout relais vers le client web
+# interne (WebSpeak).
 VOICE_BACKEND = os.environ.get("VOICE_BACKEND", "http://127.0.0.1:3040").rstrip("/")
 VOICE_BACKEND_WS = VOICE_BACKEND.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
-VOICE_PUBLIC_HOST = os.environ.get("VOICE_PUBLIC_HOST", "ts.gensbien.fr")
-VOICE_CLIENT_ZIP = DATA_DIR / "voice" / "LOTP-TeamSpeak.zip"
-_VOICE_APP_BASE = PUBLIC_BASE_URL or "https://lotp.gensbien.fr"
+VOICE_PUBLIC_HOST = os.environ.get("VOICE_PUBLIC_HOST", "").strip()
+VOICE_HEADER = os.environ.get("VOICE_HEADER", "X-Cohors-Voice").strip()
+VOICE_CLIENT_ZIP = DATA_DIR / "voice" / "Cohors-TeamSpeak.zip"
+_VOICE_APP_BASE = PUBLIC_BASE_URL or ""
 
 # Script injecté dans le client web : pré-remplit le pseudo (fragment #nickname=...).
 _VOICE_EXTRAS_JS = """
@@ -6726,7 +6729,7 @@ _VOICE_EXTRAS_JS = """
 
 
 class VoiceGateMiddleware:
-    """Réécrit les requêtes du vhost vocal (en-tête X-LOTP-Voice) vers /__voice*."""
+    """Réécrit les requêtes du vhost vocal (en-tête VOICE_HEADER) vers /__voice*."""
 
     def __init__(self, app):
         self.app = app
@@ -6734,11 +6737,11 @@ class VoiceGateMiddleware:
     async def __call__(self, scope, receive, send):
         if scope.get("type") in ("http", "websocket"):
             headers = dict(scope.get("headers") or [])
-            if headers.get(b"x-lotp-voice"):
+            if headers.get(VOICE_HEADER.lower().encode()):
                 scope = dict(scope)
-                scope["lotp_voice"] = True
+                scope["voice_gate"] = True
                 path = scope.get("path") or "/"
-                scope["lotp_voice_orig_path"] = path
+                scope["voice_orig_path"] = path
                 scope["path"] = "/__voice" + path
                 scope["raw_path"] = scope["path"].encode()
         await self.app(scope, receive, send)
@@ -6757,7 +6760,7 @@ async def html_no_cache(request: Request, call_next):
     return response
 
 _VOICE_HOP_REQ = {"host", "cookie", "connection", "keep-alive", "transfer-encoding", "upgrade",
-                  "proxy-connection", "te", "trailer", "expect", "x-lotp-voice", "content-length"}
+                  "proxy-connection", "te", "trailer", "expect", VOICE_HEADER.lower(), "content-length"}
 _VOICE_HOP_RESP = {"connection", "keep-alive", "transfer-encoding", "upgrade",
                    "content-encoding", "content-length"}
 
@@ -6766,9 +6769,9 @@ _VOICE_HOP_RESP = {"connection", "keep-alive", "transfer-encoding", "upgrade",
 def voice_handoff(request: Request, next: str = ""):
     """Répare la session pour le sous-domaine vocal puis renvoie vers le client.
 
-    Les cookies créés avant la v031 sont host-only (lotp.gensbien.fr) : le portail
-    vocal ne les voit pas. Ici on réémet le cookie avec Domain=.gensbien.fr puis on
-    renvoie vers ts.gensbien.fr — sans passage par la page de connexion.
+    Le portail vocal vit sur un autre sous-domaine : les cookies host-only du site
+    ne l'atteignent pas. Ici on réémet le cookie avec le domaine parent
+    (COOKIE_DOMAIN) puis on renvoie vers le client — sans passage par la connexion.
     """
     user = _get_session_user(request)
     target = next if next.startswith("https://" + VOICE_PUBLIC_HOST + "/") or next == "https://" + VOICE_PUBLIC_HOST else "https://" + VOICE_PUBLIC_HOST + "/"
@@ -6785,17 +6788,23 @@ def voice_handoff(request: Request, next: str = ""):
     return response
 
 
+@app.get("/api/voice/config")
+def voice_config():
+    """Configuration publique du portail vocal (hôte web) pour la page 🎧 Vocal."""
+    return {"host": ("https://" + VOICE_PUBLIC_HOST) if VOICE_PUBLIC_HOST else ""}
+
+
 @app.api_route("/__voice{rest:path}",
                methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
 async def voice_portal(request: Request, rest: str):
-    if not request.scope.get("lotp_voice"):
+    if not request.scope.get("voice_gate"):
         raise HTTPException(404)
     if _get_session_user(request) is None:
-        nxt = "https://" + VOICE_PUBLIC_HOST + request.scope.get("lotp_voice_orig_path", request.url.path)
+        nxt = "https://" + VOICE_PUBLIC_HOST + request.scope.get("voice_orig_path", request.url.path)
         if request.url.query:
             nxt += "?" + request.url.query
         return RedirectResponse(f"{_VOICE_APP_BASE}/api/voice/handoff?next={quote(nxt, safe='')}", status_code=302)
-    if rest == "/__lotp_extras.js":
+    if rest == "/__cohors_extras.js":
         return Response(content=_VOICE_EXTRAS_JS, media_type="application/javascript; charset=utf-8",
                         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
     url = VOICE_BACKEND + rest
@@ -6813,8 +6822,8 @@ async def voice_portal(request: Request, rest: str):
     content = upstream.content
     if "text/html" in (upstream.headers.get("content-type") or ""):
         html = content.decode("utf-8", "replace")
-        if "__lotp_extras.js" not in html:
-            tag = '<script src="/__lotp_extras.js"></script>'
+        if "__cohors_extras.js" not in html:
+            tag = '<script src="/__cohors_extras.js"></script>'
             if "</head>" in html:
                 html = html.replace("</head>", tag + "</head>", 1)
             elif "</body>" in html:
@@ -6836,7 +6845,7 @@ async def voice_portal(request: Request, rest: str):
 
 @app.websocket("/__voice{rest:path}")
 async def voice_portal_ws(websocket: WebSocket, rest: str):
-    if not websocket.scope.get("lotp_voice"):
+    if not websocket.scope.get("voice_gate"):
         await websocket.close(code=4404)
         return
     if _get_session_user(websocket) is None:
@@ -6910,7 +6919,7 @@ def voice_client_download(request: Request):
     _require_user(request)
     if not VOICE_CLIENT_ZIP.exists():
         raise HTTPException(404, "Client portable pas encore disponible.")
-    return FileResponse(VOICE_CLIENT_ZIP, filename="LOTP-TeamSpeak.zip",
+    return FileResponse(VOICE_CLIENT_ZIP, filename="Cohors-TeamSpeak.zip",
                         media_type="application/zip")
 
 

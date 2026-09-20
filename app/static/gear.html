@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LOTP — Top Stuff</title>
+<title>Cohors — Top Stuff</title>
 <link rel="icon" href="/branding/logo">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#b1002e">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="LOTP">
+<meta name="apple-mobile-web-app-title" content="Cohors">
 <style>
   :root {
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
@@ -99,7 +99,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.136">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.137">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -107,7 +107,7 @@
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
       <img src="/branding/logo" alt="Lords of the Pit" class="crest">
       <div>
-        <div class="brandname">LOTP <span>Top Stuff</span></div>
+        <div class="brandname">Cohors <span>Top Stuff</span></div>
         <div class="tagline">Quelle pièce te fait gagner le plus de DPS ?</div>
       </div>
     </a>
@@ -166,9 +166,9 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.136"></script>
-<script src="/static/branding.js?v=2026.09.136"></script>
-<script src="/static/i18n.js?v=2026.09.136"></script>
+<script src="/static/nav.js?v=2026.09.137"></script>
+<script src="/static/branding.js?v=2026.09.137"></script>
+<script src="/static/i18n.js?v=2026.09.137"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? "" : t).replace(/[<>&"]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
@@ -212,7 +212,7 @@ $("#profs").addEventListener("change", async () => {
   try {
     const p = await jfetch("GET", `/api/profiles/${id}`);
     $("#inp").value = p.input;
-    localStorage.setItem("lotp_gear_input", p.input);
+    localStorage.setItem("cohors_gear_input", p.input);
     currentProfile = { id: p.id, mine: p.mine, name: p.name };
     $("#pdel").disabled = !p.mine;
     if (p.mine) $("#pshared").checked = !!p.shared;
@@ -251,15 +251,15 @@ $("#pdel").addEventListener("click", async () => {
 loadProfiles();
 
 // ---- Saisie ----
-$("#inp").value = localStorage.getItem("lotp_gear_input") || "";
-$("#inp").addEventListener("input", () => localStorage.setItem("lotp_gear_input", $("#inp").value));
-$("#items").value = localStorage.getItem("lotp_gear_items") || "";
+$("#inp").value = localStorage.getItem("cohors_gear_input") || "";
+$("#inp").addEventListener("input", () => localStorage.setItem("cohors_gear_input", $("#inp").value));
+$("#items").value = localStorage.getItem("cohors_gear_items") || "";
 function updateCount() {
   const ids = ($("#items").value.match(/(?<!\d)\d{4,7}(?!\d)/g) || []);
   const uniq = [...new Set(ids)];
   $("#items-count").textContent = `${uniq.length} pièce${uniq.length > 1 ? "s" : ""} (max 15)`;
 }
-$("#items").addEventListener("input", () => { localStorage.setItem("lotp_gear_items", $("#items").value); updateCount(); });
+$("#items").addEventListener("input", () => { localStorage.setItem("cohors_gear_items", $("#items").value); updateCount(); });
 updateCount();
 
 // ---- Résultats ----

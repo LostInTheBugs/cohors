@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.137 - 2026-09-20
+
+### Added
+- The app has a name: **Cohors** — guild companion for World of Warcraft. Branding is now
+  generic (page titles, PWA manifest, e-mails, Discord embeds, User-Agents); the guild
+  identity (name, short name, logo, background) stays configurable in Settings -> Identity.
+- Public demo instance at https://cohors.cloudfr.net.
+- `GET /api/voice/config` (public): the voice portal host for the Voice page — no longer
+  hardcoded in the browser.
+
+### Changed
+- WoW add-on renamed to **Cohors**: folder `addon/Cohors`, title "Cohors - Guild calendar",
+  SavedVariables `Cohors_DB`, slash command `/cohors` (professions export: `/cohors recettes`),
+  download `Cohors-addon.zip`. Reinstall the add-on — the old folder and its saved variables
+  are ignored.
+- The guild identity (realm, guild slug, Warcraft Logs guild name) has no hardcoded default
+  anymore: values come from Settings -> Administration -> Guild (or the server file), and the
+  roster/reports pages show a clear message until the guild is configured.
+- Discord announcements and invitation e-mails display the guild's configured name instead of
+  fixed text.
+- Voice portal: gate header configurable via `VOICE_HEADER` (default `X-Cohors-Voice`), voice
+  host via `VOICE_PUBLIC_HOST` (served to the UI by the API), portable client zip renamed.
+- Session cookie renamed to `cohors_session` and browser storage keys to `cohors_*` — existing
+  sessions sign in once again; local UI drafts (simulator input, comparison selection) reset.
+
 ## 2026.09.136 - 2026-09-20
 
 ### Added
@@ -565,7 +590,7 @@ All notable changes to this project are documented in this file.
 
 - Voice access now self-repairs old/host-only session cookies: the gate sends
   visitors to `GET /api/voice/handoff`, which re-issues the session cookie with
-  `Domain=.gensbien.fr` and forwards straight to the client — no login detour
+  the site's parent cookie domain, and forwards straight to the client — no login detour
   (and no stray landing on the simulator page).
 - Service worker: static assets are now network-first (cache only as offline
   fallback) and the cache name is versioned, so updated JS/CSS can no longer be
@@ -598,11 +623,11 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
-- Voice access is now **members-only**: ts.gensbien.fr sits behind the app
+- Voice access is now **members-only**: the voice subdomain sits behind the app
   login (anonymous visitors are redirected to the sign-in page). The web
   client is proxied by the app itself (HTTP + WebSocket) after session
   validation — no more open access.
-- Session cookie is shared on `.gensbien.fr` (production) so the voice
+- Session cookie is shared on the site's parent domain (production) so the voice
   subdomain is covered by the same login.
 
 ### Added
@@ -673,14 +698,14 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Guild page: new « Web client » card (editable link + note) pointing to the
-  self-hosted WebSpeak instance (ts.gensbien.fr) that runs TeamSpeak voice
+  self-hosted WebSpeak instance that runs TeamSpeak voice
   directly in the browser.
 
 ### Added (infrastructure)
 
-- WebSpeak (browser TeamSpeak client + gateway) deployed on papouille5
-  (Docker, host network, ufw-restricted; Apache reverse proxy + Let's Encrypt
-  on ts.gensbien.fr, WebSocket upgrade enabled). Target locked to the guild
+- WebSpeak (browser TeamSpeak client + gateway) deployed as a self-hosted
+  Docker service (host network, firewall-restricted; Apache reverse proxy +
+  Let's Encrypt, WebSocket upgrade enabled). Target locked to the guild
   TeamSpeak server (127.0.0.1:9987).
 
 ## [2026.09.025] — 2026-09-17
@@ -859,7 +884,7 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Invitation e-mails: when creating an invitation with an address, the link can
-  be sent automatically by e-mail (from `noreply@ruban-adhesif.com`, styled
+  be sent automatically by e-mail (from a no-reply address, styled
   French template). Pending invitations with an address get a « ✉️ Renvoyer »
   action, and the admin panel shows the SMTP status.
 - `POST /api/admin/invites` accepts `send_email`; new

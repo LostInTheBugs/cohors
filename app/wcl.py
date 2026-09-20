@@ -20,8 +20,8 @@ API_URL = "https://www.warcraftlogs.com/api/v2/client"
 # Défauts du fichier serveur — surchargés depuis l'administration (set_guild_info).
 _ENV = {
     "region": os.environ.get("WCL_GUILD_REGION", "EU"),
-    "name": os.environ.get("WCL_GUILD_NAME", "Lords Of The Pit"),
-    "realm": os.environ.get("WCL_GUILD_REALM", "hyjal"),
+    "name": os.environ.get("WCL_GUILD_NAME", ""),
+    "realm": os.environ.get("WCL_GUILD_REALM", ""),
 }
 REGION = _ENV["region"]
 GUILD_NAME = _ENV["name"]
@@ -193,6 +193,8 @@ def _store(key: str, data: dict) -> float:
 
 def reports(limit: int = 30, force: bool = False) -> tuple[dict, float]:
     """Derniers rapports de la guilde (toutes zones)."""
+    if not GUILD_NAME or not GUILD_REALM:
+        raise WclError(500, "Guilde non configurée — renseigne-la dans Paramètres → Administration → 🏰 Guilde.")
     key = f"list/{limit}"
     hit = _cached(key, TTL_LIST, force)
     if hit:

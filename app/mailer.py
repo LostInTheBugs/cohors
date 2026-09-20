@@ -128,13 +128,14 @@ def invite_mail(link: str, expires_days: int, guild_name: str = "", short_name: 
                 base_url: str = "") -> tuple[str, str]:
     """Construit (texte brut, html) de l'e-mail d'invitation, aux couleurs de la guilde."""
     guild = (guild_name or "la guilde").strip()
-    title = f"{(short_name or guild).strip()} Simulateur"
+    title = (short_name or guild).strip()
+    sub = "Cohors — compagnon de guilde"
     footer = ("À bientôt" + (f" sur {base_url} !" if base_url else " !") + "\n")
     text = (
         "Bonjour,\n\n"
-        f"Tu es invité(e) à rejoindre « {guild} » sur {title} :\n"
-        "simulateur SimulationCraft, roster de la guilde, rapports de raid et\n"
-        "comparateur de personnages.\n\n"
+        f"Tu es invité(e) à rejoindre « {guild} » sur Cohors, le compagnon de guilde :\n"
+        "simulateur SimulationCraft, roster, rapports de raid et comparateur\n"
+        "de personnages.\n\n"
         f"Crée ton compte ici : {link}\n\n"
         f"Ce lien est valable {expires_days} jours et utilisable une seule fois.\n\n"
         + footer
@@ -147,7 +148,7 @@ def invite_mail(link: str, expires_days: int, guild_name: str = "", short_name: 
 <div style="max-width:520px;margin:24px auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4ea;">
   <div style="background:#0b0e14;padding:18px 24px;">
     <span style="color:#dfa55a;font-size:20px;font-weight:700;">{title}</span><br>
-    <span style="color:#8c96ad;font-size:13px;">{guild} — outil de guilde</span>
+    <span style="color:#8c96ad;font-size:13px;">{sub}</span>
   </div>
   <div style="padding:24px;color:#232323;font-size:15px;line-height:1.6;">
     <p style="margin:0 0 12px;">Bonjour,</p>
