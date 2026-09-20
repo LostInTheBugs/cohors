@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.136 - 2026-09-20
+
+### Added
+- Administration: guild identity is now configurable (Settings -> Administration -> Guild (realm & WCL)), covering both service sides: Battle.net region, realm (slug), guild slug and default data language, plus Warcraft Logs region and guild name. A "Check" button verifies the guild is found on Battle.net and on Warcraft Logs before/after saving. Values saved here override the server file (.env), so the site can be pointed at another guild without editing files.
+
+### Changed
+- Guild identity (realm, region, Warcraft Logs guild name) is now read from the administration when set, falling back to the server file otherwise; changing it immediately refreshes the cached data.
+
+### Fixed
+- English mode: help-page list items declared as HTML blocks in the i18n dictionary (API keys, sync jobs, e-mail/SMTP bullets) are now actually translated — whole-item blocks are compared against the rendered HTML instead of single text nodes.
+
 ## 2026.09.135 - 2026-09-19
 
 ### Added

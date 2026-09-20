@@ -17,9 +17,15 @@ import urllib.request
 TOKEN_URL = "https://www.warcraftlogs.com/oauth/token"
 API_URL = "https://www.warcraftlogs.com/api/v2/client"
 
-REGION = os.environ.get("WCL_GUILD_REGION", "EU")
-GUILD_NAME = os.environ.get("WCL_GUILD_NAME", "Lords Of The Pit")
-GUILD_REALM = os.environ.get("WCL_GUILD_REALM", "hyjal")
+# Défauts du fichier serveur — surchargés depuis l'administration (set_guild_info).
+_ENV = {
+    "region": os.environ.get("WCL_GUILD_REGION", "EU"),
+    "name": os.environ.get("WCL_GUILD_NAME", "Lords Of The Pit"),
+    "realm": os.environ.get("WCL_GUILD_REALM", "hyjal"),
+}
+REGION = _ENV["region"]
+GUILD_NAME = _ENV["name"]
+GUILD_REALM = _ENV["realm"]
 
 TTL_LIST = 900.0     # liste des rapports : 15 min
 TTL_REPORT = 1800.0  # rapport + parses : 30 min
@@ -43,6 +49,36 @@ def credentials() -> tuple[str, str]:
     """Clés effectives : administration d'abord, sinon environnement."""
     return (_cfg["client_id"] or os.environ.get("WCL_CLIENT_ID", "").strip(),
             _cfg["client_secret"] or os.environ.get("WCL_CLIENT_SECRET", "").strip())
+
+
+def set_guild_info(region: str | None = None, name: str | None = None, realm: str | None = None) -> None:
+    """Identité de guilde posée depuis l'administration — prioritaire sur l'environnement.
+
+    Champ vide = retour à la valeur du fichier serveur ; tout changement invalide le cache.
+    """
+    global REGION, GUILD_NAME, GUILD_REALM
+    REGION = (region or "").strip().upper() or _ENV["region"]
+    GUILD_NAME = (name or "").strip() or _ENV["name"]
+    GUILD_REALM = (realm or "").strip().lower() or _ENV["realm"]
+    with _lock:
+        _cache.clear()
+
+
+def guild_lookup(name: str, realm: str, region: str) -> dict:
+    """Vérifie qu'une guilde existe sur Warcraft Logs (« 🔎 Vérifier » de l'administration)."""
+    query = ("query($n: String!, $s: String!, $r: String!) { guildData { "
+             "guild(name: $n, serverSlug: $s, serverRegion: $r) { id name } } }")
+    try:
+        data = _gql(query, {"n": name.strip(), "s": realm.strip().lower(),
+                            "r": region.strip().upper()})
+    except WclError as exc:
+        return {"ok": False, "detail": str(exc)}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "detail": f"Connexion impossible ({type(exc).__name__})."}
+    guild = ((data.get("guildData") or {}).get("guild"))
+    if not guild:
+        return {"ok": False, "detail": "Guilde introuvable — vérifie le nom exact et la région."}
+    return {"ok": True, "name": guild.get("name") or name}
 
 
 def check(client_id: str, client_secret: str) -> dict:

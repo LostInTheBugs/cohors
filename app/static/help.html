@@ -44,7 +44,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.135">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.136">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -216,6 +216,7 @@
       <li><b>E-mail / SMTP (administration)</b> : l'envoi des e-mails du site (invitations) se règle dans <i>Paramètres → Administration → ✉️ E-mail (SMTP)</i> — serveur, port, sécurité (STARTTLS / SSL / aucune), identifiant, mot de passe, expéditeur. La connexion est vérifiée à l'enregistrement et un <b>e-mail de test</b> peut être envoyé. Sans configuration SMTP, les invitations restent utilisables via le lien à copier.</li>
       <li><b>Synchronisations (administration)</b> : la cadence des tâches automatiques — relevés des personnages (niveau, équipement, métiers) et passages du bot Discord — se règle dans <i>Paramètres → Administration → 🔄 Synchronisations</i> : intervalle, fréquence de re-relevé (personnages liés / roster), nombre de personnages par passage, durée de conservation de l'historique. La page affiche l'heure du dernier passage et un bouton <b>▶ Lancer maintenant</b>. Un intervalle plus court = davantage d'appels API ; la conservation reste limitée à 30 jours (conditions Blizzard).</li>
       <li><b>Clés API (administration)</b> : les clés des services externes — <b>Battle.net</b> (roster, objets) et <b>Warcraft Logs</b> (rapports de raid, parses) — se renseignent dans <i>Paramètres → Administration → 🔑 Clés API</i>. Elles sont testées à l'enregistrement et remplacent celles du serveur.</li>
+      <li><b>Guilde (administration)</b> : le <b>royaume</b> (slug), la <b>région</b> Battle.net, le <b>slug de guilde</b>, la langue des données et le <b>nom Warcraft Logs</b> se règlent dans <i>Paramètres → Administration → 🏰 Guilde (royaume & WCL)</i> — c'est ce que le site interroge pour le roster, les fiches de personnages et les rapports de raid. Le bouton <b>🔎 Vérifier</b> contrôle que la guilde est trouvée sur les deux services ; indispensable pour réutiliser le site avec une autre guilde.</li>
       <li><b>BIS</b> : la liste des meilleures pièces de la saison, reprise du guide Wowhead de ta spécialisation (instantané daté, affiché dans le résultat) — emplacement par emplacement, avec la provenance (raid, donjon, catalyseur) et ce que tu possèdes déjà (✅ portée, 🎒 dans tes sacs, — manquante). Le build et le contenu ne changent pas cette liste.</li>
       <li>Pense à réexporter ton personnage quand tu changes de stuff : la page travaille toujours sur le dernier export enregistré.</li>
     </ul>
@@ -329,9 +330,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.135"></script>
-<script src="/static/branding.js?v=2026.09.135"></script>
-<script src="/static/i18n.js?v=2026.09.135"></script>
+<script src="/static/nav.js?v=2026.09.136"></script>
+<script src="/static/branding.js?v=2026.09.136"></script>
+<script src="/static/i18n.js?v=2026.09.136"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 (async () => {

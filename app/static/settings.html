@@ -98,7 +98,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.135">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.136">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -128,6 +128,7 @@
       <button class="sbtn hidden" type="button" data-sec="sec-comptes" id="sbtn-comptes">👤 Comptes</button>
       <button class="sbtn hidden" type="button" data-sec="sec-bot" id="sbtn-bot">🤖 Bot Discord</button>
       <button class="sbtn hidden" type="button" data-sec="sec-api" id="sbtn-api">🔑 Clés API</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-guilde" id="sbtn-guilde">🏰 Guilde (royaume & WCL)</button>
       <button class="sbtn hidden" type="button" data-sec="sec-jobs" id="sbtn-jobs">🔄 Synchronisations</button>
       <button class="sbtn hidden" type="button" data-sec="sec-mail" id="sbtn-mail">✉️ E-mail (SMTP)</button>
       <button class="sbtn hidden" type="button" data-sec="sec-identite" id="sbtn-identite">🎨 Identité</button>
@@ -258,6 +259,54 @@
       </div>
     </div>
 
+    <div id="sec-guilde" class="hidden">
+      <div class="card">
+        <h2>🏰 Guilde (royaume & WCL)</h2>
+        <p class="sub" style="margin:4px 0 14px">Où le site trouve ta guilde : roster et fiches de personnages (Battle.net), rapports de raid (Warcraft Logs). Les valeurs enregistrées ici remplacent celles du fichier serveur — indispensable pour installer le site sur une autre guilde.</p>
+        <div class="row" style="justify-content:space-between; margin-bottom:8px"><b>Royaume & guilde</b><span class="badge" id="guild-badge">…</span></div>
+        <div class="row" style="flex-wrap:wrap">
+          <label class="fld">Région Battle.net
+            <select id="g-region" style="min-width:120px">
+              <option value="eu">Europe (eu)</option>
+              <option value="us">Amériques (us)</option>
+              <option value="kr">Corée (kr)</option>
+              <option value="tw">Taïwan (tw)</option>
+            </select>
+          </label>
+          <label class="fld">Royaume (slug) <input type="text" id="g-realm" placeholder="hyjal" style="min-width:140px" autocomplete="off"></label>
+          <label class="fld">Langue des données <input type="text" id="g-locale" placeholder="fr_FR" list="g-locales" style="min-width:110px" autocomplete="off"></label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="fld">Slug de la guilde (Battle.net) <input type="text" id="g-slug" placeholder="lords-of-the-pit" style="min-width:230px" autocomplete="off"></label>
+        </div>
+        <div class="row" style="flex-wrap:wrap; margin-top:8px">
+          <label class="fld">Région Warcraft Logs
+            <select id="g-wcl_region" style="min-width:120px">
+              <option value="EU">Europe (EU)</option>
+              <option value="US">Amériques (US)</option>
+              <option value="KR">Corée (KR)</option>
+              <option value="TW">Taïwan (TW)</option>
+              <option value="CN">Chine (CN)</option>
+            </select>
+          </label>
+          <label class="fld">Nom de la guilde (Warcraft Logs) <input type="text" id="g-wcl_name" placeholder="Lords Of The Pit" style="min-width:230px" autocomplete="off"></label>
+        </div>
+        <datalist id="g-locales">
+          <option>fr_FR</option><option>en_US</option><option>en_GB</option><option>de_DE</option><option>es_ES</option>
+          <option>es_MX</option><option>it_IT</option><option>pt_BR</option><option>ru_RU</option><option>ko_KR</option>
+          <option>zh_TW</option><option>zh_CN</option>
+        </datalist>
+        <div class="row" style="margin-top:10px">
+          <button class="small" id="guild-save">💾 Enregistrer</button>
+          <button class="small ghost" id="guild-test">🔎 Vérifier</button>
+          <button class="small ghost" id="guild-clear">🗑 Retirer (revenir au serveur)</button>
+          <span class="note" id="guild-msg"></span>
+        </div>
+        <p class="note" style="margin:8px 0 0" id="guild-effective">…</p>
+        <p class="note" style="margin:8px 0 0">Le slug du royaume se lit dans l'adresse de la page de guilde sur worldofwarcraft.blizzard.com ; la vérification contrôle que la guilde est trouvée sur Battle.net et sur Warcraft Logs. Un champ vidé revient à la valeur du fichier serveur.</p>
+      </div>
+    </div>
+
     <div id="sec-jobs" class="hidden">
       <div class="card">
         <h2>🔄 Synchronisations</h2>
@@ -371,9 +420,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.135"></script>
-<script src="/static/branding.js?v=2026.09.135"></script>
-<script src="/static/i18n.js?v=2026.09.135"></script>
+<script src="/static/nav.js?v=2026.09.136"></script>
+<script src="/static/branding.js?v=2026.09.136"></script>
+<script src="/static/i18n.js?v=2026.09.136"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -560,6 +609,7 @@ document.querySelectorAll(".smenu .sbtn").forEach((b) => b.addEventListener("cli
   if (b.dataset.sec === "sec-comptes" && IM_ADMIN) loadUsers();
   if (b.dataset.sec === "sec-bot") loadBot();
   if (b.dataset.sec === "sec-identite") loadBrand();
+  if (b.dataset.sec === "sec-guilde") loadGuild();
   try { history.replaceState(null, "", "#" + b.dataset.sec.replace(/^sec-/, "")); } catch (e) {}
 }));
 function openFromHash() {
@@ -815,6 +865,51 @@ async function testApiKey(prov) {
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
 }
 
+// ---- 🏰 Guilde (royaume & WCL) ----
+const GUILD_FIELDS = ["region", "realm", "slug", "locale", "wcl_region", "wcl_name"];
+
+async function loadGuild() {
+  const d = await api("GET", "/api/admin/guild");
+  const c = d.config || {};
+  for (const k of GUILD_FIELDS) { const el = $("#g-" + k); if (el) el.value = c[k] || ""; }
+  const badge = $("#guild-badge");
+  const fromAdmin = Object.values(d.source || {}).some((s) => s === "admin");
+  badge.textContent = fromAdmin ? "🟢 Configurée (ici)" : "🟢 Configurée (serveur)";
+  badge.className = "badge b-used";
+  $("#guild-effective").textContent = "Battle.net : " + (c.region || "") + " · " + (c.realm || "") + " · "
+    + (c.slug || "") + " — Warcraft Logs : " + (c.wcl_region || "") + " · " + (c.wcl_name || "");
+}
+
+async function saveGuild(clear) {
+  const msg = $("#guild-msg");
+  const values = {};
+  for (const k of GUILD_FIELDS) values[k] = clear ? "" : $("#g-" + k).value.trim();
+  try {
+    await api("POST", "/api/admin/guild", { values, clear: !!clear });
+    toast(clear ? "Réglages de guilde retirés" : "Réglages de guilde enregistrés ✓");
+    msg.textContent = "";
+    await loadGuild();
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec.")}</span>`; }
+}
+
+$("#guild-save").addEventListener("click", () => saveGuild(false));
+$("#guild-clear").addEventListener("click", () => {
+  if (confirm("Retirer ces réglages ? Le site utilisera les valeurs du fichier serveur.")) saveGuild(true);
+});
+$("#guild-test").addEventListener("click", async () => {
+  const msg = $("#guild-msg");
+  msg.textContent = "Vérification…";
+  const values = {};
+  for (const k of GUILD_FIELDS) values[k] = $("#g-" + k).value.trim();
+  try {
+    const r = await api("POST", "/api/admin/guild/test", { values });
+    const line = (lab, x) => (x && x.ok)
+      ? `<span style="color:var(--ok)">✓ ${lab} — ${esc(x.name || "OK")}${x.members != null ? " (" + x.members + " membres)" : ""}</span>`
+      : `<span style="color:var(--err)">⚠ ${lab} — ${esc((x && x.detail) || "Échec.")}</span>`;
+    msg.innerHTML = line("Battle.net", r.bnet) + "<br>" + line("Warcraft Logs", r.wcl);
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec.")}</span>`; }
+});
+
 $("#bot-save").addEventListener("click", async () => {
   const body = {
     enabled: $("#bot-enabled").checked,
@@ -933,12 +1028,13 @@ $("#bi-reset").addEventListener("click", async () => {
       $("#sbtn-comptes").classList.remove("hidden");
       $("#sbtn-bot").classList.remove("hidden");
       $("#sbtn-api").classList.remove("hidden");
+      $("#sbtn-guilde").classList.remove("hidden");
       $("#sbtn-jobs").classList.remove("hidden");
       $("#sbtn-mail").classList.remove("hidden");
       $("#sbtn-identite").classList.remove("hidden");
     }
     loadInvites();
-    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); loadJobs(); loadMail(); }
+    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); loadGuild(); loadJobs(); loadMail(); }
     openFromHash();
   }
 })();

@@ -1004,7 +1004,30 @@
  "Envoi…": "Sending…",
  "Le mot de passe n'est jamais réaffiché (seuls les 4 derniers caractères). Le message de test part avec le nom de la guilde défini dans": "The password is never displayed again (only the last 4 characters). The test message is sent with the guild name set in",
  "Aucun serveur configuré : les invitations utilisent le lien à copier.": "No server configured: invitations use the copy-link fallback.",
- "<li><b>E-mail / SMTP (administration)</b> : l'envoi des e-mails du site (invitations) se règle dans <i>Paramètres → Administration → ✉️ E-mail (SMTP)</i> — serveur, port, sécurité (STARTTLS / SSL / aucune), identifiant, mot de passe, expéditeur. La connexion est vérifiée à l'enregistrement et un <b>e-mail de test</b> peut être envoyé. Sans configuration SMTP, les invitations restent utilisables via le lien à copier.</li>": "<li><b>E-mail / SMTP (administration)</b>: outgoing site e-mails (invitations) are configured in <i>Settings → Administration → ✉️ E-mail (SMTP)</i> — server, port, security (STARTTLS / SSL / none), username, password, sender. The connection is verified on save and a <b>test e-mail</b> can be sent. Without SMTP configuration, invitations still work through the copy-link fallback.</li>"
+ "<li><b>E-mail / SMTP (administration)</b> : l'envoi des e-mails du site (invitations) se règle dans <i>Paramètres → Administration → ✉️ E-mail (SMTP)</i> — serveur, port, sécurité (STARTTLS / SSL / aucune), identifiant, mot de passe, expéditeur. La connexion est vérifiée à l'enregistrement et un <b>e-mail de test</b> peut être envoyé. Sans configuration SMTP, les invitations restent utilisables via le lien à copier.</li>": "<li><b>E-mail / SMTP (administration)</b>: outgoing site e-mails (invitations) are configured in <i>Settings → Administration → ✉️ E-mail (SMTP)</i> — server, port, security (STARTTLS / SSL / none), username, password, sender. The connection is verified on save and a <b>test e-mail</b> can be sent. Without SMTP configuration, invitations still work through the copy-link fallback.</li>",
+ "🏰 Guilde (royaume & WCL)": "🏰 Guild (realm & WCL)",
+ "Où le site trouve ta guilde : roster et fiches de personnages (Battle.net), rapports de raid (Warcraft Logs). Les valeurs enregistrées ici remplacent celles du fichier serveur — indispensable pour installer le site sur une autre guilde.": "Where the site finds your guild: roster and character sheets (Battle.net), raid reports (Warcraft Logs). Values saved here override the server file — required to install the site for another guild.",
+ "Royaume & guilde": "Realm & guild",
+ "Région Battle.net": "Battle.net region",
+ "Royaume (slug)": "Realm (slug)",
+ "Langue des données": "Data language",
+ "Slug de la guilde (Battle.net)": "Guild slug (Battle.net)",
+ "Région Warcraft Logs": "Warcraft Logs region",
+ "Nom de la guilde (Warcraft Logs)": "Guild name (Warcraft Logs)",
+ "Amériques (us)": "Americas (us)",
+ "Corée (kr)": "Korea (kr)",
+ "Taïwan (tw)": "Taiwan (tw)",
+ "Amériques (US)": "Americas (US)",
+ "Corée (KR)": "Korea (KR)",
+ "Taïwan (TW)": "Taiwan (TW)",
+ "Chine (CN)": "China (CN)",
+ "🔎 Vérifier": "🔎 Check",
+ "Vérification…": "Checking…",
+ "Réglages de guilde enregistrés ✓": "Guild settings saved ✓",
+ "Réglages de guilde retirés": "Guild settings removed",
+ "Retirer ces réglages ? Le site utilisera les valeurs du fichier serveur.": "Remove these settings? The site will use the server file values.",
+ "Le slug du royaume se lit dans l'adresse de la page de guilde sur worldofwarcraft.blizzard.com ; la vérification contrôle que la guilde est trouvée sur Battle.net et sur Warcraft Logs. Un champ vidé revient à la valeur du fichier serveur.": "The realm slug can be read from the guild page address on worldofwarcraft.blizzard.com; the check verifies the guild is found on Battle.net and Warcraft Logs. A cleared field falls back to the server file value.",
+ "<li><b>Guilde (administration)</b> : le <b>royaume</b> (slug), la <b>région</b> Battle.net, le <b>slug de guilde</b>, la langue des données et le <b>nom Warcraft Logs</b> se règlent dans <i>Paramètres → Administration → 🏰 Guilde (royaume & WCL)</i> — c'est ce que le site interroge pour le roster, les fiches de personnages et les rapports de raid. Le bouton <b>🔎 Vérifier</b> contrôle que la guilde est trouvée sur les deux services ; indispensable pour réutiliser le site avec une autre guilde.</li>": "<li><b>Guild (administration)</b>: the <b>realm</b> (slug), the Battle.net <b>region</b>, the <b>guild slug</b>, the data language and the <b>Warcraft Logs name</b> are set in <i>Settings → Administration → 🏰 Guild (realm & WCL)</i> — this is what the site queries for the roster, character sheets and raid reports. The <b>🔎 Check</b> button verifies the guild is found on both services; required to reuse the site for another guild.</li>"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1198,9 +1221,31 @@
     [/(\d+) relevé\(s\), (\d+) métier\(s\)/g, "$1 snapshot(s), $2 profession(s)"],
     [/en pause \(administration\)/g, "paused (administration)"],
     [/passage OK/g, "run OK"],
+    [/Guilde introuvable — vérifie la région, le royaume et le slug\./g, "Guild not found — check the region, realm and slug."],
+    [/Guilde introuvable — vérifie le nom exact et la région\./g, "Guild not found — check the exact name and region."],
+    [/Clés API Battle\.net non configurées sur le serveur\./g, "Battle.net API keys are not configured on the server."],
+    [/Clés API Warcraft Logs non configurées sur le serveur\./g, "Warcraft Logs API keys are not configured on the server."],
+    [/Région Battle\.net inconnue \(au choix : eu, us, kr, tw\)\./g, "Unknown Battle.net region (choose: eu, us, kr, tw)."],
+    [/Région Warcraft Logs inconnue \(au choix : EU, US, KR, TW, CN\)\./g, "Unknown Warcraft Logs region (choose: EU, US, KR, TW, CN)."],
+    [/Langue de données inconnue \(ex\. fr_FR, en_US, de_DE\)\./g, "Unknown data language (e.g. fr_FR, en_US, de_DE)."],
+    [/Le royaume doit être un slug en minuscules \(ex\. hyjal, lords-of-the-pit\)\./g, "The realm must be a lowercase slug (e.g. hyjal, lords-of-the-pit)."],
+    [/Le slug de guilde doit être un slug en minuscules \(ex\. hyjal, lords-of-the-pit\)\./g, "The guild slug must be a lowercase slug (e.g. hyjal, lords-of-the-pit)."],
+    [/Nom Warcraft Logs trop long \(60 caractères maximum\)\./g, "Warcraft Logs name too long (60 characters maximum)."],
+    [/— Échec\./g, "— Failed."],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+
+  // Puces d'aide (blocs HTML complets) : clés DICT commençant par « <li » — comparées
+  // à l'innerHTML normalisé d'un <li> (un texte découpé par <b>/<i> ne peut pas matcher).
+  const normHTML = (s) => norm(String(s).replace(/&amp;/g, "&").replace(/&nbsp;/g, " "));
+  const HTMLDICT = {};
+  for (const k of Object.keys(DICT)) {
+    if (k.slice(0, 3) === "<li") {
+      HTMLDICT[normHTML(k.replace(/^<li[^>]*>/, "").replace(/<\/li>$/, ""))] =
+        String(DICT[k]).replace(/^<li[^>]*>/, "").replace(/<\/li>$/, "");
+    }
+  }
 
   function tr(text) {
     const key = norm(text);
@@ -1237,6 +1282,17 @@
     }
   }
 
+  function translateBlock(el) {
+    if (!el || el.nodeType !== 1 || el.tagName !== "LI") return false;
+    const raw = el.innerHTML;
+    if (!raw || raw.indexOf("<") < 0) return false;
+    const key = normHTML(raw);
+    const out = HTMLDICT[key];
+    if (!out || normHTML(out) === key) return false;
+    el.innerHTML = out;
+    return true;
+  }
+
   function walk(root) {
     if (!root) return;
     if (root.nodeType === 3) { translateTextNode(root); return; }
@@ -1252,7 +1308,7 @@
     let n;
     while ((n = tw.nextNode())) {
       if (n.nodeType === 3) translateTextNode(n);
-      else translateElement(n);
+      else if (!translateBlock(n)) translateElement(n);
     }
   }
 

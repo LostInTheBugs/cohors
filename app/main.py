@@ -196,6 +196,15 @@ def _init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS guild_config (
+                key     TEXT PRIMARY KEY,
+                value   TEXT NOT NULL DEFAULT '',
+                updated REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS job_status (
                 slug     TEXT PRIMARY KEY,
                 last_run REAL NOT NULL DEFAULT 0,
@@ -1046,6 +1055,10 @@ def _worker_loop() -> None:
 async def _lifespan(_app: FastAPI):
     _init_db()
     _apply_api_keys()
+    try:
+        _apply_guild_config()
+    except sqlite3.Error as exc:
+        print(f"[guild] config: {exc}")
     _bootstrap_admin()
     try:
         _apply_mail_config()
@@ -6206,6 +6219,128 @@ def admin_mail_test(payload: MailTestRequest, request: Request):
     except mailer.MailError as exc:
         return {"ok": False, "detail": str(exc)}
     return {"ok": True, "detail": f"E-mail de test envoyé à {to}."}
+
+
+# ---------------------------------------------------------------------------
+# Guilde (royaume, région, Warcraft Logs) — réglages de l'administration
+# ---------------------------------------------------------------------------
+GUILD_KEYS = ("region", "realm", "slug", "locale", "wcl_region", "wcl_name")
+GUILD_BNET_REGIONS = ("eu", "us", "kr", "tw")
+GUILD_WCL_REGIONS = ("EU", "US", "KR", "TW", "CN")
+GUILD_LOCALES = ("en_US", "es_MX", "pt_BR", "en_GB", "es_ES", "fr_FR", "ru_RU",
+                 "de_DE", "it_IT", "ko_KR", "zh_TW", "zh_CN")
+_GUILD_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,48}$")
+
+
+def _guild_rows() -> dict:
+    with _db_lock, _db() as conn:
+        return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM guild_config").fetchall()}
+
+
+def _guild_effective() -> dict:
+    """Valeurs en vigueur : administration appliquée, sinon fichier serveur."""
+    return {"region": bnet.REGION, "realm": bnet.GUILD_REALM, "slug": bnet.GUILD_SLUG,
+            "locale": bnet.LOCALE, "wcl_region": wcl.REGION, "wcl_name": wcl.GUILD_NAME}
+
+
+def _apply_guild_config() -> None:
+    """Recopie l'identité de guilde vers les clients (prioritaire sur l'environnement)."""
+    rows = _guild_rows()
+    bnet.set_guild_info(region=rows.get("region"), realm=rows.get("realm"),
+                        slug=rows.get("slug"), locale=rows.get("locale"))
+    wcl.set_guild_info(region=rows.get("wcl_region"), name=rows.get("wcl_name"),
+                       realm=rows.get("realm"))
+
+
+def _guild_normalize(values: dict) -> dict:
+    """Normalise puis valide les valeurs fournies (400 avec motif si invalide)."""
+    clean: dict = {}
+    if values.get("region"):
+        region = str(values["region"]).strip().lower()
+        if region not in GUILD_BNET_REGIONS:
+            raise HTTPException(400, "Région Battle.net inconnue (au choix : eu, us, kr, tw).")
+        clean["region"] = region
+    if values.get("wcl_region"):
+        wcl_region = str(values["wcl_region"]).strip().upper()
+        if wcl_region not in GUILD_WCL_REGIONS:
+            raise HTTPException(400, "Région Warcraft Logs inconnue (au choix : EU, US, KR, TW, CN).")
+        clean["wcl_region"] = wcl_region
+    if values.get("locale"):
+        locale = str(values["locale"]).strip()
+        if locale not in GUILD_LOCALES:
+            raise HTTPException(400, "Langue de données inconnue (ex. fr_FR, en_US, de_DE).")
+        clean["locale"] = locale
+    for key, label in (("realm", "royaume"), ("slug", "slug de guilde")):
+        if values.get(key):
+            val = str(values[key]).strip().lower()
+            if not _GUILD_SLUG_RE.match(val):
+                raise HTTPException(400, f"Le {label} doit être un slug en minuscules (ex. hyjal, lords-of-the-pit).")
+            clean[key] = val
+    if values.get("wcl_name"):
+        name = str(values["wcl_name"]).strip()
+        if len(name) > 60:
+            raise HTTPException(400, "Nom Warcraft Logs trop long (60 caractères maximum).")
+        clean["wcl_name"] = name
+    return clean
+
+
+class GuildConfigRequest(BaseModel):
+    values: dict[str, str] = {}
+    clear: bool = False
+
+
+class GuildTestRequest(BaseModel):
+    values: dict[str, str] = {}
+
+
+@app.get("/api/admin/guild")
+def admin_guild_get(request: Request):
+    _require_admin(request)
+    rows = _guild_rows()
+    return {"config": _guild_effective(),
+            "source": {k: ("admin" if rows.get(k) else "env") for k in GUILD_KEYS}}
+
+
+@app.post("/api/admin/guild")
+def admin_guild_save(payload: GuildConfigRequest, request: Request):
+    _require_admin(request)
+    if payload.clear:
+        with _db_lock, _db() as conn:
+            conn.execute("DELETE FROM guild_config")
+        _apply_guild_config()
+        return {"ok": True, "cleared": True}
+    values = {k: str(v).strip() for k, v in (payload.values or {}).items() if k in GUILD_KEYS}
+    if not values:
+        raise HTTPException(400, "Aucune valeur à enregistrer.")
+    clean = _guild_normalize(values)
+    with _db_lock, _db() as conn:
+        for key in values:
+            value = clean.get(key, "")
+            if value:
+                conn.execute("INSERT OR REPLACE INTO guild_config (key, value, updated) VALUES (?,?,?)",
+                             (key, value, time.time()))
+            else:
+                conn.execute("DELETE FROM guild_config WHERE key=?", (key,))
+    _apply_guild_config()
+    return {"ok": True, "config": _guild_effective()}
+
+
+@app.post("/api/admin/guild/test")
+def admin_guild_test(payload: GuildTestRequest, request: Request):
+    """Contrôle (des valeurs saisies, sinon de celles en vigueur) sur les deux services."""
+    _require_admin(request)
+    eff = _guild_effective()
+    overrides = {k: str(v).strip() for k, v in (payload.values or {}).items()
+                 if k in GUILD_KEYS and str(v).strip()}
+    values = {k: overrides.get(k) or eff.get(k, "") for k in GUILD_KEYS}
+    try:
+        clean = _guild_normalize(values)
+    except HTTPException as exc:
+        detail = str(exc.detail)
+        return {"bnet": {"ok": False, "detail": detail}, "wcl": {"ok": False, "detail": detail}}
+    final = {**values, **clean}
+    return {"bnet": bnet.guild_lookup(final["realm"], final["slug"], final["region"]),
+            "wcl": wcl.guild_lookup(final["wcl_name"], final["realm"], final["wcl_region"])}
 
 
 @app.get("/api/admin/jobs")

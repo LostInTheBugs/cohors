@@ -16,10 +16,17 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-REGION = os.environ.get("BNET_REGION", "eu")
-GUILD_REALM = os.environ.get("BNET_GUILD_REALM", "hyjal")
-GUILD_SLUG = os.environ.get("BNET_GUILD_SLUG", "lords-of-the-pit")
-LOCALE = os.environ.get("BNET_LOCALE", "fr_FR")
+# Défauts du fichier serveur — surchargés depuis l'administration (set_guild_info).
+_ENV = {
+    "region": os.environ.get("BNET_REGION", "eu"),
+    "realm": os.environ.get("BNET_GUILD_REALM", "hyjal"),
+    "slug": os.environ.get("BNET_GUILD_SLUG", "lords-of-the-pit"),
+    "locale": os.environ.get("BNET_LOCALE", "fr_FR"),
+}
+REGION = _ENV["region"]
+GUILD_REALM = _ENV["realm"]
+GUILD_SLUG = _ENV["slug"]
+LOCALE = _ENV["locale"]
 
 
 def _loc(locale: str | None = None) -> str:
@@ -50,6 +57,46 @@ def credentials() -> tuple[str, str]:
     """Clés effectives : administration d'abord, sinon environnement."""
     return (_cfg["client_id"] or os.environ.get("BNET_CLIENT_ID", "").strip(),
             _cfg["client_secret"] or os.environ.get("BNET_CLIENT_SECRET", "").strip())
+
+
+def set_guild_info(region: str | None = None, realm: str | None = None,
+                   slug: str | None = None, locale: str | None = None) -> None:
+    """Identité de guilde posée depuis l'administration — prioritaire sur l'environnement.
+
+    Champ vide = retour à la valeur du fichier serveur ; tout changement invalide le cache.
+    """
+    global REGION, GUILD_REALM, GUILD_SLUG, LOCALE
+    REGION = (region or "").strip().lower() or _ENV["region"]
+    GUILD_REALM = (realm or "").strip().lower() or _ENV["realm"]
+    GUILD_SLUG = (slug or "").strip().lower() or _ENV["slug"]
+    LOCALE = (locale or "").strip() or _ENV["locale"]
+    with _lock:
+        _cache.clear()
+
+
+def guild_lookup(realm: str, slug: str, region: str) -> dict:
+    """Vérifie qu'une guilde existe à ce royaume/slug (« 🔎 Vérifier » de l'administration)."""
+    realm, slug, region = realm.strip().lower(), slug.strip().lower(), region.strip().lower()
+    url = (f"https://{region}.api.blizzard.com/data/wow/guild/"
+           f"{urllib.parse.quote(realm)}/{urllib.parse.quote(slug)}")
+    url += "?" + urllib.parse.urlencode({"namespace": f"profile-{region}", "locale": _loc()})
+    try:
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {_access_token()}"})
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            raw = json.load(resp)
+    except BnetError as exc:
+        return {"ok": False, "detail": str(exc)}
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return {"ok": False, "detail": "Guilde introuvable — vérifie la région, le royaume et le slug."}
+        return {"ok": False, "detail": f"Erreur de l'API Battle.net (HTTP {exc.code})."}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "detail": f"Connexion impossible ({type(exc).__name__})."}
+    return {"ok": True,
+            "name": raw.get("name") or "?",
+            "realm": ((raw.get("realm") or {}).get("name")) or realm,
+            "members": raw.get("member_count"),
+            "faction": ((raw.get("faction") or {}).get("name")) or ""}
 
 
 def check(client_id: str, client_secret: str) -> dict:
