@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.10.2"
+local ADDON_VER = "1.11.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -28,7 +28,7 @@ local results = {}
 local openedFrame = false
 local watchMonth = nil
 local collectStartAt = 0
-local ui, statusText, eb, showSummary  -- créés plus bas (panneau à la demande)
+local ui, statusText, eb, showSummary, scrollBar  -- créés plus bas (panneau à la demande)
 
 -- ---------------------------------------------------------------- utilitaires
 local function msg(text)
@@ -606,6 +606,7 @@ f:SetScript("OnEvent", function(_, event, arg1)
                 msg("|cffff5555ATTENTION : plusieurs dossiers Cohors détectés (" ..
                     table.concat(copies, ", ") .. ") — supprime les doublons !|r")
             end
+            pcall(Cohors_BuildMinimapButton)
             msg(("v%s chargée (client %s · dossier « %s ») — %s"):format(ADDON_VER, tostring(clientIface()),
                 tostring(ADDON_NAME or "?"),
                 Cohors_DB.export and ("dernier export : " .. dateStr(Cohors_DB.export_at or 0) ..
@@ -1436,15 +1437,28 @@ local function buildPanel()
         bgTx:SetAllPoints(true)
         bgTx:SetColorTexture(0, 0, 0, 0.45)    -- champ visible (avant : grand vide transparent)
 
-        eb = CreateFrame("EditBox", nil, ui)
+        -- Un EditBox du jeu ne rogne PAS son texte : au-delà de sa zone il le dessine par-dessus
+        -- les boutons et hors du cadre (vécu 20/09). On le place donc dans un ScrollFrame à
+        -- ascenseur : le texte reste dans la fenêtre et se parcourt (barre + molette).
+        local sf = CreateFrame("ScrollFrame", nil, ebBg, "UIPanelScrollFrameTemplate")
+        sf:SetPoint("TOPLEFT", 6, -6)
+        sf:SetPoint("BOTTOMRIGHT", -26, 6)
+        eb = CreateFrame("EditBox", nil, sf)
         eb:SetMultiLine(true)
-        eb:SetPoint("TOPLEFT", ebBg, 7, -7)
-        eb:SetPoint("BOTTOMRIGHT", ebBg, -7, 7)
-        eb:SetFontObject(ChatFontNormal)
         eb:SetAutoFocus(false)
+        eb:SetFontObject(ChatFontNormal)
+        eb:SetWidth(424)
+        eb:SetHeight(12)
         eb:SetTextInsets(2, 2, 2, 2)
         eb:SetText("")
         eb:SetScript("OnEscapePressed", function() eb:ClearFocus() end)
+        sf:SetScrollChild(eb)
+        if sf.EnableMouseWheel then sf:EnableMouseWheel(true) end
+        sf:SetScript("OnMouseWheel", function(self, delta)
+            local sb = self.ScrollBar
+            if sb and sb.SetValue then sb:SetValue((sb:GetValue() or 0) - (delta or 0) * 40) end
+        end)
+        scrollBar = sf
 
         statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         statusText:SetPoint("BOTTOMLEFT", 24, 78)
@@ -1499,26 +1513,28 @@ local function buildPanel()
                     end
                     local evLine = ("%s  %s  —  %d dispo · %d incertain · %d non · %d sans réponse")
                         :format(e.date or "?", e.title or "?", c.ok, c.maybe, c.no, c.wait)
-                    for _, wl in ipairs(wrapTxt(evLine, 70)) do
+                    for _, wl in ipairs(wrapTxt(evLine, 62)) do
                         lines[#lines + 1] = wl
                     end
                     if #waiting > 0 then
-                        for _, wl in ipairs(wrapTxt("   en attente : " .. table.concat(waiting, ", "), 70)) do
+                        for _, wl in ipairs(wrapTxt("   en attente : " .. table.concat(waiting, ", "), 62)) do
                             lines[#lines + 1] = wl
                         end
                     end
                 end
                 lines[#lines + 1] = ""
-                for _, wl in ipairs(wrapTxt("Clique « Exporter » puis Ctrl+A / Ctrl+C pour copier la chaîne à coller sur le site.", 70)) do
+                for _, wl in ipairs(wrapTxt("Clique « Exporter » puis Ctrl+A / Ctrl+C pour copier la chaîne à coller sur le site.", 62)) do
                     lines[#lines + 1] = wl
                 end
             end
             local txt = table.concat(lines, "\n")
             local nl = 1
             for _ in txt:gmatch("\n") do nl = nl + 1 end
-            -- la fenêtre grandit avec le contenu (champ 132..232 px, cadre = champ + 198)
-            local boxH = math.max(132, math.min(232, nl * 12 + 20))
-            if ui then pcall(function() ui:SetSize(500, boxH + 198) end) end
+            -- toutes les lignes dans le champ (l'ascenseur gère le reste, la fenêtre reste fixe)
+            if eb.SetHeight then eb:SetHeight(math.max(12, nl * 13 + 8)) end
+            if scrollBar and scrollBar.ScrollBar and scrollBar.ScrollBar.SetValue then
+                scrollBar.ScrollBar:SetValue(0)   -- on revient en haut à chaque affichage
+            end
             eb:SetText(txt)
             eb:HighlightText()
             eb:SetFocus()
@@ -1553,6 +1569,77 @@ local function buildPanel()
         return false
     end
     return true
+end
+
+-- --------------------------------------------------------------- mini-carte
+-- Petite icône autour de la mini-carte (comme les autres addons) : clic gauche =
+-- ouvrir/fermer le panneau, glisser = déplacer autour du cercle (position mémorisée).
+function Cohors_TogglePanel()
+    buildPanel()
+    if not ui then return end
+    if ui:IsShown() then
+        ui:Hide()
+    else
+        ui:Show()
+        if Cohors_DB.export and showSummary then pcall(showSummary) end
+    end
+end
+
+function Cohors_BuildMinimapButton()
+    if Cohors_MinimapBtn then return end
+    local ok, b = pcall(CreateFrame, "Button", "CohorsMinimapButton", Minimap)
+    if not ok or not b then
+        Cohors_DB.mm_error = tostring(b)
+        return
+    end
+    Cohors_MinimapBtn = b
+    b:SetSize(32, 32)
+    b:SetFrameStrata("MEDIUM")
+    b:SetMovable(true)
+    b:RegisterForDrag("LeftButton")
+    b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    local ring = b:CreateTexture(nil, "BACKGROUND")
+    ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    ring:SetAllPoints(true)
+    local ic = b:CreateTexture(nil, "ARTWORK")
+    ic:SetTexture("Interface\\AddOns\\Cohors\\icon.tga")
+    ic:SetSize(20, 20)
+    ic:SetPoint("CENTER", 0, 1)
+    local function place()
+        local a = math.rad(tonumber(Cohors_DB.mm_angle) or 220)
+        b:ClearAllPoints()
+        b:SetPoint("CENTER", Minimap, "CENTER", math.cos(a) * 80, math.sin(a) * 80)
+    end
+    place()
+    b:SetScript("OnDragStart", function(self)
+        self:SetScript("OnUpdate", function()
+            local mx, my = GetCursorPosition()
+            local sc = Minimap:GetEffectiveScale()
+            local cx, cy = Minimap:GetCenter()
+            local ang = math.deg(math.atan2(my / sc - cy, mx / sc - cx))
+            Cohors_DB.mm_angle = ang
+            place()
+        end)
+    end)
+    b:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
+    b:SetScript("OnClick", function(self, button)
+        if button == "LeftButton" then
+            dtrace("clic « mini-carte »")
+            local okT, errT = pcall(Cohors_TogglePanel)
+            if not okT then
+                Cohors_DB.last_error = "mini-carte : " .. tostring(errT)
+                msg("erreur (mini-carte) — " .. tostring(errT))
+            end
+        end
+    end)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:AddLine("Cohors — compagnon de guilde")
+        GameTooltip:AddLine("Clic gauche : ouvrir ou fermer le panneau", 1, 1, 1)
+        GameTooltip:AddLine("Glisser : déplacer autour de la mini-carte", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 function Cohors_Refresh()

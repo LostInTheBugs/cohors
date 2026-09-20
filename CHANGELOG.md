@@ -16,6 +16,10 @@ All notable changes to this project are documented in this file.
 - **Add-on 1.10.2** — the « Ouvrir » (guided profession) button only appears during the add-on's
   recipes export: a calendar collection no longer shows a recipes-only button, and the progress
   window shrinks to fit when it is hidden.
+- **Add-on 1.11.0** — the collected overview now scrolls (a game EditBox never clips its text, it
+  even drew over the buttons): the panel is a fixed compact size again and the text lives in a
+  scroll frame with a scrollbar + mouse wheel. New: a minimap button (Cohors crest) that toggles
+  the panel on left-click and can be dragged around the minimap (position remembered).
 
 ## 2026.09.146-c1 - 2026-09-20
 

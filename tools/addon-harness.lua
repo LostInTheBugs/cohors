@@ -50,7 +50,8 @@ local function newRegion(kind)
     for _, m in ipairs({ "SetPoint", "SetSize", "SetFrameStrata", "SetMovable", "EnableMouse",
         "RegisterForDrag", "SetClampedToScreen", "SetAutoFocus", "SetTextInsets", "SetFontObject",
         "SetMultiLine", "SetStatusBarTexture", "SetMinMaxValues", "SetBackdrop", "SetJustifyH",
-        "SetWordWrap", "SetAlpha", "SetScale", "SetHeight",
+        "SetWordWrap", "SetAlpha", "SetScale", "SetHeight", "ClearAllPoints", "SetHighlightTexture",
+        "SetScrollChild", "EnableMouseWheel", "SetTexture", "SetAllPoints", "SetColorTexture",
         "StartMoving", "StopMovingOrSizing", "HighlightText", "SetFocus", "ClearFocus" }) do
         r[m] = noop
     end
@@ -455,6 +456,23 @@ elseif scenario == "slash" then
     tick(30)
     check(not chat_has("lecture du calendrier"), "« /cohors » n'auto-collecte plus le calendrier")
     check(Cohors_DB.export == nil, "aucune collecte lancée par « /cohors »")
+    -- icône de mini-carte (v1.11.0) : clic gauche = bascule du panneau
+    local mmb, uif
+    for _, fr in ipairs(frames) do
+        if fr._name == "CohorsMinimapButton" then mmb = fr end
+        if fr._name == "CohorsFrame" then uif = fr end
+    end
+    check(mmb ~= nil, "icône de mini-carte créée au chargement")
+    if mmb and mmb._scripts["OnClick"] and uif then
+        uif:Hide()
+        mmb._scripts["OnClick"](mmb, "LeftButton")
+        check(uif:IsShown(), "clic gauche sur l'icône : panneau ouvert")
+        mmb._scripts["OnClick"](mmb, "LeftButton")
+        check(not uif:IsShown(), "deuxième clic sur l'icône : panneau refermé")
+    else
+        check(false, "icône de mini-carte : clic non testable (mmb=%s frame=%s)",
+            tostring(mmb), tostring(uif))
+    end
 
 else
     -- full / apifail : export des recettes
