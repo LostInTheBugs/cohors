@@ -95,9 +95,10 @@ everything else from inside the app:
 
 Invite members from **Invitations**; they register through their invite link.
 
-Prefer a prebuilt image? Replace `build: .` with
-`image: ghcr.io/lostinthebugs/cohors:latest` in `docker-compose.yml` (published on every
-release tag by CI).
+Prefer prebuilt images? Replace the app's `build: .` with
+`image: ghcr.io/lostinthebugs/cohors:latest` and the worker's `build:` block with
+`image: ghcr.io/lostinthebugs/cohors-simworker:latest` in `docker-compose.yml` (both are
+published on every release tag by CI).
 
 ## Security
 
