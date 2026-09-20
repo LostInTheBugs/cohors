@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145-c8 - 2026-09-20
+
+### Fixed
+- Recipe import (Prep page): an add-on export with one « profession » entry per expansion tier
+  (older exports, up to ~22 entries with every recipe duplicated) was truncated to its first
+  10 entries — whole professions (e.g. Cooking: 53 recipes) were silently dropped while the import
+  still reported success. Entries are now merged per profession with per-recipe deduplication
+  (keeping the most complete material list), the cap is gone, and the page shows the real number
+  of imported recipes.
+- « Mes recettes » page: a stray `loadStats()` call (a function from « Mes statistiques ») crashed
+  right after a successful import and replaced the success message with « loadStats is not
+  defined ».
+
 ## 2026.09.145-c7 - 2026-09-20
 
 ### Fixed

@@ -5838,28 +5838,37 @@ def api_prep_import_recipes(body: PrepRecipesImportRequest, request: Request):
         raise HTTPException(403, "Tu ne peux importer que les recettes de tes propres personnages "
                                  "(lie-les sur la page Personnages, ou demande à un officier).")
     realm = str(data.get("realm") or "").strip()[:60]
-    rows = []
-    for prof in (data.get("professions") or [])[:10]:
+    # Un export d'addon plus ancien contient une entrée « profession » PAR PALIER (jusqu'à une
+    # vingtaine d'entrées, recettes dupliquées d'un palier à l'autre) : on les fusionne en gardant
+    # la DERNIÈRE occurrence de chaque recette (ses matériaux sont les plus complets) — l'ancienne
+    # coupe à 10 entrées perdait des métiers entiers (Cuisine, le 20/09).
+    def _row(rec, pname):
+        item = str((rec or {}).get("n") or "").strip()[:120]
+        if not item:
+            return None
+        mats = []
+        for m in ((rec or {}).get("m") or [])[:30]:
+            if isinstance(m, list) and len(m) >= 3:
+                try:
+                    q = float(m[2] or 0)
+                except (TypeError, ValueError):
+                    q = 0.0
+                mats.append({"id": _int_any(m[0]), "name": str(m[1] or "")[:120], "qty": q})
+        exp = str((rec or {}).get("e") or "").strip()[:60]
+        try:
+            trank = max(0, min(99, int((rec or {}).get("t") or 0)))
+        except (TypeError, ValueError):
+            trank = 0
+        return (crafter, realm, pname, item, _int_any((rec or {}).get("i")), exp, trank,
+                json.dumps(mats, ensure_ascii=False))
+    merged: dict[tuple, tuple] = {}
+    for prof in (data.get("professions") or [])[:60]:
         pname = str((prof or {}).get("name") or "").strip()[:60]
         for rec in ((prof or {}).get("recipes") or [])[:1500]:
-            item = str((rec or {}).get("n") or "").strip()[:120]
-            if not item:
-                continue
-            mats = []
-            for m in ((rec or {}).get("m") or [])[:30]:
-                if isinstance(m, list) and len(m) >= 3:
-                    try:
-                        q = float(m[2] or 0)
-                    except (TypeError, ValueError):
-                        q = 0.0
-                    mats.append({"id": _int_any(m[0]), "name": str(m[1] or "")[:120], "qty": q})
-            exp = str((rec or {}).get("e") or "").strip()[:60]
-            try:
-                trank = max(0, min(99, int((rec or {}).get("t") or 0)))
-            except (TypeError, ValueError):
-                trank = 0
-            rows.append((crafter, realm, pname, item, _int_any((rec or {}).get("i")), exp, trank,
-                         json.dumps(mats, ensure_ascii=False)))
+            row = _row(rec, pname)
+            if row:
+                merged[(pname, row[3])] = row
+    rows = list(merged.values())
     if not rows:
         raise HTTPException(400, "Aucune recette exploitable dans cet export.")
     now = time.time()
