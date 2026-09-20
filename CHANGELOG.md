@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.141 - 2026-09-20
+
+### Security
+- SimulationCraft containers are now sandboxed: no network, read-only root filesystem (reports
+  come out through the single mounted volume), memory/process caps (`SIM_MEM`, `SIM_PIDS`,
+  optional `SIM_CPUS`) and `no-new-privileges`. A malformed profile can no longer reach the
+  network or push the host past its caps.
+- SimulationCraft honours a few options written inside a profile file (`input=` reads files,
+  `output=` writes files — verified against the official image): profiles containing `input=`,
+  `output=`, `html=`, `json=`/`json2=` or `apikey=` lines are now rejected up front with a clear
+  message. A `/simc` export never contains them.
+- Report share-links use longer random ids (80 bits instead of 48) — existing links keep working.
+
+### Added
+- Test suite (pytest) and CI (`tests/`, `.github/workflows/tests.yml`): password hashing
+  (scrypt — now in `app/security.py`), the profile guard, and repository consistency
+  (VERSION/CHANGELOG/i18n/add-on).
+- `CONTRIBUTING.md` and GitHub issue templates.
+- Container image published to GHCR on release tags (`.github/workflows/image.yml`).
+- Healthcheck on the app container in `docker-compose.yml` (uses `/api/health`).
+
+### Changed
+- README: simulation sandbox and security notes, backups & updates, a « Why not just
+  Raidbots + Warcraft Logs + Raid-Helper? » section, CalVer explained, published image.
+- `.env.example`: documents the simulation sandbox knobs, a pinned `SIMC_IMAGE` example and the
+  `ADMIN_PASSWORD` hygiene (change it in the app, then remove the variable).
+
 ## 2026.09.140 - 2026-09-20
 
 ### Fixed

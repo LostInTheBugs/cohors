@@ -48,6 +48,21 @@ guild calendar and Discord announcements — one web app, one instance per guild
   No file editing required after installation.
 - **PWA** — installable on desktop and mobile, offline fallback page.
 
+## Why not just Raidbots + Warcraft Logs + Raid-Helper?
+
+Those tools are excellent and Cohors does not replace their raw power — it replaces the
+*glue*. One place that knows the guild's members, characters, signups and loot stops the
+tools from being islands:
+
+- Raidbots simulates yours; Cohors simulates the guild's — shared profiles, cached results per
+  export, group simulations with raid buffs, and gear advice for members who never sim
+  (including healers, handled stat-based) — all under the guild's own accounts.
+- Warcraft Logs keeps the reports; Cohors ties them to the roster (who is in the guild, which
+  character is whose main) and to the planned bosses.
+- Raid-Helper collects signups on Discord; Cohors imports the in-game signups through its
+  add-on and links unavailabilities, roles and wishlist drop alerts to the same calendar.
+- Everything is self-hosted and configured in the admin UI after install.
+
 ## Requirements
 
 - Docker Engine with the Compose plugin (app container + SimulationCraft engine image)
@@ -78,8 +93,27 @@ everything else from inside the app:
 
 Invite members from **Invitations**; they register through their invite link.
 
-Note: mounting the Docker socket is root-equivalent on the host. Keep the app behind a
-reverse proxy, and run it on a machine you trust.
+Prefer a prebuilt image? Replace `build: .` with
+`image: ghcr.io/lostinthebugs/cohors:latest` in `docker-compose.yml` (published on every
+release tag by CI).
+
+## Security
+
+- **Docker socket** — the app mounts the host Docker socket to launch SimulationCraft
+  containers; that is root-equivalent on the host, by design. Keep the app behind a reverse
+  proxy and run it on a machine you trust.
+- **Sandboxed simulations** — every SimulationCraft container runs with no network access, a
+  read-only root filesystem (reports come out through the single mounted volume),
+  memory/process caps (`SIM_MEM`, `SIM_PIDS`, optional `SIM_CPUS`) and `no-new-privileges`.
+- **Profile guard** — SimulationCraft honours a few options written inside a profile file
+  (`input=` reads files, `output=` writes files — verified against the official image), so
+  pasted profiles containing `input=`, `output=`, `html=`, `json`/`json2=` or `apikey=` lines
+  are rejected before the file is written. A `/simc` export never contains them.
+- **Accounts** — passwords are hashed with scrypt (unique salt, constant-time comparison),
+  login attempts are rate-limited per IP, sessions are HttpOnly cookies, and registration is
+  invite-only.
+- **Shared reports** — `/reports/<id>/report.html` links are public by design (share them in
+  Discord), with random non-enumerable ids.
 
 ## WoW add-on (Cohors)
 
@@ -106,6 +140,9 @@ Most settings can also be edited in the app by an admin — `.env` values are th
 | `PER_USER_ACTIVE` | `3` | Max queued/running simulations per account |
 | `PER_IP_COOLDOWN_S` | `15` | Minimum delay between submissions per IP |
 | `SIM_TIMEOUT` | `900` | Hard timeout per simulation (seconds) |
+| `SIM_MEM` | `4g` | Memory cap per simulation container |
+| `SIM_PIDS` | `512` | Process cap per simulation container |
+| `SIM_CPUS` | all cores | CPU cap per simulation container (e.g. `4` on a shared host) |
 | `SIMC_IMAGE` | `simulationcraftorg/simc:latest` | SimulationCraft engine image |
 | `ADMIN_EMAIL` | — | First admin login (created at startup if no admin exists) |
 | `ADMIN_PASSWORD` | — | First admin password (same condition) |
@@ -164,6 +201,7 @@ account (invitation endpoints accept officers).
 
 ```
 app/main.py               FastAPI app (auth, admin, sim queue, pages, APIs)
+app/security.py           Password hashing (scrypt) + SimulationCraft profile guard
 app/bnet.py               Battle.net API client (roster, characters, items)
 app/wcl.py                Warcraft Logs v2 client (reports, parses)
 app/mailer.py             Outgoing e-mail (invitations) via SMTP
@@ -171,7 +209,8 @@ app/discord_bot.py        Discord REST client (announcements)
 app/static/               29 pages (FR) + i18n.js FR/EN engine, branding.js, PWA
 app/data/bis.json         Embedded BiS lists (Wowhead guide snapshots, 40 specs)
 addon/Cohors/             In-game add-on (guild calendar + professions export)
-worker/simrun.py          SimulationCraft engine wrapper (official Docker image)
+worker/simrun.py          SimulationCraft engine wrapper (official Docker image, sandboxed)
+tests/                    pytest suite (security helpers + repo consistency, run by CI)
 Dockerfile                App image (Python + Docker CLI)
 docker-compose.yml        App deployment (Docker socket + data dir, both required)
 CHANGELOG.md              Release history
@@ -188,9 +227,22 @@ python3 worker/simrun.py --container-profile profiles/MID2/MID2_Mage_Arcane.simc
 python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir ./out
 ```
 
+## Backups & updates
+
+- Everything stateful lives in `DATA_DIR`: the SQLite database (`wow.sqlite`) and the
+  `reports/` directory. Back it up with the app stopped (`docker compose stop` → copy the
+  directory → `docker compose start`). The database is the only irreplaceable part; reports
+  can be re-run.
+- Updating: `git pull` then `docker compose up -d --build`. Database migrations run
+  automatically and idempotently at startup — no manual step, no data loss.
+- The engine image updates on its own schedule: `docker pull simulationcraftorg/simc`, or pin
+  a dated tag through `SIMC_IMAGE` for reproducible results.
+
 ## Version
 
-Current version: `2026.09.140` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Current version: `2026.09.141` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.141` is the 141st build of September 2026;
+corrections add a `-cN` suffix (`2026.09.141-c1`).
 
 ## License
 

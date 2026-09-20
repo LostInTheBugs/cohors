@@ -37,6 +37,7 @@ from worker.simrun import run_sim
 import httpx
 
 from app import bnet, discord_bot, mailer, wcl
+from app.security import check_profile, hash_password as _hash_password, verify_password as _verify_password
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -606,22 +607,16 @@ def _init_db() -> None:
                 conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (_key, str(int(time.time()))))
 
 
-def _hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
-    n, r, p = 2 ** 14, 8, 1
-    dk = hashlib.scrypt(password.encode(), salt=salt, n=n, r=r, p=p, dklen=32)
-    return f"scrypt${n}${r}${p}${salt.hex()}${dk.hex()}"
+def _reject_blocked_profile(text: str) -> None:
+    """Refuse les profils contenant des directives à effet fichier (SimC les honore)."""
+    blocked = check_profile(text)
+    if blocked:
+        raise HTTPException(400, f"Ligne « {blocked}= » non autorisée dans un profil — colle uniquement"
+                                 " ton export /simc (cette option touche aux fichiers du moteur).")
 
 
-def _verify_password(password: str, stored: str) -> bool:
-    try:
-        algo, n, r, p, salt_hex, dk_hex = stored.split("$")
-        if algo != "scrypt":
-            return False
-        dk = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt_hex), n=int(n), r=int(r), p=int(p), dklen=32)
-        return hmac.compare_digest(dk.hex(), dk_hex)
-    except Exception:  # noqa: BLE001
-        return False
+# Hachage des mots de passe (scrypt) et garde-fous des profils SimulationCraft :
+# module app/security.py (testé par tests/test_security.py).
 
 
 def _bootstrap_admin() -> None:
@@ -1904,6 +1899,7 @@ def submit_sim(payload: SimRequest, request: Request):
     warnings: list[str] = []
     if kind == "gear":
         text, warnings = _build_gear_input(text, payload.items, locale=_user_locale(request))
+    _reject_blocked_profile(text)
     ip = _client_ip(request)
     now = time.time()
 
@@ -1931,7 +1927,7 @@ def submit_sim(payload: SimRequest, request: Request):
             "SELECT * FROM sims WHERE input_hash=? AND status='done' ORDER BY finished DESC LIMIT 1", (input_hash,)
         ).fetchone()
 
-        sim_id = uuid.uuid4().hex[:12]
+        sim_id = uuid.uuid4().hex[:20]
         sim_dir = REPORTS_DIR / sim_id
         sim_dir.mkdir(parents=True, exist_ok=True)
         input_file = sim_dir / "input.simc"
@@ -2005,7 +2001,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
                               (user["email"],)).fetchone()["c"]
         if active >= PER_USER_ACTIVE:
             raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
-        sim_id = uuid.uuid4().hex[:12]
+        sim_id = uuid.uuid4().hex[:20]
         sim_dir = REPORTS_DIR / sim_id
         sim_dir.mkdir(parents=True, exist_ok=True)
         input_file = sim_dir / "input.simc"
@@ -2325,6 +2321,7 @@ def create_profile(payload: ProfileRequest, request: Request):
     if not name:
         raise HTTPException(400, "Nom de profil requis.")
     text = payload.input.replace("\r\n", "\n").strip()
+    _reject_blocked_profile(text)
     now = time.time()
     with _db_lock, _db() as conn:
         count = conn.execute("SELECT COUNT(*) AS c FROM profiles WHERE user_email=?", (user["email"],)).fetchone()["c"]
@@ -2351,6 +2348,8 @@ def update_profile(pid: int, payload: ProfilePatch, request: Request):
         if not name:
             raise HTTPException(400, "Nom de profil requis.")
         text = payload.input.replace("\r\n", "\n").strip() if payload.input is not None else r["input"]
+        if payload.input is not None:
+            _reject_blocked_profile(text)
         shared = (1 if payload.shared else 0) if payload.shared is not None else r["shared"]
         conn.execute(
             "UPDATE profiles SET name=?, input=?, shared=?, updated=? WHERE id=?",
@@ -2470,11 +2469,12 @@ def submit_group_sim(payload: GroupSimRequest, request: Request):
         text, warnings = _build_group_input(allowed)
         if len(text) > MAX_INPUT_CHARS:
             raise HTTPException(400, "Profils trop volumineux pour une sim combinée — retire quelques profils.")
+        _reject_blocked_profile(text)
         input_hash = hashlib.sha256(f"group\n{payload.iterations}\n{text}".encode()).hexdigest()
         cached = conn.execute(
             "SELECT * FROM sims WHERE input_hash=? AND status='done' ORDER BY finished DESC LIMIT 1", (input_hash,)
         ).fetchone()
-        sim_id = uuid.uuid4().hex[:12]
+        sim_id = uuid.uuid4().hex[:20]
         sim_dir = REPORTS_DIR / sim_id
         sim_dir.mkdir(parents=True, exist_ok=True)
         input_file = sim_dir / "input.simc"

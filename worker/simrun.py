@@ -21,6 +21,16 @@ Examples:
 
 Environment:
   SIMC_IMAGE   override the image tag (default: simulationcraftorg/simc:latest)
+  SIM_MEM      memory cap per simulation container (default: 4g)
+  SIM_PIDS     process cap per simulation container (default: 512)
+  SIM_CPUS     CPU cap per simulation container, e.g. "4" (default: all cores)
+
+Each simulation runs in a hardened container: no network, read-only root filesystem
+(reports come out through the single mounted volume), memory/process caps and
+no-new-privileges. SimulationCraft honours a few options written INSIDE a profile
+file (`input=` reads files, `output=` writes files — verified against the official
+image), so profile text is checked against a small denylist before it is written
+(see app/security.py: check_profile).
 """
 from __future__ import annotations
 
@@ -35,6 +45,9 @@ import time
 from pathlib import Path
 
 IMAGE = os.environ.get("SIMC_IMAGE", "simulationcraftorg/simc:latest")
+SIM_MEM = os.environ.get("SIM_MEM", "4g")
+SIM_PIDS = os.environ.get("SIM_PIDS", "512")
+SIM_CPUS = os.environ.get("SIM_CPUS", "").strip()
 DPS_RE = re.compile(r"DPS=([0-9.]+)\s+DPS-Error=([0-9.]+)/([0-9.]+)%")
 SF_WEIGHTS_RE = re.compile(r"Weights\s*:\s*(.+)")
 SF_ITEM_RE = re.compile(r"(\w+)=([0-9.]+)\(([0-9.]+)\)")
@@ -164,7 +177,14 @@ def run_sim(
     outdir = Path(outdir) if outdir else Path(tempfile.mkdtemp(prefix="simc-"))
     outdir.mkdir(parents=True, exist_ok=True)
 
-    cmd = ["docker", "run", "--rm", "-v", f"{outdir.resolve()}:/sim/out"]
+    cmd = ["docker", "run", "--rm",
+           "--network", "none",
+           "--read-only", "--tmpfs", "/tmp:size=1g",
+           "--memory", SIM_MEM, "--pids-limit", str(SIM_PIDS),
+           "--security-opt", "no-new-privileges",
+           "-v", f"{outdir.resolve()}:/sim/out"]
+    if SIM_CPUS:
+        cmd += ["--cpus", SIM_CPUS]
     if profile_path is not None:
         cmd += ["-v", f"{Path(profile_path).resolve()}:/sim/input.simc:ro"]
         target = "/sim/input.simc"
