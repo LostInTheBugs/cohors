@@ -109,7 +109,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.150">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.151">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -144,6 +144,7 @@
       <button class="sbtn hidden" type="button" data-sec="sec-mail" id="sbtn-mail">✉️ E-mail (SMTP)</button>
       <button class="sbtn hidden" type="button" data-sec="sec-identite" id="sbtn-identite">🎨 Identité</button>
       <button class="sbtn hidden" type="button" data-sec="sec-sauvegarde" id="sbtn-sauvegarde">💾 Sauvegarde</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-maj" id="sbtn-maj">⬆️ Mises à jour</button>
     </aside>
     <div class="spanel">
 
@@ -360,6 +361,41 @@
       </div>
     </div>
 
+    <div id="sec-maj" class="hidden">
+      <div class="card">
+        <h2>⬆️ Mises à jour de l'application</h2>
+        <p class="sub" style="margin:4px 0 14px">Le site compare sa version à la dernière publiée du dépôt. Il ne peut pas redémarrer ses propres conteneurs : « Appliquer » dépose une demande, qu'un service de l'hôte exécute ensuite en quelques minutes (installation : voir le README, section Updates).</p>
+
+        <div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px; margin-bottom:12px;">
+          <div class="row" style="justify-content:space-between"><b>Version installée</b>&nbsp;<span id="upd-cur">…</span><span class="badge" id="upd-badge">…</span></div>
+          <p class="note" style="margin:8px 0 0" id="upd-line">…</p>
+          <div class="row" style="margin-top:10px; flex-wrap:wrap">
+            <button class="small ghost" id="upd-check">🔎 Vérifier maintenant</button>
+            <button class="small" id="upd-apply">⬆️ Appliquer la mise à jour</button>
+            <button class="small ghost hidden" id="upd-cancel">Annuler la demande</button>
+            <span class="note" id="upd-msg"></span>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px;">
+          <b>Vérifications automatiques</b>
+          <div class="row" style="margin-top:8px; flex-wrap:wrap">
+            <label class="fld">Intervalle de vérification <select id="upd-check_h">
+              <option value="0">— aucune —</option>
+              <option value="6">toutes les 6 h</option>
+              <option value="12">toutes les 12 h</option>
+              <option value="24">toutes les 24 h</option>
+              <option value="48">tous les 2 jours</option>
+              <option value="168">toutes les semaines</option>
+            </select></label>
+            <label class="chk"><input type="checkbox" id="upd-apply_auto"> appliquer automatiquement dès qu'une version est disponible</label>
+          </div>
+          <div class="row" style="margin-top:10px"><button class="small" id="upd-save">💾 Enregistrer</button><span class="note" id="upd-savemsg"></span></div>
+          <p class="note" style="margin:8px 0 0" id="upd-applier">…</p>
+        </div>
+      </div>
+    </div>
+
     <div id="sec-mail" class="hidden">
       <div class="card">
         <h2>✉️ E-mail (SMTP)</h2>
@@ -448,10 +484,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.150"></script>
-<script src="/static/branding.js?v=2026.09.150"></script>
-<script src="/static/i18n.js?v=2026.09.150"></script>
-<script src="/static/esc.js?v=2026.09.150"></script>
+<script src="/static/nav.js?v=2026.09.151"></script>
+<script src="/static/branding.js?v=2026.09.151"></script>
+<script src="/static/i18n.js?v=2026.09.151"></script>
+<script src="/static/esc.js?v=2026.09.151"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -688,6 +724,7 @@ document.querySelectorAll(".smenu .sbtn").forEach((b) => b.addEventListener("cli
   document.querySelectorAll(".smenu .sbtn").forEach((o) => o.classList.toggle("on", o === b));
   if (b.dataset.sec === "sec-invitations") loadInvites();
   if (b.dataset.sec === "sec-comptes" && IM_ADMIN) loadUsers();
+  if (b.dataset.sec === "sec-maj" && IM_ADMIN) loadUpdates();
   if (b.dataset.sec === "sec-bot") loadBot();
   if (b.dataset.sec === "sec-identite") loadBrand();
   if (b.dataset.sec === "sec-guilde") loadGuild();
@@ -834,6 +871,83 @@ $("#mail-test").addEventListener("click", async () => {
   try {
     const r = await api("POST", "/api/admin/mail/test", { to });
     msg.innerHTML = r.ok ? `✅ ${esc(r.detail)}` : `<span style="color:var(--err)">⚠ ${esc(r.detail)}</span>`;
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
+});
+
+// ---- Mises à jour de l'application ----
+function updRender(st) {
+  $("#upd-cur").textContent = "v" + st.current;
+  const badge = $("#upd-badge");
+  if (st.available) { badge.textContent = "mise à jour disponible"; badge.className = "badge b-off"; }
+  else if (st.latest) { badge.textContent = "à jour ✓"; badge.className = "badge b-used"; }
+  else { badge.textContent = "jamais vérifié"; badge.className = "badge"; }
+  const bits = [];
+  if (st.check.last_at) bits.push(`Dernière vérification : ${ago(st.check.last_at)}`);
+  if (st.latest) bits.push(st.available
+    ? `nouvelle version v${esc(st.latest.version)}`
+    : `dernière version publiée : v${esc(st.latest.version)}`);
+  if (st.check.error) bits.push(`⚠ ${esc(st.check.error)}`);
+  if (st.request) bits.push(`demande en cours : v${esc(st.request.version)} (${ago(st.request.requested_at)})`);
+  if (st.request && st.sims_busy) bits.push("des simulations tournent encore");
+  if (st.applier.applied) bits.push(`dernière mise à jour : v${esc(st.applier.applied)}${st.applier.applied_at ? " " + ago(st.applier.applied_at) : ""}`);
+  const line = $("#upd-line");
+  line.innerHTML = bits.length ? esc(bits.join(" · ")) : "Aucune vérification pour le moment.";
+  if (st.available && st.latest && st.latest.url) {
+    const a = document.createElement("a");
+    a.href = st.latest.url; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "notes de version";
+    line.append(" · ", a);
+  }
+  $("#upd-apply").disabled = !st.available || !!st.request;
+  $("#upd-cancel").classList.toggle("hidden", !st.request);
+  const ap = st.applier;
+  $("#upd-applier").innerHTML = ap.installed
+    ? `Application automatique sur ce serveur : <b>applicateur installé</b> (vu ${ago(ap.seen_at)})${ap.result && ap.result !== "ok" && ap.result !== "attente" ? ` · <span style="color:var(--err)">${esc(ap.result)}</span>` : ""}.`
+    : "Application automatique sur ce serveur : <b>applicateur non installé</b> — la demande attend son installation (README, section Updates).";
+  $("#upd-check_h").value = String(st.settings.upd_check_h);
+  $("#upd-apply_auto").checked = !!st.settings.upd_apply_auto;
+}
+
+async function loadUpdates() {
+  try { updRender(await api("GET", "/api/admin/updates")); }
+  catch (e) { $("#upd-line").textContent = e.message || "Échec du chargement"; }
+}
+
+$("#upd-check").addEventListener("click", async () => {
+  const msg = $("#upd-msg");
+  msg.textContent = "Vérification…";
+  try {
+    const r = await api("POST", "/api/admin/updates/check");
+    updRender(r.state);
+    msg.textContent = r.state.available ? "Mise à jour disponible." : "Aucune nouveauté.";
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
+});
+
+$("#upd-apply").addEventListener("click", async () => {
+  const msg = $("#upd-msg");
+  msg.textContent = "Demande…";
+  try {
+    const r = await api("POST", "/api/admin/updates/apply");
+    updRender(r.state);
+    msg.textContent = "Demande déposée — l'applicateur s'en charge au prochain passage.";
+    toast("Mise à jour demandée ✓");
+  } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
+});
+
+$("#upd-cancel").addEventListener("click", async () => {
+  try { updRender((await api("DELETE", "/api/admin/updates/request")).state); }
+  catch (e) { $("#upd-msg").innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
+});
+
+$("#upd-save").addEventListener("click", async () => {
+  const msg = $("#upd-savemsg");
+  try {
+    const r = await api("POST", "/api/admin/updates", { values: {
+      upd_check_h: $("#upd-check_h").value,
+      upd_apply_auto: $("#upd-apply_auto").checked ? "1" : "0" } });
+    updRender(r.state);
+    msg.textContent = "✅ Enregistré.";
+    toast("Réglages enregistrés ✓");
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
 });
 
@@ -1116,7 +1230,7 @@ $("#bi-reset").addEventListener("click", async () => {
       $("#sbtn-identite").classList.remove("hidden");
     }
     loadInvites();
-    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); loadGuild(); loadJobs(); loadMail(); }
+    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); loadGuild(); loadJobs(); loadMail(); loadUpdates(); }
     openFromHash();
   }
 })();

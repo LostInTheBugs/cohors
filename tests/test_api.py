@@ -18,6 +18,7 @@ import app.main as M  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 client = TestClient(M.app)
+SRC_DIR = Path(__file__).resolve().parent.parent
 
 
 def setup_module():
@@ -414,3 +415,143 @@ def test_wishlist_export_requires_auth():
     c = TestClient(M.app)
     assert c.get("/api/wishlist/export").status_code == 401
     assert c.post("/api/wishlist/recipe", json={"recipe_id": 1}).status_code == 401
+
+
+# ------------------------------------------------------------------ mises à jour (v2026.09.151)
+
+def _plain_client(name: str, ip: str):
+    _make_user(name, is_admin=0, role="member")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": name, "password": "test-pw-123"},
+               headers={"X-Forwarded-For": ip})
+    assert r.status_code == 200, r.text
+    return c
+
+
+def test_admin_updates_state_settings_and_guards():
+    member = _plain_client("upd-member@test.local", "10.99.40.1")
+    assert member.get("/api/admin/updates").status_code == 403
+    assert member.post("/api/admin/updates", json={"values": {}}).status_code == 403
+
+    c = _admin_client("upd-admin@test.local", "10.99.40.2")
+    r = c.get("/api/admin/updates")
+    assert r.status_code == 200
+    st = r.json()
+    assert st["current"] == M.VERSION
+    assert st["available"] is False and st["latest"] is None
+    assert st["settings"]["upd_check_h"] == 24          # défaut : vérification quotidienne
+    assert st["settings"]["upd_apply_auto"] is False
+    assert st["applier"]["installed"] is False
+
+    # bornes : cadence hors liste → 400 ; valeurs valides → enregistrées
+    assert c.post("/api/admin/updates", json={"values": {"upd_check_h": "7"}}).status_code == 400
+    assert c.post("/api/admin/updates", json={"values": {"upd_apply_auto": "peut-être"}}).status_code == 400
+    r = c.post("/api/admin/updates", json={"values": {"upd_check_h": "6", "upd_apply_auto": "1"}})
+    assert r.status_code == 200
+    st = r.json()["state"]
+    assert st["settings"]["upd_check_h"] == 6 and st["settings"]["upd_apply_auto"] is True
+
+
+def test_admin_updates_check_apply_cancel(monkeypatch):
+    c = _admin_client("upd-admin2@test.local", "10.99.40.3")
+    newer = {"version": "2099.01.001", "published_at": "2099-01-01T00:00:00Z",
+             "url": "https://example.invalid/release"}
+    monkeypatch.setattr(M, "_upd_latest_release", lambda: newer)
+
+    r = c.post("/api/admin/updates/check")
+    st = r.json()["state"]
+    assert st["available"] is True and st["latest"]["version"] == "2099.01.001"
+    assert st["check"]["error"] == ""
+
+    # appliquer → demande déposée (le conteneur ne redémarre jamais lui-même)
+    r = c.post("/api/admin/updates/apply")
+    assert r.status_code == 200
+    assert r.json()["state"]["request"]["version"] == "2099.01.001"
+    payload = json.loads(M._UPD_REQUEST.read_text(encoding="utf-8"))
+    assert payload["version"] == "2099.01.001"
+
+    # annuler
+    assert c.delete("/api/admin/updates/request").status_code == 200
+    assert not M._UPD_REQUEST.exists()
+
+    # une erreur réseau est enregistrée, sans casser l'endpoint
+    def boom():
+        raise OSError("réseau indisponible")
+    monkeypatch.setattr(M, "_upd_latest_release", boom)
+    st = c.post("/api/admin/updates/check").json()["state"]
+    assert "réseau indisponible" in st["check"]["error"]
+
+    # à jour → appliquer refuse
+    monkeypatch.setattr(M, "_upd_latest_release",
+                        lambda: {"version": M.VERSION, "published_at": "", "url": ""})
+    c.post("/api/admin/updates/check")
+    assert c.post("/api/admin/updates/apply").status_code == 400
+
+
+def test_upd_vtuple_orders_versions():
+    vt = M._upd_vtuple
+    assert vt("2026.09.150") < vt("2026.09.151")
+    assert vt("2026.09.149") < vt("2026.09.149-c1") < vt("2026.09.149-c3") < vt("2026.09.150")
+    assert vt("2026.10.001") > vt("2026.09.199")
+
+
+def test_upd_tick_auto_apply_respects_sims(monkeypatch):
+    c = _admin_client("upd-admin3@test.local", "10.99.40.4")
+    c.post("/api/admin/updates", json={"values": {"upd_check_h": "0", "upd_apply_auto": "1"}})
+    monkeypatch.setattr(M, "_upd_latest_release",
+                        lambda: {"version": "2099.02.002", "published_at": "", "url": ""})
+    M._upd_run_check()
+    # une simulation en cours → la demande attend
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT OR REPLACE INTO sims (id, created, ip, iterations, status,"
+                     " input_hash, input_file, user_email)"
+                     " VALUES ('upd-sim', ?, '10.0.0.1', 1, 'running', 'h', 'f', 'upd-admin3@test.local')",
+                     (time.time(),))
+    M._upd_tick()
+    assert not M._UPD_REQUEST.exists()
+    # simulation terminée → la demande part toute seule
+    with M._db_lock, M._db() as conn:
+        conn.execute("UPDATE sims SET status='done' WHERE id='upd-sim'")
+    M._upd_tick()
+    assert M._UPD_REQUEST.exists()
+    M._UPD_REQUEST.unlink()
+    c.post("/api/admin/updates", json={"values": {"upd_apply_auto": "0"}})
+
+
+def test_applier_script_refuses_bad_version_and_signals_heartbeat(tmp_path):
+    import shutil as _sh
+    import subprocess as _sp
+    import sys as _sys
+    app = tmp_path / "app"
+    (app / "deploy").mkdir(parents=True)
+    (app / "data").mkdir()
+    (app / "docker-compose.yml").write_text("services:\n  app:\n    build: .\n", encoding="utf-8")
+    _sh.copy(SRC_DIR / "deploy/apply-update.py", app / "deploy/apply-update.py")
+    env = {**os.environ, "DATA_DIR": str(app / "data")}
+
+    # sans demande : battement de cœur seulement
+    res = _sp.run([_sys.executable, str(app / "deploy/apply-update.py")],
+                  capture_output=True, text=True, env=env)
+    assert res.returncode == 0
+    st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
+    assert st["result"] == "attente" and st["seen_at"] > 0
+
+    # demande hostile : refusée et purgée, rien n'est exécuté
+    (app / "data/update-request.json").write_text(
+        json.dumps({"version": "2026.09.150; rm -rf /", "by": "x"}), encoding="utf-8")
+    res = _sp.run([_sys.executable, str(app / "deploy/apply-update.py")],
+                  capture_output=True, text=True, env=env)
+    assert res.returncode == 1
+    assert not (app / "data/update-request.json").exists()
+    st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
+    assert st["result"].startswith("version refusée")
+
+    # demande valide en dry-run : rien de changé, la demande reste
+    (app / "data/update-request.json").write_text(
+        json.dumps({"version": "2099.01.001", "by": "test"}), encoding="utf-8")
+    res = _sp.run([_sys.executable, str(app / "deploy/apply-update.py"), "--dry-run"],
+                  capture_output=True, text=True, env=env)
+    assert res.returncode == 0
+    assert (app / "data/update-request.json").exists()
+    st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
+    assert st["result"] == "ok" and st["applied"] == "2099.01.001"

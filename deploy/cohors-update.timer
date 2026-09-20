@@ -1,0 +1,11 @@
+# Vérifie toutes les 5 minutes si le site a demandé une mise à jour (aucun effet sinon).
+[Unit]
+Description=Cohors — vérifie les mises à jour demandées
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+Unit=cohors-update.service
+
+[Install]
+WantedBy=timers.target

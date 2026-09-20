@@ -307,12 +307,35 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
   reports can be re-run.
 - Updating: `git pull` then `docker compose up -d --build`. Database migrations run
   automatically and idempotently at startup — no manual step, no data loss.
+- **In the app (self-hosted instances)**: **Settings → Administration → Updates** compares the
+  running version with the latest published release — on demand (🔎 Check now) or on a schedule
+  (never / 6 h / 12 h / 24 h / 2 days / weekly; daily by default) — and applies it either
+  manually (⬆️ Apply update) or automatically as soon as a version is available (never during a
+  running simulation). The app has no Docker access on purpose: "Apply" only drops
+  `data/update-request.json`; the host-side updater below does the actual work. The panel shows
+  the updater's heartbeat and its last result.
+  Install the updater on the host (a systemd timer, no extra privileges — it uses the same
+  `docker compose` your deployment already uses):
+
+  ```sh
+  sudo cp deploy/cohors-update.service /etc/systemd/system/   # edit User/WorkingDirectory first
+  sudo cp deploy/cohors-update.timer /etc/systemd/system/
+  sudo systemctl daemon-reload && sudo systemctl enable --now cohors-update.timer
+  python3 deploy/apply-update.py --dry-run   # sanity check, changes nothing
+  ```
+
+  The updater uses the **same `DATA_DIR` as your deployment** (from the environment, otherwise the
+  `DATA_DIR=` line of the `.env` next to `docker-compose.yml`), so the panel can read its heartbeat.
+  Image-based deployments (`deploy/docker-compose.yml`) pull the new images; source-based ones
+  download the requested release tarball and rebuild.
+  Without the timer, the 🔎 check still works and the request simply waits (the panel says the
+  updater is not installed).
 - The engine image updates on its own schedule: `docker pull simulationcraftorg/simc`, or pin
   a dated tag through `SIMC_IMAGE` for reproducible results.
 
 ## Version
 
-Current version: `2026.09.149-c2` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Current version: `2026.09.151` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
 Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.149` is the 149th build of September 2026;
 corrections add a `-cN` suffix (`2026.09.149-c2`).
 

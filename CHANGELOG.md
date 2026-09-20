@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.151 - 2026-09-20
+
+### Added
+- **Updates from the admin panel**: the app compares its version with the latest published release
+  (on demand via *Check now*, or on a schedule: never / 6 h / 12 h / 24 h / 2 days / weekly,
+  daily by default) and applies it **manually or automatically** as soon as a version is
+  available. A running or queued simulation postpones the request — an update never interrupts a
+  sim. The panel shows the installed version, the latest release (with a link to its notes), the
+  pending request and the updater's heartbeat and last result.
+- `deploy/apply-update.py` + `cohors-update.{service,timer}`: host-side updater (systemd timer,
+  no extra privileges) that applies a requested update — image deployments pull the new images,
+  source deployments download the release tarball and rebuild. The app itself keeps **no Docker
+  access**: it only drops `data/update-request.json`; the updater writes `data/update-applier.json`
+  (heartbeat + result) and `data/update.log`.
+
 ## 2026.09.150 - 2026-09-20
 
 ### Added

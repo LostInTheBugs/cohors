@@ -1,0 +1,15 @@
+# Cohors — applique une mise à jour demandée depuis l'administration du site.
+# Adapter User / WorkingDirectory à l'installation (voir README, section Updates), puis :
+#   sudo cp deploy/cohors-update.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now cohors-update.timer
+[Unit]
+Description=Cohors — mise à jour demandée depuis le site
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=cohors
+WorkingDirectory=/opt/cohors
+ExecStart=/usr/bin/python3 deploy/apply-update.py
+TimeoutStartSec=2400
