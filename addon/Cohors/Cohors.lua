@@ -1,6 +1,6 @@
--- Cohors — Calendrier de guilde → le site de la guilde
+-- Cohors — Calendrier de guilde  le site de la guilde
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
--- une chaîne à coller sur le site (page Calendrier → « Importer »).
+-- une chaîne à coller sur le site (page Calendrier  « Importer »).
 -- Commandes : /cohors · /cohors collect · /cohors export · /cohors diag · /cohors reset
 --
 -- Lecture du calendrier : même méthode que l'UI Blizzard — on affiche le mois
@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.9.2"
+local ADDON_VER = "1.10.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -259,7 +259,7 @@ finishCollect = function()
         msg("aucun événement trouvé. Ouvre le calendrier du jeu (touche C) pour vérifier, puis /cohors. "
             .. "(rapport enregistré : /reload puis envoie le fichier Cohors.lua)")
     else
-        msg(("%d raid(s) collecté(s), %d réponse(s). • /cohors export pour la chaîne à coller sur le site.")
+        msg(("%d raid(s) collecté(s), %d réponse(s). · /cohors export pour la chaîne à coller sur le site.")
             :format(#results, nresp))
     end
     progressUpdate(("calendrier — terminé : %d raid(s), %d réponse(s)"):format(#results, nresp), 1, true)
@@ -359,13 +359,13 @@ local function buildProgress()
         pBarText = pBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         pBarText:SetPoint("CENTER")
         pBarText:SetText("0 %")
-        -- « ▶ Ouvrir » : son CLIC est un événement matériel — le seul contexte dans lequel le
+        -- « Ouvrir » : son CLIC est un événement matériel — le seul contexte dans lequel le
         -- client accepte C_TradeSkillUI.OpenTradeSkill. C'est LE moyen d'ouvrir les métiers
         -- depuis l'addon (un clic par métier).
         pOpenBtn = CreateFrame("Button", "CohorsProgressOpenBtn", pWin, "UIPanelButtonTemplate")
         pOpenBtn:SetSize(250, 22)
         pOpenBtn:SetPoint("TOP", 0, -76)
-        pOpenBtn:SetText("▶ Ouvrir le métier suivant")
+        pOpenBtn:SetText("Ouvrir le métier suivant")
         pOpenBtn:SetScript("OnClick", function()
             local okN, errN = pcall(Cohors_OpenNext)
             if not okN then
@@ -397,7 +397,7 @@ progressUpdate = function(label, pct, done)
     pWin:Show()
     if done then
         pBar:SetValue(100)
-        pBarText:SetText("\226\156\148")  -- ✔ (UTF-8)
+        pBarText:SetText("OK")  --  (UTF-8)
         pHideAt = GetTime() + 8
     else
         pHideAt = nil
@@ -407,14 +407,14 @@ progressUpdate = function(label, pct, done)
     end
 end
 
--- bouton « ▶ Ouvrir » : met à jour son libellé (métier suivant) et son état.
+-- bouton « Ouvrir » : met à jour son libellé (métier suivant) et son état.
 local function progressButton(nextName, busy)
     if not pOpenBtn then return end
     if nextName then
-        pOpenBtn:SetText("▶ Ouvrir « " .. tostring(nextName) .. " »")
+        pOpenBtn:SetText("Ouvrir « " .. tostring(nextName) .. " »")
         pOpenBtn:Enable()
     else
-        pOpenBtn:SetText(busy and "lecture en cours…" or "✔ terminé")
+        pOpenBtn:SetText(busy and "lecture en cours…" or "terminé")
         pOpenBtn:Disable()
     end
 end
@@ -441,7 +441,7 @@ local function engineTick(now, force)
         if not force and now < e.await then return end
         local found = scanViewedMonth(e.shift)
         dtrace(("mois +%d : %d événement(s)"):format(e.shift, #found))
-        msg(("• mois +%d : %d événement(s)"):format(e.shift, #found))
+        msg(("· mois +%d : %d événement(s)"):format(e.shift, #found))
         for _, ev in ipairs(found) do e.scanned[#e.scanned + 1] = ev end
         e.shift = e.shift + 1
         if e.shift <= e.maxShift then
@@ -494,7 +494,7 @@ local function engineTick(now, force)
         e.eventAt = nil
         local okc, opened = pcall(C_Calendar.OpenEvent, 0, ev.day, ev.idx)
         if (not okc) or opened == false then
-            dtrace("  → ouverture impossible")
+            dtrace("  · ouverture impossible")
             recordEvent(ev, {})
             e.current = nil
             e.qi = e.qi + 1
@@ -509,8 +509,8 @@ local function engineTick(now, force)
         local ev = e.current
         if (e.eventAt and now >= e.eventAt + 0.3) or force then
             local invs = readInvites()
-            dtrace(("  → %d réponse(s)"):format(#invs))
-            msg(("• %s — %d réponse(s)"):format(tostring(ev.title), #invs))
+            dtrace(("  · %d réponse(s)"):format(#invs))
+            msg(("· %s — %d réponse(s)"):format(tostring(ev.title), #invs))
             recordEvent(ev, invs)
             pcall(C_Calendar.CloseEvent)
             e.current = nil
@@ -520,7 +520,7 @@ local function engineTick(now, force)
             return
         end
         if now >= e.await then
-            dtrace("  → pas de réponse du calendrier (délai)")
+            dtrace("  · pas de réponse du calendrier (délai)")
             recordEvent(ev, {})
             e.current = nil
             e.qi = e.qi + 1
@@ -567,7 +567,7 @@ f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == (ADDON_NAME or "Cohors") then
             if Cohors_DB.file_ok ~= ADDON_VER then
-                msg("|cffff5555⚠️ chargement INCOMPLET du fichier (des fonctions manquent — " ..
+                msg("|cffff5555! chargement INCOMPLET du fichier (des fonctions manquent — " ..
                     "événements refusés : " .. tostring(Cohors_DB.bad_events or "aucun") ..
                     "). Signale-le.|r")
             end
@@ -582,7 +582,7 @@ f:SetScript("OnEvent", function(_, event, arg1)
             msg(("v%s chargée (client %s · dossier « %s ») — %s"):format(ADDON_VER, tostring(clientIface()),
                 tostring(ADDON_NAME or "?"),
                 Cohors_DB.export and ("dernier export : " .. dateStr(Cohors_DB.export_at or 0) ..
-                    " • /cohors pour ouvrir") or "/cohors pour ouvrir le panneau"))
+                    " · /cohors pour ouvrir") or "/cohors pour ouvrir le panneau"))
         end
     elseif event == "CALENDAR_OPEN_EVENT" then
         if engine and engine.current then
@@ -595,7 +595,7 @@ f:SetScript("OnEvent", function(_, event, arg1)
         if recEngine and recSaveNow then recSaveNow() end
     end
 end)
--- ⚠️ Inscrire un événement INCONNU fait planter TOUT le chargement du fichier (le client lève
+-- ! Inscrire un événement INCONNU fait planter TOUT le chargement du fichier (le client lève
 -- « Attempt to register unknown event »). C'est arrivé en v1.8.0 avec TRADE_SKILL_UPDATE, retiré
 -- du client : l'addon restait à moitié chargé et spammait « attempt to call a nil value ». Toute
 -- inscription passe donc par un pcall, et les refus sont journalisés (visibles dans /cohors diag).
@@ -794,7 +794,7 @@ end
 -- ------------------------------------------------- recettes des artisans (export)
 -- Lit les recettes connues du personnage, PAR MÉTIER ET PAR EXTENSION
 -- (paliers GetChildProfessionInfos, comme l'interface des métiers), et les
--- écrit dans Cohors_DB.recipes pour l'import sur le site (Préparation de raid).
+-- écrit dans Cohors_DB.recipes pour l'import sur le site (Préparation de raid, bouton importer).
 -- Depuis la v1.8.0, le mode est GUIDÉ : C_TradeSkillUI.OpenTradeSkill est RÉSERVÉE aux
 -- événements matériels (wiki : « restricted » + #hwevent) — un addon ne peut PAS ouvrir les
 -- fenêtres de métier depuis une boucle. On lit donc les fenêtres que le JOUEUR ouvre
@@ -980,10 +980,10 @@ local function recFinish(note)
     L[#L + 1] = tostring(Cohors_DB.trace or "?")
     Cohors_DB.rec_diag = table.concat(L, "\n")
     Cohors_DB.rec_diag_at = time()
-    msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/Cohors.lua au site (Préparation de raid → 📥 importer).")
+    msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/Cohors.lua au site (Préparation de raid, bouton importer).")
         :format(total, note and (" (" .. tostring(note) .. ")") or ""))
     if #apiNames > 0 then
-        msg("⚠️ API recettes en échec : " .. table.concat(apiNames, ", ") .. " — détail via /cohors diag → fichier.")
+        msg("! API recettes en échec : " .. table.concat(apiNames, ", ") .. " — détail via /cohors diag.")
     end
     progressUpdate(("recettes — terminé : %d recette(s)"):format(total), 1, true)
     progressButton(nil, false)
@@ -1064,7 +1064,7 @@ local function recProfessionDone(why)
     end
     dtrace(("métier lu : %s — %d recette(s)%s"):format(prof.name, cur.total or 0,
         note and (" (" .. note .. ")") or ""))
-    msg(("✔ %s : %d recette(s)%s."):format(prof.name, cur.total or 0,
+    msg(("OK — %s : %d recette(s)%s."):format(prof.name, cur.total or 0,
         note and (" (" .. note .. ")") or ""))
     local left = recRemaining()
     if #left == 0 then
@@ -1103,11 +1103,11 @@ recTick = function(now, force)
                 if tonumber(p.skillLine) == openID then pn = p.name end
             end
             dtrace(("fenêtre ignorée : %s (déjà lue ?)"):format(pn))
-            msg(("« %s » est déjà lue ✔ — ouvre un des métiers restants."):format(pn))
+            msg(("« %s » est déjà lue — ouvre un des métiers restants."):format(pn))
         elseif not openID then
             e.saidOpen = nil
         end
-        -- ouverture demandée (clic « ▶ » accepté) mais aucune fenêtre STANDARD n'apparaît :
+        -- ouverture demandée (clic « Ouvrir » accepté) mais aucune fenêtre STANDARD n'apparaît :
         -- après 8 s on l'ignore et on passe au suivant. C'est le cas de l'archéologie (interface
         -- de fouilles, pas une fenêtre de métier). Rien n'est bloqué : s'il finit par s'ouvrir
         -- comme un vrai métier, il sera lu quand même.
@@ -1118,12 +1118,12 @@ recTick = function(now, force)
                 e.skipped = e.skipped or {}
                 e.skipped[op.skillLine] = op.name
                 dtrace(("métier ignoré (fenêtre jamais ouverte) : %s"):format(op.name))
-                msg(("⚠️ « %s » ne s'ouvre pas comme un métier standard — ignoré (normal pour l'archéologie).")
+                msg(("! « %s » ne s'ouvre pas comme un métier standard — ignoré (normal pour l'archéologie).")
                     :format(op.name))
                 pcall(recSave)
                 local left2 = recRemaining()
                 if #left2 > 0 then
-                    msg(("reste : %s — clique « ▶ Ouvrir « %s » »."):format(table.concat(left2, ", "),
+                    msg(("reste : %s — clique « Ouvrir « %s » »."):format(table.concat(left2, ", "),
                         left2[1] or "?"))
                 end
             end
@@ -1137,7 +1137,7 @@ recTick = function(now, force)
         local nxt = recNextProf()
         if now > (e.remindAt or 0) then
             e.remindAt = now + 45
-            msg(("⏳ en attente — clique « ▶ Ouvrir « %s » » sur la barre de progression (ou ouvre-le à la main : Livre de sorts → Métiers).")
+            msg((" en attente — clique « Ouvrir « %s » » sur la barre de progression (ou ouvre-le à la main : Livre de sorts, onglet Métiers).")
                 :format((nxt and nxt.name) or left[1] or "?"))
         end
         -- relance douce : acceptée par le client seulement depuis un clic/commande matériel,
@@ -1209,7 +1209,7 @@ recTick = function(now, force)
         cur.total = (cur.total or 0) + #list
         dtrace(("%s : %d recette(s) [%s : %d ids, %d non apprises]")
             :format(prof.name, #list, tostring(src or "?"), stats.ids or 0, stats.unlearned or 0))
-        msg(("• %s : %d recette(s)"):format(prof.name, #list))
+        msg(("· %s : %d recette(s)"):format(prof.name, #list))
         recProfessionDone(nil)
         return
     end
@@ -1249,7 +1249,7 @@ recTickSafe = function(force)
         else
             local left = recRemaining()
             local nxt = left[1]
-            label = ("recettes — %d/%d lu(s) · clique « ▶ »%s · %d recette(s) · %d s")
+            label = ("recettes — %d/%d lu(s) · clique « Ouvrir »%s · %d recette(s) · %d s")
                 :format(ndone, nprogs, nxt and (" (« " .. nxt .. " »)") or "", n, elapsed)
             if #left > 1 then label = label .. " · reste : " .. table.concat(left, ", ") end
             pct = ndone / nprogs
@@ -1274,7 +1274,7 @@ function Cohors_Recipes()
             if #left == 0 then
                 msg("export en cours — dernière étape…")
             else
-                msg(("export en cours — reste : %s. Clique « ▶ Ouvrir « %s » » sur la barre de progression.")
+                msg(("export en cours — reste : %s. Clique « Ouvrir « %s » » sur la barre de progression.")
                     :format(table.concat(left, ", "), left[1] or "?"))
                 for _, p in ipairs(recEngine.progs) do
                     if not recEngine.done[p.skillLine] then
@@ -1303,26 +1303,26 @@ function Cohors_Recipes()
     dtrace(("recettes : %d métier(s) — %s"):format(#profs, profs[1] and profs[1].name or "?"))
     local pnames = {}
     for _, p in ipairs(profs) do pnames[#pnames + 1] = p.name end
-    msg(("lecture des recettes (%d métier(s) : %s). Ouvre tes fenêtres de métier (Livre de sorts → Métiers) une par une : l'addon lit celle qui est ouverte et enchaîne.")
+    msg(("lecture des recettes (%d métier(s) : %s). Ouvre tes fenêtres de métier (Livre de sorts, onglet Métiers) une par une : l'addon lit celle qui est ouverte et enchaîne.")
         :format(#profs, table.concat(pnames, ", ")))
-    msg(("métier(s) à ouvrir : %s — ouvre chaque fenêtre (ou clique « ▶ Ouvrir » sur la barre de progression)."):format(table.concat(pnames, ", ")))
-    progressUpdate(("recettes — clique « ▶ » : %s"):format(table.concat(pnames, ", ")), 0, false)
+    msg(("métier(s) à ouvrir : %s — ouvre chaque fenêtre (ou clique « Ouvrir » sur la barre de progression)."):format(table.concat(pnames, ", ")))
+    progressUpdate(("recettes — clique « Ouvrir » : %s"):format(table.concat(pnames, ", ")), 0, false)
     progressButton(profs[1].name, false)
     -- tentative immédiate : la commande/le clic est un événement matériel, le client peut accepter
     pcall(C_TradeSkillUI.OpenTradeSkill, profs[1].skillLine)
 end
 
--- Ouvre le prochain métier restant. À appeler depuis un CLIC (bouton ▶) ou une commande :
+-- Ouvre le prochain métier restant. À appeler depuis un CLIC (bouton ) ou une commande :
 -- événement matériel = seul contexte où le client accepte OpenTradeSkill. Sans acceptation,
 -- on l'explique et le joueur ouvre à la main.
 function Cohors_OpenNext()
     if not recEngine then
-        msg("lance d'abord « 📚 Recettes » (ou /cohors recettes).")
+        msg("lance d'abord « Recettes » (ou /cohors recettes).")
         return
     end
     local nextProf = recNextProf()
     if not nextProf then
-        msg("tous les métiers sont lus ✔")
+        msg("tous les métiers sont lus")
         return
     end
     -- 2e clic sur un métier qui ne veut pas s'ouvrir (fenêtre non standard) : on l'ignore
@@ -1350,7 +1350,7 @@ function Cohors_OpenNext()
         end
     else
         recEngine.openPending = nil
-        msg(("le client a refusé — ouvre « %s » à la main (Livre de sorts → Métiers) ; s'il ne s'ouvre pas, reclique « ▶ » pour l'ignorer.")
+        msg(("le client a refusé — ouvre « %s » à la main (Livre de sorts, onglet Métiers) ; s'il ne s'ouvre pas, reclique « Ouvrir » pour l'ignorer.")
             :format(nextProf.name))
     end
 end
@@ -1368,7 +1368,7 @@ local function buildPanel()
             frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
         end
         ui = frame
-        ui:SetSize(720, 500)
+        ui:SetSize(500, 330)
         ui:SetPoint("CENTER")
         ui:SetFrameStrata("DIALOG")
         ui:SetMovable(true)
@@ -1388,32 +1388,54 @@ local function buildPanel()
         ui:Hide()
 
         local title = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        title:SetPoint("TOP", 0, -14)
-        title:SetText("Cohors v" .. ADDON_VER .. " — Compagnon de guilde")
+        title:SetPoint("TOPLEFT", 22, -12)
+        title:SetText("Cohors — Compagnon de guilde")
+        local verTxt = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        verTxt:SetPoint("TOPRIGHT", -22, -17)
+        verTxt:SetText("v" .. ADDON_VER)
 
-        local sub = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        sub:SetPoint("TOP", 0, -36)
-        sub:SetText("Calendrier : collecte les raids + réponses → chaîne à coller sur le site (page Calendrier). Recettes : « 📚 Recettes » → fichier SavedVariables à envoyer (Préparation de raid).")
+        local sub = ui:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        sub:SetPoint("TOPLEFT", 22, -38)
+        sub:SetWidth(456)
+        sub:SetJustifyH("LEFT")
+        sub:SetText("Calendrier : clique « Collecter », puis copie la chaîne sur le site (page Calendrier).\n"
+            .. "Recettes : ouvre chaque métier avec « Ouvrir », puis envoie le fichier SavedVariables (Préparation de raid, bouton importer).")
+
+        local ebBg = CreateFrame("Frame", nil, ui)
+        ebBg:SetPoint("TOPLEFT", 18, -104)
+        ebBg:SetPoint("BOTTOMRIGHT", -18, 94)
+        local bgTx = ebBg:CreateTexture(nil, "BACKGROUND")
+        bgTx:SetAllPoints(true)
+        bgTx:SetColorTexture(0, 0, 0, 0.45)    -- champ visible (avant : grand vide transparent)
 
         eb = CreateFrame("EditBox", nil, ui)
         eb:SetMultiLine(true)
-        eb:SetSize(680, 350)
-        eb:SetPoint("TOPLEFT", 20, -60)
+        eb:SetPoint("TOPLEFT", ebBg, 7, -7)
+        eb:SetPoint("BOTTOMRIGHT", ebBg, -7, 7)
         eb:SetFontObject(ChatFontNormal)
         eb:SetAutoFocus(false)
-        eb:SetTextInsets(6, 6, 6, 6)
+        eb:SetTextInsets(2, 2, 2, 2)
         eb:SetText("")
         eb:SetScript("OnEscapePressed", function() eb:ClearFocus() end)
 
         statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        statusText:SetPoint("BOTTOMRIGHT", -256, 23)
+        statusText:SetPoint("BOTTOMLEFT", 24, 78)
         statusText:SetText("prêt (v" .. ADDON_VER .. ")")
 
-        local function mkButton(text, x, w, fn)
+        local function mkButton(text, x, y, w, fn, tip)
             local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
-            b:SetSize(w, 26)
-            b:SetPoint("BOTTOMLEFT", x, 16)
+            b:SetSize(w, 24)
+            b:SetPoint("BOTTOMLEFT", x, y)
             b:SetText(text)
+            if tip then
+                b:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                    GameTooltip:AddLine(text)
+                    GameTooltip:AddLine(tip, 1, 1, 1, true)
+                    GameTooltip:Show()
+                end)
+                b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            end
             b:SetScript("OnClick", function()
                 dtrace("clic « " .. text .. " »")
                 local ok, err = pcall(fn)
@@ -1461,9 +1483,9 @@ local function buildPanel()
             eb:SetFocus()
         end
 
-        mkButton("Collecter", 20, 100, function() Cohors_Collect() end)
-        mkButton("Réinitialiser", 128, 110, function() Cohors_Reset() end)
-        mkButton("Exporter", 246, 100, function()
+        mkButton("Collecter", 22, 46, 146, function() Cohors_Collect() end,
+            "Collecte le calendrier de raids et les réponses des membres.")
+        mkButton("Exporter", 178, 46, 146, function()
             if not Cohors_DB.export then
                 msg("rien à exporter pour le moment — clique « Collecter ».")
                 return
@@ -1472,16 +1494,20 @@ local function buildPanel()
             eb:HighlightText()
             eb:SetFocus()
             msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur le site de la guilde (page Calendrier).")
-        end)
-        mkButton("Diag → fichier", 354, 120, function()
+        end, "Affiche la chaîne à copier sur le site (Ctrl+A puis Ctrl+C).")
+        mkButton("Recettes", 334, 46, 146, function() Cohors_Recipes() end,
+            "Lit les recettes de tes métiers (l'addon te guide, fenêtre par fenêtre).")
+        mkButton("Réinitialiser", 22, 14, 146, function() Cohors_Reset() end,
+            "Efface la collecte en cours et sa dernière sauvegarde.")
+        mkButton("Diag", 178, 14, 146, function()
             dumpDiag(true)
-        end)
-        mkButton("📚 Recettes", 582, 100, function() Cohors_Recipes() end)
-        mkButton("Fermer", 482, 90, function() ui:Hide() end)
+        end, "Écrit un rapport de diagnostic dans le fichier Cohors.lua.")
+        mkButton("Fermer", 334, 14, 146, function() ui:Hide() end,
+            "Ferme la fenêtre. Tape /cohors pour la rouvrir.")
     end)
     if not okB then
         Cohors_DB.ui_error = tostring(errB)
-        msg("interface impossible : " .. tostring(errB) .. " — mode sans fenêtre (/cohors diag → fichier)")
+        msg("interface impossible : " .. tostring(errB) .. " — mode sans fenêtre (/cohors diag)")
         ui = nil
         return false
     end
@@ -1506,7 +1532,7 @@ SlashCmdList["Cohors"] = function(arg)
         if arg == "" then
             buildPanel()
             if ui then ui:Show() end
-            msg(("v%s · dossier « %s » (TOC %s) — « Collecter » = calendrier de raids · « 📚 Recettes » = artisanat.")
+            msg(("v%s · dossier « %s » (TOC %s) — « Collecter » = calendrier de raids · « Recettes » = artisanat.")
                 :format(ADDON_VER, tostring(ADDON_NAME or "?"), tostring(tocVersion())))
             if Cohors_DB.export and showSummary then pcall(showSummary) end
         elseif arg == "collect" then

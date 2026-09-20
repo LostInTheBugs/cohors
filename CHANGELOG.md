@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.147 - 2026-09-20
+
+### Changed
+- **Add-on 1.10.0 — UI refresh.** The in-game panel is now compact (500×330, the old one was mostly
+  empty space), with a readable two-line intro in a lighter font, a framed output field, and two
+  aligned rows of equal buttons with hover tooltips. Every emoji/symbol the game fonts cannot draw
+  (they showed as empty squares in game) has been replaced by safe text — the progress window and
+  all chat messages follow the same rules.
+
 ## 2026.09.146-c1 - 2026-09-20
 
 ### Fixed

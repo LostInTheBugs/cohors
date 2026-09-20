@@ -6,7 +6,7 @@
 --         COHORS_SCENARIO=legacy   lua5.1 tools/addon-harness.lua   (GetAllRecipeIDs absente)
 --         COHORS_SCENARIO=noapi    lua5.1 tools/addon-harness.lua   (aucune API recettes)
 --         COHORS_SCENARIO=closemid lua5.1 tools/addon-harness.lua   (fenêtre fermée en cours de lecture)
---         COHORS_SCENARIO=openbtn  lua5.1 tools/addon-harness.lua   (le client ne cède qu'au clic « ▶ Ouvrir »)
+--         COHORS_SCENARIO=openbtn  lua5.1 tools/addon-harness.lua   (le client ne cède qu'au clic « Ouvrir »)
 --         COHORS_SCENARIO=unreadable lua5.1 tools/addon-harness.lua (métier sans fenêtre standard, cas archéologie)
 --         COHORS_SCENARIO=logout   lua5.1 tools/addon-harness.lua   (/reload en plein export : rien ne se perd)
 --         COHORS_SCENARIO=noprofs  lua5.1 tools/addon-harness.lua
@@ -378,7 +378,7 @@ elseif scenario == "closemid" then
         tostring(Cohors_DB.recipes_total))
 
 elseif scenario == "openbtn" then
-    -- le client refuse toute ouverture hors clic : seul le bouton « ▶ Ouvrir » (cliqué ici, comme
+    -- le client refuse toute ouverture hors clic : seul le bouton « Ouvrir » (cliqué ici, comme
     -- le joueur) fait avancer l'export — c'est le comportement réel en jeu.
     barValues = {}
     Cohors_Recipes()
@@ -436,7 +436,7 @@ elseif scenario == "logout" then
     local saved = false
     for _ = 1, 4000 do
         if not tick(1) then break end
-        if chat_has("✔ Alchimie") then
+        if chat_has("OK — Alchimie") then
             pcall(driver._scripts["OnEvent"], driver, "PLAYER_LOGOUT")   -- /reload simulé
             saved = (Cohors_DB.recipes_at ~= nil) and
                     ((Cohors_DB.recipes or ""):find("Alchimie", 1, true) ~= nil)
@@ -462,7 +462,7 @@ else
     check(chat_has("attends la fin avant de lancer le calendrier"), "calendrier refusé pendant l'export recettes")
     check(Cohors_DB.export == nil, "aucune collecte calendrier lancée pendant l'export")
     local ob0 = openButton()
-    check(ob0 ~= nil, "bouton « ▶ Ouvrir » présent dès le départ")
+    check(ob0 ~= nil, "bouton « Ouvrir » présent dès le départ")
     check(ob0 and (ob0:GetText() or ""):find("Alchimie", 1, true) ~= nil,
         "bouton pointe le 1er métier restant (texte : %s)", ob0 and ob0:GetText() or "?")
     if ob0 and ob0._scripts["OnClick"] then
