@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145-c3 - 2026-09-20
+
+### Fixed
+- In-game add-on **1.8.0** — the recipes export now understands the live client:
+  `C_TradeSkillUI.OpenTradeSkill` is **restricted to hardware events** (the client silently refuses
+  add-on calls made from timers — which is why every profession came back empty). The add-on no
+  longer tries to open profession windows itself: it reads the windows the player opens
+  (`TRADE_SKILL_SHOW` plus a periodic check), walks **every expansion tier** of each profession,
+  and reports along the way (« ✔ Cuisine : 42 recette(s) », « métier(s) restant(s) : … »).
+  Closing a window early ends that profession's remaining tiers cleanly. A best-effort auto-open
+  is still attempted from the click/slash command (the client accepts it from hardware input).
+- Gathering and dummy recipes are excluded from the export (they are not crafts), and the add-on
+  never closes the player's profession window.
+- Offline harness: « closemid » scenario (window closed mid-read) and reworked « apifail »
+  (client refusing to open) — 8 scenarios now run in CI.
+
 ## 2026.09.145-c2 - 2026-09-20
 
 ### Fixed

@@ -5,6 +5,7 @@
 --         COHORS_SCENARIO=slash    lua5.1 tools/addon-harness.lua
 --         COHORS_SCENARIO=legacy   lua5.1 tools/addon-harness.lua   (GetAllRecipeIDs absente)
 --         COHORS_SCENARIO=noapi    lua5.1 tools/addon-harness.lua   (aucune API recettes)
+--         COHORS_SCENARIO=closemid lua5.1 tools/addon-harness.lua   (fenêtre fermée en cours de lecture)
 --         COHORS_SCENARIO=noprofs  lua5.1 tools/addon-harness.lua
 -- Simule fidèlement le sandbox du client : `os` et `io` sont retirés avant de charger
 -- l'addon (le harnais capture ce dont il a besoin AVANT). Le temps est virtuel (GetTime).
@@ -153,16 +154,16 @@ GetProfessionInfo = function(idx)
 end
 
 local profData = {
-    [171] = { childs = { { professionID = 1001, expansionName = "Khaz Algar", recipeIDs = { 11, 12, 13 } },
-                         { professionID = 1002, expansionName = "Dragon Isles", recipeIDs = { 14, 15, 16 },
+    [171] = { childs = { { professionID = 1001, parentProfessionID = 171, expansionName = "Khaz Algar", recipeIDs = { 11, 12, 13 } },
+                         { professionID = 1002, parentProfessionID = 171, expansionName = "Dragon Isles", recipeIDs = { 14, 15, 16 },
                            unlearned = { 16 } } } },
-    [185] = { childs = { { professionID = 2001, expansionName = "Khaz Algar", recipeIDs = { 21, 22 } } } },
+    [185] = { childs = { { professionID = 2001, parentProfessionID = 185, expansionName = "Khaz Algar", recipeIDs = { 21, 22 } } } },
 }
 if scenario == "apifail" then
     profData = { [171] = {}, [185] = {} }     -- ni prêt, ni liste : tout doit échouer proprement
 end
 
-local TS = { open = nil, child = nil }
+local TS = { open = nil, child = nil, pendingShow = false }
 local function currentChilds()
     local p = profData[TS.open]
     return p and p.childs or nil
@@ -178,14 +179,19 @@ end
 
 C_TradeSkillUI = {
     OpenTradeSkill = function(skillLine)
-        if scenario ~= "apifail" then TS.open = skillLine; TS.child = nil end
+        -- comme en jeu : le client ne l'accepte QUE depuis un événement matériel, sinon il ne se
+        -- passe rien (pas d'erreur). Le scénario « apifail » simule un client qui refuse toujours.
+        if scenario == "apifail" then return false end
+        TS.open = skillLine; TS.child = nil; TS.pendingShow = true
+        return true
     end,
     IsTradeSkillReady = function() return scenario ~= "apifail" end,
     GetChildProfessionInfos = function() return currentChilds() end,
     SetProfessionChildSkillLineID = function(id) TS.child = id end,
     GetChildProfessionInfo = function()
         local c = currentChild()
-        return c and { professionID = c.professionID, expansionName = c.expansionName } or nil
+        return c and { professionID = c.professionID, parentProfessionID = c.parentProfessionID,
+                       expansionName = c.expansionName } or nil
     end,
     GetAllRecipeIDs = function()
         if scenario == "legacy" or scenario == "noapi" then error("api indisponible (test)") end
@@ -252,6 +258,10 @@ local function tick(n)
             pendingEvent = false
             pcall(driver._scripts["OnEvent"], driver, "CALENDAR_OPEN_EVENT")   -- le calendrier répond
         end
+        if TS.pendingShow and driver and driver._scripts["OnEvent"] then
+            TS.pendingShow = false
+            pcall(driver._scripts["OnEvent"], driver, "TRADE_SKILL_SHOW")   -- le joueur ouvre la fenêtre
+        end
         for _, fr in ipairs(frames) do
             local h = fr._scripts["OnUpdate"]
             if h and fr ~= driver and fr:IsShown() then
@@ -305,6 +315,24 @@ elseif scenario == "noprofs" then
     tick(40)
     check(Cohors_DB.recipes_at == nil, "aucun métier : rien exporté, pas de plantage")
 
+elseif scenario == "closemid" then
+    -- la fenêtre est fermée en cours de lecture : clôture propre, les autres métiers continuent
+    barValues = {}
+    Cohors_Recipes()
+    local closed, done = false, false
+    for _ = 1, 4000 do
+        if not tick(1) then break end
+        if not closed and (M.t - 100000.0) > 3.5 then
+            closed = true
+            TS.open = nil; TS.child = nil            -- le joueur ferme la fenêtre
+        end
+        if Cohors_DB.recipes_at then done = true; break end
+    end
+    check(done, "export terminé malgré la fermeture (%.1f s virtuelles)", M.t - 100000.0)
+    check(chat_has("fenêtre fermée"), "fermeture détectée et signalée")
+    check((Cohors_DB.recipes_total or 0) >= 2, "métiers restants lus après la fermeture (total %s)",
+        tostring(Cohors_DB.recipes_total))
+
 elseif scenario == "slash" then
     -- v1.7.1 : « /cohors » sans argument ouvre le panneau, ne collecte RIEN tout seul.
     SlashCmdList["Cohors"]("")
@@ -337,9 +365,10 @@ else
     check(barValues[#barValues] == 100, "barre à 100 %% à la fin (dernière valeur %s)",
         tostring(barValues[#barValues]))
     if scenario == "apifail" then
-        check(Cohors_DB.recipes_total == 0, "échec API géré : 0 recette (total %s)",
+        check(Cohors_DB.recipes_total == 0, "client qui refuse d'ouvrir : 0 recette (total %s)",
             tostring(Cohors_DB.recipes_total))
-        check(Cohors_DB.recipes_at ~= nil, "export vide mais valide écrit malgré l'échec API")
+        check(Cohors_DB.recipes_at ~= nil, "export vide mais valide écrit malgré le refus")
+        check(chat_has("délai dépassé"), "délai d'inactivité signalé dans le chat")
     elseif scenario == "legacy" then
         check(Cohors_DB.recipes_total == 7, "repli GetFilteredRecipeIDs (vieux client) : 7 recettes (total %s)",
             tostring(Cohors_DB.recipes_total))

@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.7.2"
+local ADDON_VER = "1.8.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -178,6 +178,7 @@ local finishCollect
 local recTickSafe   -- moteur recettes (défini plus bas)
 local progressUpdate  -- fenêtre de progression (définie plus bas)
 local recEngine    -- moteur recettes, exclu du calendrier (défini plus bas)
+local recOnTradeSkillOpened  -- réaction à l'ouverture d'une fenêtre de métier (définie plus bas)
 
 -- ------------------------------------------------------------------- export
 local function buildExport()
@@ -554,10 +555,14 @@ f:SetScript("OnEvent", function(_, event, arg1)
         if engine and engine.current then
             engine.eventAt = GetTime()
         end
+    elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_UPDATE" then
+        if recEngine and recOnTradeSkillOpened then pcall(recOnTradeSkillOpened) end
     end
 end)
 f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CALENDAR_OPEN_EVENT")
+f:RegisterEvent("TRADE_SKILL_SHOW")
+f:RegisterEvent("TRADE_SKILL_UPDATE")
 
 function Cohors_Collect()
     if recEngine then
@@ -740,11 +745,16 @@ end
 -- Lit les recettes connues du personnage, PAR MÉTIER ET PAR EXTENSION
 -- (paliers GetChildProfessionInfos, comme l'interface des métiers), et les
 -- écrit dans Cohors_DB.recipes pour l'import sur le site (Préparation de raid).
+-- Depuis la v1.8.0, le mode est GUIDÉ : C_TradeSkillUI.OpenTradeSkill est RÉSERVÉE aux
+-- événements matériels (wiki : « restricted » + #hwevent) — un addon ne peut PAS ouvrir les
+-- fenêtres de métier depuis une boucle. On lit donc les fenêtres que le JOUEUR ouvre
+-- (TRADE_SKILL_SHOW + suivi périodique), palier par palier, en lui disant quoi ouvrir ; une
+-- relance douce de l'ouverture est tentée (acceptée depuis un clic, ignorée sinon — jamais d'erreur).
 recEngine = nil   -- (déclaré plus haut : Cohors_Collect le consulte)
 local recResults = {}
 local recApiNotes = {}  -- API en échec : notées, plus jamais d'échec silencieux
 local recTiers = {}     -- stats par métier/palier pour le rapport
-local REC_TOTAL_TIMEOUT = 240
+local REC_IDLE_TIMEOUT = 600   -- sans aucune activité (métier lu / fenêtre ouverte) : on clôt
 
 local function itemName(id)
     if not id or id <= 0 then return "" end
@@ -812,6 +822,8 @@ local function collectProfession(eName, eRank)
                 stats.unlearned = stats.unlearned + 1
             elseif info.disabled == true then
                 stats.disabled = stats.disabled + 1
+            elseif info.isGatheringRecipe == true or info.isDummyRecipe == true then
+                stats.skipped = (stats.skipped or 0) + 1   -- récolte/artifices : hors artisanat
             elseif not seen[info.name] then
                 seen[info.name] = true
                 local mats = {}
@@ -872,9 +884,10 @@ local function recSave()
 end
 
 local function recFinish(note)
-    if not recEngine then return end
+    local e = recEngine
+    if not e then return end
     recEngine = nil
-    pcall(C_TradeSkillUI.CloseTradeSkill)
+    -- on ne ferme PAS la fenêtre du joueur : elle lui appartient, laissons-la ouverte
     pcall(recSave)
     local total, exts = 0, {}
     for _, prof in ipairs(recResults) do
@@ -888,6 +901,9 @@ local function recFinish(note)
     L[#L + 1] = ("Cohors recettes — %s (addon v%s · client %s)"):format(dateStr(time()), ADDON_VER,
         tostring(clientIface()))
     L[#L + 1] = ("total : %d recette(s) sur %d palier(s)"):format(total, #recTiers)
+    local ndone = 0
+    for _ in pairs(e.done or {}) do ndone = ndone + 1 end
+    L[#L + 1] = ("métiers lus : %d/%d"):format(ndone, (e.progs and #e.progs) or 0)
     for _, t in ipairs(recTiers) do
         L[#L + 1] = ("  %s · %s : %d recette(s) [%s — %d ids, %d non apprises, %d matériaux]")
             :format(t.prof, t.tier ~= "" and t.tier or "?", t.n, t.src, t.ids, t.unlearned, t.mats)
@@ -911,80 +927,206 @@ local function recFinish(note)
     progressUpdate(("recettes — terminé : %d recette(s)"):format(total), 1, true)
 end
 
+-- --------------------------------------------------------------- mode guidé
+local function recRemaining()
+    local out = {}
+    local e = recEngine
+    for _, p in ipairs((e and e.progs) or {}) do
+        if not (e.done or {})[p.skillLine] then out[#out + 1] = p.name end
+    end
+    return out
+end
+
+local function recDoneCount()
+    local n = 0
+    for _ in pairs((recEngine and recEngine.done) or {}) do n = n + 1 end
+    return n
+end
+
+-- Quel métier est ouvert dans l'interface ? (nil si rien, parentID si inconnu/déjà lu)
+local function recDetectOpenProf()
+    local e = recEngine
+    if not e then return nil end
+    local parentID
+    local okc, infos = pcall(C_TradeSkillUI.GetChildProfessionInfos)
+    if okc and type(infos) == "table" and infos[1] then parentID = tonumber(infos[1].parentProfessionID) end
+    if not parentID then
+        local okg, cinf = pcall(C_TradeSkillUI.GetChildProfessionInfo)
+        if okg and type(cinf) == "table" then parentID = tonumber(cinf.parentProfessionID) end
+    end
+    if not parentID then return nil end
+    for _, p in ipairs(e.progs) do
+        if tonumber(p.skillLine) == parentID then
+            if e.done[p.skillLine] then return nil, parentID end
+            return p, parentID
+        end
+    end
+    return nil, parentID
+end
+
+local function recBeginProfession(prof)
+    local e = recEngine
+    if not e or not prof or e.busy then return end
+    e.busy = { prof = prof, phase = "childs", attempts = 0, childs = {}, ci = 1, total = 0,
+               await = GetTime() + 0.8 }
+    e.lastActionAt = GetTime()
+    dtrace(("fenêtre ouverte : %s — lecture"):format(prof.name))
+    msg(("lecture de « %s »…"):format(prof.name))
+    progressUpdate(("recettes — %s : lecture…"):format(prof.name),
+        recDoneCount() / math.max(1, (e.progs and #e.progs) or 1), false)
+end
+
+local function recProfessionDone(why)
+    local e = recEngine
+    if not e or not e.busy then return end
+    local cur = e.busy
+    local prof = cur.prof
+    e.done[prof.skillLine] = true
+    e.busy = nil
+    e.lastActionAt = GetTime()
+    local note = why
+    if not note and (cur.total or 0) == 0 then
+        note = (next(recApiNotes) and recApiWhy()) or "aucune recette (normal hors artisanat)"
+    end
+    dtrace(("métier lu : %s — %d recette(s)%s"):format(prof.name, cur.total or 0,
+        note and (" (" .. note .. ")") or ""))
+    msg(("✔ %s : %d recette(s)%s."):format(prof.name, cur.total or 0,
+        note and (" (" .. note .. ")") or ""))
+    local left = recRemaining()
+    if #left == 0 then
+        recFinish(nil)
+    else
+        msg(("métier(s) restant(s) : %s — ouvre une fenêtre de métier."):format(table.concat(left, ", ")))
+    end
+end
+
+recOnTradeSkillOpened = function()
+    local e = recEngine
+    if not e or e.busy then return end
+    local prof = recDetectOpenProf()
+    if prof then
+        recBeginProfession(prof)
+    end
+end
+
 recTick = function(now, force)
     local e = recEngine
     if not e then return end
-    if now > e.deadline then
-        dtrace("recettes : délai global dépassé")
+    if now > (e.lastActionAt or e.started or 0) + REC_IDLE_TIMEOUT then
+        dtrace("recettes : délai d'inactivité dépassé")
         recFinish("délai dépassé")
         return
     end
-    local prof = e.progs[e.pi]
-    if not prof then
-        dtrace("recettes : terminé")
-        recFinish(nil)
-        return
-    end
-    local wait = (not force) and now < (e.await or 0)
-
-    if e.phase == "open" then
-        if wait then return end
-        pcall(C_TradeSkillUI.OpenTradeSkill, prof.skillLine)
-        e.phase = "ready"; e.attempts = 0; e.await = now + 0.9
-        dtrace(("métier %d/%d : %s"):format(e.pi, #e.progs, prof.name))
-        return
-    elseif e.phase == "ready" then
-        if wait then return end
-        local oki, ready = pcall(C_TradeSkillUI.IsTradeSkillReady)
-        local okc, childs = pcall(C_TradeSkillUI.GetChildProfessionInfos)
-        if (oki and ready) or (e.attempts or 0) > 20 then
-            e.childs = (okc and type(childs) == "table" and #childs > 0) and childs or {}
-            e.ci = 1
-            if #e.childs > 0 then
-                e.phase = "switch"; e.await = now + 0.2
-            else
-                e.phase = "waitList"; e.attempts = 0; e.await = now + 1.0
+    local cur = e.busy
+    if not cur then
+        -- un métier est-il ouvert ? (le joueur a peut-être déjà la fenêtre sous les yeux)
+        local prof, openID = recDetectOpenProf()
+        if prof then recBeginProfession(prof); return end
+        if openID and openID ~= e.saidOpen then
+            e.saidOpen = openID
+            local pn = "?"
+            for _, p in ipairs(e.progs) do
+                if tonumber(p.skillLine) == openID then pn = p.name end
             end
+            dtrace(("fenêtre ignorée : %s (déjà lue ?)"):format(pn))
+            msg(("« %s » est déjà lue ✔ — ouvre un des métiers restants."):format(pn))
+        elseif not openID then
+            e.saidOpen = nil
+        end
+        if #recRemaining() == 0 then
+            dtrace("recettes : terminé")
+            recFinish(nil)
             return
         end
-        e.attempts = (e.attempts or 0) + 1; e.await = now + 0.6
+        -- relance douce : acceptée par le client seulement depuis un clic/commande matériel,
+        -- ignorée le reste du temps — jamais d'erreur, jamais bloquant.
+        if now > (e.retryAt or 0) then
+            e.retryAt = now + 3
+            for _, p in ipairs(e.progs) do
+                if not (e.done or {})[p.skillLine] then
+                    pcall(C_TradeSkillUI.OpenTradeSkill, p.skillLine)
+                    break
+                end
+            end
+        end
         return
-    elseif e.phase == "switch" then
+    end
+
+    local prof = cur.prof
+    -- la fenêtre du métier lu est-elle toujours ouverte ? (2 échecs consécutifs avant d'abandonner)
+    if now > (cur.liveAt or 0) then
+        cur.liveAt = now + 2
+        local live = false
+        local okc, infos = pcall(C_TradeSkillUI.GetChildProfessionInfos)
+        if okc and type(infos) == "table" and infos[1] and
+           tonumber(infos[1].parentProfessionID) == tonumber(prof.skillLine) then
+            live = true
+        else
+            local okg, cinf = pcall(C_TradeSkillUI.GetChildProfessionInfo)
+            if okg and type(cinf) == "table" and
+               tonumber(cinf.parentProfessionID) == tonumber(prof.skillLine) then live = true end
+        end
+        if not live then
+            cur.dead = (cur.dead or 0) + 1
+            if cur.dead >= 2 then
+                dtrace(("%s : fenêtre fermée en cours de lecture"):format(prof.name))
+                recProfessionDone("fenêtre fermée")
+                return
+            end
+        else
+            cur.dead = 0
+        end
+    end
+
+    local wait = (not force) and now < (cur.await or 0)
+    if cur.phase == "childs" then
         if wait then return end
-        local child = e.childs[e.ci]
+        local okc, ck = pcall(C_TradeSkillUI.GetChildProfessionInfos)
+        if okc and type(ck) == "table" and #ck > 0 then
+            cur.childs = ck; cur.ci = 1; cur.phase = "switch"; cur.await = now + 0.3
+        elseif (cur.attempts or 0) > 8 then
+            cur.childs = {}; cur.ci = 1; cur.phase = "collect"; cur.await = now + 0.5
+        else
+            cur.attempts = (cur.attempts or 0) + 1; cur.await = now + 0.8
+        end
+        return
+    end
+    if wait then return end
+    if cur.phase == "switch" then
+        local child = cur.childs[cur.ci]
         if not child then
-            pcall(C_TradeSkillUI.CloseTradeSkill)
-            e.pi = e.pi + 1; e.ci = 0; e.childs = nil
-            e.phase = "open"; e.await = now + 0.5
+            recProfessionDone(nil)
             return
         end
         pcall(C_TradeSkillUI.SetProfessionChildSkillLineID, child.professionID)
-        e.attempts = 0; e.phase = "waitChild"; e.await = now + 0.4
+        cur.attempts = 0; cur.phase = "waitChild"; cur.await = now + 0.5
         return
-    elseif e.phase == "waitChild" then
-        if wait then return end
-        local child = e.childs[e.ci]
-        local okg, cur = pcall(C_TradeSkillUI.GetChildProfessionInfo)
-        if okg and type(cur) == "table" and cur.professionID == child.professionID then
-            e.phase = "settle"; e.settleUntil = now + 0.9
-        elseif (e.attempts or 0) > 20 then
+    elseif cur.phase == "waitChild" then
+        local child = cur.childs[cur.ci]
+        if not child then cur.phase = "switch"; return end
+        local okg, cinf = pcall(C_TradeSkillUI.GetChildProfessionInfo)
+        if okg and type(cinf) == "table" and tonumber(cinf.professionID) == tonumber(child.professionID) then
+            cur.phase = "settle"; cur.settleUntil = now + 0.9
+        elseif (cur.attempts or 0) > 20 then
             dtrace(("%s · %s : palier non chargé — passé"):format(prof.name, tostring(child.expansionName)))
-            e.ci = e.ci + 1; e.phase = "switch"; e.await = now + 0.2
+            cur.ci = cur.ci + 1; cur.phase = "switch"; cur.await = now + 0.2
         else
-            e.attempts = (e.attempts or 0) + 1; e.await = now + 0.4
+            cur.attempts = (cur.attempts or 0) + 1
+            pcall(C_TradeSkillUI.SetProfessionChildSkillLineID, child.professionID)
+            cur.await = now + 0.6
         end
         return
-    elseif e.phase == "settle" then
-        if not force and now < (e.settleUntil or 0) then return end
-        e.phase = "collect"; e.await = now + 0.05
+    elseif cur.phase == "settle" then
+        if not force and now < (cur.settleUntil or 0) then return end
+        cur.phase = "collect"; cur.await = now + 0.05
         return
-    elseif e.phase == "collect" then
-        if wait then return end
-        local child = e.childs[e.ci]
+    elseif cur.phase == "collect" then
+        local child = cur.childs[cur.ci]
         local eName, eRank = "", 0
         if child then
             eName = tostring(child.expansionName or "")
-            eRank = e.ci
+            if eName == "Unknown" then eName = "" end
+            eRank = cur.ci
         end
         local okc2, list, src, stats = pcall(collectProfession, eName, eRank)
         list = (okc2 and type(list) == "table") and list or {}
@@ -994,36 +1136,16 @@ recTick = function(now, force)
                                     src = tostring(src or "?"), ids = stats.ids or 0,
                                     unlearned = stats.unlearned or 0, mats = stats.mats or 0,
                                     err_info = stats.err_info or 0 }
+        cur.total = (cur.total or 0) + #list
         local tag = eName ~= "" and (" · " .. eName) or ""
         dtrace(("%s%s : %d recette(s) [%s : %d ids, %d non apprises]")
             :format(prof.name, tag, #list, tostring(src or "?"), stats.ids or 0, stats.unlearned or 0))
         msg(("• %s%s : %d recette(s)"):format(prof.name, tag, #list))
         if child then
-            e.ci = e.ci + 1; e.phase = "switch"; e.await = now + 0.3
+            cur.ci = cur.ci + 1; cur.phase = "switch"; cur.await = now + 0.3
         else
-            pcall(C_TradeSkillUI.CloseTradeSkill)
-            e.pi = e.pi + 1; e.ci = 0; e.childs = nil
-            e.phase = "open"; e.await = now + 0.5
+            recProfessionDone(nil)
         end
-        return
-    elseif e.phase == "waitList" then
-        if wait then return end
-        local ids = recIds()
-        if type(ids) == "table" and #ids > 0 then
-            e.phase = "collect"; e.await = now + 0.05
-            return
-        end
-        e.attempts = (e.attempts or 0) + 1
-        if e.attempts > 20 then
-            local why = recApiWhy()
-            dtrace(("%s : aucune recette lisible (%s) — métier suivant"):format(prof.name, why))
-            msg(("⚠️ %s : aucune recette lisible (%s) — métier suivant."):format(prof.name, why))
-            pcall(C_TradeSkillUI.CloseTradeSkill)
-            e.pi = e.pi + 1; e.ci = 0; e.childs = nil
-            e.phase = "open"; e.await = now + 0.4
-            return
-        end
-        e.await = now + 1.0
         return
     end
 end
@@ -1040,32 +1162,44 @@ recTickSafe = function(force)
     end
     if recEngine then
         local e = recEngine
-        local pname = (e.progs and e.progs[e.pi] and e.progs[e.pi].name) or "?"
-        local nchild = (e.childs and #e.childs) or 0
-        local ci = tonumber(e.ci) or 0
-        local frac = 0
-        if nchild > 0 and ci > 0 then
-            frac = math.min(1, (ci - 1) / nchild)   -- palier suivant le dernier = métier terminé
-        end
-        local pct = ((e.pi - 1) + frac) / math.max(1, (e.progs and #e.progs) or 1)
+        local nprogs = math.max(1, (e.progs and #e.progs) or 1)
+        local ndone = recDoneCount()
         local n = 0
         for _, prof in ipairs(recResults) do n = n + #(prof.recipes or {}) end
-        local sub
-        if e.phase == "open" or e.phase == "ready" then
-            sub = "ouverture de la fenêtre de métier…"
-        elseif (e.phase == "switch" or e.phase == "waitChild" or e.phase == "settle") and nchild > 0 then
-            local child = e.childs[ci]
-            sub = ("palier %d/%d"):format(ci, nchild)
-                .. (child and child.expansionName and (" · " .. tostring(child.expansionName)) or "")
-        elseif e.phase == "collect" then
-            sub = "lecture des recettes…"
-        elseif e.phase == "waitList" then
-            sub = "attente de la liste des recettes…"
+        local elapsed = math.floor(GetTime() - (e.started or GetTime()))
+        local label, pct
+        local cur = e.busy
+        if cur then
+            local nchild = (cur.childs and #cur.childs) or 0
+            local ci = tonumber(cur.ci) or 0
+            local sub
+            if cur.phase == "childs" then
+                sub = "lecture de la fenêtre…"
+            elseif (cur.phase == "switch" or cur.phase == "waitChild" or cur.phase == "settle")
+                   and nchild > 0 then
+                local child = cur.childs[ci]
+                local xn = child and tostring(child.expansionName or "") or ""
+                if xn == "" or xn == "Unknown" then xn = ("palier %d"):format(ci) end
+                sub = ("palier %d/%d · %s"):format(ci, nchild, xn)
+            elseif cur.phase == "collect" then
+                sub = "lecture des recettes…"
+            else
+                sub = tostring(cur.phase)
+            end
+            label = ("recettes — %s : %s · %d recette(s) · %d s"):format(cur.prof.name, sub, n, elapsed)
+            local frac = 0
+            if nchild > 0 and ci > 0 then
+                frac = math.min(1, (ci - 1) / nchild)   -- palier suivant le dernier = métier terminé
+            end
+            pct = (ndone + frac) / nprogs
         else
-            sub = tostring(e.phase)
+            local left = recRemaining()
+            label = ("recettes — %d/%d métier(s) lu(s) · ouvre un métier · %d recette(s) · %d s")
+                :format(ndone, nprogs, n, elapsed)
+            if #left > 0 then label = label .. " (reste : " .. table.concat(left, ", ") .. ")" end
+            pct = ndone / nprogs
         end
-        progressUpdate(("recettes — %s : %s · %d recette(s) · %d s"):format(
-            pname, sub, n, math.floor(GetTime() - (e.started or GetTime()))), pct)
+        progressUpdate(label, pct)
     end
 end
 
@@ -1080,9 +1214,18 @@ function Cohors_Recipes()
             msg("export précédent bloqué — réinitialisation…")
             recEngine = nil
         else
-            dtrace("clic : étape recettes forcée")
-            recTickSafe(true)
-            msg("export en cours — étape forcée (" .. tostring(recEngine and recEngine.phase) .. ").")
+            local left = recRemaining()
+            if #left == 0 then
+                msg("export en cours — dernière étape…")
+            else
+                msg(("export en cours — ouvre les métiers restants : %s."):format(table.concat(left, ", ")))
+                for _, p in ipairs(recEngine.progs) do
+                    if not recEngine.done[p.skillLine] then
+                        pcall(C_TradeSkillUI.OpenTradeSkill, p.skillLine)
+                        break
+                    end
+                end
+            end
             return
         end
     end
@@ -1097,16 +1240,18 @@ function Cohors_Recipes()
     recApiNotes = {}
     recTiers = {}
     recEngine = {
-        progs = profs, pi = 1, phase = "open", attempts = 0, ci = 0,
-        started = GetTime(), await = GetTime() + 0.4, settleUntil = 0,
-        deadline = GetTime() + REC_TOTAL_TIMEOUT,
+        progs = profs, done = {}, busy = nil, started = GetTime(), lastActionAt = GetTime(),
+        retryAt = GetTime() + 0.5,
     }
     dtrace(("recettes : %d métier(s) — %s"):format(#profs, profs[1] and profs[1].name or "?"))
     local pnames = {}
     for _, p in ipairs(profs) do pnames[#pnames + 1] = p.name end
-    msg(("lecture des recettes (%d métier(s) : %s) — la progression s'affiche à l'écran.")
+    msg(("lecture des recettes (%d métier(s) : %s). Ouvre tes fenêtres de métier (Livre de sorts → Métiers) une par une : l'addon lit celle qui est ouverte et enchaîne.")
         :format(#profs, table.concat(pnames, ", ")))
-    progressUpdate(("recettes — préparation (%d métier(s))…"):format(#profs), 0)
+    msg(("métier(s) à ouvrir : %s — tu peux fermer chaque fenêtre dès que « ✔ » apparaît."):format(table.concat(pnames, ", ")))
+    progressUpdate(("recettes — ouvre un métier : %s"):format(table.concat(pnames, ", ")), 0, false)
+    -- tentative immédiate : la commande/le clic est un événement matériel, le client peut accepter
+    pcall(C_TradeSkillUI.OpenTradeSkill, profs[1].skillLine)
 end
 
 -- ------------------------------------------------------------------- panneau
