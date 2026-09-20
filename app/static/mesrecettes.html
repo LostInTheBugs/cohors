@@ -75,6 +75,11 @@
   .rcrow:hover { background: #182130; }
   .rcrow input { accent-color: var(--acc); transform: translateY(1px); }
   .rclist { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px; margin-top: 10px; }
+  .rcgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .rccol { min-width: 0; }
+  .rchead { font-size: 13.5px; font-weight: 600; margin: 12px 0 0; display: flex; gap: 6px; align-items: baseline; }
+  .rchead .meta { font-weight: 500; }
+  @media (max-width: 860px) { .rcgrid { grid-template-columns: 1fr; } }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; font-size: 12.5px; color: var(--mut); padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   td { padding: 6px 10px; border-top: 1px solid var(--line); font-size: 13.5px; }
@@ -88,7 +93,7 @@
   .err { color: var(--err); font-size: 13px; }
   .hidden { display: none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.147">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.148">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -97,7 +102,7 @@
       <img src="/branding/logo" alt="Cohors" class="crest">
       <div>
         <div class="brandname">Cohors <span>Mes recettes</span></div>
-        <div class="tagline">Les recettes que tu connais — elles apparaissent dans « Qui peut crafter quoi ».</div>
+        <div class="tagline">Tes recettes de métiers — celles que tu connais et celles qu'il te reste à apprendre.</div>
       </div>
     </a>
     <div class="userbox">
@@ -109,8 +114,8 @@
   <nav class="tabs" id="navmain"></nav>
 
   <div class="card" id="recettes">
-    <h2>📖 Mes recettes connues</h2>
-    <div class="meta" style="margin:-4px 0 10px">Coche les recettes que tu connais sur tes personnages — elles apparaissent dans « Qui peut crafter quoi » (utilisation : préparation de raid).</div>
+    <h2>📖 Mes recettes</h2>
+    <div class="meta" style="margin:-4px 0 10px">Les recettes connues apparaissent dans « Qui peut crafter quoi » (préparation de raid). Coche ou décoche, puis « Enregistrer » — le reste s'affiche dans « À apprendre ».</div>
     <div class="row">
       <select id="rcchar"><option value="">— Choisir un personnage —</option></select>
       <select id="rcprof"></select>
@@ -118,7 +123,16 @@
       <span class="spacer"></span>
       <span class="meta" id="rcmsg"></span>
     </div>
-    <div class="rclist hidden" id="rclist"></div>
+    <div class="rcgrid hidden" id="rcgrid">
+      <div class="rccol">
+        <div class="rchead">✅ Connues <span class="meta" id="rccountk"></span></div>
+        <div class="rclist" id="rclistk"></div>
+      </div>
+      <div class="rccol">
+        <div class="rchead">⬜ À apprendre <span class="meta" id="rccountu"></span></div>
+        <div class="rclist" id="rclistu"></div>
+      </div>
+    </div>
     <div class="row" style="margin-top:10px">
       <button id="rcsave">💾 Enregistrer mes recettes</button>
       <button class="ghost" id="rcimp" style="padding:9px 16px;font-size:14px">📥 Importer mon export d'addon</button>
@@ -128,10 +142,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.147"></script>
-<script src="/static/branding.js?v=2026.09.147"></script>
-<script src="/static/i18n.js?v=2026.09.147"></script>
-<script src="/static/esc.js?v=2026.09.147"></script>
+<script src="/static/nav.js?v=2026.09.148"></script>
+<script src="/static/branding.js?v=2026.09.148"></script>
+<script src="/static/i18n.js?v=2026.09.148"></script>
+<script src="/static/esc.js?v=2026.09.148"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
@@ -154,25 +168,39 @@ const jreq = async (m, u, b) => { const r = await fetch(u, { method: m,
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
 
-// ---- 📖 Mes recettes connues ----
+// ---- 📖 Mes recettes (connues / à apprendre) ----
 let RC = { catalog: [] };
 const rcMsg = (t, ok) => { const m = $("#rcmsg"); m.textContent = t || ""; m.style.color = ok ? "var(--ok)" : "var(--mut)"; };
 const rcCount = () => RC.catalog.filter(x => x.known).length;
+const rcUnknownCount = () => RC.catalog.filter(x => !x.known).length;
 function rcRenderList() {
   const q = ($("#rcq").value || "").trim().toLowerCase();
-  const list = RC.catalog.filter(x => !q || (x.name || "").toLowerCase().includes(q));
-  if (!RC.catalog.length) { $("#rclist").innerHTML = `<div class="empty">Choisis un personnage et un métier.</div>`; return; }
-  if (!list.length) { $("#rclist").innerHTML = `<div class="empty">Aucune recette trouvée.</div>`; return; }
-  $("#rclist").innerHTML = list.map(x => `<label class="rcrow"><input type="checkbox" data-rc="${x.id}"${x.known ? " checked" : ""}> <b>${esc(x.name)}</b> <span class="meta">${esc(x.exp || "")}${(x.mats && x.mats.length) ? " · " + esc(x.mats.map(m => m.name + " ×" + fmt(m.qty)).join(", ")) : ""}</span></label>`).join("");
-  $("#rclist").querySelectorAll("input[data-rc]").forEach(c => c.addEventListener("change", () => {
+  const match = (x) => !q || (x.name || "").toLowerCase().includes(q);
+  const row = (x) => `<label class="rcrow"><input type="checkbox" data-rc="${x.id}"${x.known ? " checked" : ""}> <b>${esc(x.name)}</b> <span class="meta">${esc(x.exp || "")}${(x.mats && x.mats.length) ? " · " + esc(x.mats.map(m => m.name + " ×" + fmt(m.qty)).join(", ")) : ""}</span></label>`;
+  if (!RC.catalog.length) {
+    $("#rclistk").innerHTML = `<div class="empty">Choisis un personnage et un métier.</div>`;
+    $("#rclistu").innerHTML = "";
+    $("#rccountk").textContent = ""; $("#rccountu").textContent = "";
+    return;
+  }
+  const klist = RC.catalog.filter(x => x.known && match(x));
+  const ulist = RC.catalog.filter(x => !x.known && match(x));
+  $("#rclistk").innerHTML = klist.length ? klist.map(row).join("")
+    : `<div class="empty">${q ? "Aucune recette trouvée." : "Aucune recette connue pour ce métier."}</div>`;
+  $("#rclistu").innerHTML = ulist.length ? ulist.map(row).join("")
+    : `<div class="empty">${q ? "Aucune recette trouvée." : "Toutes les recettes de ce métier sont connues 🎉"}</div>`;
+  $("#rccountk").textContent = "(" + rcCount() + ")";
+  $("#rccountu").textContent = "(" + rcUnknownCount() + ")";
+  document.querySelectorAll("#rcgrid input[data-rc]").forEach(c => c.addEventListener("change", () => {
     const it = RC.catalog.find(x => x.id === +c.dataset.rc);
     if (it) it.known = c.checked;
-    rcMsg(rcCount() + " recette(s) cochée(s)");
+    rcMsg(rcCount() + " recette(s) connue(s) · " + rcUnknownCount() + " à apprendre");
+    rcRenderList();
   }));
 }
 async function rcCharChanged() {
   const [realm, name] = ($("#rcchar").value || "").split("|");
-  RC.catalog = []; $("#rclist").classList.add("hidden"); $("#rcprof").innerHTML = "";
+  RC.catalog = []; $("#rcgrid").classList.add("hidden"); $("#rcprof").innerHTML = "";
   if (!realm) { rcMsg(""); return; }
   rcMsg("Chargement…");
   try {
@@ -193,10 +221,10 @@ async function rcProfChanged() {
   try {
     const d = await jget(`/api/my/recipes?realm=${encodeURIComponent(realm)}&name=${encodeURIComponent(name)}&prof=${encodeURIComponent(prof)}`);
     RC.catalog = d.catalog || [];
-    $("#rclist").classList.remove("hidden");
+    $("#rcgrid").classList.remove("hidden");
     $("#rcq").value = "";
     rcRenderList();
-    rcMsg(rcCount() + " recette(s) connue(s)");
+    rcMsg(rcCount() + " recette(s) connue(s) · " + rcUnknownCount() + " à apprendre");
   } catch (e) { rcMsg(e.message); }
 }
 $("#rcchar").addEventListener("change", rcCharChanged);

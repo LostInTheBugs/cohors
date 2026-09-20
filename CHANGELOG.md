@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.148 - 2026-09-20
+
+### Changed
+- **My recipes page**: recipes are now split into two lists — known (ticked) and to learn — each
+  with a count, so anyone can see at a glance what they are still missing. Ticking a recipe moves
+  it between lists live, the search filters both, and the help text was updated.
+
 ## 2026.09.147 - 2026-09-20
 
 ### Changed
