@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.7.1"
+local ADDON_VER = "1.7.2"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -714,6 +714,10 @@ diagLines = function()
         L[#L + 1] = ("export recettes en cours : métier %d/%d, phase %s"):format(
             recEngine.pi or 0, (recEngine.progs and #recEngine.progs) or 0, tostring(recEngine.phase))
     end
+    if Cohors_DB.rec_diag then
+        L[#L + 1] = ("dernier rapport recettes : %s"):format(dateStr(Cohors_DB.rec_diag_at or 0))
+        for line in tostring(Cohors_DB.rec_diag):gmatch("[^\n]+") do L[#L + 1] = "  " .. line end
+    end
     local ok3, ni = pcall(C_Calendar.GetNumInvites)
     L[#L + 1] = "GetNumInvites (événement ouvert) : " .. tostring(ok3 and ni or "erreur")
     return L
@@ -738,6 +742,8 @@ end
 -- écrit dans Cohors_DB.recipes pour l'import sur le site (Préparation de raid).
 recEngine = nil   -- (déclaré plus haut : Cohors_Collect le consulte)
 local recResults = {}
+local recApiNotes = {}  -- API en échec : notées, plus jamais d'échec silencieux
+local recTiers = {}     -- stats par métier/palier pour le rapport
 local REC_TOTAL_TIMEOUT = 240
 
 local function itemName(id)
@@ -766,34 +772,72 @@ local function recProfs()
     return out
 end
 
+-- Liste des recettes du métier ouvert + provenance. C_TradeSkillUI.GetAllRecipeIDs()
+-- est l'API ACTUELLE (elle ignore tous les filtres et inclut les recettes NON apprises :
+-- d'où le filtre `learned` ci-dessous). GetFilteredRecipeIDs a disparu du client actuel
+-- (page wiki supprimée) — on la garde en secours pour les vieux clients. Les échecs
+-- d'API sont NOTÉS : avant, un pcall muet rendait « 0 recette » sans aucune explication.
+local function recIds()
+    local okA, all = pcall(C_TradeSkillUI.GetAllRecipeIDs)
+    if okA and type(all) == "table" and #all > 0 then return all, "GetAllRecipeIDs" end
+    if not okA then recApiNotes.GetAllRecipeIDs = tostring(all) end
+    local okF, fids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
+    if okF and type(fids) == "table" and #fids > 0 then return fids, "GetFilteredRecipeIDs" end
+    if not okF then recApiNotes.GetFilteredRecipeIDs = tostring(fids) end
+    return {}, "vide"
+end
+
+local function recApiWhy()
+    local notes = {}
+    for k in pairs(recApiNotes) do notes[#notes + 1] = k end
+    if #notes > 0 then
+        table.sort(notes)
+        return "API en échec : " .. table.concat(notes, ", ")
+    end
+    return "liste vide (fenêtre de métier pas prête ?)"
+end
+
 local function collectProfession(eName, eRank)
     local out = {}
     local seen = {}
-    local ok, ids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
-    if not ok or type(ids) ~= "table" then return out end
+    local ids, src = recIds()
+    local stats = { ids = #ids, kept = 0, unlearned = 0, disabled = 0, err_info = 0, mats = 0 }
     for _, rid in ipairs(ids) do
         local oki, info = pcall(C_TradeSkillUI.GetRecipeInfo, rid)
-        if oki and type(info) == "table" and info.name and not seen[info.name] then
-            seen[info.name] = true
-            local mats = {}
-            local oks, sch = pcall(C_TradeSkillUI.GetRecipeSchematic, rid, false)
-            if oks and type(sch) == "table" then
-                for _, slot in ipairs(sch.reagentSlotSchematics or {}) do
-                    local qty = tonumber(slot.quantityRequired) or 0
-                    for _, r in ipairs(slot.reagents or {}) do
-                        local iid = tonumber(r.itemID) or 0
-                        if iid > 0 then
-                            mats[#mats + 1] = { iid, itemName(iid), qty }
-                            break
+        if not oki then
+            stats.err_info = stats.err_info + 1
+            recApiNotes.GetRecipeInfo = tostring(info)
+        elseif type(info) == "table" and info.name then
+            if info.learned == false then
+                stats.unlearned = stats.unlearned + 1
+            elseif info.disabled == true then
+                stats.disabled = stats.disabled + 1
+            elseif not seen[info.name] then
+                seen[info.name] = true
+                local mats = {}
+                local oks, sch = pcall(C_TradeSkillUI.GetRecipeSchematic, rid, false)
+                if oks and type(sch) == "table" then
+                    for _, slot in ipairs(sch.reagentSlotSchematics or {}) do
+                        local qty = tonumber(slot.quantityRequired) or 0
+                        for _, r in ipairs(slot.reagents or {}) do
+                            local iid = tonumber(r.itemID) or 0
+                            if iid > 0 then
+                                mats[#mats + 1] = { iid, itemName(iid), qty }
+                                break
+                            end
                         end
                     end
+                elseif not oks then
+                    recApiNotes.GetRecipeSchematic = tostring(sch)
                 end
+                stats.mats = stats.mats + #mats
+                stats.kept = stats.kept + 1
+                out[#out + 1] = { n = tostring(info.name), i = info.recipeID or rid,
+                                  e = eName or "", t = eRank or 0, m = mats }
             end
-            out[#out + 1] = { n = tostring(info.name), i = info.recipeID or rid,
-                              e = eName or "", t = eRank or 0, m = mats }
         end
     end
-    return out
+    return out, src, stats
 end
 
 local function recSave()
@@ -840,8 +884,30 @@ local function recFinish(note)
         end
     end
     Cohors_DB.recipes_total = total
+    local L = {}
+    L[#L + 1] = ("Cohors recettes — %s (addon v%s · client %s)"):format(dateStr(time()), ADDON_VER,
+        tostring(clientIface()))
+    L[#L + 1] = ("total : %d recette(s) sur %d palier(s)"):format(total, #recTiers)
+    for _, t in ipairs(recTiers) do
+        L[#L + 1] = ("  %s · %s : %d recette(s) [%s — %d ids, %d non apprises, %d matériaux]")
+            :format(t.prof, t.tier ~= "" and t.tier or "?", t.n, t.src, t.ids, t.unlearned, t.mats)
+    end
+    local apiNames = {}
+    for k in pairs(recApiNotes) do apiNames[#apiNames + 1] = k end
+    if #apiNames > 0 then
+        table.sort(apiNames)
+        L[#L + 1] = "API en échec : " .. table.concat(apiNames, ", ")
+        for k, v in pairs(recApiNotes) do L[#L + 1] = ("  %s : %s"):format(k, tostring(v)) end
+    end
+    L[#L + 1] = "— trace —"
+    L[#L + 1] = tostring(Cohors_DB.trace or "?")
+    Cohors_DB.rec_diag = table.concat(L, "\n")
+    Cohors_DB.rec_diag_at = time()
     msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/Cohors.lua au site (Préparation de raid → 📥 importer).")
         :format(total, note and (" (" .. tostring(note) .. ")") or ""))
+    if #apiNames > 0 then
+        msg("⚠️ API recettes en échec : " .. table.concat(apiNames, ", ") .. " — détail via /cohors diag → fichier.")
+    end
     progressUpdate(("recettes — terminé : %d recette(s)"):format(total), 1, true)
 end
 
@@ -871,7 +937,7 @@ recTick = function(now, force)
         if wait then return end
         local oki, ready = pcall(C_TradeSkillUI.IsTradeSkillReady)
         local okc, childs = pcall(C_TradeSkillUI.GetChildProfessionInfos)
-        if (oki and ready) or (e.attempts or 0) > 12 then
+        if (oki and ready) or (e.attempts or 0) > 20 then
             e.childs = (okc and type(childs) == "table" and #childs > 0) and childs or {}
             e.ci = 1
             if #e.childs > 0 then
@@ -901,7 +967,7 @@ recTick = function(now, force)
         local okg, cur = pcall(C_TradeSkillUI.GetChildProfessionInfo)
         if okg and type(cur) == "table" and cur.professionID == child.professionID then
             e.phase = "settle"; e.settleUntil = now + 0.9
-        elseif (e.attempts or 0) > 10 then
+        elseif (e.attempts or 0) > 20 then
             dtrace(("%s · %s : palier non chargé — passé"):format(prof.name, tostring(child.expansionName)))
             e.ci = e.ci + 1; e.phase = "switch"; e.await = now + 0.2
         else
@@ -920,11 +986,17 @@ recTick = function(now, force)
             eName = tostring(child.expansionName or "")
             eRank = e.ci
         end
-        local okc2, list = pcall(collectProfession, eName, eRank)
+        local okc2, list, src, stats = pcall(collectProfession, eName, eRank)
         list = (okc2 and type(list) == "table") and list or {}
+        stats = (okc2 and type(stats) == "table") and stats or {}
         recResults[#recResults + 1] = { name = prof.name, recipes = list }
+        recTiers[#recTiers + 1] = { prof = prof.name, tier = eName or "", n = #list,
+                                    src = tostring(src or "?"), ids = stats.ids or 0,
+                                    unlearned = stats.unlearned or 0, mats = stats.mats or 0,
+                                    err_info = stats.err_info or 0 }
         local tag = eName ~= "" and (" · " .. eName) or ""
-        dtrace(("%s%s : %d recette(s)"):format(prof.name, tag, #list))
+        dtrace(("%s%s : %d recette(s) [%s : %d ids, %d non apprises]")
+            :format(prof.name, tag, #list, tostring(src or "?"), stats.ids or 0, stats.unlearned or 0))
         msg(("• %s%s : %d recette(s)"):format(prof.name, tag, #list))
         if child then
             e.ci = e.ci + 1; e.phase = "switch"; e.await = now + 0.3
@@ -936,14 +1008,16 @@ recTick = function(now, force)
         return
     elseif e.phase == "waitList" then
         if wait then return end
-        local okL, ids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
-        if okL and type(ids) == "table" and #ids > 0 then
+        local ids = recIds()
+        if type(ids) == "table" and #ids > 0 then
             e.phase = "collect"; e.await = now + 0.05
             return
         end
         e.attempts = (e.attempts or 0) + 1
         if e.attempts > 20 then
-            dtrace(("%s : aucune recette lue — métier suivant"):format(prof.name))
+            local why = recApiWhy()
+            dtrace(("%s : aucune recette lisible (%s) — métier suivant"):format(prof.name, why))
+            msg(("⚠️ %s : aucune recette lisible (%s) — métier suivant."):format(prof.name, why))
             pcall(C_TradeSkillUI.CloseTradeSkill)
             e.pi = e.pi + 1; e.ci = 0; e.childs = nil
             e.phase = "open"; e.await = now + 0.4
@@ -1020,13 +1094,18 @@ function Cohors_Recipes()
         return
     end
     recResults = {}
+    recApiNotes = {}
+    recTiers = {}
     recEngine = {
         progs = profs, pi = 1, phase = "open", attempts = 0, ci = 0,
         started = GetTime(), await = GetTime() + 0.4, settleUntil = 0,
         deadline = GetTime() + REC_TOTAL_TIMEOUT,
     }
     dtrace(("recettes : %d métier(s) — %s"):format(#profs, profs[1] and profs[1].name or "?"))
-    msg(("lecture des recettes (%d métier(s), tous paliers d'extension) — la progression s'affiche à l'écran."):format(#profs))
+    local pnames = {}
+    for _, p in ipairs(profs) do pnames[#pnames + 1] = p.name end
+    msg(("lecture des recettes (%d métier(s) : %s) — la progression s'affiche à l'écran.")
+        :format(#profs, table.concat(pnames, ", ")))
     progressUpdate(("recettes — préparation (%d métier(s))…"):format(#profs), 0)
 end
 

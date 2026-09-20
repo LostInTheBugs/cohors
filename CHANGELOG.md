@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145-c2 - 2026-09-20
+
+### Fixed
+- In-game add-on 1.7.2 — the recipes export reads recipes through the **current client API**:
+  `C_TradeSkillUI.GetAllRecipeIDs()` (the client replaced `GetFilteredRecipeIDs` with it; the
+  removed function failed silently, hence « 0 recette(s) exportée(s) » even on characters with
+  professions). Non-learned recipes are filtered out through `recipeInfo.learned`.
+- Every failed recipes API call is now recorded and reported: a chat warning plus a
+  `Cohors_DB.rec_diag` report with per-profession/tier counts, data source, unlearned/disabled
+  skips and material counts — a silent `pcall` can no longer produce an unexplained empty export.
+  Longer waits for the profession window, and a clear in-chat reason when a profession yields
+  nothing; the start message now lists the detected professions by name.
+- Offline harness: two new scenarios (legacy-client fallback, no recipes API at all) — 7 scenarios
+  now run in CI.
+
 ## 2026.09.145-c1 - 2026-09-20
 
 ### Fixed

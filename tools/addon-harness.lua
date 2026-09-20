@@ -3,6 +3,8 @@
 --         COHORS_SCENARIO=calendar lua5.1 tools/addon-harness.lua
 --         COHORS_SCENARIO=apifail  lua5.1 tools/addon-harness.lua
 --         COHORS_SCENARIO=slash    lua5.1 tools/addon-harness.lua
+--         COHORS_SCENARIO=legacy   lua5.1 tools/addon-harness.lua   (GetAllRecipeIDs absente)
+--         COHORS_SCENARIO=noapi    lua5.1 tools/addon-harness.lua   (aucune API recettes)
 --         COHORS_SCENARIO=noprofs  lua5.1 tools/addon-harness.lua
 -- Simule fidèlement le sandbox du client : `os` et `io` sont retirés avant de charger
 -- l'addon (le harnais capture ce dont il a besoin AVANT). Le temps est virtuel (GetTime).
@@ -152,7 +154,8 @@ end
 
 local profData = {
     [171] = { childs = { { professionID = 1001, expansionName = "Khaz Algar", recipeIDs = { 11, 12, 13 } },
-                         { professionID = 1002, expansionName = "Dragon Isles", recipeIDs = { 14, 15 } } } },
+                         { professionID = 1002, expansionName = "Dragon Isles", recipeIDs = { 14, 15, 16 },
+                           unlearned = { 16 } } } },
     [185] = { childs = { { professionID = 2001, expansionName = "Khaz Algar", recipeIDs = { 21, 22 } } } },
 }
 if scenario == "apifail" then
@@ -184,11 +187,27 @@ C_TradeSkillUI = {
         local c = currentChild()
         return c and { professionID = c.professionID, expansionName = c.expansionName } or nil
     end,
-    GetFilteredRecipeIDs = function()
+    GetAllRecipeIDs = function()
+        if scenario == "legacy" or scenario == "noapi" then error("api indisponible (test)") end
         local c = currentChild()
         return c and c.recipeIDs or {}
     end,
-    GetRecipeInfo = function(rid) return { name = "Recette " .. tostring(rid), recipeID = rid } end,
+    GetFilteredRecipeIDs = function()
+        -- API supprimée du client actuel : elle n'existe QUE dans le scénario « legacy ».
+        if scenario ~= "legacy" then error("api supprimée du client (test)") end
+        local c = currentChild()
+        return c and c.recipeIDs or {}
+    end,
+    GetRecipeInfo = function(rid)
+        local c = currentChild()
+        local learned = true
+        if c and c.unlearned then
+            for _, u in ipairs(c.unlearned) do
+                if u == rid then learned = false end
+            end
+        end
+        return { name = "Recette " .. tostring(rid), recipeID = rid, learned = learned }
+    end,
     GetRecipeSchematic = function(rid)
         return { reagentSlotSchematics = { { quantityRequired = 2, reagents = { { itemID = 9000 + rid } } } } }
     end,
@@ -321,9 +340,18 @@ else
         check(Cohors_DB.recipes_total == 0, "échec API géré : 0 recette (total %s)",
             tostring(Cohors_DB.recipes_total))
         check(Cohors_DB.recipes_at ~= nil, "export vide mais valide écrit malgré l'échec API")
+    elseif scenario == "legacy" then
+        check(Cohors_DB.recipes_total == 7, "repli GetFilteredRecipeIDs (vieux client) : 7 recettes (total %s)",
+            tostring(Cohors_DB.recipes_total))
+    elseif scenario == "noapi" then
+        check(Cohors_DB.recipes_total == 0, "aucune API : 0 recette proprement (total %s)",
+            tostring(Cohors_DB.recipes_total))
+        check(chat_has("API recettes en échec"), "avertissement API affiché dans le chat")
     else
         check(Cohors_DB.recipes_total == 7, "7 recettes attendues (2 métiers, 3 paliers) — trouvées %s",
             tostring(Cohors_DB.recipes_total))
+        check((Cohors_DB.rec_diag or ""):find("1 non apprises", 1, true) ~= nil,
+            "recette non apprise filtrée (rapport rec_diag)")
     end
     tick(45)
     local pf = progressFrame()
