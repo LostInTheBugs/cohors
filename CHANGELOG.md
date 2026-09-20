@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.140 - 2026-09-20
+
+### Fixed
+- English mode: the "Refresh" buttons (roster, reports) and the role filter "All" now
+  translate like the rest of the UI.
+
 ## 2026.09.139 - 2026-09-20
 
 ### Fixed

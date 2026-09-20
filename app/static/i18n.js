@@ -1033,7 +1033,10 @@
  "Comparateur": "Compare",
  "Succès fun": "Fun achievements",
  "MM+": "Mythic+",
- "Vocal": "Voice"
+ "Vocal": "Voice",
+ "Tous": "All",
+ "⟳ Actualiser": "⟳ Refresh",
+ "↻ Actualiser": "↻ Refresh"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
