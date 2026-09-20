@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.5.1"
+local ADDON_VER = "1.7.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -176,6 +176,7 @@ end
 local diagLines    -- définies plus bas
 local finishCollect
 local recTickSafe   -- moteur recettes (défini plus bas)
+local progressUpdate  -- fenêtre de progression (définie plus bas)
 
 -- ------------------------------------------------------------------- export
 local function buildExport()
@@ -258,7 +259,7 @@ finishCollect = function()
         msg(("%d raid(s) collecté(s), %d réponse(s). • /cohors export pour la chaîne à coller sur le site.")
             :format(#results, nresp))
     end
-    if statusText then statusText:SetText("prêt") end
+    progressUpdate(("calendrier — terminé : %d raid(s), %d réponse(s)"):format(#results, nresp), 1, true)
     if Cohors_Refresh then Cohors_Refresh() end
 end
 
@@ -301,6 +302,91 @@ local function filterWindow(list)
         if #out >= MAX_EVENTS then break end
     end
     return out
+end
+
+-- ------------------------------------------- fenêtre de progression (exports)
+-- Petite fenêtre autonome, construite à la demande, qui montre l'avancement
+-- des exports (recettes, calendrier) : barre + pourcentage + détail vivant.
+-- Elle s'affiche même quand le panneau principal est fermé, se laisse déplacer,
+-- et disparaît quelques secondes après la fin. Toute construction ratée est
+-- sans conséquence (l'addon continue, l'erreur est notée dans le rapport).
+local pWin, pBar, pBarText, pLabel, pHideAt
+
+local function buildProgress()
+    if pWin then return true end
+    local okB, errB = pcall(function()
+        local okF, frame = pcall(CreateFrame, "Frame", "CohorsProgressFrame", UIParent,
+            BackdropTemplateMixin and "BackdropTemplate" or nil)
+        if not okF or not frame then
+            frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+        end
+        pWin = frame
+        pWin:SetSize(440, 78)
+        pWin:SetPoint("TOP", UIParent, "TOP", 0, -170)
+        pWin:SetFrameStrata("HIGH")
+        pWin:SetMovable(true)
+        pWin:EnableMouse(true)
+        pWin:RegisterForDrag("LeftButton")
+        pWin:SetScript("OnDragStart", pWin.StartMoving)
+        pWin:SetScript("OnDragStop", pWin.StopMovingOrSizing)
+        if pWin.SetBackdrop then
+            pWin:SetBackdrop({
+                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                tile = true, tileSize = 16, edgeSize = 24,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 },
+            })
+        end
+        local title = pWin:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        title:SetPoint("TOP", 0, -8)
+        title:SetText("Cohors — progression")
+        pLabel = pWin:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        pLabel:SetPoint("TOP", 0, -26)
+        pLabel:SetWidth(408)
+        pLabel:SetJustifyH("CENTER")
+        pLabel:SetText("…")
+        pBar = CreateFrame("StatusBar", nil, pWin)
+        pBar:SetSize(400, 16)
+        pBar:SetPoint("TOP", 0, -52)
+        pBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        pBar:SetMinMaxValues(0, 100)
+        pBar:SetValue(0)
+        if pBar.SetStatusBarColor then pBar:SetStatusBarColor(0.69, 0.0, 0.18, 1) end
+        pBarText = pBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        pBarText:SetPoint("CENTER")
+        pBarText:SetText("0 %")
+        pWin:Hide()
+        pWin:SetScript("OnUpdate", function()
+            if pHideAt and GetTime() >= pHideAt then
+                pHideAt = nil
+                pWin:Hide()
+            end
+        end)
+    end)
+    if not okB then
+        Cohors_DB.ui_error = "progression : " .. tostring(errB)
+        pWin = nil
+        return false
+    end
+    return true
+end
+
+-- progressUpdate(label, pct 0..1, done) — met à jour la ligne de statut du panneau
+-- et la petite fenêtre ; done=true affiche 100 %, coche et referme après 8 s.
+progressUpdate = function(label, pct, done)
+    if statusText then statusText:SetText(tostring(label or "prêt")) end
+    if not buildProgress() or not pWin then return end
+    pWin:Show()
+    if done then
+        pBar:SetValue(100)
+        pBarText:SetText("\226\156\148")  -- ✔ (UTF-8)
+        pHideAt = GetTime() + 8
+    else
+        pHideAt = nil
+        local v = math.floor(math.max(0, math.min(1, pct or 0)) * 100 + 0.5)
+        pBar:SetValue(v)
+        pBarText:SetText(v .. " %")
+    end
 end
 
 -- ------------------------------------------------- moteur piloté par OnUpdate
@@ -425,8 +511,19 @@ local function engineTickSafe(force)
         msg("erreur (moteur) — " .. t)
         pcall(finishCollect)
     end
-    if engine and ui and ui:IsShown() and statusText then
-        statusText:SetText("… " .. tostring(engine.status or ""))
+    if engine then
+        local e = engine
+        local pct, step
+        if e.phase == "openPos" or e.phase == "openFire" or e.phase == "openWait" then
+            local nq = #(e.queue or {})
+            pct = 0.5 + 0.5 * (((e.qi or 1) - 1) / math.max(1, nq))
+            step = ("raids %d/%d"):format(math.min(e.qi or 1, math.max(1, nq)), math.max(1, nq))
+        else
+            local nm = (e.maxShift or 0) + 1
+            pct = ((e.shift or 0) / math.max(1, nm)) * 0.5
+            step = ("mois %d/%d"):format(math.min((e.shift or 0) + 1, nm), nm)
+        end
+        progressUpdate(("calendrier — %s · %s"):format(step, tostring(e.status or "")), pct)
     end
 end
 
@@ -504,7 +601,7 @@ function Cohors_Collect()
     end
     dtrace(("vue : mois +0 à +%d"):format(engine.maxShift))
     msg("lecture du calendrier de guilde…")
-    if statusText then statusText:SetText("⏳ préparation…") end
+    progressUpdate("calendrier — préparation…", 0)
 end
 
 function Cohors_Reset()
@@ -512,6 +609,7 @@ function Cohors_Reset()
         engine = nil
         collecting = false
         pcall(restoreCalendar)
+        if pWin then pHideAt = nil; pWin:Hide() end
         if statusText then statusText:SetText("prêt") end
         msg("collecte réinitialisée — tu peux relancer.")
     else
@@ -604,6 +702,13 @@ diagLines = function()
     end
     L[#L + 1] = ("recettes exportées : %s (total %s)"):format(
         Cohors_DB.recipes and (dateStr(Cohors_DB.recipes_at or 0)) or "aucune", tostring(Cohors_DB.recipes_total or 0))
+    if engine then
+        L[#L + 1] = "collecte calendrier en cours : phase " .. tostring(engine.phase)
+    end
+    if recEngine then
+        L[#L + 1] = ("export recettes en cours : métier %d/%d, phase %s"):format(
+            recEngine.pi or 0, (recEngine.progs and #recEngine.progs) or 0, tostring(recEngine.phase))
+    end
     local ok3, ni = pcall(C_Calendar.GetNumInvites)
     L[#L + 1] = "GetNumInvites (événement ouvert) : " .. tostring(ok3 and ni or "erreur")
     return L
@@ -732,7 +837,7 @@ local function recFinish(note)
     Cohors_DB.recipes_total = total
     msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/Cohors.lua au site (Préparation de raid → 📥 importer).")
         :format(total, note and (" (" .. tostring(note) .. ")") or ""))
-    if statusText then statusText:SetText("prêt (v" .. ADDON_VER .. ")") end
+    progressUpdate(("recettes — terminé : %d recette(s)"):format(total), 1, true)
 end
 
 recTick = function(now, force)
@@ -778,7 +883,8 @@ recTick = function(now, force)
         local child = e.childs[e.ci]
         if not child then
             pcall(C_TradeSkillUI.CloseTradeSkill)
-            e.pi = e.pi + 1; e.phase = "open"; e.await = now + 0.5
+            e.pi = e.pi + 1; e.ci = 0; e.childs = nil
+            e.phase = "open"; e.await = now + 0.5
             return
         end
         pcall(C_TradeSkillUI.SetProfessionChildSkillLineID, child.professionID)
@@ -819,7 +925,8 @@ recTick = function(now, force)
             e.ci = e.ci + 1; e.phase = "switch"; e.await = now + 0.3
         else
             pcall(C_TradeSkillUI.CloseTradeSkill)
-            e.pi = e.pi + 1; e.phase = "open"; e.await = now + 0.5
+            e.pi = e.pi + 1; e.ci = 0; e.childs = nil
+            e.phase = "open"; e.await = now + 0.5
         end
         return
     elseif e.phase == "waitList" then
@@ -833,7 +940,8 @@ recTick = function(now, force)
         if e.attempts > 20 then
             dtrace(("%s : aucune recette lue — métier suivant"):format(prof.name))
             pcall(C_TradeSkillUI.CloseTradeSkill)
-            e.pi = e.pi + 1; e.phase = "open"; e.await = now + 0.4
+            e.pi = e.pi + 1; e.ci = 0; e.childs = nil
+            e.phase = "open"; e.await = now + 0.4
             return
         end
         e.await = now + 1.0
@@ -851,8 +959,34 @@ recTickSafe = function(force)
         msg("erreur (recettes) — " .. t2)
         pcall(recFinish, "erreur")
     end
-    if recEngine and ui and ui:IsShown() and statusText then
-        statusText:SetText("… " .. ("recettes " .. tostring(recEngine.phase)))
+    if recEngine then
+        local e = recEngine
+        local pname = (e.progs and e.progs[e.pi] and e.progs[e.pi].name) or "?"
+        local nchild = (e.childs and #e.childs) or 0
+        local ci = tonumber(e.ci) or 0
+        local frac = 0
+        if nchild > 0 and ci > 0 then
+            frac = math.min(1, (ci - 1) / nchild)   -- palier suivant le dernier = métier terminé
+        end
+        local pct = ((e.pi - 1) + frac) / math.max(1, (e.progs and #e.progs) or 1)
+        local n = 0
+        for _, prof in ipairs(recResults) do n = n + #(prof.recipes or {}) end
+        local sub
+        if e.phase == "open" or e.phase == "ready" then
+            sub = "ouverture de la fenêtre de métier…"
+        elseif (e.phase == "switch" or e.phase == "waitChild" or e.phase == "settle") and nchild > 0 then
+            local child = e.childs[ci]
+            sub = ("palier %d/%d"):format(ci, nchild)
+                .. (child and child.expansionName and (" · " .. tostring(child.expansionName)) or "")
+        elseif e.phase == "collect" then
+            sub = "lecture des recettes…"
+        elseif e.phase == "waitList" then
+            sub = "attente de la liste des recettes…"
+        else
+            sub = tostring(e.phase)
+        end
+        progressUpdate(("recettes — %s : %s · %d recette(s) · %d s"):format(
+            pname, sub, n, math.floor(GetTime() - (e.started or GetTime()))), pct)
     end
 end
 
@@ -883,8 +1017,8 @@ function Cohors_Recipes()
         deadline = GetTime() + REC_TOTAL_TIMEOUT,
     }
     dtrace(("recettes : %d métier(s) — %s"):format(#profs, profs[1] and profs[1].name or "?"))
-    msg(("lecture des recettes (%d métier(s), tous paliers d'extension)… garde le jeu au premier plan quelques secondes."):format(#profs))
-    if statusText then statusText:SetText("… recettes") end
+    msg(("lecture des recettes (%d métier(s), tous paliers d'extension) — la progression s'affiche à l'écran."):format(#profs))
+    progressUpdate(("recettes — préparation (%d métier(s))…"):format(#profs), 0)
 end
 
 -- ------------------------------------------------------------------- panneau
@@ -921,11 +1055,11 @@ local function buildPanel()
 
         local title = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         title:SetPoint("TOP", 0, -14)
-        title:SetText("Cohors v" .. ADDON_VER .. " — Calendrier de guilde")
+        title:SetText("Cohors v" .. ADDON_VER .. " — Compagnon de guilde")
 
         local sub = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         sub:SetPoint("TOP", 0, -36)
-        sub:SetText("Collecte les raids + réponses, puis colle la chaîne exportée sur le site de la guilde (page Calendrier).")
+        sub:SetText("Calendrier : collecte les raids + réponses → chaîne à coller sur le site (page Calendrier). Recettes : « 📚 Recettes » → fichier SavedVariables à envoyer (Préparation de raid).")
 
         eb = CreateFrame("EditBox", nil, ui)
         eb:SetMultiLine(true)

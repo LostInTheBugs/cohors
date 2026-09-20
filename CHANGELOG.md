@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.144 - 2026-09-20
+
+### Added
+- In-game add-on 1.7.0 — the recipes export now shows its progress live: a small draggable
+  window with a bar and percentage, the current profession and expansion tier, the recipe count
+  and elapsed time. It appears even when the panel is closed (e.g. `/cohors recettes`) and fades
+  out a few seconds after finishing; the calendar collection drives the same window (months
+  scanned, then raids opened) instead of the old cryptic "… recettes phase" status line.
+- `tools/addon-harness.lua`: the offline add-on harness now ships with the repository (lua5.1 +
+  Blizzard API stubs, `os`/`io` removed like the game client). Scenarios: full recipes export,
+  calendar collection, API failures, no professions; it checks the exported JSON, the progress
+  bar (monotonic, reaches 100%) and the window closing. Runs in CI.
+
+### Fixed
+- Add-on version was drifting: the TOC said 1.6.0 while the Lua constant still said 1.5.1
+  (left over from the rename) — both now read 1.7.0, and a repository test keeps them in sync.
+- Recipes progress could briefly fall back to 0% when the last expansion tier of a profession
+  was read; profession switches now reset the per-tier state cleanly.
+
 ## 2026.09.143-c1 - 2026-09-20
 
 ### Fixed

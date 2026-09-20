@@ -37,6 +37,16 @@ def test_addon_files_present():
     assert (ROOT / "addon/Cohors/Cohors.lua").exists()
 
 
+def test_addon_version_consistent():
+    """TOC et constante Lua doivent afficher la même version (dérive constatée au renommage v137)."""
+    toc = (ROOT / "addon/Cohors/Cohors.toc").read_text(encoding="utf-8")
+    lua = (ROOT / "addon/Cohors/Cohors.lua").read_text(encoding="utf-8")
+    m_toc = re.search(r"## Version:\s*(\S+)", toc)
+    m_lua = re.search(r'local ADDON_VER = "([^"]+)"', lua)
+    assert m_toc and m_lua, "versions introuvables dans le TOC ou le Lua"
+    assert m_toc.group(1) == m_lua.group(1), (m_toc.group(1), m_lua.group(1))
+
+
 def test_compose_and_env_example_stay_in_sync():
     """Chaque variable documentée dans .env.example et utilisée par le code reste disjointe du compose."""
     compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
