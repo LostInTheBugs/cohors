@@ -1092,6 +1092,223 @@ app = FastAPI(title="Cohors", version=VERSION, lifespan=_lifespan, docs_url=None
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+# ---------------------------------------------------------------- sauvegarde & restauration
+# L'irremplaçable tient dans la base (comptes, personnages, recettes, réglages) et l'identité
+# (logo/fond : fichiers dans DATA_DIR/branding). Rapports de simulation, dossiers sim-jobs et
+# fichiers vocaux sont régénérables ou volumineux — exclus de l'archive (petite, rechargeable).
+BACKUP_MAX_MB = int(os.environ.get("BACKUP_MAX_MB", "128"))
+
+
+def _backup_manifest() -> dict:
+    with _db_lock, _db() as conn:
+        counts = {}
+        for t in ("users", "char_professions", "craft_recipes", "sims"):
+            try:
+                counts[t] = conn.execute("SELECT COUNT(*) FROM " + t).fetchone()[0]
+            except sqlite3.Error:
+                counts[t] = None
+    return {"app": "Cohors", "version": VERSION, "created_iso": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "created": time.time(), "counts": counts}
+
+
+def _snapshot_db_to(dest: Path) -> None:
+    """Copie cohérente de la base (API backup de sqlite — jamais un cp brut en pleine écriture)."""
+    with _db_lock, _db() as src:
+        dst = sqlite3.connect(str(dest))
+        try:
+            src.backup(dst)
+        finally:
+            dst.close()
+
+
+def _build_backup() -> tuple[bytes, str]:
+    """Archive .tar.gz : manifest + base + fichiers d'identité. Retourne (octets, nom)."""
+    import io
+    import tarfile
+    import tempfile
+
+    buf = io.BytesIO()
+    with tempfile.TemporaryDirectory(prefix="cohors-backup-") as tmp:
+        tmpd = Path(tmp)
+        db_copy = tmpd / "wow.sqlite"
+        _snapshot_db_to(db_copy)
+        man = tmpd / "manifest.json"
+        man.write_text(json.dumps(_backup_manifest(), ensure_ascii=False, indent=1), encoding="utf-8")
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            tar.add(man, arcname="manifest.json")
+            tar.add(db_copy, arcname="wow.sqlite")
+            if BRAND_DIR.is_dir():
+                for f in sorted(BRAND_DIR.iterdir()):
+                    if f.is_file() and not f.name.startswith("."):
+                        tar.add(f, arcname="branding/" + f.name)
+    name = "cohors-backup-" + time.strftime("%Y%m%d-%H%M%S") + ".tar.gz"
+    return buf.getvalue(), name
+
+
+@app.get("/api/admin/backup")
+def api_admin_backup(request: Request):
+    """Sauvegarde téléchargeable (admin) : base + identité — à recharger après un redéploiement."""
+    _require_admin(request)
+    data, name = _build_backup()
+    return Response(data, media_type="application/gzip",
+                    headers={"Content-Disposition": 'attachment; filename="' + name + '"',
+                             "Cache-Control": "no-store"})
+
+
+async def _read_restore_upload(request: Request) -> bytes:
+    cap = BACKUP_MAX_MB * 1024 * 1024
+    cl = request.headers.get("content-length")
+    if cl and cl.isdigit() and int(cl) > cap:
+        raise HTTPException(413, "sauvegarde trop volumineuse (max %d Mo)" % BACKUP_MAX_MB)
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "aucun fichier reçu")
+    if len(data) > cap:
+        raise HTTPException(413, "sauvegarde trop volumineuse (max %d Mo)" % BACKUP_MAX_MB)
+    return data
+
+
+def _extract_backup(data: bytes, dest: Path) -> tuple[dict, Path]:
+    """Extrait et VALIDE l'archive dans un dossier temporaire : retourne (manifest, base extraite).
+
+    Rien n'est appliqué ici : chemins contrôlés (pas de « .. » ni d'absolu), manifest + base
+    exigés, integrity_check + tables vitales présentes. Une archive douteuse → 400 explicite.
+    """
+    import io
+    import tarfile
+
+    try:
+        tar = tarfile.open(fileobj=io.BytesIO(data), mode="r:gz")
+    except tarfile.TarError as exc:
+        raise HTTPException(400, "archive illisible (%s)" % exc)
+    members = {}
+    with tar:
+        for m in tar.getmembers():
+            name = m.name.lstrip("./")
+            if name.startswith("/") or ".." in name.split("/"):
+                raise HTTPException(400, "archive refusée (chemin non sûr)")
+            if m.isfile():
+                members[name] = m
+        if "manifest.json" not in members or "wow.sqlite" not in members:
+            raise HTTPException(400, "archive invalide : manifest.json et wow.sqlite attendus")
+        dest.mkdir(parents=True, exist_ok=True)
+        try:
+            tar.extractall(dest, members=list(members.values()), filter="data")
+        except TypeError:   # Python < 3.12 : pas de filtre natif (nos contrôles suffisent)
+            tar.extractall(dest, members=list(members.values()))
+    db = dest / "wow.sqlite"
+    try:
+        chk = sqlite3.connect("file:%s?mode=ro" % db, uri=True)
+        try:
+            if chk.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                raise HTTPException(400, "base corrompue (integrity_check)")
+            tables = {r[0] for r in chk.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        finally:
+            chk.close()
+    except sqlite3.Error as exc:
+        raise HTTPException(400, "base illisible (%s)" % exc)
+    for need in ("users", "sessions", "sims"):
+        if need not in tables:
+            raise HTTPException(400, "base invalide : table %s manquante" % need)
+    try:
+        manifest = json.loads((dest / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise HTTPException(400, "manifest illisible (%s)" % exc)
+    if not isinstance(manifest, dict):
+        raise HTTPException(400, "manifest invalide")
+    return manifest, db
+
+
+def _swap_file(src: Path, dst: Path) -> None:
+    """Remplace dst par src. os.replace d'abord ; si src est sur un autre FS que dst
+    (EXDEV — vécu le 20/09 : /tmp du conteneur ≠ volume de données), copie puis renomme."""
+    try:
+        os.replace(str(src), str(dst))
+        return
+    except OSError:
+        pass
+    incoming = dst.parent / (dst.name + ".incoming")
+    incoming.write_bytes(src.read_bytes())
+    os.replace(str(incoming), str(dst))
+    try:
+        src.unlink()
+    except FileNotFoundError:
+        pass
+
+
+def _counts_of(db: Path) -> dict:
+    out = {}
+    try:
+        c = sqlite3.connect("file:%s?mode=ro" % db, uri=True)
+        try:
+            for t in ("users", "char_professions", "craft_recipes", "sims"):
+                try:
+                    out[t] = c.execute("SELECT COUNT(*) FROM " + t).fetchone()[0]
+                except sqlite3.Error:
+                    out[t] = None
+        finally:
+            c.close()
+    except sqlite3.Error:
+        pass
+    return out
+
+
+@app.post("/api/admin/restore/preview")
+async def api_admin_restore_preview(request: Request):
+    """Vérifie une sauvegarde AVANT restauration : manifest + comptages — rien n'est modifié."""
+    _require_admin(request)
+    import tempfile
+
+    data = await _read_restore_upload(request)
+    with tempfile.TemporaryDirectory(prefix="cohors-restore-") as tmp:
+        manifest, db = _extract_backup(data, Path(tmp))
+        counts = _counts_of(db)
+    return {"ok": True, "manifest": manifest, "counts": counts}
+
+
+@app.post("/api/admin/restore")
+async def api_admin_restore(request: Request):
+    """Restaure une sauvegarde : remplace la base et les fichiers d'identité, puis ré-applique
+    la configuration (comme au démarrage). Les sessions de l'ancienne base disparaissent —
+    il faut éventuellement se reconnecter."""
+    user = _require_admin(request)
+    import shutil
+    import uuid
+
+    data = await _read_restore_upload(request)
+    # Staging DANS DATA_DIR : os.replace exige le même système de fichiers que la base
+    # (le /tmp du conteneur est un autre montage — vécu le 20/09, erreur EXDEV).
+    staging = DATA_DIR / (".restore-" + uuid.uuid4().hex[:8])
+    try:
+        manifest, db = _extract_backup(data, staging)
+        counts = _counts_of(db)
+        with _db_lock:
+            _swap_file(db, DB_PATH)
+            for suffix in ("-wal", "-shm"):     # résidus de l'ancienne base (mode WAL)
+                try:
+                    Path(str(DB_PATH) + suffix).unlink()
+                except FileNotFoundError:
+                    pass
+        restored_brand = 0
+        bdir = staging / "branding"
+        if bdir.is_dir():
+            BRAND_DIR.mkdir(parents=True, exist_ok=True)
+            for f in sorted(bdir.iterdir()):
+                if f.is_file():
+                    (BRAND_DIR / f.name).write_bytes(f.read_bytes())
+                    restored_brand += 1
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+    for fn in (_apply_api_keys, _apply_guild_config, _apply_mail_config):
+        try:
+            fn()
+        except Exception as exc:  # noqa: BLE001
+            print("[backup] re-apply %s : %s" % (fn.__name__, exc))
+    print("[backup] restauration par %s — %s" % (user["email"], counts), flush=True)
+    return {"ok": True, "manifest": manifest, "counts": counts, "branding_files": restored_brand,
+            "notice": "Sauvegarde restaurée — recharge la page (reconnexion possible)."}
+
+
 @app.get("/api/branding")
 def api_branding(request: Request):
     """Identité publique (page de connexion incluse) : noms, logo et fond effectifs."""

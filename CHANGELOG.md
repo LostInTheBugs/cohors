@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.149 - 2026-09-20
+
+### Added
+- **Settings → Administration → Backup & restore**: download a complete backup (database +
+  guild identity — what cannot be regenerated) and load it onto a redeployed instance.
+  Uploads are checked first (safe archive, manifest, database integrity, non-destructive
+  preview with counts) before anything is applied; the configuration is re-applied live.
+
+### Fixed
+- Sim worker: cancelled-job ids are also cleaned up when the job list is pruned
+  (external review follow-up, minor).
+
 ## 2026.09.148 - 2026-09-20
 
 ### Changed

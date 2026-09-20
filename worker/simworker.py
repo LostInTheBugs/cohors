@@ -87,6 +87,9 @@ def _complete(job_id: str, **kw) -> None:
 def _prune_jobs() -> None:
     """Garde au plus MAX_JOBS_KEPT entrées (les plus anciennes terminées d'abord)."""
     with JOBS_LOCK:
+        # ids annulés dont le job n'existe plus (cas limite : cancel sur un run qui ne repasse
+        # jamais par _complete) — sinon fuite de 16 octets par occurrence (revue 20/09).
+        CANCELLED.intersection_update(JOBS.keys())
         if len(JOBS) <= MAX_JOBS_KEPT:
             return
         done = sorted((j for j in JOBS.items() if j[1].get("state") in ("done", "error")),

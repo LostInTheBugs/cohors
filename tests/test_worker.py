@@ -112,3 +112,14 @@ def test_simclient_reports_worker_restart(monkeypatch):
     with pytest.raises(sc.WorkerError) as ei:
         sc.run_sim(profile_path=profile, iterations=100)
     assert "redémarré" in str(ei.value) and "relance" in str(ei.value)
+
+
+def test_prune_jobs_cleans_ghost_cancelled_ids(tmp_path, monkeypatch):
+    """Un id annulé dont le job n'existe plus ne doit pas rester dans CANCELLED (fuite 16 o)."""
+    w = _fresh_worker(tmp_path, monkeypatch)
+    w.CANCELLED.add("ghost")
+    w.JOBS["vivant"] = {"state": "queued", "created": time.time()}
+    w.CANCELLED.add("vivant")
+    w._prune_jobs()
+    assert "ghost" not in w.CANCELLED
+    assert "vivant" in w.CANCELLED

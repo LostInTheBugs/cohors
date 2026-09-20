@@ -98,7 +98,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.148">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.149">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -132,6 +132,7 @@
       <button class="sbtn hidden" type="button" data-sec="sec-jobs" id="sbtn-jobs">🔄 Synchronisations</button>
       <button class="sbtn hidden" type="button" data-sec="sec-mail" id="sbtn-mail">✉️ E-mail (SMTP)</button>
       <button class="sbtn hidden" type="button" data-sec="sec-identite" id="sbtn-identite">🎨 Identité</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-sauvegarde" id="sbtn-sauvegarde">💾 Sauvegarde</button>
     </aside>
     <div class="spanel">
 
@@ -412,6 +413,22 @@
         </div>
       </div>
     </div>
+    <div id="sec-sauvegarde" class="hidden">
+      <div class="card">
+        <h2>💾 Sauvegarde & restauration</h2>
+        <p class="sub" style="margin:4px 0 14px">La sauvegarde contient l'irremplaçable : la base (comptes, personnages, recettes, réglages) et l'identité (logo, fond). Télécharge-la avant un redéploiement, recharge-la sur la nouvelle instance.</p>
+        <div class="row" style="margin-bottom:12px">
+          <button id="bk-dl">⬇️ Télécharger une sauvegarde</button>
+        </div>
+        <div class="row">
+          <label class="fld">Restaurer une sauvegarde<br><input type="file" id="bk-file" accept=".gz,.tgz,.tar.gz,application/gzip"></label>
+          <button class="small ghost" id="bk-check">🔎 Vérifier</button>
+          <button id="bk-restore" disabled>⬆️ Restaurer</button>
+        </div>
+        <p class="empty" id="bk-state" style="margin:10px 0 0"></p>
+        <p class="sub" style="margin:6px 0 0">⚠️ La restauration remplace la base et l'identité actuelles : tout ce qui a été fait depuis la sauvegarde est perdu.</p>
+      </div>
+    </div>
     </div>
 <div id="toast"></div>
 
@@ -420,10 +437,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.148"></script>
-<script src="/static/branding.js?v=2026.09.148"></script>
-<script src="/static/i18n.js?v=2026.09.148"></script>
-<script src="/static/esc.js?v=2026.09.148"></script>
+<script src="/static/nav.js?v=2026.09.149"></script>
+<script src="/static/branding.js?v=2026.09.149"></script>
+<script src="/static/i18n.js?v=2026.09.149"></script>
+<script src="/static/esc.js?v=2026.09.149"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -433,6 +450,52 @@ const jpost = async (u, b) => { const r = await fetch(u, { method: "POST", heade
   if (!r.ok) { const err = new Error(j.detail || "Erreur"); err.status = r.status; throw err; } return j; };
 
 function setMsg(sel, t, ok) { const e = $(sel); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; }
+
+// ---- 💾 Sauvegarde & restauration ----
+let bkOk = false;
+$("#bk-dl").addEventListener("click", async () => {
+  setMsg("#bk-state", "Préparation…", true);
+  try {
+    const r = await fetch("/api/admin/backup");
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.detail || "Erreur API"); }
+    const blob = await r.blob();
+    const cd = r.headers.get("content-disposition") || "";
+    const m = cd.match(/filename="([^"]+)"/);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = m ? m[1] : "cohors-backup.tar.gz";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    setMsg("#bk-state", "Sauvegarde prête ✓ (" + Math.round(blob.size / 1024) + " Ko)", true);
+  } catch (e) { setMsg("#bk-state", e.message, false); }
+});
+$("#bk-file").addEventListener("change", () => { bkOk = false; $("#bk-restore").disabled = true; setMsg("#bk-state", "", true); });
+$("#bk-check").addEventListener("click", async () => {
+  const f = $("#bk-file").files && $("#bk-file").files[0];
+  if (!f) { setMsg("#bk-state", "Choisis d'abord un fichier de sauvegarde.", false); return; }
+  setMsg("#bk-state", "Vérification…", true);
+  try {
+    const r = await fetch("/api/admin/restore/preview", { method: "POST", headers: { "Content-Type": "application/gzip" }, body: f });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || "Erreur");
+    const c = j.counts || {};
+    setMsg("#bk-state", `Sauvegarde valide ✓ — comptes : ${c.users ?? "?"} · profils : ${c.char_professions ?? "?"} · recettes : ${c.craft_recipes ?? "?"} · sims : ${c.sims ?? "?"}`, true);
+    bkOk = true; $("#bk-restore").disabled = false;
+  } catch (e) { bkOk = false; $("#bk-restore").disabled = true; setMsg("#bk-state", e.message, false); }
+});
+$("#bk-restore").addEventListener("click", async () => {
+  const f = $("#bk-file").files && $("#bk-file").files[0];
+  if (!f || !bkOk) return;
+  if (!confirm("Restaurer cette sauvegarde ? La base et l'identité actuelles seront remplacées.")) return;
+  setMsg("#bk-state", "Restauration…", true);
+  try {
+    const r = await fetch("/api/admin/restore", { method: "POST", headers: { "Content-Type": "application/gzip" }, body: f });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || "Erreur");
+    setMsg("#bk-state", "Sauvegarde restaurée ✓ — la page va se recharger…", true);
+    setTimeout(() => location.reload(), 2500);
+  } catch (e) { setMsg("#bk-state", e.message, false); }
+});
 
 $("#logout").addEventListener("click", async () => { await fetch("/api/logout", { method: "POST" }); location.href = "/login"; });
 
@@ -1030,6 +1093,7 @@ $("#bi-reset").addEventListener("click", async () => {
       $("#sbtn-api").classList.remove("hidden");
       $("#sbtn-guilde").classList.remove("hidden");
       $("#sbtn-jobs").classList.remove("hidden");
+      $("#sbtn-sauvegarde").classList.remove("hidden");
       $("#sbtn-mail").classList.remove("hidden");
       $("#sbtn-identite").classList.remove("hidden");
     }

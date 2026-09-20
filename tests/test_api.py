@@ -142,3 +142,92 @@ def test_stale_running_sims_are_recovered():
         row = conn.execute("SELECT status, error FROM sims WHERE id='stale-test'").fetchone()
     assert row["status"] == "failed"
     assert "redémarrage" in row["error"]
+
+
+def _admin_client(name, ip):
+    _make_user(name, is_admin=1, role="admin")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": name, "password": "test-pw-123"},
+               headers={"X-Forwarded-For": ip})
+    assert r.status_code == 200, r.text
+    return c
+
+
+def test_backup_requires_admin():
+    _make_user("membre-bak@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "membre-bak@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.7.1"})
+    assert r.status_code == 200, r.text
+    assert c.get("/api/admin/backup").status_code == 403
+    assert c.post("/api/admin/restore/preview", content=b"x").status_code == 403
+
+
+def test_backup_download_is_a_valid_archive():
+    import io as _io
+    import tarfile as _tar
+
+    c = _admin_client("adminbak@test.local", "10.99.8.1")
+    r = c.get("/api/admin/backup")
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"] == "application/gzip"
+    assert "attachment" in r.headers.get("content-disposition", "")
+    with _tar.open(fileobj=_io.BytesIO(r.content), mode="r:gz") as tar:
+        names = tar.getnames()
+    assert "manifest.json" in names and "wow.sqlite" in names
+
+
+def test_restore_rejects_garbage():
+    import io as _io
+    import tarfile as _tar
+
+    c = _admin_client("adminbak2@test.local", "10.99.9.1")
+    assert c.post("/api/admin/restore/preview", content=b"pas une archive").status_code == 400
+    buf = _io.BytesIO()
+    with _tar.open(fileobj=buf, mode="w:gz") as tar:
+        man = b'{"app": "x"}'
+        ti = _tar.TarInfo("manifest.json")
+        ti.size = len(man)
+        tar.addfile(ti, _io.BytesIO(man))
+        bad = b"pas une base sqlite"
+        ti2 = _tar.TarInfo("wow.sqlite")
+        ti2.size = len(bad)
+        tar.addfile(ti2, _io.BytesIO(bad))
+    assert c.post("/api/admin/restore/preview", content=buf.getvalue()).status_code == 400
+
+
+def test_restore_roundtrip():
+    c = _admin_client("adminbak3@test.local", "10.99.10.1")
+    backup = c.get("/api/admin/backup").content
+    r = c.post("/api/admin/restore/preview", content=backup)
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["ok"] and "counts" in j and "manifest" in j and j["counts"]["users"] >= 1
+    r = c.post("/api/admin/restore", content=backup)
+    assert r.status_code == 200, r.text
+    assert r.json()["ok"] is True
+    # la base restaurée répond encore (la session courante est dans l'instantané pris juste avant)
+    assert c.get("/api/health").json()["ok"] is True
+    assert c.get("/api/admin/backup").status_code == 200
+
+
+def test_swap_file_falls_back_on_cross_device(monkeypatch, tmp_path):
+    """Régression (vécu 20/09) : os.replace échoue en EXDEV entre /tmp et le volume de
+    données — _swap_file doit retomber sur une copie dans le dossier cible."""
+    src = tmp_path / "src.bin"
+    dst = tmp_path / "dst.bin"
+    src.write_bytes(b"nouvelle")
+    dst.write_bytes(b"ancienne")
+    real = os.replace
+    calls = {"n": 0}
+
+    def fake(a, b):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError(18, "Invalid cross-device link")
+        return real(a, b)
+
+    monkeypatch.setattr(M.os, "replace", fake)
+    M._swap_file(src, dst)
+    assert dst.read_bytes() == b"nouvelle"
+    assert not src.exists()

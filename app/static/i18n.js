@@ -1072,7 +1072,18 @@
  "Ouvrir la checklist →": "Open the checklist →",
  "en attente": "pending",
  "<li><b>Première configuration (administration)</b> : pour mettre la guilde en route (guilde, clés API, identité, SMTP, bot Discord, premiers membres), suis la checklist <b>🚀 Première configuration</b> — page <i>/start</i>, aussi accessible depuis le tableau de bord (carte administrateur tant que des étapes restent à faire).</li>": "<li><b>First-time setup (administration)</b>: to get the guild running (guild, API keys, identity, SMTP, Discord bot, first members), follow the <b>🚀 First-time setup</b> checklist — page <i>/start</i>, also reachable from the dashboard (admin card shown while steps remain).</li>",
- "Itérations :": "Iterations :"
+ "Itérations :": "Iterations :",
+ "💾 Sauvegarde": "💾 Backup",
+ "💾 Sauvegarde & restauration": "💾 Backup & restore",
+ "La sauvegarde contient l'irremplaçable : la base (comptes, personnages, recettes, réglages) et l'identité (logo, fond). Télécharge-la avant un redéploiement, recharge-la sur la nouvelle instance.": "The backup holds what cannot be regenerated: the database (accounts, characters, recipes, settings) and the identity (logo, background). Download it before a redeployment, load it onto the new instance.",
+ "⬇️ Télécharger une sauvegarde": "⬇️ Download a backup",
+ "Restaurer une sauvegarde": "Restore a backup",
+ "⬆️ Restaurer": "⬆️ Restore",
+ "⚠️ La restauration remplace la base et l'identité actuelles : tout ce qui a été fait depuis la sauvegarde est perdu.": "⚠️ Restoring replaces the current database and identity: anything done since the backup is lost.",
+ "Préparation…": "Preparing…",
+ "Restauration…": "Restoring…",
+ "Choisis d'abord un fichier de sauvegarde.": "Pick a backup file first.",
+ "Sauvegarde restaurée ✓ — la page va se recharger…": "Backup restored ✓ — the page will reload…"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1279,6 +1290,9 @@
     [/Le slug de guilde doit être un slug en minuscules \(ex\. hyjal, ma-guilde\)\./g, "The guild slug must be a lowercase slug (e.g. hyjal, my-guild)."],
     [/Nom Warcraft Logs trop long \(60 caractères maximum\)\./g, "Warcraft Logs name too long (60 characters maximum)."],
     [/— Échec\./g, "— Failed."],
+    [/Sauvegarde prête ✓ \((\d+) Ko\)/g, "Backup ready ✓ ($1 KB)"],
+    [/Sauvegarde valide ✓ — comptes : (\d+) · profils : (\d+) · recettes : (\d+) · sims : (\d+)/g,
+     "Valid backup ✓ — accounts: $1 · profiles: $2 · recipes: $3 · sims: $4"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
