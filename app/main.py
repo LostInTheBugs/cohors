@@ -1097,6 +1097,9 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # (logo/fond : fichiers dans DATA_DIR/branding). Rapports de simulation, dossiers sim-jobs et
 # fichiers vocaux sont régénérables ou volumineux — exclus de l'archive (petite, rechargeable).
 BACKUP_MAX_MB = int(os.environ.get("BACKUP_MAX_MB", "128"))
+# Plafond DÉCOMPRESSÉ : un .tar.gz de quelques Mo peut se déplier en Go (bombe de
+# décompression) — on additionne les tailles déclarées avant toute extraction.
+BACKUP_MAX_UNPACKED_MB = int(os.environ.get("BACKUP_MAX_UNPACKED_MB", "512"))
 
 
 def _backup_manifest() -> dict:
@@ -1182,13 +1185,25 @@ def _extract_backup(data: bytes, dest: Path) -> tuple[dict, Path]:
     except tarfile.TarError as exc:
         raise HTTPException(400, "archive illisible (%s)" % exc)
     members = {}
+    unpacked_cap = BACKUP_MAX_UNPACKED_MB * 1024 * 1024
+    total = 0
     with tar:
         for m in tar.getmembers():
             name = m.name.lstrip("./")
             if name.startswith("/") or ".." in name.split("/"):
                 raise HTTPException(400, "archive refusée (chemin non sûr)")
-            if m.isfile():
-                members[name] = m
+            if not m.isfile():
+                continue
+            total += m.size
+            if total > unpacked_cap:
+                raise HTTPException(400, "archive trop volumineuse une fois décompressée "
+                                         "(max %d Mo)" % BACKUP_MAX_UNPACKED_MB)
+            if name.startswith("branding/"):
+                head = tar.extractfile(m).read(12)
+                if not _branding_member_ok(name, head):
+                    raise HTTPException(400, "fichier d'identité refusé (%s) — images "
+                                             "png/jpg/gif/webp attendues" % name)
+            members[name] = m
         if "manifest.json" not in members or "wow.sqlite" not in members:
             raise HTTPException(400, "archive invalide : manifest.json et wow.sqlite attendus")
         dest.mkdir(parents=True, exist_ok=True)
@@ -1214,9 +1229,15 @@ def _extract_backup(data: bytes, dest: Path) -> tuple[dict, Path]:
         manifest = json.loads((dest / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise HTTPException(400, "manifest illisible (%s)" % exc)
-    if not isinstance(manifest, dict):
-        raise HTTPException(400, "manifest invalide")
-    return manifest, db
+    if not isinstance(manifest, dict) or manifest.get("app") != "Cohors":
+        raise HTTPException(400, "ce fichier n'est pas une sauvegarde Cohors")
+    warnings = []
+    v_arch, v_cur = str(manifest.get("version", "")), VERSION
+    if _ver_tuple(v_arch) > _ver_tuple(v_cur):
+        warnings.append("sauvegarde créée par une version plus récente (%s > %s)" % (v_arch, v_cur))
+    elif _ver_tuple(v_arch) < _ver_tuple(v_cur):
+        warnings.append("sauvegarde plus ancienne (%s) — migrations de schéma rejouées à la restauration" % v_arch)
+    return manifest, db, warnings
 
 
 def _swap_file(src: Path, dst: Path) -> None:
@@ -1234,6 +1255,26 @@ def _swap_file(src: Path, dst: Path) -> None:
         src.unlink()
     except FileNotFoundError:
         pass
+
+
+def _branding_member_ok(name: str, raw: bytes) -> bool:
+    """Fichier d'identité d'une sauvegarde : nom PLAT, extension d'image, signature réelle
+    et cohérente. Bloque un .html/.svg/.php qui finirait servi même origine (XSS/CSP)."""
+    rest = name[len("branding/"):]
+    if "/" in rest or rest.startswith("."):
+        return False
+    ext = rest.rsplit(".", 1)[-1].lower() if "." in rest else ""
+    if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
+        return False
+    det, _ = _img_type(raw)
+    return det != "" and det == ("jpg" if ext == "jpeg" else ext)
+
+
+def _ver_tuple(v) -> tuple:
+    """« 2026.09.149-c1 » -> (2026, 9, 149) ; valeurs manquantes complétées par des zéros."""
+    import re as _re
+    parts = _re.findall(r"\d+", str(v))[:3]
+    return tuple(int(x) for x in parts) + (0,) * (3 - len(parts))
 
 
 def _counts_of(db: Path) -> dict:
@@ -1261,9 +1302,9 @@ async def api_admin_restore_preview(request: Request):
 
     data = await _read_restore_upload(request)
     with tempfile.TemporaryDirectory(prefix="cohors-restore-") as tmp:
-        manifest, db = _extract_backup(data, Path(tmp))
+        manifest, db, warnings = _extract_backup(data, Path(tmp))
         counts = _counts_of(db)
-    return {"ok": True, "manifest": manifest, "counts": counts}
+    return {"ok": True, "manifest": manifest, "counts": counts, "warnings": warnings}
 
 
 @app.post("/api/admin/restore")
@@ -1280,15 +1321,28 @@ async def api_admin_restore(request: Request):
     # (le /tmp du conteneur est un autre montage — vécu le 20/09, erreur EXDEV).
     staging = DATA_DIR / (".restore-" + uuid.uuid4().hex[:8])
     try:
-        manifest, db = _extract_backup(data, staging)
+        manifest, db, warnings = _extract_backup(data, staging)
         counts = _counts_of(db)
         with _db_lock:
+            try:    # fige l'ancienne base dans son fichier principal avant le filet
+                with _db() as ck:
+                    ck.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            except sqlite3.Error:
+                pass
+            if DB_PATH.exists():    # filet : retour arrière = renommer ce fichier
+                try:
+                    Path(str(DB_PATH) + ".pre-restore").unlink()
+                except FileNotFoundError:
+                    pass
+                os.replace(str(DB_PATH), str(DB_PATH) + ".pre-restore")
             _swap_file(db, DB_PATH)
             for suffix in ("-wal", "-shm"):     # résidus de l'ancienne base (mode WAL)
                 try:
                     Path(str(DB_PATH) + suffix).unlink()
                 except FileNotFoundError:
                     pass
+        # la base restaurée peut précéder la version courante : rejouer le schéma AVANT la config
+        _init_db()
         restored_brand = 0
         bdir = staging / "branding"
         if bdir.is_dir():
@@ -1306,6 +1360,7 @@ async def api_admin_restore(request: Request):
             print("[backup] re-apply %s : %s" % (fn.__name__, exc))
     print("[backup] restauration par %s — %s" % (user["email"], counts), flush=True)
     return {"ok": True, "manifest": manifest, "counts": counts, "branding_files": restored_brand,
+            "warnings": warnings,
             "notice": "Sauvegarde restaurée — recharge la page (reconnexion possible)."}
 
 

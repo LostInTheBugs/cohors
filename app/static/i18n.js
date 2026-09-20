@@ -1291,8 +1291,12 @@
     [/Nom Warcraft Logs trop long \(60 caractères maximum\)\./g, "Warcraft Logs name too long (60 characters maximum)."],
     [/— Échec\./g, "— Failed."],
     [/Sauvegarde prête ✓ \((\d+) Ko\)/g, "Backup ready ✓ ($1 KB)"],
-    [/Sauvegarde valide ✓ — comptes : (\d+) · profils : (\d+) · recettes : (\d+) · sims : (\d+)/g,
-     "Valid backup ✓ — accounts: $1 · profiles: $2 · recipes: $3 · sims: $4"],
+    [/Sauvegarde valide ✓ \(v([^)]+)\) — comptes : (\d+) · profils : (\d+) · recettes : (\d+) · sims : (\d+)/g,
+     "Valid backup ✓ (v$1) — accounts: $2 · profiles: $3 · recipes: $4 · sims: $5"],
+    [/sauvegarde créée par une version plus récente \(([^)]+) > ([^)]+)\)/g,
+     "backup created by a newer version ($1 > $2)"],
+    [/sauvegarde plus ancienne \(([^)]+)\) — migrations de schéma rejouées à la restauration/g,
+     "older backup ($1) — schema migrations will be replayed on restore"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();

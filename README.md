@@ -290,10 +290,16 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
 
 ## Backups & updates
 
-- Everything stateful lives in `DATA_DIR`: the SQLite database (`wow.sqlite`) and the
-  `reports/` directory. Back it up with the app stopped (`docker compose stop` → copy the
-  directory → `docker compose start`). The database is the only irreplaceable part; reports
-  can be re-run.
+- **In the app**: an administrator downloads a full backup (database + guild identity) from
+  **Settings → Administration → Backup & restore**, and loads it onto a redeployed instance.
+  Uploads are validated first (safe archive, decompression and upload size caps, database
+  integrity check, non-destructive preview showing what is inside), and the previous database
+  is kept as `wow.sqlite.pre-restore`. A restore replays the schema migrations, so an older
+  backup works on a newer instance.
+- At the file level: everything stateful lives in `DATA_DIR` (the SQLite database `wow.sqlite`,
+  the `reports/` directory). You can also back it up with the app stopped (`docker compose stop`
+  → copy the directory → `docker compose start`). The database is the only irreplaceable part;
+  reports can be re-run.
 - Updating: `git pull` then `docker compose up -d --build`. Database migrations run
   automatically and idempotently at startup — no manual step, no data loss.
 - The engine image updates on its own schedule: `docker pull simulationcraftorg/simc`, or pin
@@ -301,9 +307,9 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
 
 ## Version
 
-Current version: `2026.09.141` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
-Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.141` is the 141st build of September 2026;
-corrections add a `-cN` suffix (`2026.09.141-c1`).
+Current version: `2026.09.149-c1` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.149` is the 149th build of September 2026;
+corrections add a `-cN` suffix (`2026.09.149-c1`).
 
 ## License
 

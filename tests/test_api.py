@@ -231,3 +231,118 @@ def test_swap_file_falls_back_on_cross_device(monkeypatch, tmp_path):
     M._swap_file(src, dst)
     assert dst.read_bytes() == b"nouvelle"
     assert not src.exists()
+
+
+def _tar_bytes(entries):
+    """Archive tar.gz de test : {nom: octets}."""
+    import io as _io
+    import tarfile as _tar
+
+    buf = _io.BytesIO()
+    with _tar.open(fileobj=buf, mode="w:gz") as tar:
+        for name, blob in entries.items():
+            ti = _tar.TarInfo(name)
+            ti.size = len(blob)
+            tar.addfile(ti, _io.BytesIO(blob))
+    return buf.getvalue()
+
+
+def _extract_member(archive, name):
+    import io as _io
+    import tarfile as _tar
+
+    with _tar.open(fileobj=_io.BytesIO(archive), mode="r:gz") as tar:
+        return tar.extractfile(name).read()
+
+
+def _rebuild_archive(archive, overrides):
+    import io as _io
+    import tarfile as _tar
+
+    entries = {}
+    with _tar.open(fileobj=_io.BytesIO(archive), mode="r:gz") as tar:
+        for m in tar.getmembers():
+            if m.isfile():
+                entries[m.name] = tar.extractfile(m).read()
+    entries.update(overrides)
+    return _tar_bytes(entries)
+
+
+def test_restore_rejects_decompression_bomb(monkeypatch):
+    """Revue 20/09 : le plafond porte sur la taille DÉCOMPRESSÉE, pas sur le .tar.gz."""
+    c = _admin_client("adminbomb@test.local", "10.99.11.1")
+    monkeypatch.setattr(M, "BACKUP_MAX_UNPACKED_MB", 1)
+    big = b"\x00" * (1024 * 1024 + 512)
+    arc = _tar_bytes({"manifest.json": b'{"app": "Cohors", "version": "1.0.0"}',
+                      "wow.sqlite": b"x", "big.bin": big})
+    r = c.post("/api/admin/restore/preview", content=arc)
+    assert r.status_code == 400
+    assert "décompressée" in r.json()["detail"]
+
+
+def test_restore_keeps_rollback_copy():
+    """Filet : l'ancienne base est renommée wow.sqlite.pre-restore avant l'écrasement."""
+    import sqlite3 as _sq
+
+    c = _admin_client("adminrb@test.local", "10.99.12.1")
+    backup = c.get("/api/admin/backup").content
+    assert c.post("/api/admin/restore", content=backup).status_code == 200
+    rb = M.DATA_DIR / "wow.sqlite.pre-restore"
+    assert rb.exists() and rb.stat().st_size > 0
+    con = _sq.connect(str(rb))          # c'est une vraie base, complète (WAL checkpointé avant)
+    assert con.execute("SELECT COUNT(*) FROM users").fetchone()[0] >= 1
+    con.close()
+
+
+def test_restore_replays_schema_migrations():
+    """Une sauvegarde plus ancienne (colonne manquante) doit revenir migrée, sans redémarrage."""
+    import sqlite3 as _sq
+    import tempfile
+
+    c = _admin_client("adminmig@test.local", "10.99.13.1")
+    backup = c.get("/api/admin/backup").content
+    with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f:
+        f.write(_extract_member(backup, "wow.sqlite"))
+        tmp_db = f.name
+    con = _sq.connect(tmp_db)
+    con.execute("ALTER TABLE craft_recipes DROP COLUMN expansion")   # colonne ajoutée par migration
+    con.commit()
+    con.close()
+    arc = _rebuild_archive(backup, {"wow.sqlite": Path(tmp_db).read_bytes()})
+    r = c.post("/api/admin/restore", content=arc)
+    assert r.status_code == 200, r.text
+    con = _sq.connect(str(M.DATA_DIR / "wow.sqlite"))
+    cols = [row[1] for row in con.execute("PRAGMA table_info(craft_recipes)")]
+    con.close()
+    assert "expansion" in cols
+
+
+def test_restore_rejects_web_identity_file():
+    """Revue 20/09 : pas de .html/.svg ni d'image truquée dans branding/ (XSS même origine)."""
+    c = _admin_client("adminbrand@test.local", "10.99.14.1")
+    base = {"manifest.json": b'{"app": "Cohors", "version": "1.0.0"}', "wow.sqlite": b"x"}
+    for name, blob in (("branding/x.html", b"<script>alert(1)</script>"),
+                       ("branding/logo.svg", b"<svg xmlns='http://www.w3.org/2000/svg'/>"),
+                       ("branding/logo.png", b"<html>pas une image</html>")):
+        arc = _tar_bytes(dict(base, **{name: blob}))
+        r = c.post("/api/admin/restore/preview", content=arc)
+        assert r.status_code == 400, (name, r.text)
+        assert "identité" in r.json()["detail"]
+
+
+def test_manifest_verified_and_version_warned():
+    """Revue 20/09 : manifest exigeant (app Cohors) et comparaison de versions en avertissement."""
+    import json as _json
+
+    c = _admin_client("adminman@test.local", "10.99.15.1")
+    backup = c.get("/api/admin/backup").content
+    bad = _rebuild_archive(backup, {"manifest.json": b'{"app": "Autre", "version": "1.0.0"}'})
+    assert c.post("/api/admin/restore/preview", content=bad).status_code == 400
+    man = _json.loads(_extract_member(backup, "manifest.json"))
+    man["version"] = "2099.01.001"
+    newer = _rebuild_archive(backup, {"manifest.json": _json.dumps(man).encode()})
+    r = c.post("/api/admin/restore/preview", content=newer)
+    assert r.status_code == 200, r.text
+    assert any("plus récente" in w for w in r.json()["warnings"])
+    r = c.post("/api/admin/restore/preview", content=backup)     # même version : aucun bruit
+    assert r.status_code == 200 and r.json()["warnings"] == []

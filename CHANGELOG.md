@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.149-c1 - 2026-09-20
+
+### Fixed
+- **Backup & restore hardening (review follow-up)** — decompression bombs are rejected (member
+  sizes are summed and capped before any extraction); the previous database is kept as
+  `wow.sqlite.pre-restore` (WAL checkpointed first) before being overwritten; schema migrations
+  are replayed right after the swap so an older backup works on a newer instance; identity files
+  inside an archive are whitelisted (flat name, png/jpg/gif/webp, verified image signature);
+  and the manifest is checked (`app == Cohors`, version compared — the preview warns when the
+  archive is newer or older than the running instance).
+
 ## 2026.09.149 - 2026-09-20
 
 ### Added

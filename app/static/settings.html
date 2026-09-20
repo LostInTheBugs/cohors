@@ -98,7 +98,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.149">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.149-c1">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -437,10 +437,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.149"></script>
-<script src="/static/branding.js?v=2026.09.149"></script>
-<script src="/static/i18n.js?v=2026.09.149"></script>
-<script src="/static/esc.js?v=2026.09.149"></script>
+<script src="/static/nav.js?v=2026.09.149-c1"></script>
+<script src="/static/branding.js?v=2026.09.149-c1"></script>
+<script src="/static/i18n.js?v=2026.09.149-c1"></script>
+<script src="/static/esc.js?v=2026.09.149-c1"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -479,7 +479,8 @@ $("#bk-check").addEventListener("click", async () => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.detail || "Erreur");
     const c = j.counts || {};
-    setMsg("#bk-state", `Sauvegarde valide ✓ — comptes : ${c.users ?? "?"} · profils : ${c.char_professions ?? "?"} · recettes : ${c.craft_recipes ?? "?"} · sims : ${c.sims ?? "?"}`, true);
+    const w = (j.warnings && j.warnings.length) ? " ⚠️ " + j.warnings.join(" ; ") : "";
+    setMsg("#bk-state", `Sauvegarde valide ✓ (v${j.manifest && j.manifest.version || "?"}) — comptes : ${c.users ?? "?"} · profils : ${c.char_professions ?? "?"} · recettes : ${c.craft_recipes ?? "?"} · sims : ${c.sims ?? "?"}${w}`, true);
     bkOk = true; $("#bk-restore").disabled = false;
   } catch (e) { bkOk = false; $("#bk-restore").disabled = true; setMsg("#bk-state", e.message, false); }
 });
@@ -492,7 +493,8 @@ $("#bk-restore").addEventListener("click", async () => {
     const r = await fetch("/api/admin/restore", { method: "POST", headers: { "Content-Type": "application/gzip" }, body: f });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.detail || "Erreur");
-    setMsg("#bk-state", "Sauvegarde restaurée ✓ — la page va se recharger…", true);
+    const w = (j.warnings && j.warnings.length) ? " ⚠️ " + j.warnings.join(" ; ") : "";
+    setMsg("#bk-state", "Sauvegarde restaurée ✓ — la page va se recharger…" + w, true);
     setTimeout(() => location.reload(), 2500);
   } catch (e) { setMsg("#bk-state", e.message, false); }
 });
