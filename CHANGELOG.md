@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145-c1 - 2026-09-20
+
+### Fixed
+- In-game add-on 1.7.1: `/cohors` with no argument no longer starts a calendar collection by
+  itself — it only opens the panel. Typing `/cohors` to reach the recipes button could silently
+  launch a raid-data collection first, which looked like the recipes export was collecting
+  calendar data. Collections are now always explicit (« Collecter » / « 📚 Recettes » buttons or
+  `/cohors collect`).
+- The two engines are now mutually exclusive: starting the recipes export while a calendar
+  collection runs (or the reverse) answers with a clear message instead of running both at once.
+- Offline harness: two new regression scenarios (mutual exclusion both ways, `/cohors` starts
+  nothing) — 5 scenarios run in CI.
+
 ## 2026.09.145 - 2026-09-20
 
 ### Security

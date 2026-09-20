@@ -2,7 +2,7 @@
 ## Title: Cohors — Compagnon de guilde
 ## Notes: Collecte le calendrier de guilde (raids + réponses) et les recettes d'artisanat, exportés vers le site de la guilde
 ## Author: LostInTheBugs
-## Version: 1.7.0
+## Version: 1.7.1
 ## SavedVariables: Cohors_DB
 ## IconTexture: Interface\Icons\INV_Misc_Note_01
 Cohors.lua

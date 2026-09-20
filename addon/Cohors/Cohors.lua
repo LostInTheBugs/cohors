@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.7.0"
+local ADDON_VER = "1.7.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -177,6 +177,7 @@ local diagLines    -- définies plus bas
 local finishCollect
 local recTickSafe   -- moteur recettes (défini plus bas)
 local progressUpdate  -- fenêtre de progression (définie plus bas)
+local recEngine    -- moteur recettes, exclu du calendrier (défini plus bas)
 
 -- ------------------------------------------------------------------- export
 local function buildExport()
@@ -547,7 +548,7 @@ f:SetScript("OnEvent", function(_, event, arg1)
             msg(("v%s chargée (client %s · dossier « %s ») — %s"):format(ADDON_VER, tostring(clientIface()),
                 tostring(ADDON_NAME or "?"),
                 Cohors_DB.export and ("dernier export : " .. dateStr(Cohors_DB.export_at or 0) ..
-                    " • /cohors pour ouvrir") or "/cohors pour collecter le calendrier de guilde"))
+                    " • /cohors pour ouvrir") or "/cohors pour ouvrir le panneau"))
         end
     elseif event == "CALENDAR_OPEN_EVENT" then
         if engine and engine.current then
@@ -559,6 +560,10 @@ f:RegisterEvent("ADDON_LOADED")
 f:RegisterEvent("CALENDAR_OPEN_EVENT")
 
 function Cohors_Collect()
+    if recEngine then
+        msg("export des recettes en cours — attends la fin avant de lancer le calendrier.")
+        return
+    end
     if engine then
         local age = GetTime() - (engine.startedAt or 0)
         if age > 60 then
@@ -731,7 +736,7 @@ end
 -- Lit les recettes connues du personnage, PAR MÉTIER ET PAR EXTENSION
 -- (paliers GetChildProfessionInfos, comme l'interface des métiers), et les
 -- écrit dans Cohors_DB.recipes pour l'import sur le site (Préparation de raid).
-local recEngine = nil
+recEngine = nil   -- (déclaré plus haut : Cohors_Collect le consulte)
 local recResults = {}
 local REC_TOTAL_TIMEOUT = 240
 
@@ -991,6 +996,10 @@ recTickSafe = function(force)
 end
 
 function Cohors_Recipes()
+    if engine then
+        msg("collecte du calendrier en cours — attends la fin (ou /cohors reset) avant l'export des recettes.")
+        return
+    end
     if recEngine then
         local age = GetTime() - (recEngine.started or 0)
         if age > 150 then
@@ -1171,12 +1180,9 @@ SlashCmdList["Cohors"] = function(arg)
         if arg == "" then
             buildPanel()
             if ui then ui:Show() end
-            msg(("v%s · dossier « %s » (TOC %s) — « Collecter » lance la collecte (ou /cohors collect).")
+            msg(("v%s · dossier « %s » (TOC %s) — « Collecter » = calendrier de raids · « 📚 Recettes » = artisanat.")
                 :format(ADDON_VER, tostring(ADDON_NAME or "?"), tostring(tocVersion())))
             if Cohors_DB.export and showSummary then pcall(showSummary) end
-            if not engine and (time() - (Cohors_DB.export_at or 0)) > 120 then
-                Cohors_Collect()
-            end
         elseif arg == "collect" then
             buildPanel()
             if ui then ui:Show() end

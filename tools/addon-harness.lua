@@ -2,6 +2,7 @@
 -- Usage : lua5.1 tools/addon-harness.lua                     (scénario « full »)
 --         COHORS_SCENARIO=calendar lua5.1 tools/addon-harness.lua
 --         COHORS_SCENARIO=apifail  lua5.1 tools/addon-harness.lua
+--         COHORS_SCENARIO=slash    lua5.1 tools/addon-harness.lua
 --         COHORS_SCENARIO=noprofs  lua5.1 tools/addon-harness.lua
 -- Simule fidèlement le sandbox du client : `os` et `io` sont retirés avant de charger
 -- l'addon (le harnais capture ce dont il a besoin AVANT). Le temps est virtuel (GetTime).
@@ -66,7 +67,14 @@ CreateFrame = function(ftype, name, parent, template)
     return f
 end
 UIParent = newRegion("frame")
-DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) print("[chat] " .. tostring(msg)) end }
+local CHAT = {}
+DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) CHAT[#CHAT + 1] = tostring(msg); print("[chat] " .. tostring(msg)) end }
+local function chat_has(sub)
+    for _, m in ipairs(CHAT) do
+        if m:find(sub, 1, true) then return true end
+    end
+    return false
+end
 local GameFontNormal, GameFontNormalSmall, GameFontHighlightSmall, ChatFontNormal = {}, {}, {}, {}
 
 -- -------------------------------------------------------------- API Blizzard
@@ -249,6 +257,10 @@ end
 if scenario == "calendar" then
     barValues = {}
     Cohors_Collect()
+    -- exclusion : l'export des recettes doit être refusé pendant la collecte
+    Cohors_Recipes()
+    check(chat_has("attends la fin (ou /cohors reset)"), "recettes refusées pendant la collecte calendrier")
+    check(Cohors_DB.recipes_at == nil, "aucun export recettes lancé pendant la collecte")
     local done = false
     for _ = 1, 4000 do
         if not tick(1) then break end
@@ -274,10 +286,21 @@ elseif scenario == "noprofs" then
     tick(40)
     check(Cohors_DB.recipes_at == nil, "aucun métier : rien exporté, pas de plantage")
 
+elseif scenario == "slash" then
+    -- v1.7.1 : « /cohors » sans argument ouvre le panneau, ne collecte RIEN tout seul.
+    SlashCmdList["Cohors"]("")
+    tick(30)
+    check(not chat_has("lecture du calendrier"), "« /cohors » n'auto-collecte plus le calendrier")
+    check(Cohors_DB.export == nil, "aucune collecte lancée par « /cohors »")
+
 else
     -- full / apifail : export des recettes
     barValues = {}
     Cohors_Recipes()
+    -- exclusion : la collecte calendrier doit être refusée pendant l'export recettes
+    Cohors_Collect()
+    check(chat_has("attends la fin avant de lancer le calendrier"), "calendrier refusé pendant l'export recettes")
+    check(Cohors_DB.export == nil, "aucune collecte calendrier lancée pendant l'export")
     local done = false
     for _ = 1, 4000 do
         if not tick(1) then break end
