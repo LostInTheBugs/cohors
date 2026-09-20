@@ -13,6 +13,9 @@ All notable changes to this project are documented in this file.
 - **Add-on 1.10.1** — the collected overview wraps its long lines (a multiline EditBox cannot wrap
   in game, so the waiting list was clipped at the right edge) and the panel grows with the content
   (330 → up to ~430 px) so nothing stays hidden at the bottom.
+- **Add-on 1.10.2** — the « Ouvrir » (guided profession) button only appears during the add-on's
+  recipes export: a calendar collection no longer shows a recipes-only button, and the progress
+  window shrinks to fit when it is hidden.
 
 ## 2026.09.146-c1 - 2026-09-20
 

@@ -50,7 +50,7 @@ local function newRegion(kind)
     for _, m in ipairs({ "SetPoint", "SetSize", "SetFrameStrata", "SetMovable", "EnableMouse",
         "RegisterForDrag", "SetClampedToScreen", "SetAutoFocus", "SetTextInsets", "SetFontObject",
         "SetMultiLine", "SetStatusBarTexture", "SetMinMaxValues", "SetBackdrop", "SetJustifyH",
-        "SetWordWrap", "SetAlpha", "SetScale",
+        "SetWordWrap", "SetAlpha", "SetScale", "SetHeight",
         "StartMoving", "StopMovingOrSizing", "HighlightText", "SetFocus", "ClearFocus" }) do
         r[m] = noop
     end
@@ -340,6 +340,9 @@ if scenario == "calendar" then
         if Cohors_DB.export then done = true; break end
     end
     check(done, "collecte calendrier terminée en %.1f s virtuelles", M.t - 100000.0)
+    local obc = openButton()
+    check(obc ~= nil and obc:IsShown() == false,
+        "bouton « Ouvrir » masqué pendant la collecte du calendrier (réservé aux recettes)")
     local ex = Cohors_DB.export or ""
     check(ex:find("Raid test", 1, true) ~= nil, "événement « Raid test » dans l'export")
     check(ex:find("Tester", 1, true) ~= nil, "invité « Tester » dans l'export")
@@ -462,7 +465,7 @@ else
     check(chat_has("attends la fin avant de lancer le calendrier"), "calendrier refusé pendant l'export recettes")
     check(Cohors_DB.export == nil, "aucune collecte calendrier lancée pendant l'export")
     local ob0 = openButton()
-    check(ob0 ~= nil, "bouton « Ouvrir » présent dès le départ")
+    check(ob0 ~= nil and ob0:IsShown(), "bouton « Ouvrir » présent dès le départ")
     check(ob0 and (ob0:GetText() or ""):find("Alchimie", 1, true) ~= nil,
         "bouton pointe le 1er métier restant (texte : %s)", ob0 and ob0:GetText() or "?")
     if ob0 and ob0._scripts["OnClick"] then

@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.10.1"
+local ADDON_VER = "1.10.2"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -331,7 +331,7 @@ end
 -- Elle s'affiche même quand le panneau principal est fermé, se laisse déplacer,
 -- et disparaît quelques secondes après la fin. Toute construction ratée est
 -- sans conséquence (l'addon continue, l'erreur est notée dans le rapport).
-local pWin, pBar, pBarText, pLabel, pHideAt, pOpenBtn
+local pWin, pBar, pBarText, pLabel, pHideAt, pOpenBtn, pRecMode
 
 local function buildProgress()
     if pWin then return true end
@@ -391,6 +391,7 @@ local function buildProgress()
                 msg("erreur (ouvrir) — " .. tostring(errN))
             end
         end)
+        pOpenBtn:Hide()   -- visible UNIQUEMENT pendant l'export des recettes (mode guidé)
         pWin:Hide()
         pWin:SetScript("OnUpdate", function()
             if pHideAt and GetTime() >= pHideAt then
@@ -412,6 +413,11 @@ end
 progressUpdate = function(label, pct, done)
     if statusText then statusText:SetText(tostring(label or "prêt")) end
     if not buildProgress() or not pWin then return end
+    if done then pRecMode = false end          -- fin de l'export recettes : plus de bouton « Ouvrir »
+    if pOpenBtn then
+        if pRecMode then pOpenBtn:Show() else pOpenBtn:Hide() end
+    end
+    if pWin.SetHeight then pWin:SetHeight(pRecMode and 100 or 72) end
     pWin:Show()
     if done then
         pBar:SetValue(100)
@@ -429,6 +435,9 @@ end
 local function progressButton(nextName, busy)
     if not pOpenBtn then return end
     if nextName then
+        pRecMode = true
+        if pWin and pWin.SetHeight then pWin:SetHeight(100) end
+        pOpenBtn:Show()
         pOpenBtn:SetText("Ouvrir « " .. tostring(nextName) .. " »")
         pOpenBtn:Enable()
     else
@@ -1318,6 +1327,7 @@ function Cohors_Recipes()
         progs = profs, done = {}, busy = nil, started = GetTime(), lastActionAt = GetTime(),
         retryAt = GetTime() + 0.5,
     }
+    pRecMode = true
     dtrace(("recettes : %d métier(s) — %s"):format(#profs, profs[1] and profs[1].name or "?"))
     local pnames = {}
     for _, p in ipairs(profs) do pnames[#pnames + 1] = p.name end
