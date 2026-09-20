@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def test_version_format():
     v = (ROOT / "VERSION").read_text().strip()
-    assert re.fullmatch(r"\d{4}\.\d{2}\.\d{3}", v), v
+    assert re.fullmatch(r"\d{4}\.\d{2}\.\d{3}(-c\d+)?", v), v
 
 
 def test_changelog_has_current_version():
