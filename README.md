@@ -111,7 +111,14 @@ release tag by CI).
   are rejected before the file is written. A `/simc` export never contains them.
 - **Accounts** — passwords are hashed with scrypt (unique salt, constant-time comparison),
   login attempts are rate-limited per IP, sessions are HttpOnly cookies, and registration is
-  invite-only.
+  invite-only. The client address is read from the **last** `X-Forwarded-For` entry — the one
+  appended by the reverse proxy — so the header cannot be spoofed to dodge the rate limit.
+- **Security headers** — every response carries a Content-Security-Policy (no external scripts or
+  objects, framing restricted to the app and the configured voice host), `X-Content-Type-Options`,
+  `X-Frame-Options` and `Referrer-Policy`. `script-src` still allows inline code since the UI is
+  built from per-page scripts; nonce-based tightening is planned with the front-end refactor.
+- **HTML escaping** — a single shared helper (`app/static/esc.js`) is loaded by every page that
+  renders dynamic content.
 - **Shared reports** — `/reports/<id>/report.html` links are public by design (share them in
   Discord), with random non-enumerable ids.
 
@@ -206,7 +213,7 @@ app/bnet.py               Battle.net API client (roster, characters, items)
 app/wcl.py                Warcraft Logs v2 client (reports, parses)
 app/mailer.py             Outgoing e-mail (invitations) via SMTP
 app/discord_bot.py        Discord REST client (announcements)
-app/static/               29 pages (FR) + i18n.js FR/EN engine, branding.js, PWA
+app/static/               29 pages (FR) + i18n.js FR/EN engine, esc.js, branding.js, PWA
 app/data/bis.json         Embedded BiS lists (Wowhead guide snapshots, 40 specs)
 tools/refresh-bis.md      How the embedded BiS snapshot is refreshed (procedure + script)
 addon/Cohors/             In-game add-on (guild calendar + professions export)

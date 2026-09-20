@@ -24,6 +24,14 @@ def test_i18n_dict_parses_and_is_complete():
     assert len(obj) > 250, f"dictionnaire trop petit : {len(obj)}"
 
 
+def test_pages_using_esc_load_shared_helper():
+    # Toute page qui appelle esc( doit charger /static/esc.js (ou définir un remplaçant local).
+    for p in sorted((ROOT / "app/static").glob("*.html")):
+        t = p.read_text(encoding="utf-8")
+        if "esc(" in t:
+            assert "esc.js" in t or "const esc" in t or "function esc" in t, p.name
+
+
 def test_addon_files_present():
     assert (ROOT / "addon/Cohors/Cohors.toc").exists()
     assert (ROOT / "addon/Cohors/Cohors.lua").exists()

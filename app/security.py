@@ -47,6 +47,23 @@ _BLOCKED_KEYS = ("input", "output", "html", "json", "json2", "apikey")
 _PROFILE_BLOCK_RE = re.compile(r"^\s*(" + "|".join(_BLOCKED_KEYS) + r")\s*=", re.IGNORECASE)
 
 
+def real_client_ip(xff: str | None, peer: str | None) -> str:
+    """Adresse du client derrière notre reverse proxy (Apache, même hôte).
+
+    Le conteneur n'est jamais exposé directement : le seul intermédiaire est notre proxy,
+    qui AJOUTE l'adresse qu'il voit en DERNIÈRE position d'X-Forwarded-For. Toutes les
+    entrées précédentes viennent du client et sont donc forgeables — lire la première
+    (comme avant) permettait de contourner le rate-limit de connexion en changeant
+    d'en-tête à chaque requête (reproduit en direct sur la démo le 2026-09-20). On ne lit
+    donc que la dernière entrée non vide, avec repli sur l'adresse de la socket.
+    """
+    if xff:
+        parts = [p.strip() for p in xff.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
+    return peer or "?"
+
+
 def check_profile(text: str) -> str | None:
     """Retourne la directive interdite trouvée dans le profil, sinon None."""
     for line in text.splitlines():

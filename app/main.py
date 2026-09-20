@@ -37,7 +37,7 @@ from worker.simrun import run_sim
 import httpx
 
 from app import bnet, discord_bot, mailer, wcl
-from app.security import check_profile, hash_password as _hash_password, verify_password as _verify_password
+from app.security import check_profile, hash_password as _hash_password, real_client_ip, verify_password as _verify_password
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -774,10 +774,10 @@ def _brand_files() -> dict:
 
 
 def _client_ip(request: Request) -> str:
-    xff = request.headers.get("x-forwarded-for", "")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.client.host if request.client else "?"
+    # Voir app/security.py:real_client_ip — l'IP réelle est la DERNIÈRE entrée d'X-Forwarded-For
+    # (ajoutée par notre proxy) ; les précédentes sont fournies par le client et forgeables.
+    return real_client_ip(request.headers.get("x-forwarded-for"),
+                          request.client.host if request.client else None)
 
 
 # ---------------------------------------------------------------------------
@@ -6748,6 +6748,32 @@ class VoiceGateMiddleware:
 
 
 app.add_middleware(VoiceGateMiddleware)
+
+
+def _build_csp() -> str:
+    # frame-src doit autoriser le client vocal embarqué (autre origine) s'il est configuré.
+    voice = os.environ.get("VOICE_PUBLIC_HOST", "").strip()
+    frame_src = "'self'" + (f" https://{voice}" if voice else "")
+    # script-src garde 'unsafe-inline' (l'interface est faite de scripts embarqués dans les pages) :
+    # le passage à des nonces fait partie du chantier découpage/refonte front. En l'état, la CSP
+    # bloque déjà les scripts/objets d'origine externe, le cadrage tiers et le base-uri détourné.
+    return ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; "
+            f"frame-src {frame_src}; object-src 'none'; base-uri 'self'; form-action 'self'; "
+            "frame-ancestors 'self'; worker-src 'self'")
+
+
+_CSP = _build_csp()
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    resp = await call_next(request)
+    resp.headers.setdefault("Content-Security-Policy", _CSP)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    resp.headers.setdefault("Referrer-Policy", "same-origin")
+    return resp
 
 
 @app.middleware("http")

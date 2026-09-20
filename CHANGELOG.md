@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.142 - 2026-09-20
+
+### Security
+- Login rate-limiting can no longer be bypassed with a spoofed `X-Forwarded-For` header: the client
+  address is now read from the **last** entry — the one appended by the reverse proxy — instead of
+  the first (client-supplied, forgeable) one. Reproduced live before the fix (16 attempts, 16 forged
+  values, never throttled) and re-tested after (throttled on the 16th attempt).
+- Every response now carries baseline security headers: Content-Security-Policy (external scripts and
+  objects blocked, framing limited to the app and the configured voice host, `base-uri` locked),
+  `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`. `script-src` still allows inline
+  code because the UI is built from per-page scripts — nonce-based tightening is planned together
+  with the front-end refactor.
+- The HTML escape helper (`esc`) is now one shared module (`app/static/esc.js`) instead of a
+  copy-pasted `const` in 23 pages — one place to audit, and a test now asserts that every page
+  calling it loads the shared file.
+
+### Added
+- API tests (`tests/test_api.py`): health, security headers, failed login, rate-limit enforcement,
+  and a regression test proving a spoofed `X-Forwarded-For` cannot dodge the throttle. CI now
+  installs the app requirements to run them.
+
 ## 2026.09.141 - 2026-09-20
 
 ### Security

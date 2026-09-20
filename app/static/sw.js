@@ -1,7 +1,7 @@
 /* Cohors — service worker (PWA) : cache des ressources statiques + page hors-ligne. */
-const CACHE = "cohors-v2026.09.141";
+const CACHE = "cohors-v2026.09.142";
 const CORE = ["/static/crest.png", "/static/icon-192.png", "/static/icon-512.png",
-  "/static/nav.js", "/static/i18n.js", "/static/theme.css", "/static/bg-texture.png",
+  "/static/esc.js", "/static/nav.js", "/static/i18n.js", "/static/theme.css", "/static/bg-texture.png",
   "/static/fonts/cinzel.woff2", "/offline.html"];
 
 self.addEventListener("install", (e) => {
