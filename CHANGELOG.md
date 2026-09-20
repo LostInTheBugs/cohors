@@ -14,6 +14,10 @@ All notable changes to this project are documented in this file.
 - « Mes recettes » page: a stray `loadStats()` call (a function from « Mes statistiques ») crashed
   right after a successful import and replaced the success message with « loadStats is not
   defined ».
+- This release also ships the whole in-game add-on **1.9.x** line from today's iterations
+  (c2–c7): recipes export on the current client APIs, guided collection with the « ▶ Ouvrir »
+  button, archaeology skip, incremental saves (see the sections below).
+
 
 ## 2026.09.145-c7 - 2026-09-20
 
