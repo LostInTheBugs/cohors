@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145-c7 - 2026-09-20
+
+### Fixed
+- In-game add-on **1.9.2** — recipes are now saved **incrementally**: after every profession read (or
+  skipped) and again on `/reload` or logout (`PLAYER_LOGOUT`). Previously the export file was only
+  written when the whole run finished, so stopping mid-way (a stuck profession, a reload) lost
+  everything already read — the web import then reported no usable recipe even after a large
+  session. An empty run can also no longer overwrite an existing export.
+- One read pass per profession: `GetAllRecipeIDs` returns the **whole profession** (every expansion
+  tier at once — confirmed in a live trace: identical id counts per tier), so switching tiers read
+  nothing extra and **duplicated every recipe** (Cuisine: 53 recipes counted 3× = 159). Each recipe
+  is now listed once.
+- Offline harness: new « logout » scenario (reload mid-export keeps what was read) — 11 scenarios
+  in CI.
+
 ## 2026.09.145-c6 - 2026-09-20
 
 ### Fixed

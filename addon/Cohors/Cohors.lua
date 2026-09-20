@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.9.1"
+local ADDON_VER = "1.9.2"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -179,6 +179,7 @@ local recTickSafe   -- moteur recettes (défini plus bas)
 local progressUpdate  -- fenêtre de progression (définie plus bas)
 local recEngine    -- moteur recettes, exclu du calendrier (défini plus bas)
 local recOnTradeSkillOpened  -- réaction à l'ouverture d'une fenêtre de métier (définie plus bas)
+local recSaveNow            -- sauvegarde immédiate des recettes (définie plus bas)
 
 -- ------------------------------------------------------------------- export
 local function buildExport()
@@ -589,6 +590,9 @@ f:SetScript("OnEvent", function(_, event, arg1)
         end
     elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_UPDATE" then
         if recEngine and recOnTradeSkillOpened then pcall(recOnTradeSkillOpened) end
+    elseif event == "PLAYER_LOGOUT" then
+        -- /reload ou déconnexion : on écrit tout de suite ce qui a été lu (zéro perte)
+        if recEngine and recSaveNow then recSaveNow() end
     end
 end)
 -- ⚠️ Inscrire un événement INCONNU fait planter TOUT le chargement du fichier (le client lève
@@ -605,6 +609,7 @@ end
 regEvent("ADDON_LOADED")
 regEvent("CALENDAR_OPEN_EVENT")
 regEvent("TRADE_SKILL_SHOW")
+regEvent("PLAYER_LOGOUT")
 
 function Cohors_Collect()
     if recEngine then
@@ -927,13 +932,19 @@ local function recSave()
     Cohors_DB.recipes = table.concat(parts)
     Cohors_DB.recipes_at = time()
 end
+recSaveNow = function() pcall(recSave) end
 
 local function recFinish(note)
     local e = recEngine
     if not e then return end
     recEngine = nil
     -- on ne ferme PAS la fenêtre du joueur : elle lui appartient, laissons-la ouverte
-    pcall(recSave)
+    -- (et on n'écrase pas une sauvegarde existante avec un export vide)
+    local hadRecipes = false
+    for _, prof in ipairs(recResults) do
+        if #(prof.recipes or {}) > 0 then hadRecipes = true end
+    end
+    if hadRecipes or not Cohors_DB.recipes then pcall(recSave) end
     local total, exts = 0, {}
     for _, prof in ipairs(recResults) do
         for _, r in ipairs(prof.recipes or {}) do
@@ -1046,6 +1057,7 @@ local function recProfessionDone(why)
     e.done[prof.skillLine] = true
     e.busy = nil
     e.lastActionAt = GetTime()
+    pcall(recSave)   -- sauvegarde INCRÉMENTALE : rien ne se perd si on s'arrête en route
     local note = why
     if not note and (cur.total or 0) == 0 then
         note = (next(recApiNotes) and recApiWhy()) or "aucune recette (normal hors artisanat)"
@@ -1108,6 +1120,7 @@ recTick = function(now, force)
                 dtrace(("métier ignoré (fenêtre jamais ouverte) : %s"):format(op.name))
                 msg(("⚠️ « %s » ne s'ouvre pas comme un métier standard — ignoré (normal pour l'archéologie).")
                     :format(op.name))
+                pcall(recSave)
                 local left2 = recRemaining()
                 if #left2 > 0 then
                     msg(("reste : %s — clique « ▶ Ouvrir « %s » »."):format(table.concat(left2, ", "),
@@ -1167,69 +1180,37 @@ recTick = function(now, force)
         if wait then return end
         local okc, ck = pcall(C_TradeSkillUI.GetChildProfessionInfos)
         if okc and type(ck) == "table" and #ck > 0 then
-            cur.childs = ck; cur.ci = 1; cur.phase = "switch"; cur.await = now + 0.3
+            cur.phase = "settle"; cur.settleUntil = now + 0.6
         elseif (cur.attempts or 0) > 8 then
-            cur.childs = {}; cur.ci = 1; cur.phase = "collect"; cur.await = now + 0.5
+            cur.phase = "settle"; cur.settleUntil = now
         else
             cur.attempts = (cur.attempts or 0) + 1; cur.await = now + 0.8
         end
         return
     end
     if wait then return end
-    if cur.phase == "switch" then
-        local child = cur.childs[cur.ci]
-        if not child then
-            recProfessionDone(nil)
-            return
-        end
-        pcall(C_TradeSkillUI.SetProfessionChildSkillLineID, child.professionID)
-        cur.attempts = 0; cur.phase = "waitChild"; cur.await = now + 0.5
-        return
-    elseif cur.phase == "waitChild" then
-        local child = cur.childs[cur.ci]
-        if not child then cur.phase = "switch"; return end
-        local okg, cinf = pcall(C_TradeSkillUI.GetChildProfessionInfo)
-        if okg and type(cinf) == "table" and tonumber(cinf.professionID) == tonumber(child.professionID) then
-            cur.phase = "settle"; cur.settleUntil = now + 0.9
-        elseif (cur.attempts or 0) > 20 then
-            dtrace(("%s · %s : palier non chargé — passé"):format(prof.name, tostring(child.expansionName)))
-            cur.ci = cur.ci + 1; cur.phase = "switch"; cur.await = now + 0.2
-        else
-            cur.attempts = (cur.attempts or 0) + 1
-            pcall(C_TradeSkillUI.SetProfessionChildSkillLineID, child.professionID)
-            cur.await = now + 0.6
-        end
-        return
-    elseif cur.phase == "settle" then
+    if cur.phase == "settle" then
         if not force and now < (cur.settleUntil or 0) then return end
         cur.phase = "collect"; cur.await = now + 0.05
         return
     elseif cur.phase == "collect" then
-        local child = cur.childs[cur.ci]
-        local eName, eRank = "", 0
-        if child then
-            eName = tostring(child.expansionName or "")
-            if eName == "Unknown" then eName = "" end
-            eRank = cur.ci
-        end
-        local okc2, list, src, stats = pcall(collectProfession, eName, eRank)
+        -- UNE SEULE passe par métier : en jeu, GetAllRecipeIDs renvoie TOUT le métier (tous
+        -- paliers confondus — vérifié dans la trace : mêmes 96/116/194 ids quel que soit le
+        -- palier affiché). Basculer les paliers ne lisait donc rien de plus et DUPLIQUAIT
+        -- toutes les recettes (Cuisine : 53 comptées 3 fois).
+        local okc2, list, src, stats = pcall(collectProfession, "", 0)
         list = (okc2 and type(list) == "table") and list or {}
         stats = (okc2 and type(stats) == "table") and stats or {}
         recResults[#recResults + 1] = { name = prof.name, recipes = list }
-        recTiers[#recTiers + 1] = { prof = prof.name, tier = eName or "", n = #list,
+        recTiers[#recTiers + 1] = { prof = prof.name, tier = "", n = #list,
                                     src = tostring(src or "?"), ids = stats.ids or 0,
                                     unlearned = stats.unlearned or 0, mats = stats.mats or 0,
                                     err_info = stats.err_info or 0 }
         cur.total = (cur.total or 0) + #list
-        local tag = eName ~= "" and (" · " .. eName) or ""
-        dtrace(("%s%s : %d recette(s) [%s : %d ids, %d non apprises]")
-            :format(prof.name, tag, #list, tostring(src or "?"), stats.ids or 0, stats.unlearned or 0))
-        msg(("• %s%s : %d recette(s)"):format(prof.name, tag, #list))
-        if child then
-            cur.ci = cur.ci + 1; cur.phase = "switch"; cur.await = now + 0.3
-        else
-            recProfessionDone(nil)
-        end
+        dtrace(("%s : %d recette(s) [%s : %d ids, %d non apprises]")
+            :format(prof.name, #list, tostring(src or "?"), stats.ids or 0, stats.unlearned or 0))
+        msg(("• %s : %d recette(s)"):format(prof.name, #list))
+        recProfessionDone(nil)
         return
     end
 end
@@ -1254,28 +1235,16 @@ recTickSafe = function(force)
         local label, pct
         local cur = e.busy
         if cur then
-            local nchild = (cur.childs and #cur.childs) or 0
-            local ci = tonumber(cur.ci) or 0
             local sub
             if cur.phase == "childs" then
                 sub = "lecture de la fenêtre…"
-            elseif (cur.phase == "switch" or cur.phase == "waitChild" or cur.phase == "settle")
-                   and nchild > 0 then
-                local child = cur.childs[ci]
-                local xn = child and tostring(child.expansionName or "") or ""
-                if xn == "" or xn == "Unknown" then xn = ("palier %d"):format(ci) end
-                sub = ("palier %d/%d · %s"):format(ci, nchild, xn)
             elseif cur.phase == "collect" then
                 sub = "lecture des recettes…"
             else
-                sub = tostring(cur.phase)
+                sub = "préparation…"
             end
             label = ("recettes — %s : %s · %d recette(s) · %d s"):format(cur.prof.name, sub, n, elapsed)
-            local frac = 0
-            if nchild > 0 and ci > 0 then
-                frac = math.min(1, (ci - 1) / nchild)   -- palier suivant le dernier = métier terminé
-            end
-            pct = (ndone + frac) / nprogs
+            pct = ndone / nprogs
             progressButton(nil, true)
         else
             local left = recRemaining()
@@ -1364,6 +1333,7 @@ function Cohors_OpenNext()
         recEngine.openPending = nil
         dtrace(("métier ignoré sur 2e clic : %s"):format(nextProf.name))
         msg(("« %s » ne s'ouvre pas comme un métier standard — ignorée (2e clic)."):format(nextProf.name))
+        pcall(recSave)
         nextProf = recNextProf()
         if not nextProf then
             recFinish(nil)

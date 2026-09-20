@@ -8,6 +8,7 @@
 --         COHORS_SCENARIO=closemid lua5.1 tools/addon-harness.lua   (fenêtre fermée en cours de lecture)
 --         COHORS_SCENARIO=openbtn  lua5.1 tools/addon-harness.lua   (le client ne cède qu'au clic « ▶ Ouvrir »)
 --         COHORS_SCENARIO=unreadable lua5.1 tools/addon-harness.lua (métier sans fenêtre standard, cas archéologie)
+--         COHORS_SCENARIO=logout   lua5.1 tools/addon-harness.lua   (/reload en plein export : rien ne se perd)
 --         COHORS_SCENARIO=noprofs  lua5.1 tools/addon-harness.lua
 -- Simule fidèlement le sandbox du client : `os` et `io` sont retirés avant de charger
 -- l'addon (le harnais capture ce dont il a besoin AVANT). Le temps est virtuel (GetTime).
@@ -218,21 +219,34 @@ C_TradeSkillUI = {
                        expansionName = c.expansionName } or nil
     end,
     GetAllRecipeIDs = function()
+        -- En jeu, cette API renvoie TOUT le métier, tous paliers confondus (vérifié dans la
+        -- trace de Fred : mêmes 96/116/194 ids quel que soit le palier affiché). Le mock
+        -- concatène donc les paliers — et l'addon ne bascule plus de palier du tout.
         if scenario == "legacy" or scenario == "noapi" then error("api indisponible (test)") end
-        local c = currentChild()
-        return c and c.recipeIDs or {}
+        local p = profData[TS.open]
+        if not p then return {} end
+        local out = {}
+        for _, c in ipairs(p.childs or {}) do
+            for _, rid in ipairs(c.recipeIDs or {}) do out[#out + 1] = rid end
+        end
+        return out
     end,
     GetFilteredRecipeIDs = function()
         -- API supprimée du client actuel : elle n'existe QUE dans le scénario « legacy ».
         if scenario ~= "legacy" then error("api supprimée du client (test)") end
-        local c = currentChild()
-        return c and c.recipeIDs or {}
+        local p = profData[TS.open]
+        if not p then return {} end
+        local out = {}
+        for _, c in ipairs(p.childs or {}) do
+            for _, rid in ipairs(c.recipeIDs or {}) do out[#out + 1] = rid end
+        end
+        return out
     end,
     GetRecipeInfo = function(rid)
-        local c = currentChild()
+        local p = profData[TS.open]
         local learned = true
-        if c and c.unlearned then
-            for _, u in ipairs(c.unlearned) do
+        for _, c in ipairs((p and p.childs) or {}) do
+            for _, u in ipairs(c.unlearned or {}) do
                 if u == rid then learned = false end
             end
         end
@@ -352,11 +366,11 @@ elseif scenario == "closemid" then
     local closed, done = false, false
     for _ = 1, 4000 do
         if not tick(1) then break end
-        if not closed and (M.t - 100000.0) > 3.5 then
+        if not closed and (M.t - 100000.0) > 0.5 then
             closed = true
             TS.open = nil; TS.child = nil            -- le joueur ferme la fenêtre
         end
-        if Cohors_DB.recipes_at then done = true; break end
+        if Cohors_DB.recipes_total ~= nil then done = true; break end
     end
     check(done, "export terminé malgré la fermeture (%.1f s virtuelles)", M.t - 100000.0)
     check(chat_has("fenêtre fermée"), "fermeture détectée et signalée")
@@ -380,7 +394,7 @@ elseif scenario == "openbtn" then
                 M.hardware = false
             end
         end
-        if Cohors_DB.recipes_at then done = true; break end
+        if Cohors_DB.recipes_total ~= nil then done = true; break end
     end
     check(done, "export terminé via les clics sur « ▶ Ouvrir » (%.1f s virtuelles)", M.t - 100000.0)
     check(Cohors_DB.recipes_total == 7, "7 recettes lues grâce aux clics (total %s)",
@@ -405,7 +419,7 @@ elseif scenario == "unreadable" then
                 M.hardware = false
             end
         end
-        if Cohors_DB.recipes_at then done = true; break end
+        if Cohors_DB.recipes_total ~= nil then done = true; break end
     end
     check(done, "export terminé malgré un métier illisible (%.1f s virtuelles)", M.t - 100000.0)
     check(Cohors_DB.recipes_total == 5, "5 recettes lues (métier illisible ignoré) — total %s",
@@ -413,6 +427,24 @@ elseif scenario == "unreadable" then
     check(chat_has("ne s'ouvre pas comme un métier standard"), "métier illisible signalé dans le chat")
     check((Cohors_DB.rec_diag or ""):find("métiers ignorés", 1, true) ~= nil,
         "métier ignoré consigné dans le rapport")
+
+elseif scenario == "logout" then
+    -- /reload ou déconnexion en plein export : ce qui est déjà lu doit être dans le fichier
+    -- (sauvegardes incrémentales + PLAYER_LOGOUT). C'est LE cas qui a coûté 168 recettes à Fred.
+    barValues = {}
+    Cohors_Recipes()
+    local saved = false
+    for _ = 1, 4000 do
+        if not tick(1) then break end
+        if chat_has("✔ Alchimie") then
+            pcall(driver._scripts["OnEvent"], driver, "PLAYER_LOGOUT")   -- /reload simulé
+            saved = (Cohors_DB.recipes_at ~= nil) and
+                    ((Cohors_DB.recipes or ""):find("Alchimie", 1, true) ~= nil)
+            break
+        end
+    end
+    check(saved, "PLAYER_LOGOUT en cours d'export : recettes déjà au fichier (%s caractères)",
+        tostring(Cohors_DB.recipes and #Cohors_DB.recipes or 0))
 
 elseif scenario == "slash" then
     -- v1.7.1 : « /cohors » sans argument ouvre le panneau, ne collecte RIEN tout seul.
@@ -441,7 +473,7 @@ else
     local done = false
     for _ = 1, 4000 do
         if not tick(1) then break end
-        if Cohors_DB.recipes_at then done = true; break end
+        if Cohors_DB.recipes_total ~= nil then done = true; break end
     end
     check(done, "export des recettes terminé (%.1f s virtuelles)", M.t - 100000.0)
     check(Cohors_DB.recipes ~= nil and #Cohors_DB.recipes > 20, "chaîne JSON exportée (%d caractères)",
@@ -467,7 +499,7 @@ else
             tostring(Cohors_DB.recipes_total))
         check(chat_has("API recettes en échec"), "avertissement API affiché dans le chat")
     else
-        check(Cohors_DB.recipes_total == 7, "7 recettes attendues (2 métiers, 3 paliers) — trouvées %s",
+        check(Cohors_DB.recipes_total == 7, "7 recettes attendues (2 métiers, une passe chacun) — trouvées %s",
             tostring(Cohors_DB.recipes_total))
         check((Cohors_DB.rec_diag or ""):find("1 non apprises", 1, true) ~= nil,
             "recette non apprise filtrée (rapport rec_diag)")
