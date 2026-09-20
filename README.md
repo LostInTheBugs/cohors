@@ -11,6 +11,14 @@ guild calendar and Discord announcements — one web app, one instance per guild
 > Entertainment and by Warcraft Logs. Simulations run on the official SimulationCraft
 > engine (Docker image).
 
+## Screenshots
+
+![Dashboard — latest raid, top parses and voice status](docs/shot-dashboard.png)
+
+![Raid reports — Warcraft Logs parses and rankings](docs/shot-raids.png)
+
+![Guild roster — live from the Battle.net API](docs/shot-characters.png)
+
 ## Features
 
 - **Simulator** — paste your in-game `/simc` export: DPS simulations through the official
@@ -182,7 +190,7 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
 
 ## Version
 
-Current version: `2026.09.137` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Current version: `2026.09.140` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
 
 ## License
 

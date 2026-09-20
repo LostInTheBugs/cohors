@@ -8,6 +8,11 @@ All notable changes to this project are documented in this file.
 - English mode: the "Refresh" buttons (roster, reports) and the role filter "All" now
   translate like the rest of the UI.
 
+### Notes
+- First public release: the app is open-sourced under the name **Cohors** — see the
+  2026.09.137 entry for the rename details (generic branding, `Cohors` add-on, guild
+  identity configured in the app) and the entries below for the pre-release history.
+
 ## 2026.09.139 - 2026-09-20
 
 ### Fixed
