@@ -377,3 +377,40 @@ def test_manifest_verified_and_version_warned():
     assert any("plus récente" in w for w in r.json()["warnings"])
     r = c.post("/api/admin/restore/preview", content=backup)     # même version : aucun bruit
     assert r.status_code == 200 and r.json()["warnings"] == []
+
+
+def test_recipe_wishlist_toggle_and_export():
+    """Recette marquée/retirée en wishlist + export addon (clé négative si pas d'item_id)."""
+    c = _admin_client("wlrec@test.local", "10.99.21.1")
+    with M._db_lock, M._db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats,"
+            " updated, item_en, tier_en, prof_en, mats_en)"
+            " VALUES (900001, 'Forge', 'T', 0, 'Lame de test', 0, 1, '[]', 0, 'Test Blade', 'T', 'Blacksmithing', '[]')")
+    r = c.post("/api/wishlist/recipe", json={"recipe_id": 900001, "on": True})
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["on"] is True and j["key"] < 0        # pas d'item_id en base -> clé dérivée du nom
+    r2 = c.post("/api/wishlist/recipe", json={"recipe_id": 900001, "on": True})
+    assert r2.json().get("already") is True        # idempotent
+    x = c.get("/api/wishlist/export")
+    assert x.status_code == 200
+    lines = x.text.strip().splitlines()
+    assert lines[0] == "CohorsWL1"
+    assert any(l.endswith("|recipe|Lame de test") for l in lines)
+    with M._db_lock, M._db() as conn:              # une pièce d'équipement dans le même export
+        conn.execute(
+            "INSERT INTO wishlist (user_email, item_id, name, slot, inv_type, quality, icon, added, prio, kind)"
+            " VALUES ('wlrec@test.local', 123456, 'Épaule de test', 'shoulder', 1, 4, NULL, 0, 1, 'item')")
+    lines2 = c.get("/api/wishlist/export").text.strip().splitlines()
+    assert "123456|item|Épaule de test" in lines2   # priorité non transmise : hors sujet en jeu
+    r3 = c.post("/api/wishlist/recipe", json={"recipe_id": 900001, "on": False})
+    assert r3.status_code == 200 and r3.json()["on"] is False
+    assert "|recipe|" not in c.get("/api/wishlist/export").text
+    assert c.post("/api/wishlist/recipe", json={"recipe_id": 999999999, "on": True}).status_code == 404
+
+
+def test_wishlist_export_requires_auth():
+    c = TestClient(M.app)
+    assert c.get("/api/wishlist/export").status_code == 401
+    assert c.post("/api/wishlist/recipe", json={"recipe_id": 1}).status_code == 401

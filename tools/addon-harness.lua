@@ -43,6 +43,7 @@ local frames = {}
 local VALID_EVENTS = {
     ADDON_LOADED = true, CALENDAR_OPEN_EVENT = true,
     TRADE_SKILL_SHOW = true, TRADE_SKILL_CLOSE = true,
+    PLAYER_ENTERING_WORLD = true, ZONE_CHANGED_NEW_AREA = true, PLAYER_LOGOUT = true,
 }
 local function newRegion(kind)
     local r = { _kind = kind, _scripts = {}, _shown = true, _value = 0, _enabled = true }
@@ -77,6 +78,8 @@ local function newRegion(kind)
         self._value = tonumber(v) or 0
         if kind == "StatusBar" then barValues[#barValues + 1] = self._value end
     end
+    r.SetChecked = function(self, v) self._checked = v and true or false end
+    r.GetChecked = function(self) return self._checked == true end
     r.GetValue = function(self) return self._value end
     r.CreateFontString = function() return newRegion("fontstring") end
     r.CreateTexture = function() return newRegion("texture") end
@@ -112,9 +115,55 @@ GetNumAddOns = function() return 1 end
 GetAddOnInfo = function() return "Cohors", "Cohors", "", true, "LOADED" end
 GetAddOnMetadata = function(_, f) return f == "Version" and "1.7.0" or nil end
 C_AddOns = { GetNumAddOns = GetNumAddOns, GetAddOnInfo = GetAddOnInfo, GetAddOnMetadata = GetAddOnMetadata }
-C_Item = { GetItemNameByID = function(id) return "Composant " .. tostring(id) end,
-           GetItemInfo = function(id) return "Composant " .. tostring(id) end }
-C_Timer = { After = function() end }
+-- Wishlist (v1.12.0) : noms/liens d'objets configurables par scénario, sort des recettes
+local C_ITEM_NAMES, C_ITEM_LINKS, C_ITEM_SPELLS = {}, {}, {}
+C_Item = {
+    GetItemNameByID = function(id) return C_ITEM_NAMES[id] or ("Composant " .. tostring(id)) end,
+    GetItemInfo = function(id) return C_ITEM_NAMES[id] or ("Composant " .. tostring(id)), C_ITEM_LINKS[id] end,
+    GetItemSpell = function(link)
+        local sid = link and C_ITEM_SPELLS[link]
+        if sid then return "Sort de recette", sid end
+        return nil
+    end,
+}
+-- C_Timer.After exécute la tâche immédiatement (l'addon n'en utilise qu'une : le scan d'instance)
+C_Timer = { After = function(_, fn) if type(fn) == "function" then fn() end end }
+
+-- Instance + Journal d'aventure simulés : WL est rempli par le scénario « wishlist »
+local WL = { instance = nil, jid = nil, loot = {}, known = {}, extra = {} }
+GetInstanceInfo = function()
+    if not WL.instance then return nil end
+    return WL.instance.name, WL.instance.itype, 8, WL.instance.diff or "Raid normal",
+        WL.instance.max or 20, false, false, WL.instance.mapID, WL.instance.mapID
+end
+EJ_GetInstanceForMap = function(_mapID) return WL.jid end
+EJ_SelectInstance = function(_jid) WL.cur = "inst" end
+EJ_SelectEncounter = function(eid) WL.cur = eid end
+EJ_GetEncounterInfoByIndex = function(i, _jid)
+    local b = WL.loot[i]
+    if not b then return nil end
+    return 1000 + i, b.name
+end
+EJ_GetNumLoot = function()
+    if WL.cur == "inst" then return #(WL.extra or {}) end
+    local i = (type(WL.cur) == "number") and (WL.cur - 1000) or 0
+    local b = WL.loot[i]
+    return (b and #(b.items or {})) or 0
+end
+EJ_GetLootInfoByIndex = function(j)
+    local list
+    if WL.cur == "inst" then
+        list = WL.extra or {}
+    else
+        local i = (type(WL.cur) == "number") and (WL.cur - 1000) or 0
+        list = (WL.loot[i] and WL.loot[i].items) or {}
+    end
+    local id = list[j]
+    if id then return { itemID = id } end
+    return nil
+end
+C_EncounterJournal = { InstanceHasLoot = function(_jid) return WL.hasLoot ~= false end }
+IsSpellKnown = function(sp) return WL.known[sp] == true end
 SlashCmdList = {}
 ToggleCalendar = function() end
 
@@ -473,6 +522,105 @@ elseif scenario == "slash" then
         check(false, "icône de mini-carte : clic non testable (mmb=%s frame=%s)",
             tostring(mmb), tostring(uif))
     end
+
+elseif scenario == "wishlist" then
+    -- v1.12.0 : import de la wishlist du site + alerte d'instance (journal d'aventure simulé)
+    check(pcall(Cohors_Wishlist), "fenêtre wishlist ouvrable")
+    local wlEbF
+    for i = #frames, 1, -1 do
+        if frames[i]._type == "EditBox" then wlEbF = frames[i]; break end
+    end
+    check(wlEbF ~= nil, "champ de collage présent dans la fenêtre wishlist")
+
+    -- import valide : une pièce + une recette
+    wlEbF:SetText("CohorsWL1\n111|item|Épaule de test\n-42|recipe|Lame de test\n")
+    Cohors_WLImport()
+    check(#(Cohors_DB.wl or {}) == 2, "2 objets importés (trouvés : %d)", #(Cohors_DB.wl or {}))
+    check(Cohors_DB.wl[1] and Cohors_DB.wl[1].n == "Épaule de test"
+        and Cohors_DB.wl[2] and Cohors_DB.wl[2].t == "recipe",
+        "pièce et recette lues correctement")
+    check(chat_has("wishlist importée : 2 objet(s)"), "confirmation d'import dans le chat")
+
+    -- import refusé : la liste précédente est CONSERVÉE
+    wlEbF:SetText("bonjour, ceci n'est pas un export")
+    Cohors_WLImport()
+    check(#(Cohors_DB.wl or {}) == 2, "import invalide refusé sans écraser la liste")
+    check(chat_has("import wishlist refusé"), "refus signalé dans le chat")
+
+    -- lignes douteuses : les valides passent, les autres sont comptées
+    wlEbF:SetText("CohorsWL1\n111|item|Épaule de test\n-42|recipe|Lame de test\nn'importe quoi\n")
+    Cohors_WLImport()
+    check(#(Cohors_DB.wl or {}) == 2 and (Cohors_DB.wl_bad or 0) == 1,
+        "ligne illisible ignorée (bad=%s)", tostring(Cohors_DB.wl_bad))
+
+    -- alerte d'instance : boss, pièce, recette (reconnue au nom « Plans : … »)
+    C_ITEM_NAMES[222] = "Plans : Lame de test"
+    C_ITEM_NAMES[333] = "Collier sans rapport"
+    WL.instance = { name = "Raid de test", itype = "raid", mapID = 777, diff = "Héroïque", max = 20 }
+    WL.jid = 42
+    WL.loot = { { name = "Boss Alpha", items = { 111, 222, 333 } }, { name = "Boss Beta", items = { 333 } } }
+    Cohors_WLZoneCheck()
+    local alertTxt
+    for _, fr in ipairs(frames) do
+        if fr._type == "EditBox" and (fr._text or ""):find("Raid de test", 1, true) then alertTxt = fr._text end
+    end
+    check(alertTxt ~= nil, "fenêtre d'alerte affichée en entrant dans l'instance")
+    if alertTxt then
+        check(alertTxt:find("Boss Alpha", 1, true) ~= nil, "boss concerné listé")
+        check(alertTxt:find("Épaule de test", 1, true) ~= nil, "pièce de la wishlist listée")
+        check(alertTxt:find("Lame de test", 1, true) ~= nil, "recette reconnue au nom (« Plans : … »)")
+        check(alertTxt:find("(recette)", 1, true) ~= nil, "la recette est signalée comme telle")
+        check(alertTxt:find("Boss Beta", 1, true) == nil, "boss sans objet souhaité absent de la liste")
+    end
+
+    -- alerte coupée : aucun scan ; réactivée : le scan reprend
+    Cohors_DB.wl_alert = false
+    local before = Cohors_DB.wl_last
+    WL.instance = { name = "Donjon de test", itype = "party", mapID = 778, diff = "Héroïque", max = 5 }
+    Cohors_WLZoneCheck()
+    check(Cohors_DB.wl_last == before, "alerte désactivée : aucune alerte")
+    Cohors_DB.wl_alert = true
+    Cohors_WLZoneCheck()
+    check(Cohors_DB.wl_last ~= before, "alerte réactivée : scan de nouveau effectué")
+
+    -- recette déjà apprise : plus signalée (sort connu côté client), la pièce reste listée
+    C_ITEM_LINKS[222] = "item:222"
+    C_ITEM_SPELLS["item:222"] = 555
+    WL.known[555] = true
+    WL.instance = { name = "Repaire de test", itype = "raid", mapID = 779, diff = "", max = 20 }
+    Cohors_WLZoneCheck()
+    local txt2
+    for _, fr in ipairs(frames) do
+        if fr._type == "EditBox" and (fr._text or ""):find("Repaire de test", 1, true) then txt2 = fr._text end
+    end
+    check(txt2 ~= nil and txt2:find("Épaule de test", 1, true) ~= nil,
+        "la pièce reste signalée quand la recette est connue")
+    check(txt2 ~= nil and txt2:find("Lame de test", 1, true) == nil,
+        "recette déjà apprise : non signalée")
+
+    -- hors instance, la commande manuelle le dit clairement
+    WL.instance = nil
+    SlashCmdList["Cohors"]("ici")
+    check(chat_has("tu n'es pas dans une instance"), "« /cohors ici » hors instance : message clair")
+
+    -- panneau principal : boutons Wishlist / Alerte (et bascule de l'alerte)
+    SlashCmdList["Cohors"]("")
+    local bWl, bAlert
+    for _, fr in ipairs(frames) do
+        if fr._text == "Wishlist" then bWl = fr end
+        if fr._text == "Alerte : oui" or fr._text == "Alerte : non" then bAlert = fr end
+    end
+    check(bWl ~= nil, "bouton « Wishlist » sur le panneau principal")
+    check(bAlert ~= nil, "bouton « Alerte » sur le panneau principal")
+    if bAlert and bAlert._scripts["OnClick"] then
+        local t0 = bAlert:GetText()
+        pcall(bAlert._scripts["OnClick"], bAlert, "LeftButton", false)
+        check(bAlert:GetText() ~= t0, "le bouton alerte bascule (%s -> %s)", t0, bAlert:GetText())
+    end
+
+    -- « Vider » efface la liste de l'addon
+    Cohors_WLClear()
+    check(#(Cohors_DB.wl or {}) == 0, "« Vider » efface la liste de l'addon")
 
 else
     -- full / apifail : export des recettes

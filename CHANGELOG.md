@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.150 - 2026-09-20
+
+### Added
+- **Wishlist goes in-game**: profession recipes you are missing can be wishlisted (Moi → Mes
+  recettes, ☆/⭐ next to each recipe), and the whole wishlist — gear and recipes — exports as a
+  compact text block (🎯 Ma wishlist → 📤 Export pour l'addon). Pasted into the add-on, it drives
+  an in-game alert: entering a raid or dungeon pops a small window listing the bosses that drop
+  something from your wishlist (in-game Encounter Journal lookup), with a toggle to disable it.
+- Add-on **1.12.0**: wishlist import box in the Cohors window, per-instance alert, `/cohors
+  wishlist` and `/cohors ici` commands.
+
 ## 2026.09.149-c3 - 2026-09-20
 
 ### Fixed

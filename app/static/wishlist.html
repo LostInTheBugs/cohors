@@ -69,8 +69,10 @@
   .ok-msg { color:var(--ok); font-size:13.5px; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
+  #exp { width:100%; background:var(--card2); border:1px solid var(--line); border-radius:10px; color:var(--fg);
+         font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; padding:10px; resize:vertical; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.149-c3">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.150">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -102,6 +104,16 @@
     <p class="meta" style="margin:10px 0 0">Astuce : ajoute des pièces depuis 🧰 Top Stuff avec le bouton 🎯 — ou ⭐ pour la marquer prioritaire.</p>
   </div>
 
+  <div class="card" id="exp-card">
+    <h2>📤 Export pour l'addon</h2>
+    <p class="meta" style="margin:-6px 0 8px">Copie ce texte dans l'addon en jeu (fenêtre Cohors → bouton « Wishlist », ou /cohors wishlist) : en entrant dans une instance, l'addon te signalera les boss qui ont un objet — ou une recette — de ta wishlist.</p>
+    <textarea id="exp" readonly rows="7" spellcheck="false"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="gbtn" id="expcopy">📋 Copier</button>
+      <span class="meta" id="expmsg"></span>
+    </div>
+  </div>
+
   <div class="card hidden" id="sim-card">
     <h2>⚡ Simuler les gains</h2>
     <div class="row" style="margin-bottom:8px">
@@ -116,10 +128,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.149-c3"></script>
-<script src="/static/branding.js?v=2026.09.149-c3"></script>
-<script src="/static/i18n.js?v=2026.09.149-c3"></script>
-<script src="/static/esc.js?v=2026.09.149-c3"></script>
+<script src="/static/nav.js?v=2026.09.150"></script>
+<script src="/static/branding.js?v=2026.09.150"></script>
+<script src="/static/i18n.js?v=2026.09.150"></script>
+<script src="/static/esc.js?v=2026.09.150"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
@@ -151,7 +163,10 @@ function renderItems() {
       <th style="width:36px"></th><th>Pièce</th><th>Emplacement</th>${thChars}<th></th></tr></thead><tbody>` +
     items.map(it => {
       const qcls = "q-" + (it.quality || "common").toLowerCase();
-      const chips = chars.length
+      const isRecipe = it.kind === "recipe";
+      // Recettes : la colonne Emplacement dit déjà « Recette » — pas de pastille en double
+      const chips = isRecipe ? ""
+        : chars.length
         ? chars.map(c => `<span class="chip ${it.owned && it.owned[c.name] ? "ok" : ""}" title="${esc(c.display || c.name)}">${c.is_main ? "⭐ " : ""}${esc(c.display || c.name)}${it.owned && it.owned[c.name] ? " ✓" : ""}</span>`).join("")
         : `<span class="meta">Lie tes personnages (page 👥 Personnages) pour voir qui possède quoi.</span>`;
       const srcs = (it.source || []).map(s => s.kind === "raid"
@@ -189,22 +204,44 @@ function renderItems() {
 async function loadProfiles() {
   const d = await jget("/api/profiles");
   const all = [...(d.mine || []), ...(d.shared || [])];
+  const gear = (W.items || []).filter(i => i.kind !== "recipe");
   const sel = $("#prof");
   sel.innerHTML = all.length
     ? all.map(p => `<option value="${p.id}">${esc(p.name)}${p.shared ? " (partagé)" : ""}</option>`).join("")
     : "";
-  $("#run").disabled = !all.length || !(W.items || []).length;
+  $("#run").disabled = !all.length || !gear.length;
   $("#simhint").textContent = all.length
-    ? `Les ${Math.min((W.items || []).length, 15)} première(s) pièce(s) de ta wishlist seront simulées avec le profil choisi.`
+    ? `Les ${Math.min(gear.length, 15)} première(s) pièce(s) de ta wishlist seront simulées avec le profil choisi.`
     : `Aucun profil enregistré — crée-en un sur la page ⚔️ Simulateur (bouton « Sauvegarder »).`;
 }
 
 async function load() {
   W = await jget("/api/wishlist");
   renderItems();
-  $("#sim-card").classList.toggle("hidden", !(W.items || []).length);
-  if ((W.items || []).length) await loadProfiles();
+  const gear = (W.items || []).filter(i => i.kind !== "recipe");
+  $("#sim-card").classList.toggle("hidden", !gear.length);
+  if (gear.length) await loadProfiles();
+  try {
+    const r = await fetch("/api/wishlist/export");
+    const txt = await r.text();
+    $("#exp").value = txt;
+    const n = Math.max(0, txt.trim().split("\n").length - 1);
+    $("#expmsg").textContent = n ? `${n} objet(s) dans l'export` : "Ta wishlist est vide — rien à exporter pour l'addon.";
+  } catch (e) { $("#expmsg").textContent = ""; }
 }
+
+$("#expcopy").addEventListener("click", async () => {
+  const t = $("#exp").value || "";
+  if (!t) return;
+  try {
+    await navigator.clipboard.writeText(t);
+  } catch (e) {
+    $("#exp").removeAttribute("readonly"); $("#exp").select();
+    document.execCommand("copy");
+    $("#exp").setAttribute("readonly", "");
+  }
+  $("#expmsg").textContent = "Copié ✓ — colle-le dans l'addon (bouton Wishlist).";
+});
 
 // --- ajout
 async function addRef() {
@@ -257,7 +294,7 @@ function simTable(d) {
 
 async function launch() {
   stopPoll();
-  const items = (W.items || []).slice(0, 15);
+  const items = (W.items || []).filter(i => i.kind !== "recipe").slice(0, 15);
   const pid = $("#prof").value;
   if (!pid) return;
   $("#run").disabled = true;

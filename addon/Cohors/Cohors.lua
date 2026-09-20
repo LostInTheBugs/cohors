@@ -1,7 +1,8 @@
 -- Cohors — Calendrier de guilde  le site de la guilde
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
 -- une chaîne à coller sur le site (page Calendrier  « Importer »).
--- Commandes : /cohors · /cohors collect · /cohors export · /cohors diag · /cohors reset
+-- Commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors wishlist
+--             · /cohors ici · /cohors diag · /cohors reset
 --
 -- Lecture du calendrier : même méthode que l'UI Blizzard — on affiche le mois
 -- (SetAbsMonth/SetMonth) puis on lit les jours (GetNumDayEvents/GetDayEvent),
@@ -9,7 +10,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.11.0"
+local ADDON_VER = "1.12.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -618,6 +619,12 @@ f:SetScript("OnEvent", function(_, event, arg1)
         end
     elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_UPDATE" then
         if recEngine and recOnTradeSkillOpened then pcall(recOnTradeSkillOpened) end
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
+        -- entrée dans une instance : petit délai (les infos de zone arrivent parfois juste après)
+        if Cohors_WLZoneCheck then
+            local run = function() pcall(Cohors_WLZoneCheck) end
+            if C_Timer and C_Timer.After then pcall(C_Timer.After, 2, run) else run() end
+        end
     elseif event == "PLAYER_LOGOUT" then
         -- /reload ou déconnexion : on écrit tout de suite ce qui a été lu (zéro perte)
         if recEngine and recSaveNow then recSaveNow() end
@@ -638,6 +645,8 @@ regEvent("ADDON_LOADED")
 regEvent("CALENDAR_OPEN_EVENT")
 regEvent("TRADE_SKILL_SHOW")
 regEvent("PLAYER_LOGOUT")
+regEvent("PLAYER_ENTERING_WORLD")
+regEvent("ZONE_CHANGED_NEW_AREA")
 
 function Cohors_Collect()
     if recEngine then
@@ -798,6 +807,16 @@ diagLines = function()
         L[#L + 1] = ("dernier rapport recettes : %s"):format(dateStr(Cohors_DB.rec_diag_at or 0))
         for line in tostring(Cohors_DB.rec_diag):gmatch("[^\n]+") do L[#L + 1] = "  " .. line end
     end
+    if Cohors_DB.wl_at or (Cohors_DB.wl and #Cohors_DB.wl > 0) then
+        L[#L + 1] = ("wishlist : %d objet(s), importée le %s — alerte %s"):format(#(Cohors_DB.wl or {}),
+            Cohors_DB.wl_at and dateStr(Cohors_DB.wl_at) or "?",
+            Cohors_DB.wl_alert == false and "désactivée" or "activée")
+    end
+    if Cohors_DB.wl_last then
+        L[#L + 1] = ("dernier scan d'instance : %s (%s)"):format(tostring(Cohors_DB.wl_last),
+            dateStr(Cohors_DB.wl_last_at or 0))
+    end
+    if Cohors_DB.wl_error then L[#L + 1] = "wishlist : " .. tostring(Cohors_DB.wl_error) end
     if Cohors_DB.bad_events then
         L[#L + 1] = "événements refusés par le client : " .. tostring(Cohors_DB.bad_events)
     end
@@ -1384,6 +1403,481 @@ function Cohors_OpenNext()
     end
 end
 
+-- ------------------------------------------------------------------- wishlist
+-- La wishlist du site (pièces + recettes) se colle ici, puis l'addon alerte en
+-- entrant dans une instance quand un objet de la liste y tombe : les boss sont
+-- retrouvés via le Journal d'aventure du client (rien à maintenir côté addon
+-- quand un raid change — le client sait où ça tombe).
+local wlWin, wlEb, wlStatus, wlChk, wlAlertBtn
+local wlAlertWin, wlAlertTxt, wlAlertScroll
+local wlItems, wlRecipes
+local wlLastMap, wlLastAt = nil, 0
+
+local WL_ACCENTS = {
+    ["á"] = "a", ["à"] = "a", ["â"] = "a", ["ä"] = "a", ["ã"] = "a", ["å"] = "a",
+    ["é"] = "e", ["è"] = "e", ["ê"] = "e", ["ë"] = "e",
+    ["í"] = "i", ["ì"] = "i", ["î"] = "i", ["ï"] = "i",
+    ["ó"] = "o", ["ò"] = "o", ["ô"] = "o", ["ö"] = "o", ["õ"] = "o",
+    ["ú"] = "u", ["ù"] = "u", ["û"] = "u", ["ü"] = "u",
+    ["ç"] = "c", ["ñ"] = "n", ["œ"] = "oe", ["æ"] = "ae",
+    ["Á"] = "a", ["À"] = "a", ["Â"] = "a", ["Ä"] = "a", ["Ã"] = "a",
+    ["É"] = "e", ["È"] = "e", ["Ê"] = "e", ["Ë"] = "e",
+    ["Í"] = "i", ["Î"] = "i", ["Ï"] = "i",
+    ["Ó"] = "o", ["Ô"] = "o", ["Ö"] = "o",
+    ["Ú"] = "u", ["Ù"] = "u", ["Û"] = "u", ["Ü"] = "u",
+    ["Ç"] = "c", ["Ñ"] = "n", ["Œ"] = "oe", ["Æ"] = "ae",
+}
+
+local function wlNorm(s)
+    s = tostring(s or "")
+    local ok, low = pcall(strlower, s)
+    if not ok or type(low) ~= "string" then low = s:lower() end
+    return (low:gsub(".", WL_ACCENTS))
+end
+
+local function wlCount()
+    return #(Cohors_DB.wl or {})
+end
+
+local function wlBuildCache()
+    wlItems, wlRecipes = {}, {}
+    for _, e in ipairs(Cohors_DB.wl or {}) do
+        if e.t == "recipe" then
+            wlRecipes[#wlRecipes + 1] = { key = e.k, name = e.n, norm = wlNorm(e.n) }
+        elseif e.k then
+            wlItems[e.k] = e.n
+        end
+    end
+end
+
+local function wlStatusText()
+    local n = wlCount()
+    if n == 0 then return "Aucun objet importé — colle l'export du site puis clique « Importer »." end
+    local bad = tonumber(Cohors_DB.wl_bad) or 0
+    return ("%d objet(s) — importé le %s%s"):format(n,
+        Cohors_DB.wl_at and dateStr(Cohors_DB.wl_at) or "?",
+        bad > 0 and (" · " .. tostring(bad) .. " ligne(s) ignorée(s)") or "")
+end
+
+local function wlParse(txt)
+    local out, bad, n = {}, 0, 0
+    for line in tostring(txt or ""):gmatch("[^\r\n]+") do
+        local trimmed = line:match("^%s*(.-)%s*$")
+        if n == 0 then
+            if trimmed ~= "CohorsWL1" then
+                return nil, "en-tête « CohorsWL1 » introuvable — copie bien tout l'export du site."
+            end
+        elseif trimmed ~= "" then
+            local k, t, nm = trimmed:match("^(%-?%d+)|([%a]+)|(.+)$")
+            if k and nm and (t == "item" or t == "recipe") then
+                out[#out + 1] = { k = tonumber(k), t = t, n = nm }
+            else
+                bad = bad + 1
+            end
+        end
+        n = n + 1
+    end
+    if n == 0 then return nil, "texte vide" end
+    if #out == 0 then return nil, "aucune ligne valide" end
+    return out, nil, bad
+end
+
+local function wlImport()
+    local txt = (wlEb and wlEb:GetText()) or ""
+    local list, err, bad = wlParse(txt)
+    if not list then
+        Cohors_DB.wl_error = tostring(err)
+        if wlStatus then wlStatus:SetText("Import refusé — " .. tostring(err)) end
+        msg("import wishlist refusé — " .. tostring(err))
+        return
+    end
+    Cohors_DB.wl = list
+    Cohors_DB.wl_at = time()
+    Cohors_DB.wl_bad = bad or 0
+    Cohors_DB.wl_error = nil
+    wlBuildCache()
+    if wlStatus then wlStatus:SetText(wlStatusText()) end
+    msg(("wishlist importée : %d objet(s)%s — alerte en instance %s.")
+        :format(#list, (bad or 0) > 0 and (", " .. tostring(bad) .. " ligne(s) ignorée(s)") or "",
+            Cohors_DB.wl_alert == false and "désactivée" or "activée"))
+end
+
+local function wlClear()
+    Cohors_DB.wl = {}
+    Cohors_DB.wl_at = nil
+    Cohors_DB.wl_bad = 0
+    wlBuildCache()
+    if wlEb then wlEb:SetText("") end
+    if wlStatus then wlStatus:SetText(wlStatusText()) end
+    msg("wishlist vidée dans l'addon (celle du site n'est pas touchée).")
+end
+
+local function wlSyncAlertBtn()
+    local on = Cohors_DB.wl_alert ~= false
+    if wlAlertBtn and wlAlertBtn.SetText then
+        wlAlertBtn:SetText("Alerte : " .. (on and "oui" or "non"))
+    end
+    if wlChk and wlChk.SetChecked then wlChk:SetChecked(on) end   -- (stub/BCC : méthode absente possible)
+end
+
+local function wlToggleAlert()
+    Cohors_DB.wl_alert = not (Cohors_DB.wl_alert ~= false)
+    wlSyncAlertBtn()
+    msg("alerte en instance : " .. (Cohors_DB.wl_alert and "activée" or "désactivée") .. ".")
+end
+
+-- ------------------------------------------------------------------ lecture du butin
+local function wlItemName(iid)
+    local ok, nm = pcall(C_Item.GetItemInfo, iid)
+    if ok and type(nm) == "string" and nm ~= "" then return nm end
+    local ok2, nm2 = pcall(GetItemInfo, iid)
+    if ok2 and type(nm2) == "string" then return nm2 or "" end
+    return ""
+end
+
+-- Recette déjà apprise ? On demande au client le sort enseigné par l'objet, puis
+-- on vérifie qu'il est connu. Toute étape indisponible => on considère « pas connue ».
+local function wlRecipeKnown(iid)
+    local okI, _n, link = pcall(C_Item.GetItemInfo, iid)
+    if not okI or type(link) ~= "string" then return false end
+    local okS, _sname, spellID = pcall(C_Item.GetItemSpell, link)
+    if not okS or not spellID then return false end
+    local okK, known = pcall(IsSpellKnown, spellID)
+    return okK and known == true
+end
+
+local function wlScanLoot()
+    local hits = {}
+    local n = 0
+    local okN, nv = pcall(EJ_GetNumLoot)
+    if okN and type(nv) == "number" then n = nv end
+    if n > 500 then n = 500 end
+    for j = 1, n do
+        local okL, info = pcall(EJ_GetLootInfoByIndex, j)
+        local iid = nil
+        if okL and type(info) == "table" then iid = tonumber(info.itemID) end
+        if iid then
+            if wlItems[iid] then
+                hits[#hits + 1] = { iid = iid, name = wlItems[iid], why = "item" }
+            elseif #wlRecipes > 0 then
+                local nm = wlItemName(iid)
+                local low = wlNorm(nm)
+                if low ~= "" then
+                    for _, r in ipairs(wlRecipes) do
+                        if r.norm ~= "" and low:find(r.norm, 1, true) then
+                            -- les recettes sont reconnues au nom (« Plans : <objet fabriqué> »)
+                            if not wlRecipeKnown(iid) then
+                                hits[#hits + 1] = { iid = iid, name = r.name, why = "recipe", drop = nm }
+                            end
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return hits
+end
+
+local function wlInstance()
+    local ok, name, iType, _diffID, diffName, _maxP, _dyn, _isDyn, mapID = pcall(GetInstanceInfo)
+    if not ok or not mapID or not iType then return nil end
+    if iType ~= "party" and iType ~= "raid" and iType ~= "scenario" then return nil end
+    return { name = name or "?", itype = iType, mapID = mapID, diff = diffName or "" }
+end
+
+local function wlScan(inst)
+    if not wlItems then wlBuildCache() end
+    local jid = nil
+    local okJ, j = pcall(EJ_GetInstanceForMap, inst.mapID)
+    if okJ and j then jid = j end
+    if not jid then return nil, "journal d'aventure introuvable pour cette instance" end
+    if C_EncounterJournal and C_EncounterJournal.InstanceHasLoot then
+        local okH, h = pcall(C_EncounterJournal.InstanceHasLoot, jid)
+        if okH and h == false then return nil, "pas de butin au journal" end
+    end
+    local bosses, extra = {}, {}
+    local okS, errS = pcall(function()
+        local i = 0
+        while i < 50 do
+            i = i + 1
+            local eid, ename = EJ_GetEncounterInfoByIndex(i, jid)
+            if not eid then break end
+            pcall(EJ_SelectEncounter, eid)
+            local hits = wlScanLoot()
+            if #hits > 0 then
+                bosses[#bosses + 1] = { name = ename or ("Boss " .. tostring(i)), items = hits }
+            end
+        end
+        pcall(EJ_SelectInstance, jid)
+        extra = wlScanLoot()
+    end)
+    if not okS then return nil, "lecture du journal : " .. tostring(errS) end
+    return { name = inst.name, diff = inst.diff, bosses = bosses, extra = extra }
+end
+
+-- ------------------------------------------------------------------ fenêtres
+local function wlBuildAlertWin()
+    if wlAlertWin then return true end
+    local okB, errB = pcall(function()
+        local frame = CreateFrame("Frame", nil, UIParent,
+            BackdropTemplateMixin and "BackdropTemplate" or nil)
+        wlAlertWin = frame
+        frame:SetSize(430, 250)
+        frame:SetPoint("TOP", UIParent, "TOP", 0, -120)
+        frame:SetFrameStrata("DIALOG")
+        frame:SetMovable(true)
+        frame:EnableMouse(true)
+        frame:SetClampedToScreen(true)
+        frame:RegisterForDrag("LeftButton")
+        frame:SetScript("OnDragStart", frame.StartMoving)
+        frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+        if frame.SetBackdrop then
+            frame:SetBackdrop({
+                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                tile = true, tileSize = 16, edgeSize = 24,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 },
+            })
+        end
+        local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        title:SetPoint("TOPLEFT", 18, -12)
+        title:SetText("📍 Cohors — wishlist")
+        local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+        close:SetPoint("TOPRIGHT", -6, -6)
+        local bg = CreateFrame("Frame", nil, frame)
+        bg:SetPoint("TOPLEFT", 14, -44)
+        bg:SetPoint("BOTTOMRIGHT", -14, 12)
+        local bgt = bg:CreateTexture(nil, "BACKGROUND")
+        bgt:SetAllPoints(true)
+        bgt:SetColorTexture(0, 0, 0, 0.45)
+        local sf = CreateFrame("ScrollFrame", nil, bg, "UIPanelScrollFrameTemplate")
+        sf:SetPoint("TOPLEFT", 6, -6)
+        sf:SetPoint("BOTTOMRIGHT", -26, 6)
+        local eb = CreateFrame("EditBox", nil, sf)
+        eb:SetMultiLine(true)
+        eb:SetAutoFocus(false)
+        eb:SetFontObject(ChatFontNormal)
+        eb:SetWidth(360)
+        eb:SetHeight(12)
+        eb:SetTextInsets(2, 2, 2, 2)
+        eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        sf:SetScrollChild(eb)
+        if sf.EnableMouseWheel then sf:EnableMouseWheel(true) end
+        sf:SetScript("OnMouseWheel", function(self, delta)
+            local sb = self.ScrollBar
+            if sb and sb.SetValue then sb:SetValue((sb:GetValue() or 0) - (delta or 0) * 40) end
+        end)
+        wlAlertTxt, wlAlertScroll = eb, sf
+    end)
+    if not okB then
+        Cohors_DB.wl_error = "fenêtre alerte : " .. tostring(errB)
+        wlAlertWin = nil
+        return false
+    end
+    return true
+end
+
+local function wlShow(inst, res)
+    local lines, total = {}, 0
+    for _, b in ipairs(res.bosses or {}) do
+        for _i, _it in ipairs(b.items) do total = total + 1 end
+    end
+    total = total + #(res.extra or {})
+    if total == 0 then return false end
+    local head = ("%s%s — %d objet(s) de ta wishlist")
+        :format(tostring(res.name or "?"), (res.diff ~= "" and (" (" .. tostring(res.diff) .. ")")) or "", total)
+    lines[#lines + 1] = head
+    for _, b in ipairs(res.bosses or {}) do
+        local names = {}
+        for _i, it in ipairs(b.items) do
+            names[#names + 1] = it.name .. (it.why == "recipe" and " (recette)" or "")
+        end
+        for _w, wl in ipairs(wrapTxt("• " .. b.name .. " : " .. table.concat(names, ", "), 58)) do
+            lines[#lines + 1] = wl
+        end
+    end
+    if #(res.extra or {}) > 0 then
+        local names = {}
+        for _i, it in ipairs(res.extra) do names[#names + 1] = it.name end
+        for _w, wl in ipairs(wrapTxt("• Autres (dans l'instance) : " .. table.concat(names, ", "), 58)) do
+            lines[#lines + 1] = wl
+        end
+    end
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "Objet obtenu ? Retire-le de ta wishlist sur le site (🎯 Ma wishlist)."
+    Cohors_DB.wl_last = ("%s — %d objet(s)"):format(tostring(res.name or "?"), total)
+    Cohors_DB.wl_last_at = time()
+    if not wlBuildAlertWin() then
+        msg(head)
+        if lines[2] then msg(lines[2]) end
+        msg("(fenêtre indisponible — /cohors diag pour le rapport)")
+        return false
+    end
+    local txt = table.concat(lines, "\n")
+    local nl = 1
+    for _ in txt:gmatch("\n") do nl = nl + 1 end
+    if wlAlertTxt.SetHeight then wlAlertTxt:SetHeight(math.max(12, nl * 13 + 8)) end
+    if wlAlertScroll and wlAlertScroll.ScrollBar and wlAlertScroll.ScrollBar.SetValue then
+        wlAlertScroll.ScrollBar:SetValue(0)
+    end
+    wlAlertTxt:SetText(txt)
+    wlAlertWin:Show()
+    return true
+end
+
+function Cohors_WLZoneCheck(force)
+    if not force then
+        if Cohors_DB.wl_alert == false then return end
+        if wlCount() == 0 then return end
+    end
+    local inst = wlInstance()
+    if not inst then
+        if force then msg("tu n'es pas dans une instance (raid, donjon ou scénario).") end
+        return
+    end
+    local now = (GetTime and GetTime()) or 0
+    if not force and wlLastMap == inst.mapID and (now - wlLastAt) < 45 then return end
+    wlLastMap, wlLastAt = inst.mapID, now
+    local res, why = wlScan(inst)
+    if not res then
+        Cohors_DB.wl_na = tostring(why)
+        if force then
+            msg(("wishlist : rien à signaler dans %s — %s."):format(tostring(inst.name or "?"), tostring(why)))
+        end
+        return
+    end
+    local shown = wlShow(inst, res)
+    if not shown and force then
+        msg(("wishlist : rien à signaler dans %s."):format(tostring(res.name or "?")))
+    end
+end
+
+local function wlBuildWin()
+    if wlWin then return true end
+    local okB, errB = pcall(function()
+        local frame = CreateFrame("Frame", nil, UIParent,
+            BackdropTemplateMixin and "BackdropTemplate" or nil)
+        wlWin = frame
+        frame:SetSize(560, 330)
+        frame:SetPoint("CENTER")
+        frame:SetFrameStrata("DIALOG")
+        frame:SetMovable(true)
+        frame:EnableMouse(true)
+        frame:SetClampedToScreen(true)
+        frame:RegisterForDrag("LeftButton")
+        frame:SetScript("OnDragStart", frame.StartMoving)
+        frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+        if frame.SetBackdrop then
+            frame:SetBackdrop({
+                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                tile = true, tileSize = 16, edgeSize = 24,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 },
+            })
+        end
+        local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        title:SetPoint("TOPLEFT", 22, -12)
+        title:SetText("Cohors — Wishlist (depuis le site)")
+        local verTxt = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        verTxt:SetPoint("TOPRIGHT", -22, -17)
+        verTxt:SetText("v" .. ADDON_VER)
+        local sub = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        sub:SetPoint("TOPLEFT", 22, -38)
+        sub:SetWidth(516)
+        sub:SetJustifyH("LEFT")
+        sub:SetText("Sur le site : 🎯 Ma wishlist → « Export pour l'addon », copie le texte,\n"
+            .. "colle-le ci-dessous puis clique « Importer ». En entrant dans un raid ou un donjon,\n"
+            .. "l'addon te dira quels boss ont un objet — ou une recette — de ta liste.")
+        local ebBg = CreateFrame("Frame", nil, frame)
+        ebBg:SetPoint("TOPLEFT", 18, -92)
+        ebBg:SetPoint("BOTTOMRIGHT", -18, 66)
+        local bgTx = ebBg:CreateTexture(nil, "BACKGROUND")
+        bgTx:SetAllPoints(true)
+        bgTx:SetColorTexture(0, 0, 0, 0.45)
+        local sf = CreateFrame("ScrollFrame", nil, ebBg, "UIPanelScrollFrameTemplate")
+        sf:SetPoint("TOPLEFT", 6, -6)
+        sf:SetPoint("BOTTOMRIGHT", -26, 6)
+        wlEb = CreateFrame("EditBox", nil, sf)
+        wlEb:SetMultiLine(true)
+        wlEb:SetAutoFocus(false)
+        wlEb:SetFontObject(ChatFontNormal)
+        wlEb:SetWidth(484)
+        wlEb:SetHeight(12)
+        wlEb:SetTextInsets(2, 2, 2, 2)
+        wlEb:SetText("")
+        wlEb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        sf:SetScrollChild(wlEb)
+        if sf.EnableMouseWheel then sf:EnableMouseWheel(true) end
+        sf:SetScript("OnMouseWheel", function(self, delta)
+            local sb = self.ScrollBar
+            if sb and sb.SetValue then sb:SetValue((sb:GetValue() or 0) - (delta or 0) * 40) end
+        end)
+        wlStatus = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        wlStatus:SetPoint("BOTTOMLEFT", 22, 40)
+        wlStatus:SetText(wlStatusText())
+        wlChk = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+        wlChk:SetPoint("BOTTOMLEFT", 22, 14)
+        if wlChk.SetChecked then wlChk:SetChecked(Cohors_DB.wl_alert ~= false) end
+        local chkLbl = wlChk:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        chkLbl:SetPoint("LEFT", 26, 0)
+        chkLbl:SetText("Alerte en instance")
+        wlChk:SetScript("OnClick", function(self)
+            local checked = true
+            if self.GetChecked then checked = self:GetChecked() and true or false end
+            Cohors_DB.wl_alert = checked
+            wlSyncAlertBtn()
+        end)
+        local function mk(text, x, w, fn, tip)
+            local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+            b:SetSize(w, 24)
+            b:SetPoint("BOTTOMLEFT", x, 14)
+            b:SetText(text)
+            if tip then
+                b:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                    GameTooltip:AddLine(text)
+                    GameTooltip:AddLine(tip, 1, 1, 1, true)
+                    GameTooltip:Show()
+                end)
+                b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            end
+            b:SetScript("OnClick", function()
+                local ok, err = pcall(fn)
+                if not ok then
+                    Cohors_DB.last_error = "wishlist clic « " .. text .. " » : " .. tostring(err)
+                    msg("ERREUR (wishlist — « " .. text .. " ») — " .. tostring(err))
+                end
+            end)
+            return b
+        end
+        mk("Importer", 240, 110, wlImport, "Lit le texte collé et enregistre ta liste.")
+        mk("Vider", 356, 84, wlClear, "Efface la liste de l'addon (le site n'est pas touché).")
+        mk("Fermer", 446, 90, function() if wlWin then wlWin:Hide() end end,
+            "Ferme la fenêtre.")
+    end)
+    if not okB then
+        Cohors_DB.wl_error = "fenêtre wishlist : " .. tostring(errB)
+        wlWin = nil
+        return false
+    end
+    return true
+end
+
+function Cohors_Wishlist()
+    if not wlBuildWin() then
+        msg("fenêtre wishlist indisponible — /cohors diag pour le rapport.")
+        return
+    end
+    if wlStatus then wlStatus:SetText(wlStatusText()) end
+    wlSyncAlertBtn()
+    wlWin:Show()
+end
+
+Cohors_WLImport = function() pcall(wlImport) end
+Cohors_WLClear = function() pcall(wlClear) end
+Cohors_WLToggleAlert = function() pcall(wlToggleAlert) end
+
 -- ------------------------------------------------------------------- panneau
 -- La fenêtre est construite À LA DEMANDE (jamais au chargement) : si sa
 -- construction échoue, l'addon continue de fonctionner sans fenêtre.
@@ -1397,7 +1891,7 @@ local function buildPanel()
             frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
         end
         ui = frame
-        ui:SetSize(500, 330)
+        ui:SetSize(500, 366)
         ui:SetPoint("CENTER")
         ui:SetFrameStrata("DIALOG")
         ui:SetMovable(true)
@@ -1432,7 +1926,7 @@ local function buildPanel()
 
         local ebBg = CreateFrame("Frame", nil, ui)
         ebBg:SetPoint("TOPLEFT", 18, -104)
-        ebBg:SetPoint("BOTTOMRIGHT", -18, 94)
+        ebBg:SetPoint("BOTTOMRIGHT", -18, 128)
         local bgTx = ebBg:CreateTexture(nil, "BACKGROUND")
         bgTx:SetAllPoints(true)
         bgTx:SetColorTexture(0, 0, 0, 0.45)    -- champ visible (avant : grand vide transparent)
@@ -1461,7 +1955,7 @@ local function buildPanel()
         scrollBar = sf
 
         statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        statusText:SetPoint("BOTTOMLEFT", 24, 78)
+        statusText:SetPoint("BOTTOMLEFT", 24, 112)
         statusText:SetText("prêt (v" .. ADDON_VER .. ")")
 
         local function mkButton(text, x, y, w, fn, tip)
@@ -1540,9 +2034,9 @@ local function buildPanel()
             eb:SetFocus()
         end
 
-        mkButton("Collecter", 22, 46, 146, function() Cohors_Collect() end,
+        mkButton("Collecter", 22, 80, 146, function() Cohors_Collect() end,
             "Collecte le calendrier de raids et les réponses des membres.")
-        mkButton("Exporter", 178, 46, 146, function()
+        mkButton("Exporter", 178, 80, 146, function()
             if not Cohors_DB.export then
                 msg("rien à exporter pour le moment — clique « Collecter ».")
                 return
@@ -1552,15 +2046,22 @@ local function buildPanel()
             eb:SetFocus()
             msg("chaîne sélectionnée — fais Ctrl+C puis colle-la sur le site de la guilde (page Calendrier).")
         end, "Affiche la chaîne à copier sur le site (Ctrl+A puis Ctrl+C).")
-        mkButton("Recettes", 334, 46, 146, function() Cohors_Recipes() end,
+        mkButton("Recettes", 334, 80, 146, function() Cohors_Recipes() end,
             "Lit les recettes de tes métiers (l'addon te guide, fenêtre par fenêtre).")
-        mkButton("Réinitialiser", 22, 14, 146, function() Cohors_Reset() end,
+        mkButton("Réinitialiser", 22, 48, 146, function() Cohors_Reset() end,
             "Efface la collecte en cours et sa dernière sauvegarde.")
-        mkButton("Diag", 178, 14, 146, function()
+        mkButton("Diag", 178, 48, 146, function()
             dumpDiag(true)
         end, "Écrit un rapport de diagnostic dans le fichier Cohors.lua.")
-        mkButton("Fermer", 334, 14, 146, function() ui:Hide() end,
+        mkButton("Fermer", 334, 48, 146, function() ui:Hide() end,
             "Ferme la fenêtre. Tape /cohors pour la rouvrir.")
+        mkButton("Wishlist", 22, 16, 146, function() Cohors_Wishlist() end,
+            "Colle ici l'export du site (🎯 Ma wishlist) : l'addon t'alerte en instance.")
+        wlAlertBtn = mkButton("Alerte : " .. (Cohors_DB.wl_alert == false and "non" or "oui"), 178, 16, 146,
+            function() Cohors_WLToggleAlert() end,
+            "Active ou coupe l'alerte en entrant dans un raid ou un donjon.")
+        mkButton("Vérifier ici", 334, 16, 146, function() Cohors_WLZoneCheck(true) end,
+            "Relance la recherche d'objets de ta wishlist dans l'instance où tu es.")
     end)
     if not okB then
         Cohors_DB.ui_error = tostring(errB)
@@ -1683,10 +2184,14 @@ SlashCmdList["Cohors"] = function(arg)
             dumpDiag(true)
         elseif arg == "recettes" then
             Cohors_Recipes()
+        elseif arg == "wishlist" or arg == "wl" then
+            Cohors_Wishlist()
+        elseif arg == "ici" then
+            Cohors_WLZoneCheck(true)
         elseif arg == "reset" then
             Cohors_Reset()
         else
-            msg("commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors diag · /cohors reset")
+            msg("commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors wishlist · /cohors ici · /cohors diag · /cohors reset")
         end
     end)
     if not okAll then

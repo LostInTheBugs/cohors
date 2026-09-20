@@ -400,6 +400,9 @@ def _init_db() -> None:
         wcols = [r["name"] for r in conn.execute("PRAGMA table_info(wishlist)").fetchall()]
         if "prio" not in wcols:
             conn.execute("ALTER TABLE wishlist ADD COLUMN prio INTEGER NOT NULL DEFAULT 0")
+        # v2026.09.150 — wishlist : recettes de métier (kind='recipe') en plus des pièces d'équipement.
+        if "kind" not in wcols:
+            conn.execute("ALTER TABLE wishlist ADD COLUMN kind TEXT NOT NULL DEFAULT 'item'")
         # v2026.09.111 — identité de la guilde (logo, nom, fond) pour réutiliser le site avec une autre guilde.
         conn.execute(
             "CREATE TABLE IF NOT EXISTS branding ("
@@ -3387,6 +3390,76 @@ def _bis_by_user(conn) -> dict:
     return out
 
 
+def _recipe_wish_key(item_id, name) -> int:
+    """Clé stable d'une recette dans la wishlist : l'objet fabriqué s'il est connu, sinon un
+    identifiant négatif dérivé du nom (les recettes n'ont pas toujours d'item_id en base)."""
+    try:
+        iid = int(item_id or 0)
+    except (TypeError, ValueError):
+        iid = 0
+    if iid > 0:
+        return iid
+    import zlib
+    return -(int(zlib.crc32(str(name or "").strip().casefold().encode("utf-8"))) & 0x7FFFFFFF or 1)
+
+
+class RecipeWish(BaseModel):
+    recipe_id: int
+    on: bool = True
+
+
+@app.post("/api/wishlist/recipe")
+def api_wishlist_recipe(payload: RecipeWish, request: Request):
+    """Ajoute (ou retire) une recette de métier à la wishlist — c'est ce qui alimente l'alerte
+    « en instance » de l'addon, avec les pièces d'équipement."""
+    user = _require_user(request)
+    loc = _user_locale(request)
+    en = loc.startswith("en")
+    with _db_lock, _db() as conn:
+        gr = conn.execute(
+            "SELECT id, item, item_en, item_id, prof, prof_en FROM game_recipes WHERE id=?",
+            (payload.recipe_id,)).fetchone()
+        if gr is None:
+            raise HTTPException(404, "Recette inconnue")
+        name = ((gr["item_en"] or gr["item"]) if en else gr["item"]) or ""
+        key = _recipe_wish_key(gr["item_id"], gr["item"] or name)
+        if not payload.on:
+            conn.execute("DELETE FROM wishlist WHERE user_email=? AND item_id=?",
+                         (user["email"], key))
+            return {"ok": True, "on": False, "key": key}
+        exists = conn.execute("SELECT 1 AS x FROM wishlist WHERE user_email=? AND item_id=?",
+                              (user["email"], key)).fetchone()
+        if exists:
+            return {"ok": True, "on": True, "already": True, "key": key, "name": name}
+        conn.execute(
+            "INSERT INTO wishlist (user_email, item_id, name, slot, inv_type, quality, icon, added, prio, kind) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (user["email"], key, name, "Recette", 0, 1, None, time.time(), 0, "recipe"))
+    return {"ok": True, "on": True, "key": key, "name": name}
+
+
+@app.get("/api/wishlist/export")
+def api_wishlist_export(request: Request):
+    """Export texte de la wishlist pour l'addon : une ligne par objet « clé|type|nom ».
+    Les pièces sont reconnues en jeu par leur identifiant, les recettes par leur nom."""
+    user = _require_user(request)
+    with _db_lock, _db() as conn:
+        rows = conn.execute(
+            "SELECT item_id, name, kind FROM wishlist WHERE user_email=? "
+            "ORDER BY kind, name COLLATE NOCASE", (user["email"],)).fetchall()
+
+    def clean(s) -> str:
+        return " ".join(str(s or "").replace("|", " ").split())[:120]
+
+    lines = ["CohorsWL1"]
+    for r in rows:
+        lines.append("%d|%s|%s" % (int(r["item_id"] or 0), r["kind"] or "item", clean(r["name"])))
+    body = "\n".join(lines) + "\n"
+    return Response(body, media_type="text/plain; charset=utf-8",
+                    headers={"Cache-Control": "no-store",
+                             "Content-Disposition": 'attachment; filename="cohors-wishlist.txt"'})
+
+
 @app.get("/api/wishlist")
 def api_wishlist(request: Request):
     user = _require_user(request)
@@ -3399,7 +3472,7 @@ def api_wishlist(request: Request):
             threading.Thread(target=_loot_sync, daemon=True).start()
     with _db_lock, _db() as conn:
         rows = conn.execute(
-            "SELECT item_id, name, slot, quality, icon, added, prio FROM wishlist "
+            "SELECT item_id, name, slot, quality, icon, added, prio, kind FROM wishlist "
             "WHERE user_email=? ORDER BY added DESC",
             (user["email"],),
         ).fetchall()
@@ -3529,12 +3602,14 @@ def api_wishlist(request: Request):
             bhit = my_bis.get(int(r["item_id"] or 0))
             if bhit:
                 bis = [{"char": bhit["char"], "gain": bhit["gain"]}]
+            is_recipe = (r["kind"] or "item") == "recipe"
             items.append({
                 "item_id": r["item_id"], "name": nm,
                 "slot": r["slot"], "slot_fr": bnet.slot_label(r["slot"], loc),
                 "quality": r["quality"], "icon": r["icon"], "added": r["added"],
-                "source": src, "craft": craft, "me": me,
-                "prio": bool(r["prio"]), "bis": bis,
+                "source": src, "craft": None if is_recipe else craft,
+                "me": None if is_recipe else me,
+                "prio": bool(r["prio"]), "bis": bis, "kind": r["kind"] or "item",
             })
         items.sort(key=lambda it: 0 if it["prio"] else (1 if it["bis"] else 2))
         chars_out = [dict(c) for c in chars]
@@ -6220,6 +6295,9 @@ def api_my_recipes(request: Request, realm: str = "", name: str = "", prof: str 
                 "SELECT id, item, item_en, item_id, exp_rank, rank_no, mats, mats_en, tier, tier_en, prof, prof_en "
                 "FROM game_recipes WHERE prof=? ORDER BY item COLLATE NOCASE, rank_no",
                 (prof.strip()[:60],)).fetchall()]
+            wl_keys = {int(r["item_id"]) for r in conn.execute(
+                "SELECT item_id FROM wishlist WHERE user_email=? AND kind='recipe'",
+                (user["email"],)).fetchall()}
     profs = []
     if prows:
         try:
@@ -6243,9 +6321,12 @@ def api_my_recipes(request: Request, realm: str = "", name: str = "", prof: str 
             mats = json.loads(((c.get("mats_en") or c.get("mats")) if want_en else c.get("mats")) or "[]")
         except ValueError:
             mats = []
+        wkey = _recipe_wish_key(c["item_id"], c["item"])
         cat.append({
             "id": c["id"],            # id de recette (clé de sélection, unique)
             "item_id": c["item_id"],
+            "wkey": wkey,             # clé wishlist (☆/⭐)
+            "wished": wkey in wl_keys,
             "name": ((c.get("item_en") or c.get("item")) if want_en else c.get("item")) or "",
             "exp": ((c.get("tier_en") or c.get("tier")) if want_en else c.get("tier")) or "",
             "exp_rank": c.get("exp_rank") or 0,

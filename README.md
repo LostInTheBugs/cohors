@@ -181,6 +181,10 @@ page, then in game:
 - `/cohors export` — export the data to paste on the Calendar page (or import the
   `Cohors.lua` SavedVariables file);
 - `/cohors recettes` — export the crafting recipes you know (professions import);
+- `/cohors wishlist` — paste the wishlist export (wishlist page → **📤 Add-on export**):
+  entering a raid or a dungeon then pops a small window listing the bosses that drop
+  something from your wishlist (gear or recipes), looked up in the game's Encounter
+  Journal. `/cohors ici` re-runs the lookup in the instance you are in;
 - `/cohors diag`, `/cohors reset` — diagnostics and reset.
 
 ## Configuration

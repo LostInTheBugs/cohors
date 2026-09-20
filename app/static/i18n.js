@@ -721,7 +721,7 @@
  "Et les titres maison : savants fous (simulations), piliers de raid (présences), collectionneurs (montures), cœurs d'or (profils partagés).": "Plus the home-made titles: mad scientists (simulations), raid pillars (attendance), collectors (mounts), golden hearts (shared profiles).",
  "✅ Connues": "✅ Known",
  "⬜ À apprendre": "⬜ To learn",
- "Les listes viennent de l'addon in-game : importe ton export ci-dessous (📥). Les recettes connues alimentent « Qui peut crafter quoi » (préparation de raid).": "These lists come from the in-game add-on: import your export below (📥). Known recipes feed « Who can craft what » (raid prep).",
+ "Les listes viennent de l'addon in-game : importe ton export ci-dessous (📥). Les recettes connues alimentent « Qui peut crafter quoi » (préparation de raid). ⭐ = ajoutée à ta wishlist : les recettes marquées partiront vers l'addon (export sur la page 🎯 Ma wishlist).": "These lists come from the in-game add-on: import your export below (📥). Known recipes feed « Who can craft what » (raid prep).",
  "— Choisir un personnage —": "— Pick a character —",
  "Rechercher une recette…": "Search a recipe…",
  "Choisis un personnage et un métier.": "Pick a character and a trade.",
@@ -1083,7 +1083,14 @@
  "Préparation…": "Preparing…",
  "Restauration…": "Restoring…",
  "Choisis d'abord un fichier de sauvegarde.": "Pick a backup file first.",
- "Sauvegarde restaurée ✓ — la page va se recharger…": "Backup restored ✓ — the page will reload…"
+ "Sauvegarde restaurée ✓ — la page va se recharger…": "Backup restored ✓ — the page will reload…",
+ "📤 Export pour l'addon": "📤 Add-on export",
+ "Copie ce texte dans l'addon en jeu (fenêtre Cohors → bouton « Wishlist », ou /cohors wishlist) : en entrant dans une instance, l'addon te signalera les boss qui ont un objet — ou une recette — de ta wishlist.": "Copy this text into the in-game add-on (Cohors window → « Wishlist » button, or /cohors wishlist): when you enter an instance, the add-on tells you which bosses drop something — item or recipe — from your wishlist.",
+ "Copié ✓ — colle-le dans l'addon (bouton Wishlist).": "Copied ✓ — paste it into the add-on (Wishlist button).",
+ "Ta wishlist est vide — rien à exporter pour l'addon.": "Your wishlist is empty — nothing to export for the add-on.",
+ "Recette": "Recipe",
+ "Ajoutée à ta wishlist ⭐": "Added to your wishlist ⭐",
+ "Retirée de ta wishlist": "Removed from your wishlist"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1297,6 +1304,7 @@
      "backup created by a newer version ($1 > $2)"],
     [/sauvegarde plus ancienne \(([^)]+)\) — migrations de schéma rejouées à la restauration/g,
      "older backup ($1) — schema migrations will be replayed on restore"],
+    [/(\d+) objet\(s\) dans l'export/g, "$1 item(s) in the export"],
   ];
 
   const norm = (s) => s.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();

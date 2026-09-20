@@ -1,8 +1,8 @@
 ## Interface: 120100
 ## Title: Cohors — Compagnon de guilde
-## Notes: Collecte le calendrier de guilde (raids + réponses) et les recettes d'artisanat, exportés vers le site de la guilde
+## Notes: Collecte le calendrier de guilde (raids + réponses) et les recettes d'artisanat vers le site, et signale en entrant dans une instance les boss qui ont un objet de la wishlist du site
 ## Author: LostInTheBugs
-## Version: 1.11.0
+## Version: 1.12.0
 ## SavedVariables: Cohors_DB
 ## IconTexture: Interface\Icons\INV_Misc_Note_01
 Cohors.lua
