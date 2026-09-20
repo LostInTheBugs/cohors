@@ -20,6 +20,6 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lua5.1
       - name: Add-on harness (offline, lua5.1, sans os/io)
         run: |
-          for sc in full calendar apifail noprofs slash legacy noapi closemid openbtn; do COHORS_SCENARIO=$sc lua5.1 tools/addon-harness.lua | tail -1; done
+          for sc in full calendar apifail noprofs slash legacy openbtn noapi closemid unreadable; do COHORS_SCENARIO=$sc lua5.1 tools/addon-harness.lua | tail -1; done
       - name: Run tests
         run: python -m pytest -q

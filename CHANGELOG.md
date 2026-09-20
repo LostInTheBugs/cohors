@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.145-c6 - 2026-09-20
+
+### Fixed
+- In-game add-on **1.9.1** — professions that have no standard trade-skill window (archaeology:
+  the dig-site UI, not the crafting UI) no longer block the export: when an open was requested and
+  nothing readable appears within 8 seconds, the add-on marks the profession as skipped with a
+  clear message (« « Archéologie » ne s'ouvre pas comme un métier standard — ignoré »), moves on,
+  and records it in the report. Clicking the « ▶ Ouvrir » button a second time skips a stuck
+  profession immediately. If that profession ever opens as a real trade-skill window, it will
+  still be read.
+- Offline harness: new « unreadable » scenario (client accepts the open but no window appears) —
+  10 scenarios in CI.
+
 ## 2026.09.145-c5 - 2026-09-20
 
 ### Changed

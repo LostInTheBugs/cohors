@@ -7,6 +7,7 @@
 --         COHORS_SCENARIO=noapi    lua5.1 tools/addon-harness.lua   (aucune API recettes)
 --         COHORS_SCENARIO=closemid lua5.1 tools/addon-harness.lua   (fenêtre fermée en cours de lecture)
 --         COHORS_SCENARIO=openbtn  lua5.1 tools/addon-harness.lua   (le client ne cède qu'au clic « ▶ Ouvrir »)
+--         COHORS_SCENARIO=unreadable lua5.1 tools/addon-harness.lua (métier sans fenêtre standard, cas archéologie)
 --         COHORS_SCENARIO=noprofs  lua5.1 tools/addon-harness.lua
 -- Simule fidèlement le sandbox du client : `os` et `io` sont retirés avant de charger
 -- l'addon (le harnais capture ce dont il a besoin AVANT). Le temps est virtuel (GetTime).
@@ -201,7 +202,10 @@ C_TradeSkillUI = {
         -- sinon il refuse en silence. « apifail » refuse toujours ; « openbtn » n'accepte QUE les
         -- clics (le harnais clique sur « ▶ Ouvrir » comme le ferait le joueur).
         if scenario == "apifail" then return false end
-        if scenario == "openbtn" and not M.hardware then return false end
+        if (scenario == "openbtn" or scenario == "unreadable") and not M.hardware then return false end
+        if scenario == "unreadable" and skillLine == 185 then
+            return true   -- « accepté » mais aucune fenêtre standard ne s'ouvre (cas archéologie)
+        end
         TS.open = skillLine; TS.child = nil; TS.pendingShow = true
         return true
     end,
@@ -383,6 +387,32 @@ elseif scenario == "openbtn" then
         tostring(Cohors_DB.recipes_total))
     check(((openButton() and openButton():GetText()) or ""):find("terminé", 1, true) ~= nil,
         "bouton passé à « ✔ terminé »")
+
+elseif scenario == "unreadable" then
+    -- un métier dont la « fenêtre » n'est pas un métier standard (archéologie) : le client accepte
+    -- l'ouverture mais rien ne s'ouvre → l'addon l'ignore après 8 s et continue avec les autres.
+    barValues = {}
+    Cohors_Recipes()
+    tick(4)
+    local done = false
+    for _ = 1, 4000 do
+        if not tick(1) then break end
+        if (M.t - 100000.0) % 4 < 0.26 then
+            local ob = openButton()
+            if ob and ob:IsEnabled() and ob._scripts["OnClick"] then
+                M.hardware = true
+                pcall(ob._scripts["OnClick"], ob, "LeftButton", false)
+                M.hardware = false
+            end
+        end
+        if Cohors_DB.recipes_at then done = true; break end
+    end
+    check(done, "export terminé malgré un métier illisible (%.1f s virtuelles)", M.t - 100000.0)
+    check(Cohors_DB.recipes_total == 5, "5 recettes lues (métier illisible ignoré) — total %s",
+        tostring(Cohors_DB.recipes_total))
+    check(chat_has("ne s'ouvre pas comme un métier standard"), "métier illisible signalé dans le chat")
+    check((Cohors_DB.rec_diag or ""):find("métiers ignorés", 1, true) ~= nil,
+        "métier ignoré consigné dans le rapport")
 
 elseif scenario == "slash" then
     -- v1.7.1 : « /cohors » sans argument ouvre le panneau, ne collecte RIEN tout seul.

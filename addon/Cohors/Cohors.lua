@@ -9,7 +9,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.9.0"
+local ADDON_VER = "1.9.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -946,9 +946,14 @@ local function recFinish(note)
     L[#L + 1] = ("Cohors recettes — %s (addon v%s · client %s)"):format(dateStr(time()), ADDON_VER,
         tostring(clientIface()))
     L[#L + 1] = ("total : %d recette(s) sur %d palier(s)"):format(total, #recTiers)
-    local ndone = 0
+    local ndone, skipNames = 0, {}
     for _ in pairs(e.done or {}) do ndone = ndone + 1 end
+    for _, n in pairs(e.skipped or {}) do skipNames[#skipNames + 1] = tostring(n) end
     L[#L + 1] = ("métiers lus : %d/%d"):format(ndone, (e.progs and #e.progs) or 0)
+    if #skipNames > 0 then
+        table.sort(skipNames)
+        L[#L + 1] = "métiers ignorés (pas de fenêtre standard) : " .. table.concat(skipNames, ", ")
+    end
     for _, t in ipairs(recTiers) do
         L[#L + 1] = ("  %s · %s : %d recette(s) [%s — %d ids, %d non apprises, %d matériaux]")
             :format(t.prof, t.tier ~= "" and t.tier or "?", t.n, t.src, t.ids, t.unlearned, t.mats)
@@ -978,14 +983,24 @@ local function recRemaining()
     local out = {}
     local e = recEngine
     for _, p in ipairs((e and e.progs) or {}) do
-        if not (e.done or {})[p.skillLine] then out[#out + 1] = p.name end
+        if not (e.done or {})[p.skillLine] and not (e.skipped or {})[p.skillLine] then
+            out[#out + 1] = p.name
+        end
     end
     return out
+end
+
+local function recNextProf()
+    local e = recEngine
+    for _, p in ipairs((e and e.progs) or {}) do
+        if not (e.done or {})[p.skillLine] and not (e.skipped or {})[p.skillLine] then return p end
+    end
 end
 
 local function recDoneCount()
     local n = 0
     for _ in pairs((recEngine and recEngine.done) or {}) do n = n + 1 end
+    for _ in pairs((recEngine and recEngine.skipped) or {}) do n = n + 1 end
     return n
 end
 
@@ -1015,6 +1030,7 @@ local function recBeginProfession(prof)
     if not e or not prof or e.busy then return end
     e.busy = { prof = prof, phase = "childs", attempts = 0, childs = {}, ci = 1, total = 0,
                await = GetTime() + 0.8 }
+    e.openPending = nil
     e.lastActionAt = GetTime()
     dtrace(("fenêtre ouverte : %s — lecture"):format(prof.name))
     msg(("lecture de « %s »…"):format(prof.name))
@@ -1079,27 +1095,43 @@ recTick = function(now, force)
         elseif not openID then
             e.saidOpen = nil
         end
+        -- ouverture demandée (clic « ▶ » accepté) mais aucune fenêtre STANDARD n'apparaît :
+        -- après 8 s on l'ignore et on passe au suivant. C'est le cas de l'archéologie (interface
+        -- de fouilles, pas une fenêtre de métier). Rien n'est bloqué : s'il finit par s'ouvrir
+        -- comme un vrai métier, il sera lu quand même.
+        if e.openPending and now >= (e.openPending.at or 0) + 8 then
+            local op = e.openPending
+            e.openPending = nil
+            if not (e.done or {})[op.skillLine] then
+                e.skipped = e.skipped or {}
+                e.skipped[op.skillLine] = op.name
+                dtrace(("métier ignoré (fenêtre jamais ouverte) : %s"):format(op.name))
+                msg(("⚠️ « %s » ne s'ouvre pas comme un métier standard — ignoré (normal pour l'archéologie).")
+                    :format(op.name))
+                local left2 = recRemaining()
+                if #left2 > 0 then
+                    msg(("reste : %s — clique « ▶ Ouvrir « %s » »."):format(table.concat(left2, ", "),
+                        left2[1] or "?"))
+                end
+            end
+        end
         local left = recRemaining()
         if #left == 0 then
             dtrace("recettes : terminé")
             recFinish(nil)
             return
         end
+        local nxt = recNextProf()
         if now > (e.remindAt or 0) then
             e.remindAt = now + 45
             msg(("⏳ en attente — clique « ▶ Ouvrir « %s » » sur la barre de progression (ou ouvre-le à la main : Livre de sorts → Métiers).")
-                :format(left[1] or "?"))
+                :format((nxt and nxt.name) or left[1] or "?"))
         end
         -- relance douce : acceptée par le client seulement depuis un clic/commande matériel,
         -- ignorée le reste du temps — jamais d'erreur, jamais bloquant.
-        if now > (e.retryAt or 0) then
+        if now > (e.retryAt or 0) and nxt then
             e.retryAt = now + 3
-            for _, p in ipairs(e.progs) do
-                if not (e.done or {})[p.skillLine] then
-                    pcall(C_TradeSkillUI.OpenTradeSkill, p.skillLine)
-                    break
-                end
-            end
+            pcall(C_TradeSkillUI.OpenTradeSkill, nxt.skillLine)
         end
         return
     end
@@ -1319,19 +1351,37 @@ function Cohors_OpenNext()
         msg("lance d'abord « 📚 Recettes » (ou /cohors recettes).")
         return
     end
-    local nextProf
-    for _, p in ipairs(recEngine.progs or {}) do
-        if not (recEngine.done or {})[p.skillLine] then nextProf = p break end
-    end
+    local nextProf = recNextProf()
     if not nextProf then
         msg("tous les métiers sont lus ✔")
         return
     end
+    -- 2e clic sur un métier qui ne veut pas s'ouvrir (fenêtre non standard) : on l'ignore
+    local op = recEngine.openPending
+    if op and op.skillLine == nextProf.skillLine and GetTime() >= (op.at or 0) + 4 then
+        recEngine.skipped = recEngine.skipped or {}
+        recEngine.skipped[nextProf.skillLine] = nextProf.name
+        recEngine.openPending = nil
+        dtrace(("métier ignoré sur 2e clic : %s"):format(nextProf.name))
+        msg(("« %s » ne s'ouvre pas comme un métier standard — ignorée (2e clic)."):format(nextProf.name))
+        nextProf = recNextProf()
+        if not nextProf then
+            recFinish(nil)
+            return
+        end
+    end
     local okCall, ret = pcall(C_TradeSkillUI.OpenTradeSkill, nextProf.skillLine)
     local accepted = okCall and ret == true
     dtrace(("ouverture demandée (clic) : %s — acceptée=%s"):format(nextProf.name, tostring(accepted)))
-    if not accepted then
-        msg(("le client a refusé — ouvre « %s » à la main (Livre de sorts → Métiers)."):format(nextProf.name))
+    if accepted then
+        local prev = recEngine.openPending
+        if not prev or prev.skillLine ~= nextProf.skillLine then
+            recEngine.openPending = { name = nextProf.name, skillLine = nextProf.skillLine, at = GetTime() }
+        end
+    else
+        recEngine.openPending = nil
+        msg(("le client a refusé — ouvre « %s » à la main (Livre de sorts → Métiers) ; s'il ne s'ouvre pas, reclique « ▶ » pour l'ignorer.")
+            :format(nextProf.name))
     end
 end
 
