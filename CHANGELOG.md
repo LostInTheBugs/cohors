@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.151-c1 - 2026-09-20
+
+### Fixed
+- **Admin settings: the *Updates* button is now actually visible.** It was wired in JavaScript but
+  missing from the admin reveal list, so it stayed hidden for administrators (the panel itself was
+  reachable, the button was not). Also drops the now-dead public demo link from the README.
+
 ## 2026.09.151 - 2026-09-20
 
 ### Added
