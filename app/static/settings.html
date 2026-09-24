@@ -925,7 +925,7 @@ async function loadUpdates() {
     updRender(r.state);
     // Si une mise à jour est en cours, lancer le suivi de progression
     if (r.state.applier?.running) {
-      _upd_startPoll(r);
+      _upd_startPoll(r.state);
     }
   }
   catch (e) { $("#upd-line").textContent = e.message || "Échec du chargement"; }
