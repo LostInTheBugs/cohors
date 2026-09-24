@@ -1610,7 +1610,11 @@ def gear_page(request: Request):
 def stuff_page(request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
-    return FileResponse(STATIC_DIR / "stuff.html")
+    response = FileResponse(STATIC_DIR / "stuff.html")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @app.api_route("/dashboard", methods=["GET", "HEAD"])
@@ -2289,17 +2293,16 @@ def stuff_profile(pid: int, request: Request):
 class StuffRequest(BaseModel):
     profile_id: int
     loadout: str = ""
-    content: str = "raid"
-    mode: str = "cur"          # cur | max | bis
-    max_rank: bool = False     # compat : équivaut à mode="max"
+    content: list[str] = ["raid"]  # [raid, mplus, delves] — tableau, pas unique
+    mode: str = "cur"              # cur | bis
+    bis: bool = False              # si vrai, lance le guide BIS (ignore content)
+    max_rank: bool = False         # compat : équivaut à mode="max" (obsolète)
 
 
 @app.post("/api/stuff")
 def submit_stuff(payload: StuffRequest, request: Request):
-    """« Stuff conseillé » : que porter, avec ce qu'on possède, pour un contenu donné."""
+    """« Stuff conseillé » : que porter, avec ce qu'on possède, pour un ou plusieurs contenus."""
     user = _require_user(request)
-    if payload.content not in STUFF_CONTENTS:
-        raise HTTPException(400, "Contenu invalide.")
     with _db_lock, _db() as conn:
         prof = conn.execute("SELECT id, name, input FROM profiles WHERE id=?", (payload.profile_id,)).fetchone()
     if prof is None:
@@ -2312,32 +2315,75 @@ def submit_stuff(payload: StuffRequest, request: Request):
         raise HTTPException(400, "Build introuvable dans cet export.")
     ip = _client_ip(request)
     now = time.time()
+
+    # Valider les contenus
+    sim_contents = [c for c in payload.content if c in STUFF_CONTENTS]
+    if payload.bis and not sim_contents:
+        sim_contents = ["raid"]  # fallback pour que le plan reste valide
+    for c in payload.content:
+        if c not in STUFF_CONTENTS and c != "craft":
+            raise HTTPException(400, f"Contenu invalide : {c}")
+
     with _db_lock, _db() as conn:
         active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
                               (user["email"],)).fetchone()["c"]
+
+    # BIS : une seule sim, ignore content
+    if payload.bis:
         if active >= PER_USER_ACTIVE:
             raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
+        if _stuff_bis_list(parsed["cls"], parsed["spec"]) is None:
+            raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
         sim_id = uuid.uuid4().hex[:20]
         sim_dir = REPORTS_DIR / sim_id
         sim_dir.mkdir(parents=True, exist_ok=True)
         input_file = sim_dir / "input.simc"
         input_file.write_text("")
-        mode = payload.mode if payload.mode in ("cur", "max", "bis") else ("max" if payload.max_rank else "cur")
-        if mode == "bis" and _stuff_bis_list(parsed["cls"], parsed["spec"]) is None:
-            raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
         plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
-                "spec": parsed["spec"], "loadout": loadout or {}, "content": payload.content,
-                "mode": mode, "max_rank": mode == "max"}
-        label = f'{prof["name"]} · {STUFF_CONTENTS[payload.content]["label_fr"]}' + \
-                (f' · {loadout["name"]}' if loadout else "") + \
-                ({"max": " · rang max", "bis": " · BIS"}.get(mode) or "")
-        conn.execute(
-            """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
-                                 user_email, user_name, kind, plan)
-               VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
-            (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
-             user["email"], user["name"], json.dumps(plan)))
-    return {"id": sim_id, "status": "queued", "heal": parsed["spec"] in HEAL_SPECS,
+                "spec": parsed["spec"], "loadout": loadout or {}, "content": None,
+                "mode": "bis", "max_rank": False, "bis": True}
+        label = f'{prof["name"]} · BIS' + (f' · {loadout["name"]}' if loadout else "")
+        with _db_lock, _db() as conn:
+            conn.execute(
+                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
+                                     user_email, user_name, kind, plan)
+                   VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
+                (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
+                 user["email"], user["name"], json.dumps(plan)))
+        return {"id": sim_id, "status": "queued", "sim_ids": [], "heal": parsed["spec"] in HEAL_SPECS,
+                "loadouts": [l["name"] for l in parsed["loadouts"]]}
+
+    # Plusieurs contenus : lancer les sims en parallèle
+    if not sim_contents:
+        raise HTTPException(400, "Aucun contenu valide sélectionné.")
+    sim_ids = []
+    for c in sim_contents:
+        with _db_lock, _db() as conn:
+            active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
+                                  (user["email"],)).fetchone()["c"]
+            if active >= PER_USER_ACTIVE:
+                raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
+            sim_id = uuid.uuid4().hex[:20]
+            sim_dir = REPORTS_DIR / sim_id
+            sim_dir.mkdir(parents=True, exist_ok=True)
+            input_file = sim_dir / "input.simc"
+            input_file.write_text("")
+            plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
+                    "spec": parsed["spec"], "loadout": loadout or {}, "content": c,
+                    "mode": "cur", "max_rank": False}
+            label = f'{prof["name"]} · {STUFF_CONTENTS[c]["label_fr"]}' + \
+                    (f' · {loadout["name"]}' if loadout else "")
+            with _db_lock, _db() as conn:
+                conn.execute(
+                    """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
+                                         user_email, user_name, kind, plan)
+                       VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
+                    (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
+                     user["email"], user["name"], json.dumps(plan)))
+        sim_ids.append(sim_id)
+
+    return {"id": sim_ids[0] if sim_ids else None, "status": "queued", "sim_ids": sim_ids,
+            "heal": parsed["spec"] in HEAL_SPECS,
             "loadouts": [l["name"] for l in parsed["loadouts"]]}
 
 

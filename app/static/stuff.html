@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- v2026.09.103 --><!-- checkboxes -->
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -118,24 +119,34 @@
         <label for="build">Ton build</label>
         <select id="build"><option value="">Build actuel de l'export</option></select>
       </div>
-      <div class="field">
-        <label for="content">Contenu</label>
-        <select id="content">
-          <option value="mplus">Mythique+</option>
-          <option value="raid" selected>Raid</option>
-          <option value="delves">Gouffres (delves)</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="mode">Mode</label>
-        <select id="mode">
-          <option value="cur" selected>Pièces à leur niveau actuel</option>
-          <option value="max">Toutes les pièces au rang d'amélioration max</option>
-          <option value="bis">BIS — les meilleures pièces du guide</option>
-        </select>
-      </div>
-      <button id="go" disabled>🧮 Voir ce que je dois porter</button>
     </div>
+    <div class="row" style="align-items:center;">
+      <div class="field">
+        <label>Contenu</label>
+        <div id="content-checks" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+            <input type="checkbox" name="ctype" value="raid" checked> Raid
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+            <input type="checkbox" name="ctype" value="mplus"> Mythique+
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+            <input type="checkbox" name="ctype" value="delves"> Gouffres
+          </label>
+        </div>
+        <span id="content-hint" style="font-size:12px;color:var(--mut);">Raid sélectionné par défaut</span>
+      </div>
+      <div class="field" style="margin-left:auto;">
+        <label>Mode</label>
+        <div id="mode-checks" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+            <input type="checkbox" name="mode" value="bis"> BIS (guide)
+          </label>
+        </div>
+        <span style="font-size:12px;color:var(--mut);">Si coché, ignore le contenu et affiche la liste BIS du guide</span>
+      </div>
+    </div>
+    <button id="go" disabled>🧮 Voir ce que je dois porter</button>
     <div class="meta">Le build choisi est appliqué au calcul (talents inclus). Pour les soins, les guides donnent la même priorité de stats quel que soit l'arbre héroïque.</div>
     <div id="msg"></div>
   </div>
@@ -223,19 +234,214 @@ $("#prof").addEventListener("change", async () => {
   } catch (e) { info.textContent = String(e.message || e); }
 });
 
+// ---- checkboxes de contenu
+const CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", craft: "Métiers" };
+function updateContentHint() {
+  const checked = [...document.querySelectorAll('input[name="ctype"]:checked')].map(c => c.value);
+  const hint = $("#content-hint");
+  const labels = checked.filter(c => c !== "raid").map(c => CONTENT_LABELS[c]);
+  let txt = checked.includes("raid") ? "Raid sélectionné" : "";
+  if (labels.length) txt += " + " + labels.join(", ");
+  hint.textContent = txt || "Aucun contenu sélectionné";
+  // disabled si aucun contenu de simulation
+  const simChecked = checked.filter(c => c !== "craft");
+  if (simChecked.length === 0) {
+    $("#go").disabled = true;
+    setMsg("Coche au moins un contenu de simulation (Raid, Mythique+ ou Gouffres).", "msg-warn");
+  } else {
+    setMsg("");
+  }
+}
+document.querySelectorAll('input[name="ctype"]').forEach(cb => cb.addEventListener("change", updateContentHint));
 // ---- lancement + suivi
 $("#go").addEventListener("click", async () => {
   const id = parseInt($("#prof").value, 10);
   if (!id) { setMsg("Choisis un export.", "msg-err"); return; }
+  const checked = [...document.querySelectorAll('input[name="ctype"]:checked')].map(c => c.value);
+  const simChecked = checked.filter(c => c !== "craft");
+  if (simChecked.length === 0) { setMsg("Coche au moins un contenu de simulation.", "msg-err"); return; }
+  const isBis = [...document.querySelectorAll('input[name="mode"]:checked')].some(c => c.value === "bis");
   $("#go").disabled = true;
-  setMsg("Calcul en cours…");
+  setMsg(isBis ? "Chargement du guide BIS…" : "Calcul en cours…");
   $("#rescard").classList.add("hidden");
   try {
     const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
-      content: $("#content").value, mode: $("#mode").value });
-    poll(d.id);
+      content: simChecked, bis: isBis });
+    if (simChecked.length === 1 && !isBis) {
+      poll(d.id);
+    } else {
+      // plusieurs contenus ou BIS : lancer toutes les sims
+      const pending = isBis ? [d.id] : (d.sim_ids || [d.id]);
+      pollMultiple(pending, isBis, simChecked);
+    }
   } catch (e) { setMsg(String(e.message || e), "msg-err"); $("#go").disabled = false; }
 });
+
+async function pollMultiple(simIds, isBis, contentTypes) {
+  let resolved = 0;
+  const results = {};
+  const check = () => {
+    resolved++;
+    const done = Object.keys(results).length === simIds.length;
+    if (!done) return;
+    $(`#rescard`).classList.remove("hidden");
+    renderMultiple(results, isBis, contentTypes);
+    $("#go").disabled = false;
+  };
+  for (const id of simIds) {
+    const pollOne = () => jfetch("GET", "/api/sims/" + encodeURIComponent(id)).then(d => {
+      if (d.status === "queued" || d.status === "running") {
+        setTimeout(pollOne, 2500);
+      } else if (d.status === "done") {
+        results[id] = d;
+        check();
+      } else if (d.status === "failed") {
+        results[id] = { error: d.error || "sim échouée", stuff: null, content: null };
+        check();
+      }
+    }).catch(e => { results[id] = { error: e.message, stuff: null, content: null }; check(); });
+    pollOne();
+  }
+}
+
+function renderMultiple(results, isBis, contentTypes) {
+  const card = $("#rescard"), meta = $("#resmeta"), sum = $("#ressum"), src = $("#ressrc");
+  card.classList.remove("hidden");
+  sum.innerHTML = ""; src.innerHTML = ""; meta.innerHTML = "";
+
+  // Préparer les sections pour chaque contenu
+  const sections = [];
+  for (const [simId, d] of Object.entries(results)) {
+    if (!d.stuff) continue;
+    const st = d.stuff;
+    const ct = st.content;
+    const label = ct ? (CONTENT_LABELS[ct] || ct) : "BIS";
+    sections.push({ label, stuff: st, content: ct, note: d.note });
+  }
+  if (sections.length === 0) {
+    const failures = Object.values(results).filter(r => r.error);
+    meta.textContent = failures.length ? "Aucun résultat — " + failures.map(f => esc(f.error || "sim échouée")).join(", ") : "Pas de résultat.";
+    return;
+  }
+
+  // Trier : BIS en premier, puis Raid, MM+, Gouffres
+  const order = { bis: 0, raid: 1, mplus: 2, delves: 3 };
+  sections.sort((a, b) => (order[a.content] ?? 9) - (order[b.content] ?? 9));
+
+  // Construire le meta global par contenu
+  const metaParts = [];
+  for (const sec of sections) {
+    const st = sec.stuff;
+    const contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[st.content] || st.content;
+    const lines = [
+      `<span style="display:block;margin:4px 0 0"><b>${esc(sec.label)} :</b></span>`
+    ];
+    if (st.mode === "bis") {
+      lines.push(`<span>Méthode : guide Wowhead (mis à jour ${esc(st.updated_fr || "?")}) · Build : ${esc(st.loadout || "actuel")}</span>`);
+    } else if (st.mode === "heal") {
+      lines.push(`<span>Méthode : priorité des stats — SimC ne simule pas les soins · ${st.priority ? "Priorité : " + st.priority.map(k => STAT_FR[k] || k).join(" > ") : "Classement au ilvl"}`);
+      lines.push(`<span>${st.valid_count} pièce(s) analysée(s) sur ${st.bag_count}</span>`);
+    } else {
+      lines.push(`<span>Méthode : ${fmt(st.iterations)} simulations · ${st.valid_count} pièce(s) analysée(s) sur ${st.bag_count}</span>`);
+      if (st.baseline) lines.push(`<span>Réf. (éq. actuel) : ${fmt(st.baseline)} DPS</span>`);
+      if (st.loadout) lines.push(`<span>Build : ${esc(st.loadout)}</span>`);
+    }
+    metaParts.push(lines.join("<br>"));
+  }
+  meta.innerHTML = metaParts.join("<hr style=\"border-color:var(--line);margin:8px 0;\">");
+
+  // Générer les tables et résumés pour chaque contenu
+  for (const sec of sections) {
+    const st = sec.stuff;
+    const tblId = "restable-" + sec.label.replace(/\s+/g, "_");
+
+    if (st.mode === "bis") {
+      const en = document.documentElement.lang === "en";
+      const slotFr = st.slot_fr || {};
+      const rows = st.slots || [];
+      const div = document.createElement("div");
+      div.innerHTML = `<h3>⚔️ ${esc(sec.label)}</h3>` +
+        `<div class="gwrap"><table class="gtable" id="${tblId}"><tr><th>Emplacement</th><th>Ce que tu portes</th><th>BIS (guide)</th><th>Provenance</th><th>Tu l'as ?</th></tr>` +
+        rows.map(r => {
+          const cur = r.current;
+          const curCell = cur ? `<span class="gname">${esc(cur.name)}</span> <small>(${cur.ilvl || "?"})</small>` : '<span class="gnil">rien d\'équipé</span>';
+          const nm = en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en);
+          const bisCell = `<a class="hlink" href="https://www.wowhead.com/item=${r.id}" target="_blank" rel="noopener">${esc(nm)}</a>` +
+            (r.max_ilvl ? ` <small class="gnil">(max ${r.max_ilvl})</small>` : "");
+          let have;
+          if (r.equipped) have = '<span class="gpos">✅ portée</span>';
+          else if (r.owned) have = `<span class="msg-warn">🎒 dans tes sacs${r.bag_ilvl ? " (" + r.bag_ilvl + ")" : ""}</span>`;
+          else have = '<span class="gnil">—</span>';
+          return `<tr class="${r.owned || r.equipped ? "" : "gbest"}"><td>${esc(slotFr[r.slot] || r.slot)}</td><td>${curCell}</td>` +
+            `<td>${bisCell}</td><td class="islot">${esc(en ? (r.src_en || r.src_fr) : (r.src_fr || r.src_en))}</td><td>${have}</td></tr>`;
+        }).join("") + "</table></div>";
+      meta.parentElement.insertBefore(document.createRange().createContextualFragment(div.innerHTML), sum);
+      const missing = rows.filter(r => !r.owned && !r.equipped);
+      if (missing.length) {
+        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — Il te manque <b>${missing.length}</b> pièce(s) BIS : ` +
+          missing.map(r => `<span>${esc(slotFr[r.slot] || r.slot)}</span> — ${esc(en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en))}`).join(", ") + ".</div>";
+      } else {
+        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — Tu as déjà toutes les pièces BIS — bravo !</div>`;
+      }
+      if (st.source) src.innerHTML += `<div><b>${esc(sec.label)} :</b> <a href="${esc(st.source)}" target="_blank" rel="noopener">${esc(st.source_fr || st.source)}</a>.</div>`;
+      continue;
+    }
+
+    // Standard (DPS ou heal)
+    const tbl = document.createElement("table");
+    tbl.className = "gtable";
+    tbl.id = tblId;
+    meta.parentElement.insertBefore(tbl, sum);
+    if (st.mode === "heal") {
+      const rows = (st.slots || []).filter(s => s.best || s.current);
+      const swaps = rows.filter(s => s.swap);
+      tbl.innerHTML = `<h3 style="margin:8px 0 4px">⚔️ ${esc(sec.label)}</h3>` +
+        "<tr><th>Emplacement</th><th>Actuellement</th><th>Conseillé</th><th>Pourquoi</th></tr>" +
+        rows.map(s => {
+          let why = "";
+          if (s.swap && s.reason) {
+            if (s.reason.kind === "empty") why = "rien d'équipé";
+            else if (s.reason.kind === "ilvl") why = (s.reason.diff > 0 ? "+" : "") + s.reason.diff + " niveau(x) d'objet";
+            else if (s.reason.kind === "stats") why = "à ilvl égal : meilleur en " + (STAT_FR[s.reason.stat] || s.reason.stat);
+            else why = "meilleur";
+          } else why = "déjà le meilleur de ce que tu as";
+          return `<tr class="${s.swap ? "gbest" : ""}"><td>${esc(s.slot_fr || s.slot)}</td><td>${itemCell(s.current)}</td>` +
+            `<td>${s.swap ? itemCell(s.best) : '<span class="stay">reste tel quel</span>'}</td>` +
+            `<td class="${s.swap ? "pick" : "gnil"}">${s.swap ? "✅ " : ""}${esc(why)}</td></tr>`;
+        }).join("");
+      if (swaps.length) {
+        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — À porter : ` + swaps.map(s => `<b>${esc((s.best || {}).name || "?")}</b> (${esc(s.slot_fr || s.slot)})`).join(", ") + ".</div>";
+      } else {
+        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — Rien à changer : ton équipement est déjà le meilleur de ce que tu possèdes.</div>`;
+      }
+    } else {
+      const items = st.items || [];
+      const bySlot = {};
+      items.forEach(it => { if (!bySlot[it.slot] || it.dps > bySlot[it.slot].dps) bySlot[it.slot] = it; });
+      tbl.innerHTML = `<h3 style="margin:8px 0 4px">⚔️ ${esc(sec.label)}</h3>` +
+        "<tr><th>Pièce</th><th>Emplacement</th><th class='gv'>DPS</th><th class='gv'>Gain</th></tr>" +
+        items.map(it => {
+          const best = bySlot[it.slot] === it && (it.gain_pct || 0) > 0;
+          return `<tr class="${best ? "gbest" : ""}"><td>${esc(it.name)}</td><td class="islot">${esc(it.slot_fr || it.slot)}</td>` +
+            `<td class="gv">${fmt(it.dps)}</td>` +
+            `<td class="gv ${it.gain_pct > 0 ? "gpos" : "gnil"}">${it.gain_pct == null ? "—" : (it.gain_pct > 0 ? "+" : "") + fmt(it.gain_pct, 2) + " %"}</td></tr>`;
+        }).join("");
+      const winners = Object.values(bySlot).filter(it => (it.gain_pct || 0) > 0);
+      if (winners.length) {
+        winners.sort((a, b) => b.gain_pct - a.gain_pct);
+        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — À porter : ` + winners.map(it => `<b>${esc(it.name)}</b> (${esc(it.slot_fr || it.slot)}, +${fmt(it.gain_pct, 2)} %)`).join(", ") + ".</div>";
+      } else {
+        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — Rien ne bat ton équipement actuel — tu portes déjà le meilleur.</div>`;
+      }
+    }
+  }
+
+  // Afficher les erreurs
+  const failures = Object.values(results).filter(r => !r.stuff && r.error);
+  if (failures.length) {
+    sum.innerHTML += `<div class="msg-err">Échec : ${failures.map(f => esc(f.error)).join(", ")}</div>`;
+  }
+}
 
 async function poll(simId) {
   try {
