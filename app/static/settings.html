@@ -1258,17 +1258,22 @@ $("#bi-reset").addEventListener("click", async () => {
       try {
         const r = await api("GET", "/api/admin/updates");
         if (r.applier?.running) {
-          // Toujours en cours
+          // En cours de déploiement
           startedAt = r.applier.running_at ? r.applier.running_at * 1000 : startedAt;
           tick();
-        } else {
-          // Terminé
+        } else if (r.applier?.applied || r.applier?.result) {
+          // Terminé (succès ou échoué)
           clearInterval(_updTimer); _updTimer = null;
-          _upd_setBar(100, "✅ Mise à jour terminée !", elapsedStr, "");
+          _upd_setBar(r.applier.applied ? 100 : 0,
+            r.applier.applied ? "✅ Mise à jour terminée !" :
+            r.applier.result === "attente" ? `⏳ En attente de l'applicateur…` :
+            `⚠ Échec : ${r.applier.result}`,
+            elapsedStr, "");
           _upd_showProgress();
           updRender(r.state);
-          setTimeout(() => { location.reload(); }, 2000);
+          if (r.applier.applied) { setTimeout(() => { location.reload(); }, 2000); }
         }
+        // Sinon : l'applicateur n'a pas encore détecté la demande → on continue le polling
       } catch (e) {
         clearInterval(_updTimer); _updTimer = null;
         _upd_setBar(0, "⚠ Erreur de vérification", "", e.message);
