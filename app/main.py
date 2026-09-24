@@ -880,8 +880,13 @@ def _run_one(sim_id: str) -> None:
 
 
 def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0: float) -> None:
-    """Mode BIS : liste des meilleures pièces du guide, possession et comparaison."""
+    """Mode BIS : liste des meilleures pièces du guide filtrée par contenu, possession et comparaison."""
     blk = _stuff_bis_list(parsed["cls"], parsed["spec"]) or {}
+    # Filtrer le guide BIS selon les contenus cochés
+    contents = plan.get("content") or ["raid"]
+    if isinstance(contents, str):
+        contents = [contents]
+    blk = _stuff_bis_filter(blk, contents)
     slot_fr = {}
     with _db_lock, _db() as conn:
         loc = "fr_FR"
@@ -889,7 +894,7 @@ def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0:
         results = {"mode": "bis", "source": blk.get("source_url", ""),
                    "source_fr": blk.get("source_label_fr", ""),
                    "updated_fr": blk.get("updated_fr", ""), "slots": [],
-                   "content": plan.get("content") or "raid"}
+                   "content": contents}
         owned_by_id, equipped_by_id = {}, set()
         for it in items:
             m = re.search(r"id=(\d+)", it.get("opts") or "")
@@ -1909,6 +1914,97 @@ BIS_FILE = Path(__file__).resolve().parent / "data" / "bis.json"
 BIS_CACHE: dict = {"mtime": 0.0, "data": {}}
 
 
+# Mapping source_fr -> contenu (raid, mplus, delves, ou None = multi/non-classifié)
+BIS_CONTENT_MAP = {
+    # Raid uniquement
+    "Catalyseur & Raid & Coffre": "raid",
+    "Nek'zali the Soulcoiler (Raid)": "raid",
+    "Nymrissa Wavebinder (Raid)": "raid",
+    "Raid & Coffre": "raid",
+    "Sszorak (Raid)": "raid",
+    "The Coiled Altar (Raid) & Catalyseur": "raid",
+    "The Lost Explorers (Raid)": "raid",
+    "Ula'tek (Raid)": "raid",
+    # Tier Set (raid)
+    "Tier Set & King's Rest": "raid",
+    "Tier Set & Nek'zali the Soulcoiler": "raid",
+    "Tier Set & Szorak": "raid",
+    "Tier Set & The Coiled Altar": "raid",
+    "Tier Set & Ula'tek": "raid",
+    "Tier Set & Vashnik the Malignant": "raid",
+    "Tier Set & Voidscar Arena": "raid",
+    # M+ uniquement (donjons mythique+)
+    "Allée du meurtre": "mplus",
+    "Blinding Vale": "mplus",
+    "Catalyseur & Nek'zali the Soulcoiler": "mplus",
+    "Catalyseur & Ruby Life Pools": "mplus",
+    "Catalyseur & The Coiled Altar": "mplus",
+    "Catalyseur & Ula'tek": "mplus",
+    "Catalyseur & Voidscar Arena": "mplus",
+    "Entombed Sentinels": "mplus",
+    "Galvazzt": "mplus",
+    "King's Rest": "mplus",
+    "King's Rest & Catalyseur": "mplus",
+    "Kings Rest & Catalyseur": "mplus",
+    "Kings' Rest": "mplus",
+    "Kings' Rest & Catalyseur": "mplus",
+    "L'Ophidien ondulant": "mplus",
+    "Mor'zahi": "mplus",
+    "Murder Row": "mplus",
+    "Murder Row & Catalyseur": "mplus",
+    "Nek'zali l'Entortillâme": "mplus",
+    "Nek'zali the Soulcoiler": "mplus",
+    "Nek'zali the Soulcoiler & Catalyseur": "mplus",
+    "Ruby Life Pools": "mplus",
+    "Souffle d'Ula'tek": "mplus",
+    "Szorak": "mplus",
+    "The Blinding Vale": "mplus",
+    "The Blinding Vale & Catalyseur": "mplus",
+    "The Coiled Altar": "mplus",
+    "The Coiled Altar & Catalyseur": "mplus",
+    "The Coiled Alter": "mplus",
+    "The Coiled Alter & Catalyseur": "mplus",
+    "The Twin Fangs": "mplus",
+    "Token & Entombed Sentinels": "mplus",
+    "Ula'tek": "mplus",
+    "Ula'tek & Catalyseur": "mplus",
+    "Vexhul": "mplus",
+    "Voidscar Arena": "mplus",
+    "Voidscar Arena & Catalyseur": "mplus",
+    # Delves uniquement
+    "Blacksmithing": "delves",
+    "BoE Trash Drop": "delves",
+    "Crafted": "delves",
+    "Crafting Blacksmithing": "delves",
+    "Jewelcrafting": "delves",
+    "Leatherworking": "delves",
+    "Repos des rois": "delves",
+    "Roi Dazar": "delves",
+    "The Lost Explorers": "delves",
+    # Multi-contenus (toujours inclus, sauf si aucun contenu ne matche explicitement)
+    "Catalyseur": None,  # apparaît dans tous les contenus
+    "Catalyseur & Mythic+ & Coffre": None,
+    "Tier Set": None,  # tier raid
+}
+
+
+def _stuff_bis_filter(blk: dict, contents: list[str]) -> dict:
+    """Retourner le bloc BIS filtré pour ne garder que les pièces lootables dans les contenus cochés."""
+    if not contents:
+        return blk
+    contents_set = set(contents)
+    filtered_slots = []
+    for slot in (blk.get("slots") or []):
+        src = slot.get("src_fr", "")
+        mapped = BIS_CONTENT_MAP.get(src)
+        if mapped is None:
+            # Non classifié : inclure toujours (catalyseur, tier set, crafting, etc.)
+            filtered_slots.append(slot)
+        elif mapped in contents_set:
+            filtered_slots.append(slot)
+    return {**blk, "slots": filtered_slots}
+
+
 def _stuff_bis_list(cls: str, spec: str) -> dict | None:
     """Bloc BIS d'une spécialisation depuis l'instantané embarqué."""
     try:
@@ -2331,7 +2427,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
         active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
                               (user["email"],)).fetchone()["c"]
 
-    # BIS : simuler les contenus filtrés (bis_content)
+    # BIS : une seule simulation combinée (tous les contenus cochés fusionnés)
     if payload.bis:
         if active >= PER_USER_ACTIVE:
             raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
@@ -2341,27 +2437,27 @@ def submit_stuff(payload: StuffRequest, request: Request):
         valid_bis = [c for c in bis_contents if c in STUFF_CONTENTS]
         if not valid_bis:
             valid_bis = ["raid"]
-        sim_ids = []
+        sim_id = uuid.uuid4().hex[:20]
+        sim_dir = REPORTS_DIR / sim_id
+        sim_dir.mkdir(parents=True, exist_ok=True)
+        input_file = sim_dir / "input.simc"
+        input_file.write_text("")
+        label_parts = [f'{prof["name"]} · BIS']
         for c in valid_bis:
-            sim_id = uuid.uuid4().hex[:20]
-            sim_dir = REPORTS_DIR / sim_id
-            sim_dir.mkdir(parents=True, exist_ok=True)
-            input_file = sim_dir / "input.simc"
-            input_file.write_text("")
-            plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
-                    "spec": parsed["spec"], "loadout": loadout or {}, "content": c,
-                    "mode": "bis", "max_rank": False, "bis": True}
-            label = f'{prof["name"]} · BIS · {STUFF_CONTENTS[c]["label_fr"]}' + \
-                    (f' · {loadout["name"]}' if loadout else "")
-            with _db_lock, _db() as conn:
-                conn.execute(
-                    """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
-                                         user_email, user_name, kind, plan)
-                       VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
-                    (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
-                     user["email"], user["name"], json.dumps(plan)))
-            sim_ids.append(sim_id)
-        return {"id": sim_ids[0] if sim_ids else None, "status": "queued", "sim_ids": sim_ids,
+            label_parts.append(STUFF_CONTENTS[c]["label_fr"])
+        label = " / ".join(label_parts) + \
+                (f' · {loadout["name"]}' if loadout else "")
+        plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
+                "spec": parsed["spec"], "loadout": loadout or {}, "content": valid_bis,
+                "mode": "bis", "max_rank": False, "bis": True}
+        with _db_lock, _db() as conn:
+            conn.execute(
+                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
+                                     user_email, user_name, kind, plan)
+                   VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
+                (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
+                 user["email"], user["name"], json.dumps(plan)))
+        return {"id": sim_id, "status": "queued", "sim_ids": [sim_id],
                 "heal": parsed["spec"] in HEAL_SPECS,
                 "loadouts": [l["name"] for l in parsed["loadouts"]]}
 

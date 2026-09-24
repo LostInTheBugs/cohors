@@ -275,12 +275,7 @@ $("#go").addEventListener("click", async () => {
       setMsg("Chargement du guide BIS…");
       const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
         bis: true, bis_content: bisContents });
-      if (bisContents.length === 1) {
-        poll(d.id);
-      } else {
-        const pending = d.sim_ids || [d.id];
-        pollMultiple(pending, true, bisContents);
-      }
+      poll(d.id);
     } else {
       // mode cur ou max : un seul contenu
       const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
@@ -484,7 +479,13 @@ function render(d) {
   card.classList.remove("hidden");
   sum.innerHTML = ""; src.innerHTML = "";
   if (!st) { meta.textContent = "Pas de résultat."; table.classList.add("hidden"); return; }
-  const contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[st.content] || st.content;
+  // st.content peut être une chaîne (non-BIS) ou un tableau (BIS)
+  let contentLabel;
+  if (Array.isArray(st.content)) {
+    contentLabel = st.content.map(c => ({ mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[c] || c)).join(" · ");
+  } else {
+    contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[st.content] || st.content || "BIS";
+  }
 
   if (st.mode === "bis") {
     const en = document.documentElement.lang === "en";
