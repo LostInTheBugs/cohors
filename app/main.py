@@ -2293,10 +2293,11 @@ def stuff_profile(pid: int, request: Request):
 class StuffRequest(BaseModel):
     profile_id: int
     loadout: str = ""
-    content: list[str] = ["raid"]  # [raid, mplus, delves] — tableau, pas unique
-    mode: str = "cur"              # cur | bis
-    bis: bool = False              # si vrai, lance le guide BIS (ignore content)
-    max_rank: bool = False         # compat : équivaut à mode="max" (obsolète)
+    content: str = "raid"                # raid | mplus | delves
+    mode: str = "cur"                    # cur | max | bis
+    bis: bool = False                    # si vrai, lance le guide BIS
+    bis_content: list[str] = []          # contenus filtrés quand mode=bis
+    max_rank: bool = False               # compat : équivaut à mode="max" (obsolète)
 
 
 @app.post("/api/stuff")
@@ -2319,41 +2320,50 @@ def submit_stuff(payload: StuffRequest, request: Request):
     # Valider les contenus
     sim_contents = [c for c in payload.content if c in STUFF_CONTENTS]
     if payload.bis and not sim_contents:
-        sim_contents = ["raid"]  # fallback pour que le plan reste valide
+        sim_contents = [payload.content] if payload.content in STUFF_CONTENTS else ["raid"]
     for c in payload.content:
-        if c not in STUFF_CONTENTS and c != "craft":
+        if c not in STUFF_CONTENTS:
             raise HTTPException(400, f"Contenu invalide : {c}")
 
     with _db_lock, _db() as conn:
         active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
                               (user["email"],)).fetchone()["c"]
 
-    # BIS : une seule sim, ignore content
+    # BIS : simuler les contenus filtrés (bis_content)
     if payload.bis:
         if active >= PER_USER_ACTIVE:
             raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
         if _stuff_bis_list(parsed["cls"], parsed["spec"]) is None:
             raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
-        sim_id = uuid.uuid4().hex[:20]
-        sim_dir = REPORTS_DIR / sim_id
-        sim_dir.mkdir(parents=True, exist_ok=True)
-        input_file = sim_dir / "input.simc"
-        input_file.write_text("")
-        plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
-                "spec": parsed["spec"], "loadout": loadout or {}, "content": None,
-                "mode": "bis", "max_rank": False, "bis": True}
-        label = f'{prof["name"]} · BIS' + (f' · {loadout["name"]}' if loadout else "")
-        with _db_lock, _db() as conn:
-            conn.execute(
-                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
-                                     user_email, user_name, kind, plan)
-                   VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
-                (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
-                 user["email"], user["name"], json.dumps(plan)))
-        return {"id": sim_id, "status": "queued", "sim_ids": [], "heal": parsed["spec"] in HEAL_SPECS,
+        bis_contents = payload.bis_content if payload.bis_content else ["raid"]
+        valid_bis = [c for c in bis_contents if c in STUFF_CONTENTS]
+        if not valid_bis:
+            valid_bis = ["raid"]
+        sim_ids = []
+        for c in valid_bis:
+            sim_id = uuid.uuid4().hex[:20]
+            sim_dir = REPORTS_DIR / sim_id
+            sim_dir.mkdir(parents=True, exist_ok=True)
+            input_file = sim_dir / "input.simc"
+            input_file.write_text("")
+            plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
+                    "spec": parsed["spec"], "loadout": loadout or {}, "content": c,
+                    "mode": "bis", "max_rank": False, "bis": True}
+            label = f'{prof["name"]} · BIS · {STUFF_CONTENTS[c]["label_fr"]}' + \
+                    (f' · {loadout["name"]}' if loadout else "")
+            with _db_lock, _db() as conn:
+                conn.execute(
+                    """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
+                                         user_email, user_name, kind, plan)
+                       VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
+                    (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
+                     user["email"], user["name"], json.dumps(plan)))
+            sim_ids.append(sim_id)
+        return {"id": sim_ids[0] if sim_ids else None, "status": "queued", "sim_ids": sim_ids,
+                "heal": parsed["spec"] in HEAL_SPECS,
                 "loadouts": [l["name"] for l in parsed["loadouts"]]}
 
-    # Plusieurs contenus : lancer les sims en parallèle
+    # Non-BIS (mode cur ou max) : simuler le contenu sélectionné
     if not sim_contents:
         raise HTTPException(400, "Aucun contenu valide sélectionné.")
     sim_ids = []
@@ -2370,7 +2380,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
             input_file.write_text("")
             plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
                     "spec": parsed["spec"], "loadout": loadout or {}, "content": c,
-                    "mode": "cur", "max_rank": False}
+                    "mode": payload.mode, "max_rank": payload.max_rank}
             label = f'{prof["name"]} · {STUFF_CONTENTS[c]["label_fr"]}' + \
                     (f' · {loadout["name"]}' if loadout else "")
             with _db_lock, _db() as conn:
@@ -2380,7 +2390,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
                        VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
                     (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
                      user["email"], user["name"], json.dumps(plan)))
-        sim_ids.append(sim_id)
+            sim_ids.append(sim_id)
 
     return {"id": sim_ids[0] if sim_ids else None, "status": "queued", "sim_ids": sim_ids,
             "heal": parsed["spec"] in HEAL_SPECS,

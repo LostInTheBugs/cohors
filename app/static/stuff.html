@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2026.09.103 --><!-- checkboxes -->
+<!-- v2026.09.152-c2 -->
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -122,29 +122,36 @@
     </div>
     <div class="row" style="align-items:center;">
       <div class="field">
-        <label>Contenu</label>
-        <div id="content-checks" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
-          <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
-            <input type="checkbox" name="ctype" value="raid" checked> Raid
-          </label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
-            <input type="checkbox" name="ctype" value="mplus"> Mythique+
-          </label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
-            <input type="checkbox" name="ctype" value="delves"> Gouffres
-          </label>
-        </div>
-        <span id="content-hint" style="font-size:12px;color:var(--mut);">Raid sélectionné par défaut</span>
+        <label for="content">Contenu</label>
+        <select id="content">
+          <option value="raid">Raid</option>
+          <option value="mplus">Mythique+</option>
+          <option value="delves">Gouffres (delves)</option>
+        </select>
       </div>
-      <div class="field" style="margin-left:auto;">
-        <label>Mode</label>
-        <div id="mode-checks" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
-          <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
-            <input type="checkbox" name="mode" value="bis"> BIS (guide)
-          </label>
-        </div>
-        <span style="font-size:12px;color:var(--mut);">Si coché, ignore le contenu et affiche la liste BIS du guide</span>
+      <div class="field">
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="cur" selected>Pièces à leur niveau actuel</option>
+          <option value="max">Toutes les pièces au rang d'amélioration max</option>
+          <option value="bis">BIS — les meilleures pièces du guide</option>
+        </select>
       </div>
+    </div>
+    <div class="field hidden" id="bis-filter-wrap" style="margin-top:12px;">
+      <label>Filtrer le guide BIS sur</label>
+      <div id="bis-filter-checks" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+          <input type="checkbox" name="biscontent" value="raid" checked> Raid
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+          <input type="checkbox" name="biscontent" value="mplus" checked> Mythique+
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+          <input type="checkbox" name="biscontent" value="delves" checked> Gouffres
+        </label>
+      </div>
+      <span id="bis-filter-hint" style="font-size:12px;color:var(--mut);">Tous les contenus cochés</span>
     </div>
     <button id="go" disabled>🧮 Voir ce que je dois porter</button>
     <div class="meta">Le build choisi est appliqué au calcul (talents inclus). Pour les soins, les guides donnent la même priorité de stats quel que soit l'arbre héroïque.</div>
@@ -234,45 +241,53 @@ $("#prof").addEventListener("change", async () => {
   } catch (e) { info.textContent = String(e.message || e); }
 });
 
-// ---- checkboxes de contenu
-const CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", craft: "Métiers" };
-function updateContentHint() {
-  const checked = [...document.querySelectorAll('input[name="ctype"]:checked')].map(c => c.value);
-  const hint = $("#content-hint");
-  const labels = checked.filter(c => c !== "raid").map(c => CONTENT_LABELS[c]);
-  let txt = checked.includes("raid") ? "Raid sélectionné" : "";
-  if (labels.length) txt += " + " + labels.join(", ");
-  hint.textContent = txt || "Aucun contenu sélectionné";
-  // disabled si aucun contenu de simulation
-  const simChecked = checked.filter(c => c !== "craft");
-  if (simChecked.length === 0) {
-    $("#go").disabled = true;
-    setMsg("Coche au moins un contenu de simulation (Raid, Mythique+ ou Gouffres).", "msg-warn");
-  } else {
+// ---- Mode change: show BIS filter checkboxes when BIS selected
+const CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres" };
+const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres" };
+$("#mode").addEventListener("change", () => {
+  const isBis = $("#mode").value === "bis";
+  $("#bis-filter-wrap").classList.toggle("hidden", !isBis);
+  if (!isBis) {
     setMsg("");
   }
+});
+function updateBisFilterHint() {
+  const checked = [...document.querySelectorAll('input[name="biscontent"]:checked')].map(c => c.value);
+  const hint = $("#bis-filter-hint");
+  const labels = checked.map(c => BIS_CONTENT_LABELS[c]);
+  hint.textContent = labels.length ? labels.join(", ") : "Aucun contenu sélectionné";
 }
-document.querySelectorAll('input[name="ctype"]').forEach(cb => cb.addEventListener("change", updateContentHint));
+document.querySelectorAll('input[name="biscontent"]').forEach(cb => cb.addEventListener("change", updateBisFilterHint));
+updateBisFilterHint();
 // ---- lancement + suivi
 $("#go").addEventListener("click", async () => {
   const id = parseInt($("#prof").value, 10);
   if (!id) { setMsg("Choisis un export.", "msg-err"); return; }
-  const checked = [...document.querySelectorAll('input[name="ctype"]:checked')].map(c => c.value);
-  const simChecked = checked.filter(c => c !== "craft");
-  if (simChecked.length === 0) { setMsg("Coche au moins un contenu de simulation.", "msg-err"); return; }
-  const isBis = [...document.querySelectorAll('input[name="mode"]:checked')].some(c => c.value === "bis");
+  const mode = $("#mode").value;
+  const content = $("#content").value;
+  const isBis = mode === "bis";
   $("#go").disabled = true;
   setMsg(isBis ? "Chargement du guide BIS…" : "Calcul en cours…");
   $("#rescard").classList.add("hidden");
   try {
-    const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
-      content: simChecked, bis: isBis });
-    if (simChecked.length === 1 && !isBis) {
-      poll(d.id);
+    if (isBis) {
+      // BIS : passer les contenus filtrés (checkboxes)
+      const bisContents = [...document.querySelectorAll('input[name="biscontent"]:checked')].map(c => c.value);
+      if (bisContents.length === 0) { setMsg("Coche au moins un contenu pour le filtre BIS.", "msg-err"); $("#go").disabled = false; return; }
+      setMsg("Chargement du guide BIS…");
+      const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
+        bis: true, bis_content: bisContents });
+      if (bisContents.length === 1) {
+        poll(d.id);
+      } else {
+        const pending = d.sim_ids || [d.id];
+        pollMultiple(pending, true, bisContents);
+      }
     } else {
-      // plusieurs contenus ou BIS : lancer toutes les sims
-      const pending = isBis ? [d.id] : (d.sim_ids || [d.id]);
-      pollMultiple(pending, isBis, simChecked);
+      // mode cur ou max : un seul contenu
+      const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
+        content: content, mode: mode });
+      poll(d.id);
     }
   } catch (e) { setMsg(String(e.message || e), "msg-err"); $("#go").disabled = false; }
 });
