@@ -6974,7 +6974,7 @@ class UpdateSettings(BaseModel):
 def api_admin_updates(request: Request):
     """État des mises à jour : version installée, dernière release connue, demande, applicateur."""
     _require_admin(request)
-    return _upd_state()
+    return {"ok": True, "state": _upd_state()}
 
 
 @app.post("/api/admin/updates")
