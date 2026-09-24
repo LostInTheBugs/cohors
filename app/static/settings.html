@@ -1257,21 +1257,22 @@ $("#bi-reset").addEventListener("click", async () => {
     _updTimer = setInterval(async () => {
       try {
         const r = await api("GET", "/api/admin/updates");
-        if (r.applier?.running) {
+        const st = r.state || r;
+        if (st.applier?.running) {
           // En cours de déploiement
-          startedAt = r.applier.running_at ? r.applier.running_at * 1000 : startedAt;
+          startedAt = st.applier.running_at ? st.applier.running_at * 1000 : startedAt;
           tick();
-        } else if (r.applier?.applied || r.applier?.result) {
+        } else if (st.applier?.applied || st.applier?.result) {
           // Terminé (succès ou échoué)
           clearInterval(_updTimer); _updTimer = null;
-          _upd_setBar(r.applier.applied ? 100 : 0,
-            r.applier.applied ? "✅ Mise à jour terminée !" :
-            r.applier.result === "attente" ? `⏳ En attente de l'applicateur…` :
-            `⚠ Échec : ${r.applier.result}`,
+          _upd_setBar(st.applier.applied ? 100 : 0,
+            st.applier.applied ? "✅ Mise à jour terminée !" :
+            st.applier.result === "attente" ? `⏳ En attente de l'applicateur…` :
+            `⚠ Échec : ${st.applier.result}`,
             elapsedStr, "");
           _upd_showProgress();
-          updRender(r.state);
-          if (r.applier.applied) { setTimeout(() => { location.reload(); }, 2000); }
+          updRender(st);
+          if (st.applier.applied) { setTimeout(() => { location.reload(); }, 2000); }
         }
         // Sinon : l'applicateur n'a pas encore détecté la demande → on continue le polling
       } catch (e) {
