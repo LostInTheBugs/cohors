@@ -1928,7 +1928,7 @@ BIS_CONTENT_MAP = {
     "Catalyseur & Mythic+ & Coffre": "raid",
     "Catalyseur & Raid & Coffre": "raid",
     "Raid & Coffre": "raid",
-    "Szorak (Raid)": "raid",
+    "Sszorak (Raid)": "raid",
     "The Coiled Altar (Raid) & Catalyseur": "raid",
     # M+ uniquement (donjons mythique+)
     "Blinding Vale": "mplus",
@@ -2006,14 +2006,15 @@ BIS_CONTENT_MAP = {
     # Multi-contenus / non classifiés (toujours inclus)
     "Catalyseur": None,
     "Murder Row": None,
-    "Szorak": None,
     "Altar of Fangs": None,
     "Arène de la Cicatrice du Vide": None,
     "BoE Trash Drop": None,
     "Entomed Sentinels": None,
-    "Szorak": None,
     "Tier Set": None,
-    "Tier Set & Szorak": None,
+    # Boss de raid (Szorak = Temple of Sethraliss)
+    "Sszorak": "raid",
+    "Sszorak (Raid)": "raid",
+    "Tier Set & Sszorak": "raid",
 }
 
 
