@@ -1221,8 +1221,8 @@ $("#bi-reset").addEventListener("click", async () => {
 
 (async () => {
   let _updTimer = null;
-  function _upd_stopPoll() { if (_updTimer) { clearInterval(_updTimer); _updTimer = null; } }
-  function _upd_showProgress() { const el = $("#upd-progress"); if (el) { el.style.display = "block"; } }
+  window._upd_stopPoll = function() { if (_updTimer) { clearInterval(_updTimer); _updTimer = null; } };
+  window._upd_showProgress = function() { const el = $("#upd-progress"); if (el) { el.style.display = "block"; } };
   function _upd_hideProgress() { const el = $("#upd-progress"); if (el) { el.style.display = "none"; } _upd_stopPoll(); }
   function _upd_setBar(pct, text, time, eta) {
     const bar = $("#upd-prog-bar"), txt = $("#upd-prog-text"), tm = $("#upd-prog-time"), et = $("#upd-prog-eta");
@@ -1231,7 +1231,7 @@ $("#bi-reset").addEventListener("click", async () => {
     if (tm) tm.textContent = time;
     if (et) et.textContent = eta;
   }
-  function _upd_startPoll(st) {
+  window._upd_startPoll = function(st) {
     let startedAt = st.applier?.running_at ? st.applier.running_at * 1000 : Date.now();
     const version = st.applier?.running || st.request?.version;
     _upd_showProgress();
