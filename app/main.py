@@ -2318,12 +2318,14 @@ def submit_stuff(payload: StuffRequest, request: Request):
     now = time.time()
 
     # Valider les contenus
-    sim_contents = [c for c in payload.content if c in STUFF_CONTENTS]
-    if payload.bis and not sim_contents:
-        sim_contents = [payload.content] if payload.content in STUFF_CONTENTS else ["raid"]
-    for c in payload.content:
-        if c not in STUFF_CONTENTS:
-            raise HTTPException(400, f"Contenu invalide : {c}")
+    if payload.bis:
+        # BIS : validation de bis_content (liste) — réutilisée plus bas
+        sim_contents = []
+    else:
+        # Non-BIS : payload.content est une chaîne unique
+        if payload.content not in STUFF_CONTENTS:
+            raise HTTPException(400, f"Contenu invalide : {payload.content}")
+        sim_contents = [payload.content]
 
     with _db_lock, _db() as conn:
         active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
