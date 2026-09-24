@@ -1238,17 +1238,19 @@ $("#bi-reset").addEventListener("click", async () => {
     _upd_setBar(10, `⏳ Déploiement v${version || "?"} en cours…`, "0:00", "Calcul en cours…");
     // Estimation basée sur le mode (sources ~2min, images ~1min)
     let elapsedSec = 0, totalEst = 120;
+    let elapsedStr = "0:00";
+    let etaStr = "";
     const tick = () => {
       elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
       // Progression linéaire sur estimation totale + 30% de marge
       const progress = Math.min(95, (elapsedSec / (totalEst * 1.3)) * 100);
       const mins = Math.floor(elapsedSec / 60);
       const secs = elapsedSec % 60;
-      const elapsedStr = `${mins}:${secs.toString().padStart(2, "0")}`;
+      elapsedStr = `${mins}:${secs.toString().padStart(2, "0")}`;
       const remaining = Math.max(0, totalEst * 1.3 - elapsedSec);
       const remMins = Math.floor(remaining / 60);
       const remSecs = remaining % 60;
-      const etaStr = remaining > 0 ? `⏱ ~${remMins} min ${Math.round(remSecs)} sec restantes` : "⏱ Presque terminé…";
+      etaStr = remaining > 0 ? `⏱ ~${remMins} min ${Math.round(remSecs)} sec restantes` : "⏱ Presque terminé…";
       _upd_setBar(progress, `⏳ Déploiement v${version || "?"} en cours…`, elapsedStr, etaStr);
     };
     tick();
