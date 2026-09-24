@@ -148,6 +148,12 @@
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
           <input type="checkbox" name="biscontent" value="delves" checked> Gouffres
         </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+          <input type="checkbox" name="biscontent" value="worldboss" checked> World Boss
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+          <input type="checkbox" name="biscontent" value="craft" checked> Craft
+        </label>
       </div>
       <span id="bis-filter-hint" style="font-size:12px;color:var(--mut);">Tous les contenus cochés</span>
     </div>
@@ -241,7 +247,7 @@ $("#prof").addEventListener("change", async () => {
 
 // ---- Mode change: show BIS filter checkboxes when BIS selected
 const CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres" };
-const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres" };
+const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", worldboss: "World Boss", craft: "Craft" };
 $("#mode").addEventListener("change", () => {
   const isBis = $("#mode").value === "bis";
   $("#bis-filter-wrap").classList.toggle("hidden", !isBis);
