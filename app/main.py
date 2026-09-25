@@ -31,7 +31,7 @@ import websockets
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.simclient import run_sim  # soumet au worker de simulation (socket Unix, sans docker.sock ici)
 import httpx
@@ -1968,6 +1968,7 @@ BIS_CONTENT_MAP = {
     "Catalyseur & Ula'tek": "worldboss",
     "King's Rest": "worldboss",
     "King's Rest & Catalyseur": "worldboss",
+    "Kings Rest & Catalyseur": "worldboss",
     "Kings' Rest": "worldboss",
     "Kings' Rest & Catalyseur": "worldboss",
     "Nek'zali l'Entortillâme": "worldboss",
@@ -2012,9 +2013,12 @@ BIS_CONTENT_MAP = {
     "Entomed Sentinels": None,
     "Tier Set": None,
     # Boss de raid (Szorak = Temple of Sethraliss)
-    "Sszorak": "raid",
-    "Sszorak (Raid)": "raid",
-    "Tier Set & Sszorak": "raid",
+    "Sszorak": "worldboss",
+    "Sszorak (Raid)": "worldboss",
+    "Tier Set & Sszorak": "worldboss",
+    "Tier Set & The Coiled Altar": "raid",
+    # M+ avec tier set
+    "Tier Set & Voidscar Arena": "mplus",
 }
 
 
@@ -2425,6 +2429,24 @@ class StuffRequest(BaseModel):
     bis_content: list[str] = []          # contenus filtrés quand mode=bis
     max_rank: bool = False               # compat : équivaut à mode="max" (obsolète)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, v: dict) -> dict:
+        """Normaliser mode/max_rank et valider mode connu."""
+        if not isinstance(v, dict):
+            return v
+        mode = v.get("mode", "cur")
+        if mode in ("cur", "max"):
+            v["mode"] = mode
+            v["max_rank"] = mode == "max"
+        elif mode == "bis":
+            v["mode"] = "bis"
+            v["bis"] = True
+        else:
+            v["mode"] = "cur"
+            v["max_rank"] = False
+        return v
+
 
 @app.post("/api/stuff")
 def submit_stuff(payload: StuffRequest, request: Request):
@@ -2511,13 +2533,12 @@ def submit_stuff(payload: StuffRequest, request: Request):
                     "mode": payload.mode, "max_rank": payload.max_rank}
             label = f'{prof["name"]} · {STUFF_CONTENTS[c]["label_fr"]}' + \
                     (f' · {loadout["name"]}' if loadout else "")
-            with _db_lock, _db() as conn:
-                conn.execute(
-                    """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
-                                         user_email, user_name, kind, plan)
-                       VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
-                    (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
-                     user["email"], user["name"], json.dumps(plan)))
+            conn.execute(
+                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
+                                     user_email, user_name, kind, plan)
+                   VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
+                (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
+                 user["email"], user["name"], json.dumps(plan)))
             sim_ids.append(sim_id)
 
     return {"id": sim_ids[0] if sim_ids else None, "status": "queued", "sim_ids": sim_ids,
@@ -5160,7 +5181,9 @@ def _upd_state() -> dict:
                     "seen_at": seen,
                     "applied": str(app.get("applied") or ""),
                     "applied_at": float(app.get("at") or 0),
-                    "result": str(app.get("result") or "")},
+                    "result": str(app.get("result") or ""),
+                    "running": str(app.get("running") or ""),
+                    "running_at": float(app.get("running_at") or 0)},
         "settings": {"upd_check_h": check_h,
                      "upd_apply_auto": _upd_conf("upd_apply_auto") == "1"},
         "sims_busy": _upd_sims_busy(),
