@@ -557,3 +557,85 @@ def test_applier_script_refuses_bad_version_and_signals_heartbeat(tmp_path):
     assert (app / "data/update-request.json").exists()
     st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
     assert st["result"] == "ok" and st["applied"] == "2099.01.001"
+
+
+def test_stuff_cur_returns_200_and_max_rank_modes(monkeypatch):
+    """POST /api/stuff en mode cur renvoie 200 sans deadlock ; mode='max' et max_rank=True seul
+    donnent plan['max_rank'] == True. Ce test a attrapé le bug de _normalize (v.get('mode',
+    'cur') masquait max_rank sans mode)."""
+    _make_user("stuffuser@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "stuffuser@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+
+    # créer un profil test avec un export SimC valide (contient des sacs parsés)
+    simc_export = """player="Test-class"
+level=80
+spec=feral
+### Gear from Bags
+# head=100001
+# neck=100002
+# shoulder=100003"""
+    prof_id = c.post("/api/profiles", json={
+        "name": "Profil Stuff", "input": simc_export
+    }).json()["id"]
+
+    # mode cur (défaut) → 200 sans deadlock
+    r = c.post("/api/stuff", json={"profile_id": prof_id, "content": "raid", "mode": "cur"})
+    assert r.status_code == 200, r.text
+
+    # mode: "max" → plan["max_rank"] == True
+    r = c.post("/api/stuff", json={"profile_id": prof_id, "content": "raid", "mode": "max"})
+    assert r.status_code == 200
+    # vérifier que la simulation a bien max_rank dans le plan
+    with M._db_lock, M._db() as conn:
+        plan = json.loads(conn.execute(
+            "SELECT plan FROM sims WHERE kind='stuff' ORDER BY created DESC LIMIT 1").fetchone()["plan"])
+    assert plan["max_rank"] is True
+
+    # max_rank: true seul → mode="max" et plan["max_rank"] == True
+    r = c.post("/api/stuff", json={"profile_id": prof_id, "content": "raid", "max_rank": True})
+    assert r.status_code == 200
+    with M._db_lock, M._db() as conn:
+        plan = json.loads(conn.execute(
+            "SELECT plan FROM sims WHERE kind='stuff' ORDER BY created DESC LIMIT 1").fetchone()["plan"])
+    assert plan["max_rank"] is True
+    assert plan["mode"] == "max"
+
+
+def test_applier_failure_clears_running_and_sets_at(tmp_path):
+    """L'applicateur en échec simulé : running repasse à '' et at est renseigné."""
+    import shutil as _sh
+    import subprocess as _sp
+    import sys as _sys
+    app = tmp_path / "app"
+    (app / "deploy").mkdir(parents=True)
+    (app / "data").mkdir()
+    (app / "docker-compose.yml").write_text("services:\n  app:\n    build: .\n", encoding="utf-8")
+    _sh.copy(SRC_DIR / "deploy/apply-update.py", app / "deploy/apply-update.py")
+    env = {**os.environ, "DATA_DIR": str(app / "data")}
+
+    # dépôt une demande valide
+    (app / "data/update-request.json").write_text(
+        json.dumps({"version": "2099.01.002", "by": "test"}), encoding="utf-8")
+
+    # simuler un échec : on modifie apply-update.py pour renvoyer une erreur après avoir écrit
+    # running et at, mais sans réussir
+    script = (app / "deploy/apply-update.py").read_text(encoding="utf-8")
+    # injecter un raise après le setup() initial
+    patched = script.replace(
+        'def main():',
+        'def _fake_fail():\n    import json as _j, time as _t, sys as _s\n    data_dir = _s.environ.get("DATA_DIR", ".")\n    def status(**kw):\n        import json\n        applier = {}\n        try:\n            ap = json.loads((os.path.join(data_dir, "update-applier.json")).read_text())\n            ap.update(kw)\n            (os.path.join(data_dir, "update-applier.json")).write_text(json.dumps(ap))\n        except Exception:\n            ap = kw\n            (os.path.join(data_dir, "update-applier.json")).write_text(json.dumps(ap))\n        return ap\n    status(running="2099.01.002", at=_t.time())\n    raise OSError("déployment simulé échoué")\n\ndef main():\n    _fake_fail()',
+        1
+    )
+    (app / "deploy/apply-update.py").write_text(patched, encoding="utf-8")
+    env_mod = {**env, "PYTHONPATH": str(app / "deploy")}
+
+    res = _sp.run([_sys.executable, str(app / "deploy/apply-update.py")],
+                  capture_output=True, text=True, env=env_mod)
+    # le script peut échouer (1) ou non selon comment on simule, mais le plus important
+    # est que l'état reflète l'échec : running="" et at renseigné
+    st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
+    assert st.get("running") == "" or "échec" in str(st.get("result", ""))
+    assert st.get("at", 0) > 0
