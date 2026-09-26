@@ -2013,7 +2013,6 @@ BIS_CONTENT_MAP = {
     "Tier Set": None,
     # Boss de raid (Szorak = Temple of Sethraliss)
     "Szorak": "raid",
-    "Szorak (Raid)": "raid",
     # Orthographe originale de bis.json (alias)
     "Sszorak": "raid",
     "Sszorak (Raid)": "raid",
@@ -2434,20 +2433,21 @@ class StuffRequest(BaseModel):
         """Normaliser mode/max_rank et valider mode connu."""
         if not isinstance(v, dict):
             return v
-        mode = v.get("mode", "cur")
-        if mode in ("cur", "max"):
-            v["mode"] = mode
-            v["max_rank"] = mode == "max"
-        elif mode == "bis":
-            v["mode"] = "bis"
-            v["bis"] = True
-        elif "mode" not in v and v.get("max_rank"):
-            # Compatibilité anciens clients : max_rank=True sans mode → mode="max"
+        # max_rank=True sans mode → mode="max" (avant de vérifier le mode)
+        if "mode" not in v and v.get("max_rank"):
             v["mode"] = "max"
             v["max_rank"] = True
         else:
-            v["mode"] = "cur"
-            v["max_rank"] = False
+            mode = v.get("mode", "cur")
+            if mode in ("cur", "max"):
+                v["mode"] = mode
+                v["max_rank"] = mode == "max"
+            elif mode == "bis":
+                v["mode"] = "bis"
+                v["bis"] = True
+            else:
+                v["mode"] = "cur"
+                v["max_rank"] = False
         return v
 
 

@@ -639,3 +639,29 @@ def test_applier_failure_clears_running_and_sets_at(tmp_path):
     st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
     assert st.get("running") == "" or "échec" in str(st.get("result", ""))
     assert st.get("at", 0) > 0
+
+
+def test_applier_dry_run_succeeds_and_sets_at(tmp_path):
+    """Applikateur en dry-run : running == '', result == 'ok' et at est renseigné."""
+    import shutil as _sh
+    import subprocess as _sp
+    import sys as _sys
+    app = tmp_path / "app"
+    (app / "deploy").mkdir(parents=True)
+    (app / "data").mkdir()
+    (app / "docker-compose.yml").write_text("services:\n  app:\n    build: .\n", encoding="utf-8")
+    _sh.copy(SRC_DIR / "deploy/apply-update.py", app / "deploy/apply-update.py")
+    env = {**os.environ, "DATA_DIR": str(app / "data")}
+
+    # dépôt une demande valide
+    (app / "data/update-request.json").write_text(
+        json.dumps({"version": "2099.01.003", "by": "test"}), encoding="utf-8")
+
+    res = _sp.run([_sys.executable, str(app / "deploy/apply-update.py"), "--dry-run"],
+                  capture_output=True, text=True, env=env)
+    # en dry-run le script retourne 0 (pas d'erreur)
+    assert res.returncode == 0, res.stderr
+    st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
+    assert st["running"] == "", st
+    assert st["result"] == "ok", st
+    assert st["at"] > 0, st

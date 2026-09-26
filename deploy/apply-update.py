@@ -167,7 +167,7 @@ def main() -> int:
     log(f"mise à jour vers {version} terminée")
     if not DRY:
         REQ.unlink(missing_ok=True)
-    status(applied=version, applied_at=time.time(), result="ok", running="")
+    status(applied=version, at=time.time(), result="ok", running="")
     return 0
 
 
