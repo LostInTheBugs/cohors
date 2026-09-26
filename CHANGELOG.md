@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## 2026.09.152-c18 - 2026-09-26
+## 2026.09.152-c19 - 2026-09-26
 
 ### Fixed
 - **BIS_CONTENT_MAP: Sszorak categorization.** The BiS snapshot for "Kings Rest & Catalyseur" (from Wowhead) actually targets Kings Rest, a raid — it was wrongly mapped to M+. Corrected to "worldboss" for Szorak aliases and "raid" for Kings Rest. Tier Set variants moved to their correct categories (raid for Tier Set & The Coiled Altar, worldboss for Szorak aliases). This restores correct filtering: Szorak items are no longer shown as Mythic+ rewards and vice versa.
