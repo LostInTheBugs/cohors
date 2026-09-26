@@ -9,6 +9,7 @@ v2026.09.003: accounts + admin.
 """
 from __future__ import annotations
 
+import logging
 import asyncio
 import hashlib
 import hmac
@@ -31,13 +32,15 @@ import websockets
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.simclient import run_sim  # soumet au worker de simulation (socket Unix, sans docker.sock ici)
 import httpx
 
 from app import bnet, discord_bot, mailer, wcl
 from app.security import check_profile, hash_password as _hash_password, real_client_ip, verify_password as _verify_password
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -1831,14 +1834,14 @@ STUFF_CONTENTS = {
                "label_fr": "Gouffres", "label_en": "Delves",
                "sim_fr": "combat court (90 s), sans buffs de raid (solo)",
                "sim_en": "short fight (90 s), no raid buffs (solo)"},
-    "worldboss": {"opts": ["fight_style=Patchwerk", "max_time=120", "optimal_raid=0"],
-                  "label_fr": "World Boss", "label_en": "World Boss",
-                  "sim_fr": "combat moyen (2 min), sans buffs de raid (solo)",
-                  "sim_en": "medium fight (2 min), no raid buffs (solo)"},
-    "craft": {"opts": ["fight_style=Patchwerk", "max_time=180"],
-              "label_fr": "Craft", "label_en": "Craft",
-              "sim_fr": "combat moyen (3 min), buffs standard",
-              "sim_en": "medium fight (3 min), standard buffs"},
+}
+# Contenus valables pour bis_content (sur-ensemble incluant les sources non-simulables)
+BIS_CONTENTS = {
+    "raid": {"label_fr": "Raid"},
+    "mplus": {"label_fr": "Mythique+"},
+    "delves": {"label_fr": "Gouffres"},
+    "worldboss": {"label_fr": "World Boss"},
+    "craft": {"label_fr": "Craft"},
 }
 # Spés de soin (le moteur ne les simule pas) — classement par stats pondérées.
 HEAL_SPECS = {"restoration", "holy", "discipline", "mistweaver", "preservation"}
@@ -1928,7 +1931,6 @@ BIS_CONTENT_MAP = {
     "Catalyseur & Mythic+ & Coffre": "raid",
     "Catalyseur & Raid & Coffre": "raid",
     "Raid & Coffre": "raid",
-    "Sszorak (Raid)": "raid",
     "The Coiled Altar (Raid) & Catalyseur": "raid",
     # M+ uniquement (donjons mythique+)
     "Blinding Vale": "mplus",
@@ -2012,8 +2014,7 @@ BIS_CONTENT_MAP = {
     "Entomed Sentinels": None,
     "Tier Set": None,
     # Boss de raid (Szorak = Temple of Sethraliss)
-    "Szorak": "raid",
-    # Orthographe originale de bis.json (alias)
+    # bis.json contains "Sszorak" (double S)
     "Sszorak": "raid",
     "Sszorak (Raid)": "raid",
     "Tier Set & Sszorak": "raid",
@@ -2021,19 +2022,30 @@ BIS_CONTENT_MAP = {
 
 
 def _stuff_bis_filter(blk: dict, contents: list[str]) -> dict:
-    """Retourner le bloc BIS filtré pour ne garder que les pièces lootables dans les contenus cochés."""
+    """Filtrer les slots BIS pour ne garder que ceux dont la source est valide pour les contenus demandés.
+
+    - Source absente de BIS_CONTENT_MAP → inclure le slot (pas de correspondance connue, mais pas à exclure)
+      et émettre un log.warning.
+    - Source mappée à None (multi-contenus) → toujours inclure (catalyseur, tier set, etc.)
+    - Source mappée à une valeur → inclure uniquement si cette valeur est dans contents
+    """
     if not contents:
         return blk
     contents_set = set(contents)
     filtered_slots = []
     for slot in (blk.get("slots") or []):
         src = slot.get("src_fr", "")
-        mapped = BIS_CONTENT_MAP.get(src)
-        if mapped is None:
-            # Non classifié : inclure toujours (catalyseur, tier set, crafting, etc.)
+        if src not in BIS_CONTENT_MAP:
+            # Source absente du mapping → inclure mais noter
+            logger.warning("Src_fr non mappée dans bis_content : %s", src)
             filtered_slots.append(slot)
-        elif mapped in contents_set:
-            filtered_slots.append(slot)
+        else:
+            mapped = BIS_CONTENT_MAP[src]
+            if mapped is None:
+                # Multi-contenus / non classifiés : toujours inclus
+                filtered_slots.append(slot)
+            elif mapped in contents_set:
+                filtered_slots.append(slot)
     return {**blk, "slots": filtered_slots}
 
 
@@ -2424,8 +2436,30 @@ class StuffRequest(BaseModel):
     content: str = "raid"                # raid | mplus | delves
     mode: str = "cur"                    # cur | max | bis
     bis: bool = False                    # si vrai, lance le guide BIS
-    bis_content: list[str] = []          # contenus filtrés quand mode=bis
+    bis_content: list[str] = Field(default_factory=list, max_length=10)  # contenus filtrés quand mode=bis
     max_rank: bool = False               # compat : équivaut à mode="max" (obsolète)
+
+    @field_validator("bis_content")
+    @classmethod
+    def _validate_bis_content(cls, v: list[str]) -> list[str]:
+        """Valider les valeurs de bis_content : inconnu → 400, dédoublonner, max 5."""
+        if not v:
+            return v
+        # Dédoublonner tout en préservant l'ordre
+        seen: set[str] = set()
+        unique: list[str] = []
+        for item in v:
+            if item not in seen:
+                seen.add(item)
+                unique.append(item)
+        # Limite de taille
+        if len(unique) > 5:
+            raise ValueError("bis_content ne doit pas dépasser 5 valeurs.")
+        # Chaque valeur doit être dans BIS_CONTENTS
+        invalid = [c for c in unique if c not in BIS_CONTENTS]
+        if invalid:
+            raise ValueError(f"Valeur(s) inconnue(s) dans bis_content : {invalid}")
+        return unique
 
     @model_validator(mode="before")
     @classmethod
@@ -2489,9 +2523,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
         if _stuff_bis_list(parsed["cls"], parsed["spec"]) is None:
             raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
         bis_contents = payload.bis_content if payload.bis_content else ["raid"]
-        valid_bis = [c for c in bis_contents if c in STUFF_CONTENTS]
-        if not valid_bis:
-            valid_bis = ["raid"]
+        valid_bis = [c for c in bis_contents if c in BIS_CONTENTS]
         sim_id = uuid.uuid4().hex[:20]
         sim_dir = REPORTS_DIR / sim_id
         sim_dir.mkdir(parents=True, exist_ok=True)
@@ -2499,7 +2531,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
         input_file.write_text("")
         label_parts = [f'{prof["name"]} · BIS']
         for c in valid_bis:
-            label_parts.append(STUFF_CONTENTS[c]["label_fr"])
+            label_parts.append(BIS_CONTENTS[c]["label_fr"])
         label = " / ".join(label_parts) + \
                 (f' · {loadout["name"]}' if loadout else "")
         plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
@@ -2535,6 +2567,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
                     "spec": parsed["spec"], "loadout": loadout or {}, "content": c,
                     "mode": payload.mode, "max_rank": payload.max_rank}
             label = f'{prof["name"]} · {STUFF_CONTENTS[c]["label_fr"]}' + \
+                    ("" if payload.mode != "max" else " · rang max") + \
                     (f' · {loadout["name"]}' if loadout else "")
             conn.execute(
                 """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,

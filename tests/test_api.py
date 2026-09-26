@@ -127,7 +127,7 @@ def test_import_recipes_merges_tier_entries_and_dedupes():
             "SELECT item, mats FROM craft_recipes WHERE crafter=?", ("Testeur",)).fetchall()]
     pains = [x for x in rows if x["item"] == "Pain épicé"]
     assert len(pains) == 1, rows[:5]
-    assert "Farine simple" in pains[0]["mats"], pains[0]   # dernière occurrence conservée
+    assert "Farine simple" in pains[0]["mats"], pains[0]
 
 def test_stale_running_sims_are_recovered():
     """Régression (revue 20/09) : une sim restée « running » après un redémarrage doit être
@@ -570,7 +570,7 @@ def test_stuff_cur_returns_200_and_max_rank_modes(monkeypatch):
     assert r.status_code == 200, r.text
 
     # créer un profil test avec un export SimC valide (contient des sacs parsés)
-    simc_export = """player="Test-class"
+    simc_export = """druid="TestFeral"
 level=80
 spec=feral
 ### Gear from Bags
@@ -665,3 +665,135 @@ def test_applier_dry_run_succeeds_and_sets_at(tmp_path):
     assert st["running"] == "", st
     assert st["result"] == "ok", st
     assert st["at"] > 0, st
+
+
+def test_bis_json_all_src_fr_in_bis_content_map():
+    """Chaque src_fr de bis.json doit être présent dans BIS_CONTENT_MAP."""
+    import json as _json
+    from pathlib import Path as _Path
+    bis_file = _Path(__file__).resolve().parents[1] / "app" / "data" / "bis.json"
+    bis_data = _json.loads(bis_file.read_text(encoding="utf-8"))
+    srcs = set()
+    for spec in bis_data.get("specs", {}).values():
+        if spec:
+            for slot in spec.get("slots", []):
+                s = slot.get("src_fr")
+                if s:
+                    srcs.add(s)
+    assert srcs, "aucun src_fr trouvé dans bis.json"
+    # importer BIS_CONTENT_MAP dynamiquement
+    from app.main import BIS_CONTENT_MAP
+    missing = srcs - set(BIS_CONTENT_MAP.keys())
+    assert not missing, f"src_fr non mappés : {missing}"
+
+
+def test_bis_json_no_duplicate_keys():
+    """Aucune clé en double dans BIS_CONTENT_MAP de main.py — vérifié via ast."""
+    import ast as _ast
+    from pathlib import Path as _Path
+    main_file = _Path(__file__).resolve().parents[1] / "app" / "main.py"
+    tree = _ast.parse(main_file.read_text(encoding="utf-8"))
+    bis_map = None
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.Assign):
+            for target in node.targets:
+                if isinstance(target, _ast.Name) and target.id == "BIS_CONTENT_MAP":
+                    bis_map = node
+                    break
+    assert bis_map is not None, "BIS_CONTENT_MAP introuvable dans main.py"
+    value = bis_map.value
+    assert isinstance(value, _ast.Dict), f"BIS_CONTENT_MAP n'est pas un dict : {type(value)}"
+    keys = [k.value if isinstance(k, _ast.Constant) else None for k in value.keys]
+    assert None not in keys, "Clé non constante dans BIS_CONTENT_MAP"
+    assert len(keys) == len(set(keys)), f"Clés dupliquées dans BIS_CONTENT_MAP : {[k for k in keys if keys.count(k) > 1]}"
+
+
+def test_content_craft_non_bis_returns_400():
+    """content: 'craft' en mode non-BIS (cur/max) → 400 car craft n'est pas dans STUFF_CONTENTS."""
+    _make_user("craft400@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "craft400@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+    simc_export = """druid="TestFeral"
+level=80
+spec=feral"""
+    prof_id = c.post("/api/profiles", json={"name": "Profil Craft 400", "input": simc_export}).json()["id"]
+    # content: "craft" n'est pas dans STUFF_CONTENTS (seulement raid, mplus, delves)
+    r = c.post("/api/stuff", json={"profile_id": prof_id, "content": "craft", "mode": "cur"})
+    assert r.status_code == 400, r.text
+
+
+def test_bis_content_craft_only_includes_craft():
+    """bis_content: ['craft'] doit donner plan['content'] == ['craft'] (pas de fallback sur raid)."""
+    _make_user("bisraft@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "bisraft@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+    simc_export = """druid="TestFeral"
+level=80
+spec=feral
+### Gear from Bags
+# head=100001
+# neck=100002
+# shoulder=100003"""
+    prof_id = c.post("/api/profiles", json={"name": "Profil BIS craft", "input": simc_export}).json()["id"]
+    r = c.post("/api/stuff", json={
+        "profile_id": prof_id, "mode": "bis",
+        "bis_content": ["craft"]
+    })
+    assert r.status_code == 200, r.text
+    with M._db_lock, M._db() as conn:
+        plan = json.loads(conn.execute(
+            "SELECT plan FROM sims WHERE kind='stuff' ORDER BY created DESC LIMIT 1").fetchone()["plan"])
+    assert plan["content"] == ["craft"], plan
+
+
+def test_bis_content_too_long_returns_422():
+    """bis_content brute avec plus de 10 éléments → 422 (max_length du Field)."""
+    _make_user("bislong@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "bislong@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+    simc_export = """druid="TestFeral"
+level=80
+spec=feral"""
+    prof_id = c.post("/api/profiles", json={"name": "Profil BIS long", "input": simc_export}).json()["id"]
+    r = c.post("/api/stuff", json={
+        "profile_id": prof_id, "mode": "bis",
+        "bis_content": ["raid"] * 11  # 11 éléments bruts > max_length=10
+    })
+    assert r.status_code == 422, r.text
+
+
+def test_bis_content_unknown_value_returns_422():
+    """bis_content avec une valeur inconnue → 422 (FastAPI validation error)."""
+    _make_user("bisunk@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "bisunk@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+    simc_export = """druid="TestFeral"
+level=80
+spec=feral"""
+    prof_id = c.post("/api/profiles", json={"name": "Profil BIS unk", "input": simc_export}).json()["id"]
+    r = c.post("/api/stuff", json={
+        "profile_id": prof_id, "mode": "bis",
+        "bis_content": ["raid", "fakecontent"]
+    })
+    assert r.status_code == 422, r.text
+
+
+def test_stuff_parse_export_real_format():
+    """Non-régression : un vrai export SimC (classe="Nom") doit être parsé correctement."""
+    from app.main import _stuff_parse_export
+
+    r = _stuff_parse_export('shaman="X"\nspec=restoration\n')
+    assert r["cls"] == "shaman", f"cls={r['cls']!r}"
+    assert r["name"] == "X", f"name={r['name']!r}"
+
+    r2 = _stuff_parse_export('druid="Chamoisdort"\nspec=restoration\n')
+    assert r2["cls"] == "druid"
+    assert r2["name"] == "Chamoisdort"
