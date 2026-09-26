@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c18 - 2026-09-26
+
+### Fixed
+- **BIS_CONTENT_MAP: Sszorak categorization.** The BiS snapshot for "Kings Rest & Catalyseur" (from Wowhead) actually targets Kings Rest, a raid — it was wrongly mapped to M+. Corrected to "worldboss" for Szorak aliases and "raid" for Kings Rest. Tier Set variants moved to their correct categories (raid for Tier Set & The Coiled Altar, worldboss for Szorak aliases). This restores correct filtering: Szorak items are no longer shown as Mythic+ rewards and vice versa.
+- **POST /api/stuff compatibility: max_rank without mode.** When the client sends max_rank: true without specifying a mode, the endpoint now sets mode = "max" so the plan's max_rank field is True (was falling through to mode = "cur" with max_rank: false).
+- **POST /api/stuff mode=cur deadlock.** The endpoint now handles the default mode without deadlocking on the request lock — it reads the profile, applies mode/max_rank logic, and returns within milliseconds.
+- **Update applier: running_at and at timestamps.** deploy/apply-update.py now records running_at when an update starts, at when it finishes (success or failure), and resets running to "" on failure. The app's /api/admin/updates endpoint exposes these as applier.running_at and applier.at.
+- **Settings page polling: recursive backoff with setTimeout.** The progress bar polling now uses a recursive setTimeout chain instead of setInterval, with exponential backoff (5s to 30s). The reference time comes from request.requested_at (server timestamp) instead of Date.now().
+- **test_admin_updates adapted to ok/state format.** The endpoint returns ok + state; the test now accesses the state field and verifies applier.running and applier.running_at are present.
+
+### Notes
+- app/VERSION aligned with VERSION (both now 2026.09.152-c18).
+
 ## 2026.09.151-c1 - 2026-09-20
 
 ### Fixed
