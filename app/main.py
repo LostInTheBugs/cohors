@@ -2013,13 +2013,12 @@ BIS_CONTENT_MAP = {
     "BoE Trash Drop": None,
     "Entomed Sentinels": None,
     "Tier Set": None,
-        # Boss de raid (Szorak = Temple of Sethraliss)
+    # Boss de raid (Szorak = Temple of Sethraliss)
     # bis.json contains "Sszorak" (double S)
     "Sszorak": "raid",
     "Sszorak (Raid)": "raid",
     "Tier Set & Sszorak": "raid",
 }
-
 
 
 def _stuff_bis_filter(blk: dict, contents: list[str]) -> dict:
@@ -2138,13 +2137,9 @@ def _stuff_parse_export(txt: str) -> dict:
     in_bags = False
     for ln in txt.replace("\r\n", "\n").splitlines():
         if not out["cls"]:
-            m = re.match(r'^class="([^"]+)"\s*$', ln)
+            m = re.match(r'^([a-z_]+)="([^"]*)"$', ln)
             if m:
-                out["cls"] = m.group(1)
-                continue
-            m = re.match(r'^player="([^"]+)"\s*$', ln)
-            if m:
-                out["name"] = m.group(1)
+                out["cls"], out["name"] = m.group(1), m.group(2)
                 continue
         if ln.strip().startswith("### Gear from Bags"):
             in_bags = True
@@ -2529,8 +2524,6 @@ def submit_stuff(payload: StuffRequest, request: Request):
             raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
         bis_contents = payload.bis_content if payload.bis_content else ["raid"]
         valid_bis = [c for c in bis_contents if c in BIS_CONTENTS]
-        if not valid_bis:
-            valid_bis = bis_contents if bis_contents else ["raid"]
         sim_id = uuid.uuid4().hex[:20]
         sim_dir = REPORTS_DIR / sim_id
         sim_dir.mkdir(parents=True, exist_ok=True)

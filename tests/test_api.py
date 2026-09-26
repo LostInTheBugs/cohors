@@ -127,7 +127,7 @@ def test_import_recipes_merges_tier_entries_and_dedupes():
             "SELECT item, mats FROM craft_recipes WHERE crafter=?", ("Testeur",)).fetchall()]
     pains = [x for x in rows if x["item"] == "Pain épicé"]
     assert len(pains) == 1, rows[:5]
-    assert "Farine simple" in pains[0]["mats"], pains[0]   # dernière occurrence conservée
+    assert "Farine simple" in pains[0]["mats"], pains[0]
 
 def test_stale_running_sims_are_recovered():
     """Régression (revue 20/09) : une sim restée « running » après un redémarrage doit être
@@ -570,7 +570,7 @@ def test_stuff_cur_returns_200_and_max_rank_modes(monkeypatch):
     assert r.status_code == 200, r.text
 
     # créer un profil test avec un export SimC valide (contient des sacs parsés)
-    simc_export = """player="Test-class"
+    simc_export = """druid="TestFeral"
 level=80
 spec=feral
 ### Gear from Bags
@@ -715,7 +715,7 @@ def test_content_craft_non_bis_returns_400():
     r = c.post("/api/login", json={"email": "craft400@test.local", "password": "test-pw-123"},
                headers={"X-Forwarded-For": "10.99.50.1"})
     assert r.status_code == 200, r.text
-    simc_export = """player="Test-class"
+    simc_export = """druid="TestFeral"
 level=80
 spec=feral"""
     prof_id = c.post("/api/profiles", json={"name": "Profil Craft 400", "input": simc_export}).json()["id"]
@@ -731,7 +731,7 @@ def test_bis_content_craft_only_includes_craft():
     r = c.post("/api/login", json={"email": "bisraft@test.local", "password": "test-pw-123"},
                headers={"X-Forwarded-For": "10.99.50.1"})
     assert r.status_code == 200, r.text
-    simc_export = """class="druid"
+    simc_export = """druid="TestFeral"
 level=80
 spec=feral
 ### Gear from Bags
@@ -757,7 +757,7 @@ def test_bis_content_too_long_returns_422():
     r = c.post("/api/login", json={"email": "bislong@test.local", "password": "test-pw-123"},
                headers={"X-Forwarded-For": "10.99.50.1"})
     assert r.status_code == 200, r.text
-    simc_export = """player="Test-class"
+    simc_export = """druid="TestFeral"
 level=80
 spec=feral"""
     prof_id = c.post("/api/profiles", json={"name": "Profil BIS long", "input": simc_export}).json()["id"]
@@ -775,7 +775,7 @@ def test_bis_content_unknown_value_returns_422():
     r = c.post("/api/login", json={"email": "bisunk@test.local", "password": "test-pw-123"},
                headers={"X-Forwarded-For": "10.99.50.1"})
     assert r.status_code == 200, r.text
-    simc_export = """player="Test-class"
+    simc_export = """druid="TestFeral"
 level=80
 spec=feral"""
     prof_id = c.post("/api/profiles", json={"name": "Profil BIS unk", "input": simc_export}).json()["id"]
@@ -784,3 +784,16 @@ spec=feral"""
         "bis_content": ["raid", "fakecontent"]
     })
     assert r.status_code == 422, r.text
+
+
+def test_stuff_parse_export_real_format():
+    """Non-régression : un vrai export SimC (classe="Nom") doit être parsé correctement."""
+    from app.main import _stuff_parse_export
+
+    r = _stuff_parse_export('shaman="X"\nspec=restoration\n')
+    assert r["cls"] == "shaman", f"cls={r['cls']!r}"
+    assert r["name"] == "X", f"name={r['name']!r}"
+
+    r2 = _stuff_parse_export('druid="Chamoisdort"\nspec=restoration\n')
+    assert r2["cls"] == "druid"
+    assert r2["name"] == "Chamoisdort"
