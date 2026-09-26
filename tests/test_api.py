@@ -680,6 +680,7 @@ def test_bis_json_all_src_fr_in_bis_content_map():
                 s = slot.get("src_fr")
                 if s:
                     srcs.add(s)
+    assert srcs, "aucun src_fr trouvé dans bis.json"
     # importer BIS_CONTENT_MAP dynamiquement
     from app.main import BIS_CONTENT_MAP
     missing = srcs - set(BIS_CONTENT_MAP.keys())
@@ -687,21 +688,24 @@ def test_bis_json_all_src_fr_in_bis_content_map():
 
 
 def test_bis_json_no_duplicate_keys():
-    """Aucune clé en double dans bis.json — vérifié via ast.literal_eval."""
+    """Aucune clé en double dans BIS_CONTENT_MAP de main.py — vérifié via ast."""
     import ast as _ast
     from pathlib import Path as _Path
-    bis_file = _Path(__file__).resolve().parents[1] / "app" / "data" / "bis.json"
-    raw = bis_file.read_text(encoding="utf-8")
-    data = _ast.literal_eval(raw)
-    # ast.literal_eval sur un dict valide ne permet pas les doublons ;
-    # si le fichier était invalide, literal_eval aurait levé.
-    specs = data.get("specs", {})
-    for cls_spec, val in specs.items():
-        if val and "slots" in val:
-            for slot in val["slots"]:
-                # Chaque slot doit avoir un src_fr valide (chaîne non vide)
-                assert isinstance(slot.get("src_fr"), str) and slot["src_fr"], \
-                    f"src_fr invalide pour {slot.get('name', '?')}"
+    main_file = _Path(__file__).resolve().parents[1] / "app" / "main.py"
+    tree = _ast.parse(main_file.read_text(encoding="utf-8"))
+    bis_map = None
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.Assign):
+            for target in node.targets:
+                if isinstance(target, _ast.Name) and target.id == "BIS_CONTENT_MAP":
+                    bis_map = node
+                    break
+    assert bis_map is not None, "BIS_CONTENT_MAP introuvable dans main.py"
+    value = bis_map.value
+    assert isinstance(value, _ast.Dict), f"BIS_CONTENT_MAP n'est pas un dict : {type(value)}"
+    keys = [k.value if isinstance(k, _ast.Constant) else None for k in value.keys]
+    assert None not in keys, "Clé non constante dans BIS_CONTENT_MAP"
+    assert len(keys) == len(set(keys)), f"Clés dupliquées dans BIS_CONTENT_MAP : {[k for k in keys if keys.count(k) > 1]}"
 
 
 def test_content_craft_non_bis_returns_400():
@@ -720,20 +724,46 @@ spec=feral"""
     assert r.status_code == 400, r.text
 
 
-def test_bis_content_too_long_returns_422():
-    """bis_content avec plus de 5 valeurs uniques → 422."""
-    _make_user("bis6@test.local")
+def test_bis_content_craft_only_includes_craft():
+    """bis_content: ['craft'] doit donner plan['content'] == ['craft'] (pas de fallback sur raid)."""
+    _make_user("bisraft@test.local")
     c = TestClient(M.app)
-    r = c.post("/api/login", json={"email": "bis6@test.local", "password": "test-pw-123"},
+    r = c.post("/api/login", json={"email": "bisraft@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+    simc_export = """class="druid"
+level=80
+spec=feral
+### Gear from Bags
+# head=100001
+# neck=100002
+# shoulder=100003"""
+    prof_id = c.post("/api/profiles", json={"name": "Profil BIS craft", "input": simc_export}).json()["id"]
+    r = c.post("/api/stuff", json={
+        "profile_id": prof_id, "mode": "bis",
+        "bis_content": ["craft"]
+    })
+    assert r.status_code == 200, r.text
+    with M._db_lock, M._db() as conn:
+        plan = json.loads(conn.execute(
+            "SELECT plan FROM sims WHERE kind='stuff' ORDER BY created DESC LIMIT 1").fetchone()["plan"])
+    assert plan["content"] == ["craft"], plan
+
+
+def test_bis_content_too_long_returns_422():
+    """bis_content brute avec plus de 10 éléments → 422 (max_length du Field)."""
+    _make_user("bislong@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "bislong@test.local", "password": "test-pw-123"},
                headers={"X-Forwarded-For": "10.99.50.1"})
     assert r.status_code == 200, r.text
     simc_export = """player="Test-class"
 level=80
 spec=feral"""
-    prof_id = c.post("/api/profiles", json={"name": "Profil BIS 6", "input": simc_export}).json()["id"]
+    prof_id = c.post("/api/profiles", json={"name": "Profil BIS long", "input": simc_export}).json()["id"]
     r = c.post("/api/stuff", json={
         "profile_id": prof_id, "mode": "bis",
-        "bis_content": ["raid", "mplus", "delves", "worldboss", "craft", "raid", "pvp"]  # 7 uniques > 5
+        "bis_content": ["raid"] * 11  # 11 éléments bruts > max_length=10
     })
     assert r.status_code == 422, r.text
 

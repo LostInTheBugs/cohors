@@ -1836,7 +1836,13 @@ STUFF_CONTENTS = {
                "sim_en": "short fight (90 s), no raid buffs (solo)"},
 }
 # Contenus valables pour bis_content (sur-ensemble incluant les sources non-simulables)
-BIS_CONTENTS = {"raid", "mplus", "delves", "worldboss", "craft"}
+BIS_CONTENTS = {
+    "raid": {"label_fr": "Raid"},
+    "mplus": {"label_fr": "Mythique+"},
+    "delves": {"label_fr": "Gouffres"},
+    "worldboss": {"label_fr": "World Boss"},
+    "craft": {"label_fr": "Craft"},
+}
 # Spés de soin (le moteur ne les simule pas) — classement par stats pondérées.
 HEAL_SPECS = {"restoration", "holy", "discipline", "mistweaver", "preservation"}
 # Priorité des stats secondaires par spé et par contenu : niveau d'objet d'abord,
@@ -1925,7 +1931,6 @@ BIS_CONTENT_MAP = {
     "Catalyseur & Mythic+ & Coffre": "raid",
     "Catalyseur & Raid & Coffre": "raid",
     "Raid & Coffre": "raid",
-    "Sszorak (Raid)": "raid",
     "The Coiled Altar (Raid) & Catalyseur": "raid",
     # M+ uniquement (donjons mythique+)
     "Blinding Vale": "mplus",
@@ -2008,13 +2013,13 @@ BIS_CONTENT_MAP = {
     "BoE Trash Drop": None,
     "Entomed Sentinels": None,
     "Tier Set": None,
-    # Boss de raid (Szorak = Temple of Sethraliss)
-    "Szorak": "raid",
-    # Orthographe originale de bis.json (alias)
+        # Boss de raid (Szorak = Temple of Sethraliss)
+    # bis.json contains "Sszorak" (double S)
     "Sszorak": "raid",
     "Sszorak (Raid)": "raid",
     "Tier Set & Sszorak": "raid",
 }
+
 
 
 def _stuff_bis_filter(blk: dict, contents: list[str]) -> dict:
@@ -2133,9 +2138,13 @@ def _stuff_parse_export(txt: str) -> dict:
     in_bags = False
     for ln in txt.replace("\r\n", "\n").splitlines():
         if not out["cls"]:
-            m = re.match(r'^([a-z_]+)="([^"]*)"\s*$', ln)
+            m = re.match(r'^class="([^"]+)"\s*$', ln)
             if m:
-                out["cls"], out["name"] = m.group(1), m.group(2)
+                out["cls"] = m.group(1)
+                continue
+            m = re.match(r'^player="([^"]+)"\s*$', ln)
+            if m:
+                out["name"] = m.group(1)
                 continue
         if ln.strip().startswith("### Gear from Bags"):
             in_bags = True
@@ -2432,7 +2441,7 @@ class StuffRequest(BaseModel):
     content: str = "raid"                # raid | mplus | delves
     mode: str = "cur"                    # cur | max | bis
     bis: bool = False                    # si vrai, lance le guide BIS
-    bis_content: list[str] = []          # contenus filtrés quand mode=bis
+    bis_content: list[str] = Field(default_factory=list, max_length=10)  # contenus filtrés quand mode=bis
     max_rank: bool = False               # compat : équivaut à mode="max" (obsolète)
 
     @field_validator("bis_content")
@@ -2519,9 +2528,9 @@ def submit_stuff(payload: StuffRequest, request: Request):
         if _stuff_bis_list(parsed["cls"], parsed["spec"]) is None:
             raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
         bis_contents = payload.bis_content if payload.bis_content else ["raid"]
-        valid_bis = [c for c in bis_contents if c in STUFF_CONTENTS]
+        valid_bis = [c for c in bis_contents if c in BIS_CONTENTS]
         if not valid_bis:
-            valid_bis = ["raid"]
+            valid_bis = bis_contents if bis_contents else ["raid"]
         sim_id = uuid.uuid4().hex[:20]
         sim_dir = REPORTS_DIR / sim_id
         sim_dir.mkdir(parents=True, exist_ok=True)
@@ -2529,7 +2538,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
         input_file.write_text("")
         label_parts = [f'{prof["name"]} · BIS']
         for c in valid_bis:
-            label_parts.append(STUFF_CONTENTS[c]["label_fr"])
+            label_parts.append(BIS_CONTENTS[c]["label_fr"])
         label = " / ".join(label_parts) + \
                 (f' · {loadout["name"]}' if loadout else "")
         plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
