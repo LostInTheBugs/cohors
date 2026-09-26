@@ -2137,7 +2137,7 @@ def _stuff_parse_export(txt: str) -> dict:
     in_bags = False
     for ln in txt.replace("\r\n", "\n").splitlines():
         if not out["cls"]:
-            m = re.match(r'^([a-z_]+)="([^"]*)"$', ln)
+            m = re.match(r'^([a-z_]+)="([^"]*)"\s*$', ln)
             if m:
                 out["cls"], out["name"] = m.group(1), m.group(2)
                 continue
