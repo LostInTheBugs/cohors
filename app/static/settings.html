@@ -1221,7 +1221,7 @@ $("#bi-reset").addEventListener("click", async () => {
 
 (async () => {
   let _updTimer = null;
-  window._upd_stopPoll = function() { if (_updTimer) { clearInterval(_updTimer); _updTimer = null; } };
+  window._upd_stopPoll = function() { if (_updTimer) { clearTimeout(_updTimer); _updTimer = null; } };
   window._upd_showProgress = function() { const el = $("#upd-progress"); if (el) { el.style.display = "block"; } };
   function _upd_hideProgress() { const el = $("#upd-progress"); if (el) { el.style.display = "none"; } _upd_stopPoll(); }
   function _upd_setBar(pct, text, time, eta) {
@@ -1233,7 +1233,8 @@ $("#bi-reset").addEventListener("click", async () => {
   }
   window._upd_startPoll = function(st) {
     // Arrêter tout timer précédent avant d'en lancer un nouveau
-    if (_updTimer) { clearInterval(_updTimer); _updTimer = null; }
+    if (_updTimer) { clearTimeout(_updTimer); _updTimer = null; }
+    let _updRetryCount = 0;
     let startedAt = st.applier?.running_at ? st.applier.running_at * 1000 : Date.now();
     const version = st.applier?.running || st.request?.version;
     _upd_showProgress();
@@ -1242,9 +1243,8 @@ $("#bi-reset").addEventListener("click", async () => {
     let elapsedSec = 0, totalEst = 120;
     let elapsedStr = "0:00";
     let etaStr = "";
-    // Date de la demande — la mise à jour n'est terminée que si applied == version
-    // ou si result indique un échec écrit après la demande.
-    const reqAt = Date.now();
+    // Référence temporelle = horodatage de la demande (serveur)
+    const reqAt = st.request?.requested_at ? st.request.requested_at * 1000 : Date.now();
     const tick = () => {
       elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
       // Progression linéaire sur estimation totale + 30% de marge
@@ -1259,48 +1259,55 @@ $("#bi-reset").addEventListener("click", async () => {
       _upd_setBar(progress, `⏳ Déploiement v${version || "?"} en cours…`, elapsedStr, etaStr);
     };
     tick();
-    _updTimer = setInterval(async () => {
-      try {
-        const r = await api("GET", "/api/admin/updates");
-        const st = r.state || r;
-        // En cours de déploiement
-        if (st.applier?.running) {
-          startedAt = st.applier.running_at ? st.applier.running_at * 1000 : startedAt;
-          tick();
-          return;
+    // Polling récursif avec backoff exponentiel (setTimeout, pas setInterval)
+    function pollOnce() {
+      const delay = _updRetryCount ? Math.min(5000 * Math.pow(1.5, _updRetryCount - 1), 30000) : 5000;
+      _updTimer = setTimeout(async () => {
+        try {
+          const r = await api("GET", "/api/admin/updates");
+          const st = r.state || r;
+          // En cours de déploiement
+          if (st.applier?.running) {
+            startedAt = st.applier.running_at ? st.applier.running_at * 1000 : startedAt;
+            tick();
+            _updRetryCount = 0;  // reset backoff tant que ça tourne
+            pollOnce();
+            return;
+          }
+          // Terminé seulement si :
+          //  - applied correspond à la version demandée, OU
+          //  - result indique un échec ("échec…", "version refusée…") écrit après la demande
+          const result = st.applier?.result || "";
+          const applied = st.applier?.applied || "";
+          const appliedAt = st.applier?.applied_at || 0;
+          const failed = result.startsWith("échec") || result.startsWith("version refusée");
+          const resultAt = st.applier?.running_at || 0;
+          const isFailedAfterReq = failed && (resultAt * 1000 >= reqAt || appliedAt * 1000 >= reqAt);
+          const isVersionMatch = applied && version && applied === version;
+          if (isVersionMatch || isFailedAfterReq) {
+            if (_updTimer) { clearTimeout(_updTimer); _updTimer = null; }
+            _upd_setBar(isVersionMatch ? 100 : 0,
+              isVersionMatch ? "✅ Mise à jour terminée !" :
+              isFailedAfterReq ? `⚠ Échec : ${result}` :
+              `⚠ Échec : ${result}`,
+              elapsedStr, "");
+            _upd_showProgress();
+            updRender(st);
+            if (isVersionMatch) { setTimeout(() => { location.reload(); }, 2000); }
+            return;
+          }
+          // Sinon : l'applicateur n'a pas encore détecté la demande → on continue le polling
+          _updRetryCount = 0;  // reset backoff si OK mais pas prêt
+          pollOnce();
+        } catch (e) {
+          // Erreur réseau pendant le redémarrage : on relance le polling avec backoff
+          _upd_setBar(0, "⏳ Serveur en redémarrage, attente…", elapsedStr, "");
+          _updRetryCount += 1;
+          pollOnce();  // récursif : délai calculé au prochain appel
         }
-        // Terminé seulement si :
-        //  - applied correspond à la version demandée, OU
-        //  - result indique un échec ("échec…", "version refusée…") écrit après la demande
-        const result = st.applier?.result || "";
-        const applied = st.applier?.applied || "";
-        const appliedAt = st.applier?.applied_at || 0;
-        const failed = result.startsWith("échec") || result.startsWith("version refusée");
-        const resultAt = st.applier?.running_at || 0;
-        const isFailedAfterReq = failed && (resultAt * 1000 >= reqAt || appliedAt * 1000 >= reqAt);
-        const isVersionMatch = applied && version && applied === version;
-        if (isVersionMatch || isFailedAfterReq) {
-          clearInterval(_updTimer); _updTimer = null;
-          _upd_setBar(isVersionMatch ? 100 : 0,
-            isVersionMatch ? "✅ Mise à jour terminée !" :
-            isFailedAfterReq ? `⚠ Échec : ${result}` :
-            `⚠ Échec : ${result}`,
-            elapsedStr, "");
-          _upd_showProgress();
-          updRender(st);
-          if (isVersionMatch) { setTimeout(() => { location.reload(); }, 2000); }
-          return;
-        }
-        // Sinon : l'applicateur n'a pas encore détecté la demande → on continue le polling
-      } catch (e) {
-        // Erreur réseau pendant le redémarrage : on relance le polling au lieu d'arrêter
-        // Augmente progressivement l'intervalle (backoff 5-30s)
-        _upd_setBar(0, "⏳ Serveur en redémarrage, attente…", elapsedStr, "");
-        _updRetryCount = (_updRetryCount || 0) + 1;
-        const delay = Math.min(5000 * Math.pow(1.5, _updRetryCount - 1), 30000);
-        return;
-      }
-    }, _updRetryCount ? Math.min(5000 * Math.pow(1.5, _updRetryCount - 1), 30000) : 5000);
+      }, delay);
+    }
+    pollOnce();
   }
   try {
     me = await jget("/api/me");
