@@ -1937,7 +1937,6 @@ BIS_CONTENT_MAP = {
     "Catalyseur & Voidscar Arena": "mplus",
     "Entombed Sentinels": "mplus",
     "Galvazzt": "mplus",
-    "Kings Rest & Catalyseur": "mplus",
     "Mor'zahi": "mplus",
     "Murder Row & Catalyseur": "mplus",
     "Ruby Life Pools": "mplus",
@@ -1949,7 +1948,7 @@ BIS_CONTENT_MAP = {
     "The Coiled Altar & Catalyseur": "mplus",
     "The Coiled Alter": "mplus",
     "The Coiled Alter & Catalyseur": "mplus",
-    "Tier Set & The Coiled Altar": "mplus",
+    "Tier Set & The Coiled Altar": "raid",
     "Tier Set & Voidscar Arena": "mplus",
     "Token & Entombed Sentinels": "mplus",
     "Voidscar Arena": "mplus",
@@ -2013,12 +2012,11 @@ BIS_CONTENT_MAP = {
     "Entomed Sentinels": None,
     "Tier Set": None,
     # Boss de raid (Szorak = Temple of Sethraliss)
-    "Sszorak": "worldboss",
-    "Sszorak (Raid)": "worldboss",
-    "Tier Set & Sszorak": "worldboss",
-    "Tier Set & The Coiled Altar": "raid",
-    # M+ avec tier set
-    "Tier Set & Voidscar Arena": "mplus",
+    "Szorak": "raid",
+    # Orthographe originale de bis.json (alias)
+    "Sszorak": "raid",
+    "Sszorak (Raid)": "raid",
+    "Tier Set & Sszorak": "raid",
 }
 
 
@@ -2435,16 +2433,21 @@ class StuffRequest(BaseModel):
         """Normaliser mode/max_rank et valider mode connu."""
         if not isinstance(v, dict):
             return v
-        mode = v.get("mode", "cur")
-        if mode in ("cur", "max"):
-            v["mode"] = mode
-            v["max_rank"] = mode == "max"
-        elif mode == "bis":
-            v["mode"] = "bis"
-            v["bis"] = True
+        # max_rank=True sans mode → mode="max" (avant de vérifier le mode)
+        if "mode" not in v and v.get("max_rank"):
+            v["mode"] = "max"
+            v["max_rank"] = True
         else:
-            v["mode"] = "cur"
-            v["max_rank"] = False
+            mode = v.get("mode", "cur")
+            if mode in ("cur", "max"):
+                v["mode"] = mode
+                v["max_rank"] = mode == "max"
+            elif mode == "bis":
+                v["mode"] = "bis"
+                v["bis"] = True
+            else:
+                v["mode"] = "cur"
+                v["max_rank"] = False
         return v
 
 

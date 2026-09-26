@@ -154,7 +154,7 @@ def main() -> int:
         return 1
     mode = "sources" if source_mode() else "images"
     log(f"demande de {by} vers {version} (mode {mode}{', dry-run' if DRY else ''})")
-    status(result="en cours", running=version)
+    status(result="en cours", running=version, running_at=time.time())
     try:
         if mode == "sources":
             apply_sources(version)
@@ -162,12 +162,12 @@ def main() -> int:
             apply_images()
     except Exception as exc:  # noqa: BLE001 — on note l'échec, la demande est conservée
         log(f"ÉCHEC : {exc}")
-        status(result=f"échec : {exc}"[:300])
+        status(result=f"échec : {exc}"[:300], running="", running_at=0, at=time.time())
         return 1
     log(f"mise à jour vers {version} terminée")
     if not DRY:
         REQ.unlink(missing_ok=True)
-    status(applied=version, at=time.time(), result="ok")
+    status(applied=version, at=time.time(), result="ok", running="")
     return 0
 
 
