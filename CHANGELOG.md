@@ -15,7 +15,16 @@ All notable changes to this project are documented in this file.
 ### Notes
 - app/VERSION aligned with VERSION (both now 2026.09.152-c18).
 
-## 2026.09.151-c1 - 2026-09-20
+## 2026.09.152-c21 - 2026-09-27
+
+### Fixed
+- **Settings page: applier heartbeat warning.** Replaced `check.last_at` (GitHub release check, every 24 h) with `applier.seen_at` (applier heartbeat, every 5 min). The warning now only shows when `applier.installed` is `true`.
+- **BIS content labels: `worldboss` and `craft` entries.** The render function now maps `worldboss` → "World Boss" and `craft` → "Craft" in addition to `mplus`, `raid`, and `delves`, so those content types display properly.
+- **`/stuff` route: cache headers restored.** Removed `Cache-Control: no-store` from the `/stuff` page handler so browsers can cache the static file.
+- **`apply-update.py`: stop writing `applied`/`result="ok"` on success.** The applier now only records `at` (timestamp) and clears `running` on success; no false `applied` or `result` fields are written.
+- **`cohors-update.service` & README: WorkingDirectory clarified.** The service file and README explicitly note that `WorkingDirectory` must be the repository root (where `deploy/` sits), not `app/`.
+
+## 2026.09.152-c20 - 2026-09-20
 
 ### Fixed
 - **Admin settings: the *Updates* button is now actually visible.** It was wired in JavaScript but

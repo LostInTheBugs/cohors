@@ -1619,9 +1619,6 @@ def stuff_page(request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
     response = FileResponse(STATIC_DIR / "stuff.html")
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
     return response
 
 

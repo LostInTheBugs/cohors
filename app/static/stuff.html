@@ -79,7 +79,7 @@
   .src { font-size: 12.5px; }
   .src a { color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.151-c1">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c21">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -178,10 +178,10 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.151-c1"></script>
-<script src="/static/branding.js?v=2026.09.151-c1"></script>
-<script src="/static/i18n.js?v=2026.09.151-c1"></script>
-<script src="/static/esc.js?v=2026.09.151-c1"></script>
+<script src="/static/nav.js?v=2026.09.152-c21"></script>
+<script src="/static/branding.js?v=2026.09.152-c21"></script>
+<script src="/static/i18n.js?v=2026.09.152-c21"></script>
+<script src="/static/esc.js?v=2026.09.152-c21"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
@@ -246,7 +246,6 @@ $("#prof").addEventListener("change", async () => {
 });
 
 // ---- Mode change: show BIS filter checkboxes when BIS selected
-const CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres" };
 const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", worldboss: "World Boss", craft: "Craft" };
 $("#mode").addEventListener("change", () => {
   const isBis = $("#mode").value === "bis";
@@ -291,172 +290,6 @@ $("#go").addEventListener("click", async () => {
   } catch (e) { setMsg(String(e.message || e), "msg-err"); $("#go").disabled = false; }
 });
 
-async function pollMultiple(simIds, isBis, contentTypes) {
-  let resolved = 0;
-  const results = {};
-  const check = () => {
-    resolved++;
-    const done = Object.keys(results).length === simIds.length;
-    if (!done) return;
-    $(`#rescard`).classList.remove("hidden");
-    renderMultiple(results, isBis, contentTypes);
-    $("#go").disabled = false;
-  };
-  for (const id of simIds) {
-    const pollOne = () => jfetch("GET", "/api/sims/" + encodeURIComponent(id)).then(d => {
-      if (d.status === "queued" || d.status === "running") {
-        setTimeout(pollOne, 2500);
-      } else if (d.status === "done") {
-        results[id] = d;
-        check();
-      } else if (d.status === "failed") {
-        results[id] = { error: d.error || "sim échouée", stuff: null, content: null };
-        check();
-      }
-    }).catch(e => { results[id] = { error: e.message, stuff: null, content: null }; check(); });
-    pollOne();
-  }
-}
-
-function renderMultiple(results, isBis, contentTypes) {
-  const card = $("#rescard"), meta = $("#resmeta"), sum = $("#ressum"), src = $("#ressrc");
-  card.classList.remove("hidden");
-  sum.innerHTML = ""; src.innerHTML = ""; meta.innerHTML = "";
-
-  // Préparer les sections pour chaque contenu
-  const sections = [];
-  for (const [simId, d] of Object.entries(results)) {
-    if (!d.stuff) continue;
-    const st = d.stuff;
-    const ct = st.content;
-    const label = ct ? (CONTENT_LABELS[ct] || ct) : "BIS";
-    sections.push({ label, stuff: st, content: ct, note: d.note });
-  }
-  if (sections.length === 0) {
-    const failures = Object.values(results).filter(r => r.error);
-    meta.textContent = failures.length ? "Aucun résultat — " + failures.map(f => esc(f.error || "sim échouée")).join(", ") : "Pas de résultat.";
-    return;
-  }
-
-  // Trier : BIS en premier, puis Raid, MM+, Gouffres
-  const order = { bis: 0, raid: 1, mplus: 2, delves: 3 };
-  sections.sort((a, b) => (order[a.content] ?? 9) - (order[b.content] ?? 9));
-
-  // Construire le meta global par contenu
-  const metaParts = [];
-  for (const sec of sections) {
-    const st = sec.stuff;
-    const contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[st.content] || st.content;
-    const lines = [
-      `<span style="display:block;margin:4px 0 0"><b>${esc(sec.label)} :</b></span>`
-    ];
-    if (st.mode === "bis") {
-      lines.push(`<span>Méthode : guide Wowhead (mis à jour ${esc(st.updated_fr || "?")}) · Build : ${esc(st.loadout || "actuel")}</span>`);
-    } else if (st.mode === "heal") {
-      lines.push(`<span>Méthode : priorité des stats — SimC ne simule pas les soins · ${st.priority ? "Priorité : " + st.priority.map(k => STAT_FR[k] || k).join(" > ") : "Classement au ilvl"}`);
-      lines.push(`<span>${st.valid_count} pièce(s) analysée(s) sur ${st.bag_count}</span>`);
-    } else {
-      lines.push(`<span>Méthode : ${fmt(st.iterations)} simulations · ${st.valid_count} pièce(s) analysée(s) sur ${st.bag_count}</span>`);
-      if (st.baseline) lines.push(`<span>Réf. (éq. actuel) : ${fmt(st.baseline)} DPS</span>`);
-      if (st.loadout) lines.push(`<span>Build : ${esc(st.loadout)}</span>`);
-    }
-    metaParts.push(lines.join("<br>"));
-  }
-  meta.innerHTML = metaParts.join("<hr style=\"border-color:var(--line);margin:8px 0;\">");
-
-  // Générer les tables et résumés pour chaque contenu
-  for (const sec of sections) {
-    const st = sec.stuff;
-    const tblId = "restable-" + sec.label.replace(/\s+/g, "_");
-
-    if (st.mode === "bis") {
-      const en = document.documentElement.lang === "en";
-      const slotFr = st.slot_fr || {};
-      const rows = st.slots || [];
-      const div = document.createElement("div");
-      div.innerHTML = `<h3>⚔️ ${esc(sec.label)}</h3>` +
-        `<div class="gwrap"><table class="gtable" id="${tblId}"><tr><th>Emplacement</th><th>Ce que tu portes</th><th>BIS (guide)</th><th>Provenance</th><th>Tu l'as ?</th></tr>` +
-        rows.map(r => {
-          const cur = r.current;
-          const curCell = cur ? `<span class="gname">${esc(cur.name)}</span> <small>(${cur.ilvl || "?"})</small>` : '<span class="gnil">rien d\'équipé</span>';
-          const nm = en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en);
-          const bisCell = `<a class="hlink" href="https://www.wowhead.com/item=${r.id}" target="_blank" rel="noopener">${esc(nm)}</a>` +
-            (r.max_ilvl ? ` <small class="gnil">(max ${r.max_ilvl})</small>` : "");
-          let have;
-          if (r.equipped) have = '<span class="gpos">✅ portée</span>';
-          else if (r.owned) have = `<span class="msg-warn">🎒 dans tes sacs${r.bag_ilvl ? " (" + r.bag_ilvl + ")" : ""}</span>`;
-          else have = '<span class="gnil">—</span>';
-          return `<tr class="${r.owned || r.equipped ? "" : "gbest"}"><td>${esc(slotFr[r.slot] || r.slot)}</td><td>${curCell}</td>` +
-            `<td>${bisCell}</td><td class="islot">${esc(en ? (r.src_en || r.src_fr) : (r.src_fr || r.src_en))}</td><td>${have}</td></tr>`;
-        }).join("") + "</table></div>";
-      meta.parentElement.insertBefore(document.createRange().createContextualFragment(div.innerHTML), sum);
-      const missing = rows.filter(r => !r.owned && !r.equipped);
-      if (missing.length) {
-        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — Il te manque <b>${missing.length}</b> pièce(s) BIS : ` +
-          missing.map(r => `<span>${esc(slotFr[r.slot] || r.slot)}</span> — ${esc(en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en))}`).join(", ") + ".</div>";
-      } else {
-        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — Tu as déjà toutes les pièces BIS — bravo !</div>`;
-      }
-      if (st.source) src.innerHTML += `<div><b>${esc(sec.label)} :</b> <a href="${esc(st.source)}" target="_blank" rel="noopener">${esc(st.source_fr || st.source)}</a>.</div>`;
-      continue;
-    }
-
-    // Standard (DPS ou heal)
-    const tbl = document.createElement("table");
-    tbl.className = "gtable";
-    tbl.id = tblId;
-    meta.parentElement.insertBefore(tbl, sum);
-    if (st.mode === "heal") {
-      const rows = (st.slots || []).filter(s => s.best || s.current);
-      const swaps = rows.filter(s => s.swap);
-      tbl.innerHTML = `<h3 style="margin:8px 0 4px">⚔️ ${esc(sec.label)}</h3>` +
-        "<tr><th>Emplacement</th><th>Actuellement</th><th>Conseillé</th><th>Pourquoi</th></tr>" +
-        rows.map(s => {
-          let why = "";
-          if (s.swap && s.reason) {
-            if (s.reason.kind === "empty") why = "rien d'équipé";
-            else if (s.reason.kind === "ilvl") why = (s.reason.diff > 0 ? "+" : "") + s.reason.diff + " niveau(x) d'objet";
-            else if (s.reason.kind === "stats") why = "à ilvl égal : meilleur en " + (STAT_FR[s.reason.stat] || s.reason.stat);
-            else why = "meilleur";
-          } else why = "déjà le meilleur de ce que tu as";
-          return `<tr class="${s.swap ? "gbest" : ""}"><td>${esc(s.slot_fr || s.slot)}</td><td>${itemCell(s.current)}</td>` +
-            `<td>${s.swap ? itemCell(s.best) : '<span class="stay">reste tel quel</span>'}</td>` +
-            `<td class="${s.swap ? "pick" : "gnil"}">${s.swap ? "✅ " : ""}${esc(why)}</td></tr>`;
-        }).join("");
-      if (swaps.length) {
-        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — À porter : ` + swaps.map(s => `<b>${esc((s.best || {}).name || "?")}</b> (${esc(s.slot_fr || s.slot)})`).join(", ") + ".</div>";
-      } else {
-        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — Rien à changer : ton équipement est déjà le meilleur de ce que tu possèdes.</div>`;
-      }
-    } else {
-      const items = st.items || [];
-      const bySlot = {};
-      items.forEach(it => { if (!bySlot[it.slot] || it.dps > bySlot[it.slot].dps) bySlot[it.slot] = it; });
-      tbl.innerHTML = `<h3 style="margin:8px 0 4px">⚔️ ${esc(sec.label)}</h3>` +
-        "<tr><th>Pièce</th><th>Emplacement</th><th class='gv'>DPS</th><th class='gv'>Gain</th></tr>" +
-        items.map(it => {
-          const best = bySlot[it.slot] === it && (it.gain_pct || 0) > 0;
-          return `<tr class="${best ? "gbest" : ""}"><td>${esc(it.name)}</td><td class="islot">${esc(it.slot_fr || it.slot)}</td>` +
-            `<td class="gv">${fmt(it.dps)}</td>` +
-            `<td class="gv ${it.gain_pct > 0 ? "gpos" : "gnil"}">${it.gain_pct == null ? "—" : (it.gain_pct > 0 ? "+" : "") + fmt(it.gain_pct, 2) + " %"}</td></tr>`;
-        }).join("");
-      const winners = Object.values(bySlot).filter(it => (it.gain_pct || 0) > 0);
-      if (winners.length) {
-        winners.sort((a, b) => b.gain_pct - a.gain_pct);
-        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — À porter : ` + winners.map(it => `<b>${esc(it.name)}</b> (${esc(it.slot_fr || it.slot)}, +${fmt(it.gain_pct, 2)} %)`).join(", ") + ".</div>";
-      } else {
-        sum.innerHTML += `<div>⚔️ <b>${esc(sec.label)}</b> — Rien ne bat ton équipement actuel — tu portes déjà le meilleur.</div>`;
-      }
-    }
-  }
-
-  // Afficher les erreurs
-  const failures = Object.values(results).filter(r => !r.stuff && r.error);
-  if (failures.length) {
-    sum.innerHTML += `<div class="msg-err">Échec : ${failures.map(f => esc(f.error)).join(", ")}</div>`;
-  }
-}
-
 async function poll(simId) {
   try {
     const d = await jfetch("GET", "/api/sims/" + encodeURIComponent(simId));
@@ -488,9 +321,9 @@ function render(d) {
   // st.content peut être une chaîne (non-BIS) ou un tableau (BIS)
   let contentLabel;
   if (Array.isArray(st.content)) {
-    contentLabel = st.content.map(c => ({ mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[c] || c)).join(" · ");
+    contentLabel = st.content.map(c => ({ mplus: "Mythique+", raid: "Raid", delves: "Gouffres", worldboss: "World Boss", craft: "Craft" }[c] || c)).join(" · ");
   } else {
-    contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres" }[st.content] || st.content || "BIS";
+    contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres", worldboss: "World Boss", craft: "Craft" }[st.content] || st.content || "BIS";
   }
 
   if (st.mode === "bis") {

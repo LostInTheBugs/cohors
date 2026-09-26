@@ -109,7 +109,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.151-c1">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c21">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -495,10 +495,10 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.151-c1"></script>
-<script src="/static/branding.js?v=2026.09.151-c1"></script>
-<script src="/static/i18n.js?v=2026.09.151-c1"></script>
-<script src="/static/esc.js?v=2026.09.151-c1"></script>
+<script src="/static/nav.js?v=2026.09.152-c21"></script>
+<script src="/static/branding.js?v=2026.09.152-c21"></script>
+<script src="/static/i18n.js?v=2026.09.152-c21"></script>
+<script src="/static/esc.js?v=2026.09.152-c21"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
@@ -893,7 +893,13 @@ function updRender(st) {
   else if (st.latest) { badge.textContent = "à jour ✓"; badge.className = "badge b-used"; }
   else { badge.textContent = "jamais vérifié"; badge.className = "badge"; }
   const bits = [];
-  if (st.check.last_at) bits.push(`Dernière vérification : ${ago(st.check.last_at)}`);
+  if (ap.installed && ap.seen_at) {
+    const minsAgo = (Date.now() - new Date(ap.seen_at).getTime()) / 60000;
+    if (minsAgo > 15) bits.push(`⚠️ Applicateur : inactif depuis ${Math.round(minsAgo)} min (>15 min)`);
+    else bits.push(`applicateur actif : ${ago(ap.seen_at)}`);
+  } else if (ap.installed && !ap.seen_at) {
+    bits.push(`⚠️ Applicateur installé mais jamais vu (vérifie le timer)`);
+  }
   if (st.latest) bits.push(st.available
     ? `nouvelle version v${esc(st.latest.version)}`
     : `dernière version publiée : v${esc(st.latest.version)}`);
