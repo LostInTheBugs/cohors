@@ -665,3 +665,92 @@ def test_applier_dry_run_succeeds_and_sets_at(tmp_path):
     assert st["running"] == "", st
     assert st["result"] == "ok", st
     assert st["at"] > 0, st
+
+
+def test_bis_json_all_src_fr_in_bis_content_map():
+    """Chaque src_fr de bis.json doit être présent dans BIS_CONTENT_MAP."""
+    import json as _json
+    from pathlib import Path as _Path
+    bis_file = _Path(__file__).resolve().parents[1] / "app" / "data" / "bis.json"
+    bis_data = _json.loads(bis_file.read_text(encoding="utf-8"))
+    srcs = set()
+    for spec in bis_data.get("specs", {}).values():
+        if spec:
+            for slot in spec.get("slots", []):
+                s = slot.get("src_fr")
+                if s:
+                    srcs.add(s)
+    # importer BIS_CONTENT_MAP dynamiquement
+    from app.main import BIS_CONTENT_MAP
+    missing = srcs - set(BIS_CONTENT_MAP.keys())
+    assert not missing, f"src_fr non mappés : {missing}"
+
+
+def test_bis_json_no_duplicate_keys():
+    """Aucune clé en double dans bis.json — vérifié via ast.literal_eval."""
+    import ast as _ast
+    from pathlib import Path as _Path
+    bis_file = _Path(__file__).resolve().parents[1] / "app" / "data" / "bis.json"
+    raw = bis_file.read_text(encoding="utf-8")
+    data = _ast.literal_eval(raw)
+    # ast.literal_eval sur un dict valide ne permet pas les doublons ;
+    # si le fichier était invalide, literal_eval aurait levé.
+    specs = data.get("specs", {})
+    for cls_spec, val in specs.items():
+        if val and "slots" in val:
+            for slot in val["slots"]:
+                # Chaque slot doit avoir un src_fr valide (chaîne non vide)
+                assert isinstance(slot.get("src_fr"), str) and slot["src_fr"], \
+                    f"src_fr invalide pour {slot.get('name', '?')}"
+
+
+def test_content_craft_non_bis_returns_400():
+    """content: 'craft' en mode non-BIS (cur/max) → 400 car craft n'est pas dans STUFF_CONTENTS."""
+    _make_user("craft400@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "craft400@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+    simc_export = """player="Test-class"
+level=80
+spec=feral"""
+    prof_id = c.post("/api/profiles", json={"name": "Profil Craft 400", "input": simc_export}).json()["id"]
+    # content: "craft" n'est pas dans STUFF_CONTENTS (seulement raid, mplus, delves)
+    r = c.post("/api/stuff", json={"profile_id": prof_id, "content": "craft", "mode": "cur"})
+    assert r.status_code == 400, r.text
+
+
+def test_bis_content_too_long_returns_422():
+    """bis_content avec plus de 5 valeurs uniques → 422."""
+    _make_user("bis6@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "bis6@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+    simc_export = """player="Test-class"
+level=80
+spec=feral"""
+    prof_id = c.post("/api/profiles", json={"name": "Profil BIS 6", "input": simc_export}).json()["id"]
+    r = c.post("/api/stuff", json={
+        "profile_id": prof_id, "mode": "bis",
+        "bis_content": ["raid", "mplus", "delves", "worldboss", "craft", "raid", "pvp"]  # 7 uniques > 5
+    })
+    assert r.status_code == 422, r.text
+
+
+def test_bis_content_unknown_value_returns_422():
+    """bis_content avec une valeur inconnue → 422 (FastAPI validation error)."""
+    _make_user("bisunk@test.local")
+    c = TestClient(M.app)
+    r = c.post("/api/login", json={"email": "bisunk@test.local", "password": "test-pw-123"},
+               headers={"X-Forwarded-For": "10.99.50.1"})
+    assert r.status_code == 200, r.text
+    simc_export = """player="Test-class"
+level=80
+spec=feral"""
+    prof_id = c.post("/api/profiles", json={"name": "Profil BIS unk", "input": simc_export}).json()["id"]
+    r = c.post("/api/stuff", json={
+        "profile_id": prof_id, "mode": "bis",
+        "bis_content": ["raid", "fakecontent"]
+    })
+    assert r.status_code == 422, r.text
