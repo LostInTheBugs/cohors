@@ -436,12 +436,14 @@ def test_admin_updates_state_settings_and_guards():
     c = _admin_client("upd-admin@test.local", "10.99.40.2")
     r = c.get("/api/admin/updates")
     assert r.status_code == 200
-    st = r.json()
+    st = r.json()["state"]
     assert st["current"] == M.VERSION
     assert st["available"] is False and st["latest"] is None
     assert st["settings"]["upd_check_h"] == 24          # défaut : vérification quotidienne
     assert st["settings"]["upd_apply_auto"] is False
     assert st["applier"]["installed"] is False
+    # vérification que les champs running/running_at sont bien dans l'état
+    assert "running" in st["applier"] and "running_at" in st["applier"]
 
     # bornes : cadence hors liste → 400 ; valeurs valides → enregistrées
     assert c.post("/api/admin/updates", json={"values": {"upd_check_h": "7"}}).status_code == 400
