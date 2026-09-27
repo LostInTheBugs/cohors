@@ -2,7 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+
+## 2026.09.152-c27
+
+### Fixed
+- **Murder Row / Allée du meurtre** classés en Mythique+ ; ils n'apparaissaient plus sous tous les filtres BIS
 ## 2026.09.152-c26 - 2026-09-27
+## 2026.09.152-c27
+
+### Fixed
+- **Murder Row / Allée du meurtre** classés en Mythique+ ; ils n'apparaissaient plus sous tous les filtres BIS
+
 
 ### Added
 - **Meilleures pièces d'artisanat par emplacement dans Stuff conseillé.** Quand la case
