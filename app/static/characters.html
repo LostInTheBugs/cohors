@@ -1,448 +1,896 @@
 <!DOCTYPE html>
+pp/static/char.html
 <html lang="fr">
+pp/static/char.html
 <head>
+pp/static/char.html
 <meta charset="utf-8">
+pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+pp/static/char.html
 <title>Cohors — Personnages</title>
+pp/static/char.html
 <link rel="icon" href="/branding/logo">
+pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
+pp/static/char.html
 <meta name="theme-color" content="#b1002e">
+pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
+pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
+pp/static/char.html
 <style>
+pp/static/char.html
   :root {
+pp/static/char.html
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+pp/static/char.html
     --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+pp/static/char.html
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+pp/static/char.html
   }
+pp/static/char.html
   * { box-sizing: border-box; }
+pp/static/char.html
   body { margin: 0; background: var(--bg); color: var(--fg);
+pp/static/char.html
          font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+pp/static/char.html
   header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+pp/static/char.html
   .brand { display: flex; align-items: center; gap: 12px; }
+pp/static/char.html
   .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+pp/static/char.html
   .brandname span { color: var(--acc2); }
+pp/static/char.html
   .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+pp/static/char.html
   .tagline { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+pp/static/char.html
   .spacer { flex: 1; }
+pp/static/char.html
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+pp/static/char.html
   .hlink:hover { text-decoration: underline; }
+pp/static/char.html
   .who { color: var(--mut); font-size: 14px; }
+pp/static/char.html
   nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+pp/static/char.html
   .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+pp/static/char.html
          color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+pp/static/char.html
          border: 1px solid var(--line); background: transparent;
+pp/static/char.html
          transition: border-color .15s, color .15s, background .15s; }
+pp/static/char.html
   .tab:hover { color: var(--fg); border-color: #3a4763; }
+pp/static/char.html
   .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+pp/static/char.html
   .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+pp/static/char.html
   .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+pp/static/char.html
   .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
+pp/static/char.html
   .sub { color: var(--mut); font-size: 14px; margin: 0 0 18px; }
+pp/static/char.html
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+pp/static/char.html
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+pp/static/char.html
   input[type=search] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+pp/static/char.html
         border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 260px; }
+pp/static/char.html
   input:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+pp/static/char.html
   button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+pp/static/char.html
            padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+pp/static/char.html
   button:disabled { opacity: .55; cursor: default; }
+pp/static/char.html
   button.ghost, a.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+pp/static/char.html
                  padding: 4px 10px; font-size: 12.5px; border-radius: 8px; text-decoration: none; }
+pp/static/char.html
   button.ghost:hover, a.ghost:hover { border-color: var(--acc2); color: var(--acc2); }
+pp/static/char.html
   button.ghost.act { border-color: var(--acc2); color: var(--acc2); font-weight: 700; }
+pp/static/char.html
   .avsec { border-top: 1px solid var(--line); padding: 8px 0 2px; }
+pp/static/char.html
   .avsec:first-child { border-top: 0; padding-top: 2px; }
+pp/static/char.html
   .avsec h3 { font-size: 14px; margin: 0 0 5px; }
+pp/static/char.html
   .avgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 20px; }
+pp/static/char.html
   .av { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; padding: 1.5px 0; }
+pp/static/char.html
   .av a { font-weight: 600; text-decoration: none; }
+pp/static/char.html
   .av a:hover { text-decoration: underline; }
+pp/static/char.html
   .av .avi { margin-left: auto; font-variant-numeric: tabular-nums; }
+pp/static/char.html
   .av .avs { color: var(--mut); font-size: 12.5px; min-width: 92px; }
+pp/static/char.html
   .av .avv { color: var(--mut); font-size: 12.5px; min-width: 76px; text-align: right; white-space: nowrap; }
+pp/static/char.html
   .meta { color: var(--mut); font-size: 13px; }
+pp/static/char.html
   .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
+pp/static/char.html
   .chkline input { accent-color: var(--acc); }
+pp/static/char.html
   .tscroll { max-height: 66vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card2); }
+pp/static/char.html
   table { width: 100%; border-collapse: collapse; }
+pp/static/char.html
   th { position: sticky; top: 0; background: #202a3f; z-index: 2; text-align: left; font-size: 12.5px;
+pp/static/char.html
        color: var(--mut); padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+pp/static/char.html
   td { padding: 8px 12px; border-top: 1px solid var(--line); font-size: 14px; }
+pp/static/char.html
   tr.crow:hover td { background: #1e2941; }
+pp/static/char.html
   .rk { color: var(--mut); font-size: 13px; white-space: nowrap; }
+pp/static/char.html
   .rk.gm { color: var(--acc2); font-weight: 600; }
+pp/static/char.html
   .cname { font-weight: 600; }
+pp/static/char.html
   .cname a { color: inherit; text-decoration: none; }
+pp/static/char.html
   .cname a:hover { text-decoration: underline; }
+pp/static/char.html
   .lv, .il, .vu { color: var(--mut); font-size: 13.5px; white-space: nowrap; }
+pp/static/char.html
   .il b { color: var(--fg); font-variant-numeric: tabular-nums; }
+pp/static/char.html
   .chip { display: inline-block; min-width: 34px; text-align: center; }
+pp/static/char.html
   .detrow td { background: #16202f; padding: 12px 16px 16px; }
+pp/static/char.html
   .det-top { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; font-size: 13.5px; }
+pp/static/char.html
   .det-top .spec { font-weight: 700; }
+pp/static/char.html
   .det-top a { color: var(--acc2); text-decoration: none; font-weight: 600; }
+pp/static/char.html
   .det-top a:hover { text-decoration: underline; }
+pp/static/char.html
   .gear { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 4px 18px; }
+pp/static/char.html
   .gi { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; padding: 2px 0; }
+pp/static/char.html
   .gi .gs { color: var(--mut); min-width: 92px; flex-shrink: 0; font-size: 12.5px; }
+pp/static/char.html
   .gi a { text-decoration: none; }
+pp/static/char.html
   .gi a:hover { text-decoration: underline; }
+pp/static/char.html
   .gi .gl { margin-left: auto; color: var(--mut); font-variant-numeric: tabular-nums; }
+pp/static/char.html
   .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
+pp/static/char.html
   tr.my td { background: rgba(223,165,90,.06); }
+pp/static/char.html
   .nmstar { color: var(--acc2); margin-right: 2px; }
+pp/static/char.html
   .err { color: var(--err); font-size: 13px; }
+pp/static/char.html
   .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+pp/static/char.html
   @keyframes spin { to { transform: rotate(360deg); } }
+pp/static/char.html
   .hidden { display: none !important; }
+pp/static/char.html
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 24px; padding-top: 14px; }
+pp/static/char.html
   .extras { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 4px; }
+pp/static/char.html
   .xchip { border:1px solid var(--line); border-radius:999px; padding:3px 12px; font-size:12.5px; background:var(--card2,#182130); }
+pp/static/char.html
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c28">
+pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
+pp/static/char.html
 </head>
+pp/static/char.html
 <body class="wb">
+pp/static/char.html
 <div class="wrap">
+pp/static/char.html
   <header class="topbar">
+pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
+pp/static/char.html
       <div>
+pp/static/char.html
         <div class="brandname">Cohors <span>Personnages</span></div>
+pp/static/char.html
         <div class="tagline">Roster &amp; équipement de la guilde</div>
+pp/static/char.html
       </div>
+pp/static/char.html
     </a>
+pp/static/char.html
     <div class="userbox">
+pp/static/char.html
       <span class="who" id="who"></span>
+pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
+pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
+pp/static/char.html
     </div>
+pp/static/char.html
   </header>
+pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
+pp/static/char.html
   <p class="sub">Roster de la guilde (données live de l'API Battle.net). Clique sur un personnage pour voir son équipement.</p>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <div class="row">
+pp/static/char.html
       <h2 style="margin:0">🎯 Vu dernièrement</h2>
+pp/static/char.html
       <span class="spacer"></span>
+pp/static/char.html
       <span class="meta" id="ameta"></span>
+pp/static/char.html
       <button class="ghost act" data-avh="24">Vu &lt; 24 h</button>
+pp/static/char.html
       <button class="ghost" data-avh="48">Vu &lt; 48 h</button>
+pp/static/char.html
       <button class="ghost" data-avh="168">Vu &lt; 7 j</button>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div class="row" style="margin-top:8px" id="achips">
+pp/static/char.html
       <button class="ghost act" data-avr="all">Tous</button>
+pp/static/char.html
       <button class="ghost" data-avr="tank">🛡️ Tanks</button>
+pp/static/char.html
       <button class="ghost" data-avr="heal">💚 Soigneurs</button>
+pp/static/char.html
       <button class="ghost" data-avr="dps">⚔️ DPS</button>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div id="avail" style="margin-top:6px"><div class="empty">Chargement…</div></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <div class="row">
+pp/static/char.html
       <input type="search" id="srch" placeholder="Rechercher un personnage…">
+pp/static/char.html
       <label class="chkline"><input type="checkbox" id="f90"> Niveau max (90) uniquement</label>
+pp/static/char.html
       <span class="spacer"></span>
+pp/static/char.html
       <span class="meta" id="rmeta">Chargement…</span>
+pp/static/char.html
       <button class="ghost" id="refresh" title="Refetch des données (max 1×/min)">⟳ Actualiser</button>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div id="mymsg" class="meta" style="margin-top:6px"></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <div class="tscroll" id="tscroll">
+pp/static/char.html
       <table>
+pp/static/char.html
         <thead>
+pp/static/char.html
           <tr><th>Rang</th><th>Nom</th><th>Niv.</th><th>iLvl</th><th>Vu</th><th></th></tr>
+pp/static/char.html
         </thead>
+pp/static/char.html
         <tbody id="tbody"><tr><td colspan="6"><div class="empty">Chargement…</div></td></tr></tbody>
+pp/static/char.html
       </table>
+pp/static/char.html
     </div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <footer>
+pp/static/char.html
     Roster : <b>API Battle.net officielle</b> (cache 30 min) · Données de jeu fournies par
+pp/static/char.html
     <b>Blizzard Entertainment</b> · Outil non affilié à Blizzard Entertainment ·
+pp/static/char.html
     <span id="ver">…</span>
+pp/static/char.html
   </footer>
+pp/static/char.html
 </div>
+pp/static/char.html
 
-<script src="/static/nav.js?v=2026.09.152-c28"></script>
-<script src="/static/branding.js?v=2026.09.152-c28"></script>
-<script src="/static/i18n.js?v=2026.09.152-c28"></script>
-<script src="/static/esc.js?v=2026.09.152-c28"></script>
+pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/esc.js?v=2026.09.152-c29"></script>
+pp/static/char.html
 <script>
+pp/static/char.html
 const $ = (s) => document.querySelector(s);
+pp/static/char.html
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
+pp/static/char.html
 const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
+pp/static/char.html
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
+pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
+pp/static/char.html
 
+pp/static/char.html
 const CLASS_COLORS = {
+pp/static/char.html
   "Chevalier de la mort": "#C41E3A", "Chasseur de démons": "#A330C9", "Druide": "#FF7C0A",
+pp/static/char.html
   "Évocateur": "#33937F", "Chasseur": "#AAD372", "Mage": "#3FC7EB", "Moine": "#00FF98",
+pp/static/char.html
   "Paladin": "#F48CBA", "Prêtre": "#FFFFFF", "Voleur": "#FFF468", "Chaman": "#0070DD",
+pp/static/char.html
   "Démoniste": "#8788EE", "Guerrier": "#C69B6D",
+pp/static/char.html
   DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+pp/static/char.html
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+pp/static/char.html
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D"
+pp/static/char.html
 };
+pp/static/char.html
 const QUA = { POOR: "#9d9d9d", COMMON: "#e7ebf5", UNCOMMON: "#1eff00", RARE: "#0070dd",
+pp/static/char.html
   EPIC: "#a335ee", LEGENDARY: "#ff8000", ARTIFACT: "#e6cc80", HEIRLOOM: "#00ccff" };
+pp/static/char.html
 
+pp/static/char.html
 let REGION = "eu";
+pp/static/char.html
 const SUMS = new Map();   // clé -> résumé (pour réutiliser au détail)
+pp/static/char.html
 let observer = null;
+pp/static/char.html
 
+pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
+pp/static/char.html
   const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 const jreq = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
+pp/static/char.html
   body: b === undefined ? undefined : JSON.stringify(b) });
+pp/static/char.html
   const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 
+pp/static/char.html
 function pool(items, worker, size) {
+pp/static/char.html
   let i = 0;
+pp/static/char.html
   const next = () => { if (i >= items.length) return Promise.resolve();
+pp/static/char.html
     const it = items[i++]; return worker(it).catch(() => {}).then(next); };
+pp/static/char.html
   return Promise.all(Array.from({ length: Math.min(size, items.length) }, next));
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function rankLabel(r) { return r === 0 ? "Maître de guilde" : "Rang " + r; }
+pp/static/char.html
 
+pp/static/char.html
 function renderRoster(data) {
+pp/static/char.html
   REGION = data.region || "eu";
+pp/static/char.html
   const tb = $("#tbody");
+pp/static/char.html
   tb.innerHTML = data.members.map(m => {
+pp/static/char.html
     const key = `${m.realm}|${m.name.toLowerCase()}`;
+pp/static/char.html
     const armory = `https://worldofwarcraft.blizzard.com/fr-fr/character/${esc(REGION)}/${esc(m.realm)}/${esc(m.name.toLowerCase())}`;
+pp/static/char.html
     return `<tr class="crow" data-key="${esc(key)}" data-name="${esc(m.name.toLowerCase())}" data-level="${m.level || 0}">
+pp/static/char.html
       <td class="rk ${m.rank === 0 ? "gm" : ""}">${rankLabel(m.rank)}</td>
+pp/static/char.html
       <td class="cname"><a href="${armory}" target="_blank" rel="noopener">${esc(m.name)}</a></td>
+pp/static/char.html
       <td class="lv">${m.level || "—"}</td>
+pp/static/char.html
       <td class="il"><span class="chip" data-il>…</span></td>
+pp/static/char.html
       <td class="vu" data-vu>—</td>
+pp/static/char.html
       <td><button class="ghost" data-det>Détails</button> <a class="ghost" href="/char/${esc(m.realm)}/${esc(m.name.toLowerCase())}">Fiche</a></td>
+pp/static/char.html
     </tr>`;
+pp/static/char.html
   }).join("");
+pp/static/char.html
   $("#rmeta").textContent = `${data.count} membres · actualisé ${ago(data.fetched_at)}`;
+pp/static/char.html
   tb.querySelectorAll("tr.crow").forEach(tr => observer.observe(tr));
+pp/static/char.html
   tb.querySelectorAll("button[data-det]").forEach(b =>
+pp/static/char.html
     b.addEventListener("click", () => toggleDetail(b.closest("tr"))));
+pp/static/char.html
   applyFilters();
+pp/static/char.html
   applyMyMarkers();
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 // ---- Vu dernièrement (relevé du jour)
+pp/static/char.html
 let AVAIL = null, AHOURS = 24, AROLE = "all";
+pp/static/char.html
 const AVAIL_ROLES = [["tank", "🛡️ Tanks"], ["heal", "💚 Soigneurs"], ["dps", "⚔️ DPS"]];
+pp/static/char.html
 
+pp/static/char.html
 async function loadAvail(h) {
+pp/static/char.html
   if (h) AHOURS = h;
+pp/static/char.html
   try { AVAIL = await jget(`/api/avail?hours=${AHOURS}`); renderAvail(); }
+pp/static/char.html
   catch (e) { $("#avail").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`; }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function renderAvail() {
+pp/static/char.html
   if (!AVAIL) return;
+pp/static/char.html
   const rows = AVAIL.rows || [];
+pp/static/char.html
   $("#ameta").textContent = `${fmt(rows.length)} persos disponibles`;
+pp/static/char.html
   const secs = AVAIL_ROLES.filter(([r]) => AROLE === "all" || AROLE === r).map(([r, label]) => {
+pp/static/char.html
     const list = rows.filter(x => x.role === r);
+pp/static/char.html
     if (!list.length) return "";
+pp/static/char.html
     return `<div class="avsec"><h3>${label} <span class="meta">· ${list.length}</span></h3>
+pp/static/char.html
       <div class="avgrid">${list.map(x => `<div class="av">
+pp/static/char.html
         <a style="color:${CLASS_COLORS[x.class_key] || "var(--fg)"}" href="/char/${esc(x.realm)}/${esc(x.key)}">${esc(x.name)}</a>
+pp/static/char.html
         <span class="avs">${esc(x.spec || "")}</span>
+pp/static/char.html
         <span class="avi">${fmt(x.ilvl)}</span>
+pp/static/char.html
         <span class="avv">${x.seen ? "vu " + ago(x.seen) : "?"}</span>
+pp/static/char.html
       </div>`).join("")}</div></div>`;
+pp/static/char.html
   }).filter(Boolean).join("");
+pp/static/char.html
   $("#avail").innerHTML = secs || `<div class="empty">Personne dans cette catégorie.</div>`;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 document.querySelectorAll("[data-avh]").forEach(b => b.addEventListener("click", () => {
+pp/static/char.html
   document.querySelectorAll("[data-avh]").forEach(x => x.classList.toggle("act", x === b));
+pp/static/char.html
   loadAvail(+b.dataset.avh);
+pp/static/char.html
 }));
+pp/static/char.html
 document.querySelectorAll("[data-avr]").forEach(b => b.addEventListener("click", () => {
+pp/static/char.html
   AROLE = b.dataset.avr;
+pp/static/char.html
   document.querySelectorAll("[data-avr]").forEach(x => x.classList.toggle("act", x === b));
+pp/static/char.html
   renderAvail();
+pp/static/char.html
 }));
+pp/static/char.html
 
+pp/static/char.html
 async function loadSummary(tr) {
+pp/static/char.html
   const [realm, name] = tr.dataset.key.split("|");
+pp/static/char.html
   try {
+pp/static/char.html
     const s = await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/summary`);
+pp/static/char.html
     SUMS.set(tr.dataset.key, s);
+pp/static/char.html
     const il = tr.querySelector("[data-il]");
+pp/static/char.html
     const vu = tr.querySelector("[data-vu]");
+pp/static/char.html
     il.innerHTML = `<b>${fmt(s.ilvl_equipped)}</b>`;
+pp/static/char.html
     vu.textContent = s.last_login ? ago(s.last_login / 1000) : "—";
+pp/static/char.html
     const cn = tr.querySelector(".cname");
+pp/static/char.html
     const ck = s.class_key || s.class;
+pp/static/char.html
     if (ck && CLASS_COLORS[ck]) cn.style.color = CLASS_COLORS[ck];
+pp/static/char.html
   } catch (e) {
+pp/static/char.html
     tr.querySelector("[data-il]").textContent = "—";
+pp/static/char.html
   }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function renderDetail(s, g, x) {
+pp/static/char.html
   const cclass = CLASS_COLORS[s.class_key] || CLASS_COLORS[s.class] || "var(--fg)";
+pp/static/char.html
   const head = `<div class="det-top">
+pp/static/char.html
     <span class="spec" style="color:${cclass}">${esc(s.spec || "?")} — ${esc(s.class || "")}</span>
+pp/static/char.html
     <span class="meta">${esc(s.race || "")}${s.faction ? " · " + esc(s.faction) : ""}</span>
+pp/static/char.html
     <span class="meta">iLvl équipé <b>${fmt(s.ilvl_equipped)}</b> (moyen ${fmt(s.ilvl_avg)})</span>
+pp/static/char.html
     <span class="meta">${fmt(s.achievement_points)} points de hauts faits</span>
+pp/static/char.html
     <span class="meta">vu ${s.last_login ? ago(s.last_login / 1000) : "?"}</span>
+pp/static/char.html
     <span class="spacer"></span>
+pp/static/char.html
     <a href="${esc(s.armory)}" target="_blank" rel="noopener">Armurerie ↗</a>
+pp/static/char.html
   </div>`;
+pp/static/char.html
   const items = (g.items || []).map(it => {
+pp/static/char.html
     const col = QUA[it.quality] || "#e7ebf5";
+pp/static/char.html
     const url = it.item_id ? `https://www.wowhead.com/item=${it.item_id}` : null;
+pp/static/char.html
     const nm = url
+pp/static/char.html
       ? `<a href="${url}" target="_blank" rel="noopener" style="color:${col}">${esc(it.name)}</a>`
+pp/static/char.html
       : `<span style="color:${col}">${esc(it.name)}</span>`;
+pp/static/char.html
     return `<div class="gi"><span class="gs">${esc(it.slot)}</span>${nm}<span class="gl">${fmt(it.ilvl)}</span></div>`;
+pp/static/char.html
   }).join("");
+pp/static/char.html
   const ex = x ? `<div class="extras">
+pp/static/char.html
     ${x.mounts != null ? `<span class="xchip">🐎 ${fmt(x.mounts)} montures</span>` : ""}
+pp/static/char.html
     ${x.pets != null ? `<span class="xchip">🐾 ${fmt(x.pets)} mascottes</span>` : ""}
+pp/static/char.html
     ${x.mplus_rating ? `<span class="xchip">⚔️ M+ ${Math.round(x.mplus_rating)}</span>` : ""}
+pp/static/char.html
   </div>` : "";
+pp/static/char.html
   return head + ex + `<div class="gear">${items}</div>`;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 async function toggleDetail(tr) {
+pp/static/char.html
   const nxt = tr.nextElementSibling;
+pp/static/char.html
   if (nxt && nxt.classList.contains("detrow")) { nxt.remove(); return; }
+pp/static/char.html
   const [realm, name] = tr.dataset.key.split("|");
+pp/static/char.html
   const det = document.createElement("tr");
+pp/static/char.html
   det.className = "detrow";
+pp/static/char.html
   det.innerHTML = `<td colspan="6"><div class="empty"><span class="spin">⏳</span> Chargement de l'équipement…</div></td>`;
+pp/static/char.html
   tr.after(det);
+pp/static/char.html
   try {
+pp/static/char.html
     const s = SUMS.get(tr.dataset.key) || await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/summary`);
+pp/static/char.html
     const [g, x] = await Promise.all([
+pp/static/char.html
       jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/equipment`),
+pp/static/char.html
       jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/extras`).catch(() => null),
+pp/static/char.html
     ]);
+pp/static/char.html
     det.querySelector("td").innerHTML = renderDetail(s, g, x);
+pp/static/char.html
     const btn = document.createElement("button");
+pp/static/char.html
     btn.className = "ghost";
+pp/static/char.html
     bindLinkBtn(btn, tr.dataset.name);
+pp/static/char.html
     det.querySelector(".det-top").appendChild(btn);
+pp/static/char.html
   } catch (e) {
+pp/static/char.html
     det.querySelector("td").innerHTML = `<div class="err">Erreur : ${esc(e.message)}</div>`;
+pp/static/char.html
   }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function applyFilters() {
+pp/static/char.html
   const q = $("#srch").value.trim().toLowerCase();
+pp/static/char.html
   const max90 = $("#f90").checked;
+pp/static/char.html
   let shown = 0;
+pp/static/char.html
   document.querySelectorAll("tr.crow").forEach(tr => {
+pp/static/char.html
     const okQ = !q || tr.dataset.name.includes(q);
+pp/static/char.html
     const okL = !max90 || parseInt(tr.dataset.level, 10) >= 90;
+pp/static/char.html
     const vis = okQ && okL;
+pp/static/char.html
     tr.style.display = vis ? "" : "none";
+pp/static/char.html
     if (vis) shown++;
+pp/static/char.html
     if (!vis) { const nx = tr.nextElementSibling; if (nx && nx.classList.contains("detrow")) nx.remove(); }
+pp/static/char.html
   });
+pp/static/char.html
   return shown;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 async function load(refresh = 0) {
+pp/static/char.html
   try {
+pp/static/char.html
     const data = await jget("/api/roster" + (refresh ? "?refresh=1" : ""));
+pp/static/char.html
     renderRoster(data);
+pp/static/char.html
   } catch (e) {
+pp/static/char.html
     $("#tbody").innerHTML = `<tr><td colspan="6"><div class="err">Erreur de chargement du roster : ${esc(e.message)}</div></td></tr>`;
+pp/static/char.html
   }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 observer = new IntersectionObserver((entries) => {
+pp/static/char.html
   const todo = [];
+pp/static/char.html
   for (const e of entries) {
+pp/static/char.html
     if (e.isIntersecting && e.target.classList.contains("crow")) {
+pp/static/char.html
       observer.unobserve(e.target);
+pp/static/char.html
       if (!SUMS.has(e.target.dataset.key) && e.target.querySelector("[data-il]").textContent === "…") todo.push(e.target);
+pp/static/char.html
     }
+pp/static/char.html
   }
+pp/static/char.html
   if (todo.length) pool(todo, loadSummary, 4);
+pp/static/char.html
 }, { root: $("#tscroll"), rootMargin: "150px" });
+pp/static/char.html
 
+pp/static/char.html
 $("#srch").addEventListener("input", applyFilters);
+pp/static/char.html
 $("#f90").addEventListener("change", applyFilters);
+pp/static/char.html
 $("#refresh").addEventListener("click", async (ev) => {
+pp/static/char.html
   ev.target.disabled = true;
+pp/static/char.html
   await load(1);
+pp/static/char.html
   ev.target.disabled = false;
+pp/static/char.html
 });
+pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
+pp/static/char.html
   ev.preventDefault();
+pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
+pp/static/char.html
   location.href = "/login";
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 // ---- Mes personnages (liaison compte ↔ persos de guilde) ----
+pp/static/char.html
 let MYCHARS = [];
+pp/static/char.html
 function myMsg(t, isErr) {
+pp/static/char.html
   const el = $("#mymsg");
+pp/static/char.html
   el.textContent = t || "";
+pp/static/char.html
   el.style.color = isErr ? "var(--err)" : "var(--ok)";
+pp/static/char.html
   if (t) setTimeout(() => { if (el.textContent === t) el.textContent = ""; }, 5000);
+pp/static/char.html
 }
+pp/static/char.html
 async function loadMyChars() {
+pp/static/char.html
   try { const d = await jget("/api/me/chars"); MYCHARS = d.chars || []; }
+pp/static/char.html
   catch (e) { MYCHARS = []; }
+pp/static/char.html
   applyMyMarkers();
+pp/static/char.html
 }
+pp/static/char.html
 function applyMyMarkers() {
+pp/static/char.html
   const map = new Map(MYCHARS.map(c => [c.name, c]));
+pp/static/char.html
   document.querySelectorAll("tr.crow").forEach(tr => {
+pp/static/char.html
     const c = map.get(tr.dataset.name);
+pp/static/char.html
     tr.classList.toggle("my", !!c);
+pp/static/char.html
     const cn = tr.querySelector(".cname");
+pp/static/char.html
     cn.querySelectorAll(".nmstar").forEach(x => x.remove());
+pp/static/char.html
     if (c) {
+pp/static/char.html
       const sp = document.createElement("span");
+pp/static/char.html
       sp.className = "nmstar";
+pp/static/char.html
       sp.textContent = c.is_main ? "⭐ " : "✦ ";
+pp/static/char.html
       cn.prepend(sp);
+pp/static/char.html
     }
+pp/static/char.html
   });
+pp/static/char.html
 }
+pp/static/char.html
 function bindLinkBtn(btn, lname) {
+pp/static/char.html
   const c = MYCHARS.find(x => x.name === lname);
+pp/static/char.html
   btn.textContent = c ? "✕ Retirer de mes personnages" : "📌 C'est mon personnage";
+pp/static/char.html
   btn.onclick = async () => {
+pp/static/char.html
     try {
+pp/static/char.html
       if (c) await jreq("DELETE", `/api/me/chars/${c.id}`);
+pp/static/char.html
       else await jreq("POST", "/api/me/chars", { name: lname });
+pp/static/char.html
       await loadMyChars();
+pp/static/char.html
       bindLinkBtn(btn, lname);
+pp/static/char.html
       myMsg(c ? "Retiré de tes personnages." : "Personnage lié ✓");
+pp/static/char.html
     } catch (e) { myMsg(e.message, true); }
+pp/static/char.html
   };
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 (async () => {
+pp/static/char.html
   try {
+pp/static/char.html
     const me = await jget("/api/me");
+pp/static/char.html
     $("#who").textContent = me.name || me.email;
+pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
+pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+pp/static/char.html
   load(0); loadMyChars(); loadAvail(24);
+pp/static/char.html
 })();
+pp/static/char.html
 </script>
+pp/static/char.html
 </body>
+pp/static/char.html
 </html>
+pp/static/char.html

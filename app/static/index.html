@@ -1,492 +1,984 @@
 <!DOCTYPE html>
+pp/static/char.html
 <html lang="fr">
+pp/static/char.html
 <head>
+pp/static/char.html
 <meta charset="utf-8">
+pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+pp/static/char.html
 <title>Cohors — Simulateur</title>
+pp/static/char.html
 <link rel="icon" href="/branding/logo">
+pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
+pp/static/char.html
 <meta name="theme-color" content="#b1002e">
+pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
+pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
+pp/static/char.html
 <style>
+pp/static/char.html
   :root {
+pp/static/char.html
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+pp/static/char.html
     --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+pp/static/char.html
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+pp/static/char.html
   }
+pp/static/char.html
   * { box-sizing: border-box; }
+pp/static/char.html
   body { margin: 0; background: var(--bg); color: var(--fg);
+pp/static/char.html
          font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+pp/static/char.html
   header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+pp/static/char.html
   .brand { display: flex; align-items: center; gap: 12px; }
+pp/static/char.html
   .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+pp/static/char.html
   .brandname span { color: var(--acc2); }
+pp/static/char.html
   .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+pp/static/char.html
   .tagline { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+pp/static/char.html
   .spacer { flex: 1; }
+pp/static/char.html
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+pp/static/char.html
   .hlink:hover { text-decoration: underline; }
+pp/static/char.html
   .who { color: var(--mut); font-size: 14px; }
+pp/static/char.html
   nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+pp/static/char.html
   .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+pp/static/char.html
          color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+pp/static/char.html
          border: 1px solid var(--line); background: transparent;
+pp/static/char.html
          transition: border-color .15s, color .15s, background .15s; }
+pp/static/char.html
   .tab:hover { color: var(--fg); border-color: #3a4763; }
+pp/static/char.html
   .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+pp/static/char.html
   .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+pp/static/char.html
   .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+pp/static/char.html
   .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
+pp/static/char.html
   .sub { color: var(--mut); font-size: 14px; margin: 0 0 22px; }
+pp/static/char.html
   details.howto { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin-bottom: 18px; }
+pp/static/char.html
   details.howto summary { cursor: pointer; font-weight: 600; color: var(--acc2); }
+pp/static/char.html
   details.howto ol { margin: 12px 0 8px; padding-left: 22px; }
+pp/static/char.html
   details.howto li { margin-bottom: 6px; }
+pp/static/char.html
   details.howto a { color: var(--acc2); }
+pp/static/char.html
   details.howto .note { color: var(--mut); font-size: 13px; margin: 8px 0 2px; }
+pp/static/char.html
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+pp/static/char.html
   label { display: block; font-size: 13px; color: var(--mut); margin: 0 0 6px; }
+pp/static/char.html
   textarea { width: 100%; min-height: 170px; resize: vertical; background: var(--bg); color: var(--fg);
+pp/static/char.html
              border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: 13px/1.5 ui-monospace, Consolas, monospace; }
+pp/static/char.html
   textarea:focus, input:focus, select:focus { outline: 2px solid var(--acc); outline-offset: 0; border-color: var(--acc); }
+pp/static/char.html
   .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-top: 14px; }
+pp/static/char.html
   .field { display: flex; flex-direction: column; }
+pp/static/char.html
   input[type=text], select { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+pp/static/char.html
             border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 170px; }
+pp/static/char.html
   .grow { flex: 1; }
+pp/static/char.html
   input[type=text] { width: 100%; }
+pp/static/char.html
   button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+pp/static/char.html
            padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer; }
+pp/static/char.html
   button:disabled { opacity: .55; cursor: default; }
+pp/static/char.html
   #submit-msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
+pp/static/char.html
   .profbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+pp/static/char.html
              border-top: 1px dashed var(--line); margin-top: 14px; padding-top: 12px; }
+pp/static/char.html
   .profbar .plab { color: var(--mut); font-size: 13px; font-weight: 600; }
+pp/static/char.html
   .profbar select { min-width: 210px; }
+pp/static/char.html
   .profbar input[type=text] { min-width: 190px; width: auto; }
+pp/static/char.html
   .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
+pp/static/char.html
   .chkline input { accent-color: var(--acc); }
+pp/static/char.html
   .pbtn { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+pp/static/char.html
           padding: 6px 12px; font-size: 12.5px; border-radius: 8px; cursor: pointer; }
+pp/static/char.html
   .pbtn:hover:not(:disabled) { border-color: var(--acc2); color: var(--acc2); }
+pp/static/char.html
   .pbtn:disabled { opacity: .45; cursor: default; }
+pp/static/char.html
   .msg-ok { color: var(--ok); } .msg-err { color: var(--err); } .msg-warn { color: var(--warn); }
+pp/static/char.html
   h2 { font-size: 17px; margin: 0 0 12px; }
+pp/static/char.html
   .sim { border: 1px solid var(--line); background: var(--card2); border-radius: 11px; padding: 12px 14px;
+pp/static/char.html
          margin-bottom: 10px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+pp/static/char.html
   .sim .who2 { font-weight: 600; min-width: 120px; }
+pp/static/char.html
   .sim .meta { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   .sim .dps { font-weight: 700; font-variant-numeric: tabular-nums; }
+pp/static/char.html
   .sim .dps small { color: var(--mut); font-weight: 400; }
+pp/static/char.html
   .badge { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); }
+pp/static/char.html
   .b-queued { color: var(--warn); border-color: #5a4a12; }
+pp/static/char.html
   .b-running { color: var(--acc2); border-color: #6b4a17; }
+pp/static/char.html
   .b-done { color: var(--ok); border-color: #1d4a3a; }
+pp/static/char.html
   .b-failed { color: var(--err); border-color: #5a2626; }
+pp/static/char.html
   .b-cache { color: #6cc7f6; border-color: #1d3f52; }
+pp/static/char.html
   .b-weights { color: #e8c07d; border-color: #5e4a1e; }
+pp/static/char.html
   .b-gear { color: #c9a6ff; border-color: #46306b; }
+pp/static/char.html
   .wbox { width: 100%; margin-top: 4px; display: grid; gap: 5px; }
+pp/static/char.html
   .wrow { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+pp/static/char.html
   .wrow .wstat { width: 150px; color: var(--mut); }
+pp/static/char.html
   .wrow .wval { width: 74px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+pp/static/char.html
   .wrow small { color: var(--mut); }
+pp/static/char.html
   .wbar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--acc), var(--acc2)); min-width: 3px; }
+pp/static/char.html
   .sim a { color: var(--acc2); text-decoration: none; font-weight: 600; }
+pp/static/char.html
   .sim a:hover { text-decoration: underline; }
+pp/static/char.html
   .empty { color: var(--mut); font-size: 14px; padding: 6px 2px; }
+pp/static/char.html
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 26px; padding-top: 14px; }
+pp/static/char.html
   .errbox { color: var(--err); font-size: 12.5px; width: 100%; white-space: pre-wrap;
+pp/static/char.html
             font-family: ui-monospace, Consolas, monospace; max-height: 90px; overflow: auto; }
+pp/static/char.html
   .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+pp/static/char.html
   @keyframes spin { to { transform: rotate(360deg); } }
+pp/static/char.html
   .hidden { display: none !important; }
+pp/static/char.html
   .gprofs { display:flex; flex-wrap:wrap; gap:6px 18px; margin:8px 0 12px; }
+pp/static/char.html
   .gtable { width:100%; border-collapse:collapse; margin-top:8px; }
+pp/static/char.html
   .gtable th, .gtable td { padding:6px 8px; border-bottom:1px solid var(--line,#2a3446); text-align:left; font-size:13.5px; }
+pp/static/char.html
   .gtable th { color:var(--mut,#8b96ad); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
+pp/static/char.html
   .gbar { height:7px; border-radius:4px; background:linear-gradient(90deg,var(--acc,#b1002e),var(--acc2,#dfa55a)); }
+pp/static/char.html
   .gmeta { color:var(--mut,#8b96ad); font-size:12px; }
+pp/static/char.html
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c28">
+pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
+pp/static/char.html
 </head>
+pp/static/char.html
 <body class="wb">
+pp/static/char.html
 <div class="wrap">
+pp/static/char.html
   <header class="topbar">
+pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
+pp/static/char.html
       <div>
+pp/static/char.html
         <div class="brandname">Cohors <span>Simulateur</span></div>
+pp/static/char.html
         <div class="tagline">SimulationCraft pour la guilde</div>
+pp/static/char.html
       </div>
+pp/static/char.html
     </a>
+pp/static/char.html
     <div class="userbox">
+pp/static/char.html
       <span class="who" id="who"></span>
+pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
+pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
+pp/static/char.html
     </div>
+pp/static/char.html
   </header>
+pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
+pp/static/char.html
   <p class="sub">Colle ton export <b>/simc</b> (en jeu : tape <b>/simc</b> puis copie tout le texte) et lance la simulation.</p>
+pp/static/char.html
 
+pp/static/char.html
   <details class="howto">
+pp/static/char.html
     <summary>❓ Comment obtenir l'export /simc ?</summary>
+pp/static/char.html
     <ol>
+pp/static/char.html
       <li>Installe l'addon <b>SimulationCraft</b> dans WoW (via <a href="https://www.curseforge.com/wow/addons/simulationcraft" target="_blank" rel="noopener">CurseForge</a> ou WowUp, comme tes autres addons).</li>
+pp/static/char.html
       <li>En jeu, tape <b>/simc</b> dans le chat : une fenêtre s'ouvre avec tout ton profil (équipement, talents, sacs et banque).</li>
+pp/static/char.html
       <li>Copie le texte (bouton <b>Copy</b> dans la fenêtre), colle-le dans le champ ci-dessous, puis lance la simulation.</li>
+pp/static/char.html
     </ol>
+pp/static/char.html
     <p class="note">Rien d'autre à installer : le moteur de simulation tourne entièrement sur le serveur.</p>
+pp/static/char.html
   </details>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <label for="inp">Export /simc</label>
+pp/static/char.html
     <textarea id="inp" placeholder="SimC Addon export — colle ici…"></textarea>
+pp/static/char.html
     <div class="row">
+pp/static/char.html
       <div class="field grow">
+pp/static/char.html
         <label for="lbl">Nom / perso (optionnel)</label>
+pp/static/char.html
         <input type="text" id="lbl" maxlength="60" placeholder="ex. Thrall — war fury">
+pp/static/char.html
       </div>
+pp/static/char.html
       <div class="field">
+pp/static/char.html
         <label for="kind">Type</label>
+pp/static/char.html
         <select id="kind">
+pp/static/char.html
           <option value="dps" selected>Dégâts (DPS)</option>
+pp/static/char.html
           <option value="weights">Poids de stats (optimiseur)</option>
+pp/static/char.html
         </select>
+pp/static/char.html
       </div>
+pp/static/char.html
       <div class="field">
+pp/static/char.html
         <label for="iter">Précision</label>
+pp/static/char.html
         <select id="iter">
+pp/static/char.html
           <option value="5000">Rapide — 5 000 itérations</option>
+pp/static/char.html
           <option value="10000" selected>Standard — 10 000 itérations</option>
+pp/static/char.html
           <option value="25000">Précis — 25 000 itérations</option>
+pp/static/char.html
           <option value="50000">Très précis — 50 000 itérations</option>
+pp/static/char.html
         </select>
+pp/static/char.html
       </div>
+pp/static/char.html
       <button id="go">▶ Lancer la simulation</button>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div class="profbar">
+pp/static/char.html
       <span class="plab">📁 Profil :</span>
+pp/static/char.html
       <select id="profs"><option value="">— charger un profil —</option></select>
+pp/static/char.html
       <span class="spacer"></span>
+pp/static/char.html
       <input type="text" id="pname" maxlength="60" placeholder="nom du profil (pour enregistrer)">
+pp/static/char.html
       <label class="chkline"><input type="checkbox" id="pshared"> Partager avec la guilde</label>
+pp/static/char.html
       <button class="pbtn" id="psave" title="Enregistrer l'export comme profil">💾 Enregistrer</button>
+pp/static/char.html
       <button class="pbtn" id="pdel" title="Supprimer le profil chargé" disabled>🗑</button>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div id="submit-msg"></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>🧑‍🤝‍🧑 Sim de groupe — le raid entier</h2>
+pp/static/char.html
     <p class="note">Coche les profils /simc des participants : l'app les simule ensemble (buffs de raid inclus) et classe la guilde par DPS.</p>
+pp/static/char.html
     <div id="gprofiles" class="gprofs"><div class="empty">Chargement…</div></div>
+pp/static/char.html
     <div class="row">
+pp/static/char.html
       <label class="chkline">Itérations :
+pp/static/char.html
         <select id="giter">
+pp/static/char.html
           <option value="1000">1 000 (rapide)</option>
+pp/static/char.html
           <option value="5000" selected>5 000</option>
+pp/static/char.html
           <option value="10000">10 000</option>
+pp/static/char.html
         </select>
+pp/static/char.html
       </label>
+pp/static/char.html
       <button id="ggo">▶ Lancer la sim de groupe</button>
+pp/static/char.html
       <span id="gmsg"></span>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div id="gresult"></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>Dernières simulations</h2>
+pp/static/char.html
     <div id="list"><div class="empty">Chargement…</div></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <footer>
+pp/static/char.html
     Moteur : <b>SimulationCraft</b> (image Docker officielle) · Données de jeu fournies par
+pp/static/char.html
     <b>Blizzard Entertainment</b> · Outil non affilié à Blizzard Entertainment ·
+pp/static/char.html
     <span id="ver">…</span>
+pp/static/char.html
   </footer>
+pp/static/char.html
 </div>
+pp/static/char.html
 
-<script src="/static/nav.js?v=2026.09.152-c28"></script>
-<script src="/static/branding.js?v=2026.09.152-c28"></script>
-<script src="/static/i18n.js?v=2026.09.152-c28"></script>
-<script src="/static/esc.js?v=2026.09.152-c28"></script>
+pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/esc.js?v=2026.09.152-c29"></script>
+pp/static/char.html
 <script>
+pp/static/char.html
 const $ = (s) => document.querySelector(s);
+pp/static/char.html
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+pp/static/char.html
 const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
+pp/static/char.html
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
+pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
+pp/static/char.html
 
+pp/static/char.html
 const STAT_FR = { Int: "Intelligence", SP: "Puissance des sorts", AP: "Puissance d'attaque",
+pp/static/char.html
   Str: "Force", Agi: "Agilité", Crit: "Critique", Haste: "Hâte", Mastery: "Maîtrise",
+pp/static/char.html
   Vers: "Polyvalence", Stam: "Endurance", Wdps: "DPS d'arme", WpnDps: "DPS d'arme", Armor: "Armure" };
+pp/static/char.html
 function weightsBox(weights) {
+pp/static/char.html
   const max = Math.max(...weights.map(w => w.value), 0.0001);
+pp/static/char.html
   return `<div class="wbox">` + weights.map(w => {
+pp/static/char.html
     const label = STAT_FR[w.stat] || w.stat;
+pp/static/char.html
     const pct = Math.max(2, Math.round(100 * w.value / max));
+pp/static/char.html
     const err = w.error != null ? ` <small>± ${w.error.toFixed(1)}</small>` : "";
+pp/static/char.html
     return `<div class="wrow"><span class="wstat">${label}</span><span class="wval">${w.value.toFixed(1)}</span><span class="wbar" style="width:${pct}%"></span>${err}</div>`;
+pp/static/char.html
   }).join("") + `</div>`;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 const STATUS = { queued: ["En file ⏳", "b-queued"], running: ["En simulation…", "b-running"],
+pp/static/char.html
                  done: ["Terminé", "b-done"], failed: ["Échoué", "b-failed"] };
+pp/static/char.html
 
+pp/static/char.html
 function render(sims) {
+pp/static/char.html
   const box = $("#list");
+pp/static/char.html
   if (!sims.length) { box.innerHTML = '<div class="empty">Aucune simulation pour le moment.</div>'; return; }
+pp/static/char.html
   box.innerHTML = sims.map(s => {
+pp/static/char.html
     const [txt, cls] = STATUS[s.status] || [s.status, ""];
+pp/static/char.html
     const badge = `<span class="badge ${cls}">${txt}</span>`;
+pp/static/char.html
     const cache = s.cached ? ' <span class="badge b-cache">⚡ cache</span>' : "";
+pp/static/char.html
     const who = esc(s.label || "Simulation");
+pp/static/char.html
     const by = s.user_name ? ` · par ${esc(s.user_name)}` : "";
+pp/static/char.html
     let right = "";
+pp/static/char.html
     if (s.status === "done") {
+pp/static/char.html
       if (s.kind === "weights") {
+pp/static/char.html
         right = `<span class="badge b-weights">⚖️ Poids de stats</span>`;
+pp/static/char.html
       } else if (s.kind === "gear") {
+pp/static/char.html
         right = `<span class="badge b-gear">🧰 Top Stuff</span>`;
+pp/static/char.html
       } else {
+pp/static/char.html
         right = `<span class="dps">${fmt(s.dps)} DPS <small>± ${s.dps_error_pct != null ? s.dps_error_pct.toFixed(2) : "?"} %</small></span>`;
+pp/static/char.html
       }
+pp/static/char.html
       if (s.has_report) right += ` <a href="/reports/${s.id}/report.html" target="_blank" rel="noopener">Rapport →</a>`;
+pp/static/char.html
     } else if (s.status === "failed") {
+pp/static/char.html
       right = `<span class="meta">Échec — détail ci-dessous (export incomplet ou objet qui plante le moteur).</span>`;
+pp/static/char.html
     } else {
+pp/static/char.html
       right = `<span class="spin">⏳</span>`;
+pp/static/char.html
     }
+pp/static/char.html
     const err = (s.status === "failed" && s.error) ? `<div class="errbox">${esc(s.error)}</div>` : "";
+pp/static/char.html
     const note = (s.status === "done" && s.note) ? `<div class="errbox" style="border-color:#7a5b2e;color:#dfa55a;">⚠️ ${esc(s.note)}</div>` : "";
+pp/static/char.html
     const wbox = (s.kind === "weights" && s.weights && s.weights.length) ? weightsBox(s.weights) : "";
+pp/static/char.html
     return `<div class="sim"><span class="who2">${who}</span>
+pp/static/char.html
       ${badge}${cache}
+pp/static/char.html
       <span class="meta">${fmt(s.iterations)} it · ${ago(s.created)}${by}</span>
+pp/static/char.html
       <span class="spacer"></span>${right}${err}${note}${wbox}</div>`;
+pp/static/char.html
   }).join("");
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 async function load() {
+pp/static/char.html
   try {
+pp/static/char.html
     const r = await fetch("/api/sims");
+pp/static/char.html
     if (r.status === 401) { location.href = "/login"; return; }
+pp/static/char.html
     const d = await r.json();
+pp/static/char.html
     render(d.sims); $("#ver").textContent = "v" + d.version;
+pp/static/char.html
   } catch (e) { /* réseau : on retente au tick suivant */ }
+pp/static/char.html
 }
+pp/static/char.html
 setInterval(load, 5000); load();
+pp/static/char.html
 
+pp/static/char.html
 (async () => {
+pp/static/char.html
   try {
+pp/static/char.html
     const r = await fetch("/api/me");
+pp/static/char.html
     if (r.status === 401) { location.href = "/login"; return; }
+pp/static/char.html
     const d = await r.json();
+pp/static/char.html
     $("#who").textContent = d.name || d.email;
+pp/static/char.html
   } catch (e) { /* ignoré */ }
+pp/static/char.html
 })();
+pp/static/char.html
 $("#logout").addEventListener("click", async (e) => {
+pp/static/char.html
   e.preventDefault();
+pp/static/char.html
   try { await fetch("/api/logout", { method: "POST" }); } catch (e2) { /* ignoré */ }
+pp/static/char.html
   location.href = "/login";
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 $("#kind").addEventListener("change", () => {
+pp/static/char.html
   if ($("#kind").value === "weights") { $("#iter").value = "5000"; }
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 // ---- Profils (exports /simc sauvegardés) ----
+pp/static/char.html
 let profiles = { mine: [], shared: [] };
+pp/static/char.html
 let currentProfile = null;
+pp/static/char.html
 
+pp/static/char.html
 async function jfetch(method, path, body) {
+pp/static/char.html
   const r = await fetch(path, { method, headers: { "Content-Type": "application/json" },
+pp/static/char.html
     body: body === undefined ? undefined : JSON.stringify(body) });
+pp/static/char.html
   if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
+pp/static/char.html
   const d = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) throw new Error(d.detail || "Erreur");
+pp/static/char.html
   return d;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function profMsg(text, cls) {
+pp/static/char.html
   const el = $("#submit-msg");
+pp/static/char.html
   el.className = cls || "";
+pp/static/char.html
   el.textContent = text || "";
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function renderProfSelect(keep) {
+pp/static/char.html
   const mine = profiles.mine.map(p => `<option value="${p.id}">${esc(p.name)}${p.shared ? " ⤴" : ""}</option>`).join("");
+pp/static/char.html
   const shared = profiles.shared.map(p => `<option value="${p.id}">${esc(p.name)} — ${esc(p.user_name)}</option>`).join("");
+pp/static/char.html
   $("#profs").innerHTML = `<option value="">— charger un profil —</option>` +
+pp/static/char.html
     (mine ? `<optgroup label="Mes profils">${mine}</optgroup>` : "") +
+pp/static/char.html
     (shared ? `<optgroup label="Partagés par la guilde">${shared}</optgroup>` : "");
+pp/static/char.html
   if (keep != null) $("#profs").value = String(keep);
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 async function loadProfiles(keep) {
+pp/static/char.html
   try { profiles = await jfetch("GET", "/api/profiles"); renderProfSelect(keep); renderGroupProfiles(); }
+pp/static/char.html
   catch (e) { /* silencieux */ }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 $("#profs").addEventListener("change", async () => {
+pp/static/char.html
   const id = $("#profs").value;
+pp/static/char.html
   if (!id) { currentProfile = null; $("#pdel").disabled = true; return; }
+pp/static/char.html
   try {
+pp/static/char.html
     const p = await jfetch("GET", `/api/profiles/${id}`);
+pp/static/char.html
     $("#inp").value = p.input;
+pp/static/char.html
     localStorage.setItem("cohors_input", p.input);
+pp/static/char.html
     currentProfile = { id: p.id, mine: p.mine, name: p.name };
+pp/static/char.html
     $("#pdel").disabled = !p.mine;
+pp/static/char.html
     if (p.mine) $("#pshared").checked = !!p.shared;
+pp/static/char.html
     profMsg(`Profil « ${p.name} » chargé ✅`, "msg-ok");
+pp/static/char.html
   } catch (e) { profMsg(e.message, "msg-err"); }
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 $("#psave").addEventListener("click", async () => {
+pp/static/char.html
   const input = $("#inp").value.trim();
+pp/static/char.html
   if (input.length < 30) { profMsg("Colle d'abord un export /simc dans la zone de texte.", "msg-err"); return; }
+pp/static/char.html
   const explicitName = $("#pname").value.trim();
+pp/static/char.html
   const shared = $("#pshared").checked;
+pp/static/char.html
   try {
+pp/static/char.html
     if (currentProfile && currentProfile.mine && !explicitName) {
+pp/static/char.html
       await jfetch("PATCH", `/api/profiles/${currentProfile.id}`, { input, shared });
+pp/static/char.html
       profMsg(`Profil « ${currentProfile.name} » mis à jour ✅`, "msg-ok");
+pp/static/char.html
     } else {
+pp/static/char.html
       const name = explicitName || $("#lbl").value.trim();
+pp/static/char.html
       if (!name) { profMsg("Donne un nom au profil (champ « nom du profil »).", "msg-err"); return; }
+pp/static/char.html
       const d = await jfetch("POST", "/api/profiles", { name, input, shared });
+pp/static/char.html
       currentProfile = { id: d.id, mine: true, name };
+pp/static/char.html
       profMsg(`Profil « ${name} » enregistré ✅`, "msg-ok");
+pp/static/char.html
       $("#pname").value = "";
+pp/static/char.html
     }
+pp/static/char.html
     await loadProfiles(currentProfile.id);
+pp/static/char.html
   } catch (e) { profMsg(e.message, "msg-err"); }
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 $("#pdel").addEventListener("click", async () => {
+pp/static/char.html
   if (!currentProfile || !currentProfile.mine) return;
+pp/static/char.html
   if (!confirm(`Supprimer le profil « ${currentProfile.name} » ?`)) return;
+pp/static/char.html
   try {
+pp/static/char.html
     await jfetch("DELETE", `/api/profiles/${currentProfile.id}`);
+pp/static/char.html
     currentProfile = null;
+pp/static/char.html
     $("#pdel").disabled = true;
+pp/static/char.html
     await loadProfiles();
+pp/static/char.html
     profMsg("Profil supprimé.", "msg-ok");
+pp/static/char.html
   } catch (e) { profMsg(e.message, "msg-err"); }
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 loadProfiles();
+pp/static/char.html
 
+pp/static/char.html
 $("#inp").value = localStorage.getItem("cohors_input") || "";
+pp/static/char.html
 $("#inp").addEventListener("input", () => localStorage.setItem("cohors_input", $("#inp").value));
+pp/static/char.html
 $("#lbl").value = localStorage.getItem("cohors_label") || "";
+pp/static/char.html
 $("#lbl").addEventListener("input", () => localStorage.setItem("cohors_label", $("#lbl").value));
+pp/static/char.html
 
+pp/static/char.html
 $("#go").addEventListener("click", async () => {
+pp/static/char.html
   const input = $("#inp").value.trim();
+pp/static/char.html
   const msg = $("#submit-msg");
+pp/static/char.html
   if (input.length < 30) { msg.className = "msg-err"; msg.textContent = "Colle d'abord ton export /simc (le texte semble vide ou trop court)."; return; }
+pp/static/char.html
   $("#go").disabled = true; msg.className = ""; msg.textContent = "Envoi…";
+pp/static/char.html
   try {
+pp/static/char.html
     const r = await fetch("/api/sim", { method: "POST", headers: { "Content-Type": "application/json" },
+pp/static/char.html
       body: JSON.stringify({ input, iterations: parseInt($("#iter").value, 10), label: $("#lbl").value, kind: $("#kind").value }) });
+pp/static/char.html
     if (r.status === 401) { location.href = "/login"; return; }
+pp/static/char.html
     const d = await r.json();
+pp/static/char.html
     if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur"; }
+pp/static/char.html
     else if (d.cached) { msg.className = "msg-ok"; msg.textContent = "⚡ Résultat déjà en cache — simulation identique trouvée !"; }
+pp/static/char.html
     else { msg.className = "msg-ok"; msg.textContent = `En file (position ${d.position}) — la simulation démarre dans quelques instants…`; }
+pp/static/char.html
     load();
+pp/static/char.html
   } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; }
+pp/static/char.html
   $("#go").disabled = false;
+pp/static/char.html
 });
+pp/static/char.html
 // ---- Sim de groupe (profils /simc combinés) ----
+pp/static/char.html
 const GCLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+pp/static/char.html
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+pp/static/char.html
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
+pp/static/char.html
 const GCLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur de démons", Druid: "Druide",
+pp/static/char.html
   Evoker: "Évocateur", Hunter: "Chasseur", Mage: "Mage", Monk: "Moine", Paladin: "Paladin",
+pp/static/char.html
   Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
+pp/static/char.html
 const gnum = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+pp/static/char.html
 
+pp/static/char.html
 function renderGroupProfiles() {
+pp/static/char.html
   const box = $("#gprofiles");
+pp/static/char.html
   const all = [...profiles.mine, ...profiles.shared];
+pp/static/char.html
   if (!all.length) {
+pp/static/char.html
     box.innerHTML = `<div class="empty">Aucun profil enregistré — sauvegarde d'abord un export /simc ci-dessus (💾 Enregistrer).</div>`;
+pp/static/char.html
     return;
+pp/static/char.html
   }
+pp/static/char.html
   box.innerHTML = all.map(p => {
+pp/static/char.html
     const mine = profiles.mine.includes(p);
+pp/static/char.html
     return `<label class="chkline"><input type="checkbox" value="${p.id}" ${mine ? "checked" : ""}> ${mine ? "⭐" : "👤"} ${esc(p.name)}${mine ? "" : " — " + esc(p.user_name)}</label>`;
+pp/static/char.html
   }).join("");
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function gsetMsg(text, cls) {
+pp/static/char.html
   const el = $("#gmsg");
+pp/static/char.html
   el.className = cls || "";
+pp/static/char.html
   el.textContent = text || "";
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function renderGroupResult(id, s) {
+pp/static/char.html
   const rows = s.group || [];
+pp/static/char.html
   if (!rows.length) {
+pp/static/char.html
     $("#gresult").innerHTML = `<div class="empty">Aucun résultat par personnage.</div>`;
+pp/static/char.html
     return;
+pp/static/char.html
   }
+pp/static/char.html
   const top = Math.max(...rows.map(r => r.dps || 0)) || 1;
+pp/static/char.html
   const body = rows.map((r, i) => {
+pp/static/char.html
     const col = GCLASS_COLORS[r.class] || "var(--fg,#e8edf7)";
+pp/static/char.html
     const pct = Math.round(1000 * (r.dps || 0) / top) / 10;
+pp/static/char.html
     return `<tr>
+pp/static/char.html
       <td><b>${i + 1}</b></td>
+pp/static/char.html
       <td><b style="color:${col}">${esc(r.name)}</b><br><span class="gmeta">${esc(GCLASS_FR[r.class] || r.class || "")} ${esc(r.spec || "")}${r.ilvl ? " · ilvl " + r.ilvl : ""}</span></td>
+pp/static/char.html
       <td style="text-align:right"><b>${gnum(r.dps)}</b></td>
+pp/static/char.html
       <td style="width:36%"><div class="gbar" style="width:${Math.max(4, pct)}%"></div></td>
+pp/static/char.html
       <td style="text-align:right" class="gmeta">${i === 0 ? "🏆" : "-" + gnum(100 * (1 - (r.dps || 0) / top), 1) + " %"}</td>
+pp/static/char.html
     </tr>`;
+pp/static/char.html
   }).join("");
+pp/static/char.html
   $("#gresult").innerHTML = `<table class="gtable">
+pp/static/char.html
     <thead><tr><th>#</th><th>Personnage</th><th style="text-align:right">DPS</th><th></th><th></th></tr></thead>
+pp/static/char.html
     <tbody>${body}</tbody></table>
+pp/static/char.html
     <p class="note"><a class="hlink" href="/reports/${id}/report.html" target="_blank">📄 Rapport complet</a> · ${rows.length} personnages simulés ensemble (buffs de raid inclus).</p>`;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 let gPoll = null;
+pp/static/char.html
 
+pp/static/char.html
 $("#ggo").addEventListener("click", async () => {
+pp/static/char.html
   const ids = Array.from(document.querySelectorAll("#gprofiles input:checked")).map(c => parseInt(c.value, 10));
+pp/static/char.html
   if (ids.length < 2) { gsetMsg("Coche au moins 2 profils.", "msg-err"); return; }
+pp/static/char.html
   $("#ggo").disabled = true;
+pp/static/char.html
   $("#gresult").innerHTML = "";
+pp/static/char.html
   try {
+pp/static/char.html
     const d = await jfetch("POST", "/api/group/sim", { ids, iterations: parseInt($("#giter").value, 10) });
+pp/static/char.html
     gsetMsg("⏳ Sim de groupe envoyée — en file d'attente…", "msg-ok");
+pp/static/char.html
     if ((d.warnings || []).length) $("#gresult").innerHTML = d.warnings.map(w => `<div class="empty">⚠️ ${esc(w)}</div>`).join("");
+pp/static/char.html
     if (gPoll) clearInterval(gPoll);
+pp/static/char.html
     gPoll = setInterval(async () => {
+pp/static/char.html
       try {
+pp/static/char.html
         const st = await jfetch("GET", `/api/sims/${d.id}`);
+pp/static/char.html
         if (st.status === "queued") gsetMsg("⏳ En file d'attente…", "msg-ok");
+pp/static/char.html
         else if (st.status === "running") gsetMsg("⚙️ Simulation en cours…", "msg-ok");
+pp/static/char.html
         else if (st.status === "done") {
+pp/static/char.html
           clearInterval(gPoll); gPoll = null; $("#ggo").disabled = false;
+pp/static/char.html
           gsetMsg("✅ Terminé !", "msg-ok");
+pp/static/char.html
           renderGroupResult(d.id, st);
+pp/static/char.html
           load();
+pp/static/char.html
         } else if (st.status === "failed") {
+pp/static/char.html
           clearInterval(gPoll); gPoll = null; $("#ggo").disabled = false;
+pp/static/char.html
           gsetMsg("Échec : " + (st.error || "erreur inconnue"), "msg-err");
+pp/static/char.html
         }
+pp/static/char.html
       } catch (e) { clearInterval(gPoll); gPoll = null; $("#ggo").disabled = false; gsetMsg(e.message, "msg-err"); }
+pp/static/char.html
     }, 2500);
+pp/static/char.html
   } catch (e) { $("#ggo").disabled = false; gsetMsg(e.message, "msg-err"); }
+pp/static/char.html
 });
+pp/static/char.html
 </script>
+pp/static/char.html
 </body>
+pp/static/char.html
 </html>
+pp/static/char.html

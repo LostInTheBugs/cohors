@@ -1,257 +1,514 @@
 <!DOCTYPE html>
+pp/static/char.html
 <html lang="fr">
+pp/static/char.html
 <head>
+pp/static/char.html
 <meta charset="utf-8">
+pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+pp/static/char.html
 <title>Cohors — Guilde</title>
+pp/static/char.html
 <link rel="icon" href="/branding/logo">
+pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
+pp/static/char.html
 <meta name="theme-color" content="#b1002e">
+pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
+pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
+pp/static/char.html
 <style>
+pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
+pp/static/char.html
   * { box-sizing:border-box; }
+pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+pp/static/char.html
   .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
+pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
+pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+pp/static/char.html
   .brandname span { color:var(--acc2); }
+pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
+pp/static/char.html
   .userbox { display:flex; gap:14px; align-items:center; }
+pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
+pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+pp/static/char.html
   .hlink:hover { text-decoration:underline; }
+pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+pp/static/char.html
          border:1px solid var(--line); background:transparent; }
+pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
+pp/static/char.html
   .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+pp/static/char.html
   h2 { font-size:17px; margin:0 0 12px; }
+pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+pp/static/char.html
   .txt { white-space:pre-line; margin:0 0 8px; }
+pp/static/char.html
   .meta { color:var(--mut); font-size:12.5px; }
+pp/static/char.html
   .kv { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:6px 0; }
+pp/static/char.html
   .kv .k { color:var(--mut); font-size:13px; min-width:120px; }
+pp/static/char.html
   .kv .v { font-weight:600; }
+pp/static/char.html
   .btn { display:inline-block; background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; text-decoration:none; border:0; border-radius:10px; padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; }
+pp/static/char.html
   .cbtn { background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:4px 10px; font-size:12.5px; cursor:pointer; }
+pp/static/char.html
   .cbtn:hover { border-color:#3a4763; }
+pp/static/char.html
   textarea, input[type=text] { width:100%; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; font-family:inherit; }
+pp/static/char.html
   textarea:focus, input[type=text]:focus { outline:2px solid var(--acc); border-color:var(--acc); }
+pp/static/char.html
   label { font-size:13px; color:var(--mut); display:block; margin:12px 0 4px; }
+pp/static/char.html
   .note { color:var(--mut); font-size:12.5px; margin:8px 0 0; }
+pp/static/char.html
   .msg-ok { color:var(--ok); font-size:13.5px; }
+pp/static/char.html
   .msg-err { color:var(--err); font-size:13.5px; }
+pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+pp/static/char.html
   .hidden { display:none !important; }
+pp/static/char.html
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c28">
+pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
+pp/static/char.html
 </head>
+pp/static/char.html
 <body class="wb">
+pp/static/char.html
 <div class="wrap">
+pp/static/char.html
   <header class="topbar">
+pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
+pp/static/char.html
       <div>
+pp/static/char.html
         <div class="brandname">Cohors <span>Guilde</span></div>
+pp/static/char.html
         <div class="tagline">Les liens et infos de la communauté.</div>
+pp/static/char.html
       </div>
+pp/static/char.html
     </a>
+pp/static/char.html
     <div class="userbox">
+pp/static/char.html
       <span class="who" id="who"></span>
+pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
+pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
+pp/static/char.html
     </div>
+pp/static/char.html
   </header>
+pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>🛡️ La guilde</h2>
+pp/static/char.html
     <p class="txt" id="intro">Chargement…</p>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>📣 Discord</h2>
+pp/static/char.html
     <p class="txt meta" id="discord-note"></p>
+pp/static/char.html
     <p id="discord-go" class="hidden"><a class="btn" id="discord-link" href="#" target="_blank" rel="noopener">Rejoindre le Discord →</a></p>
+pp/static/char.html
     <p class="note hidden" id="discord-empty">Lien à venir — un administrateur peut le renseigner.</p>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>🎧 TeamSpeak</h2>
+pp/static/char.html
     <div class="kv"><span class="k">Adresse</span><span class="v" id="ts-host">—</span><button class="cbtn hidden" id="ts-copy-host">📋 Copier</button></div>
+pp/static/char.html
     <div class="kv"><span class="k">Mot de passe</span><span class="v" id="ts-pwd">—</span><button class="cbtn hidden" id="ts-copy-pwd">📋 Copier</button></div>
+pp/static/char.html
     <p id="ts-open" class="hidden"><a class="btn" id="ts-link" href="#">🚀 Ouvrir dans TeamSpeak</a></p>
+pp/static/char.html
     <p class="txt meta" id="ts-note" style="margin-top:10px"></p>
+pp/static/char.html
     <p class="note hidden" id="ts-empty">Adresse non renseignée — un administrateur peut la compléter.</p>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>🎧 Client web (TeamSpeak dans le navigateur)</h2>
+pp/static/char.html
     <p class="txt meta" id="web-note"></p>
+pp/static/char.html
     <p id="web-go" class="hidden"><a class="btn" id="web-link" href="#" target="_blank" rel="noopener">Ouvrir le client web →</a></p>
+pp/static/char.html
     <p class="note hidden" id="web-empty">Client web à venir — un administrateur peut le renseigner.</p>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>🧩 Addon Cohors (in-game)</h2>
+pp/static/char.html
     <p class="txt meta">L'addon importe le calendrier des raids (réponses en jeu) et exporte tes recettes de métiers vers l'app. En jeu : /cohors → « Exporter ».</p>
+pp/static/char.html
     <p><a class="btn" id="gdl" href="/api/addon">⬇️ Télécharger l'addon (zip)</a></p>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <p id="edit-bar" class="hidden"><button class="cbtn" id="edit-btn">✏️ Modifier cette page</button></p>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card hidden" id="edit-card">
+pp/static/char.html
     <h2>✏️ Modifier cette page</h2>
+pp/static/char.html
     <p class="note">Tout champ laissé vide est simplement masqué sur la page.</p>
+pp/static/char.html
     <label>Présentation</label><textarea id="f-intro" rows="4"></textarea>
+pp/static/char.html
     <label>Lien Discord</label><input type="text" id="f-discord-url" placeholder="https://discord.gg/xxxx">
+pp/static/char.html
     <label>Note Discord</label><input type="text" id="f-discord-note">
+pp/static/char.html
     <label>Adresse TeamSpeak</label><input type="text" id="f-ts-host" placeholder="ts.exemple.fr:9987">
+pp/static/char.html
     <label>Mot de passe TeamSpeak</label><input type="text" id="f-ts-pwd">
+pp/static/char.html
     <label>Note TeamSpeak</label><input type="text" id="f-ts-note">
+pp/static/char.html
     <label>Lien client web</label><input type="text" id="f-web-url" placeholder="https://…">
+pp/static/char.html
     <label>Note client web</label><input type="text" id="f-web-note">
+pp/static/char.html
     <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+pp/static/char.html
       <button class="btn" id="save">💾 Enregistrer</button>
+pp/static/char.html
       <button class="cbtn" id="cancel">Annuler</button>
+pp/static/char.html
       <span id="msg"></span>
+pp/static/char.html
     </div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+pp/static/char.html
 </div>
-<script src="/static/nav.js?v=2026.09.152-c28"></script>
-<script src="/static/branding.js?v=2026.09.152-c28"></script>
-<script src="/static/i18n.js?v=2026.09.152-c28"></script>
-<script src="/static/esc.js?v=2026.09.152-c28"></script>
+pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/esc.js?v=2026.09.152-c29"></script>
+pp/static/char.html
 <script>
+pp/static/char.html
 const $ = (s) => document.querySelector(s);
+pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
+pp/static/char.html
   const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 const jpost = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
+pp/static/char.html
   body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 
+pp/static/char.html
 let INFO = { items: {}, can_edit: false };
+pp/static/char.html
 
+pp/static/char.html
 function tsLink(host, pwd) {
+pp/static/char.html
   let h = (host || "").trim(), port = "";
+pp/static/char.html
   const m = h.match(/^(.+?):(\d{2,5})$/);
+pp/static/char.html
   if (m) { h = m[1]; port = m[2]; }
+pp/static/char.html
   if (!h) return "";
+pp/static/char.html
   const q = [];
+pp/static/char.html
   if (port) q.push("port=" + port);
+pp/static/char.html
   if (pwd) q.push("password=" + encodeURIComponent(pwd));
+pp/static/char.html
   return "ts3server://" + h + (q.length ? "?" + q.join("&") : "");
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function setMsg(t, ok) { const e = $("#msg"); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; }
+pp/static/char.html
 
+pp/static/char.html
 function fill() {
+pp/static/char.html
   const it = INFO.items || {};
+pp/static/char.html
   $("#intro").textContent = it.intro || "—";
+pp/static/char.html
   $("#discord-note").textContent = it.discord_note || "";
+pp/static/char.html
   const url = (it.discord_url || "").trim();
+pp/static/char.html
   $("#discord-go").classList.toggle("hidden", !url);
+pp/static/char.html
   $("#discord-empty").classList.toggle("hidden", !!url);
+pp/static/char.html
   if (url) $("#discord-link").href = url;
+pp/static/char.html
   $("#ts-note").textContent = it.ts_note || "";
+pp/static/char.html
   const host = (it.ts_host || "").trim(), pwd = it.ts_password || "";
+pp/static/char.html
   $("#ts-host").textContent = host || "—";
+pp/static/char.html
   $("#ts-pwd").textContent = pwd || "—";
+pp/static/char.html
   $("#ts-copy-host").classList.toggle("hidden", !host);
+pp/static/char.html
   $("#ts-copy-pwd").classList.toggle("hidden", !pwd);
+pp/static/char.html
   const link = tsLink(host, pwd);
+pp/static/char.html
   $("#ts-open").classList.toggle("hidden", !link);
+pp/static/char.html
   if (link) $("#ts-link").href = link;
+pp/static/char.html
   $("#ts-empty").classList.toggle("hidden", !!host);
+pp/static/char.html
   $("#web-note").textContent = it.web_note || "";
+pp/static/char.html
   const wurl = (it.web_url || "").trim();
+pp/static/char.html
   $("#web-go").classList.toggle("hidden", !wurl);
+pp/static/char.html
   $("#web-empty").classList.toggle("hidden", !!wurl);
+pp/static/char.html
   if (wurl) $("#web-link").href = wurl;
+pp/static/char.html
   $("#edit-bar").classList.toggle("hidden", !INFO.can_edit);
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function toForm() {
+pp/static/char.html
   const it = INFO.items || {};
+pp/static/char.html
   $("#f-intro").value = it.intro || "";
+pp/static/char.html
   $("#f-discord-url").value = it.discord_url || "";
+pp/static/char.html
   $("#f-discord-note").value = it.discord_note || "";
+pp/static/char.html
   $("#f-ts-host").value = it.ts_host || "";
+pp/static/char.html
   $("#f-ts-pwd").value = it.ts_password || "";
+pp/static/char.html
   $("#f-ts-note").value = it.ts_note || "";
+pp/static/char.html
   $("#f-web-url").value = it.web_url || "";
+pp/static/char.html
   $("#f-web-note").value = it.web_note || "";
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 async function copyText(t, btn) {
+pp/static/char.html
   try {
+pp/static/char.html
     await navigator.clipboard.writeText(t);
+pp/static/char.html
     const old = btn.textContent;
+pp/static/char.html
     btn.textContent = "Copié ✓";
+pp/static/char.html
     setTimeout(() => { btn.textContent = old; }, 1500);
+pp/static/char.html
   } catch (e) { /* silencieux */ }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 $("#ts-copy-host").addEventListener("click", () => copyText(($("#ts-host").textContent || "").trim(), $("#ts-copy-host")));
+pp/static/char.html
 $("#ts-copy-pwd").addEventListener("click", () => copyText($("#ts-pwd").textContent || "", $("#ts-copy-pwd")));
+pp/static/char.html
 
+pp/static/char.html
 $("#edit-btn").addEventListener("click", () => {
+pp/static/char.html
   setMsg("");
+pp/static/char.html
   toForm();
+pp/static/char.html
   $("#edit-card").classList.remove("hidden");
+pp/static/char.html
   $("#edit-bar").classList.add("hidden");
+pp/static/char.html
 });
+pp/static/char.html
 $("#cancel").addEventListener("click", () => {
+pp/static/char.html
   $("#edit-card").classList.add("hidden");
+pp/static/char.html
   $("#edit-bar").classList.toggle("hidden", !INFO.can_edit);
+pp/static/char.html
 });
+pp/static/char.html
 $("#save").addEventListener("click", async () => {
+pp/static/char.html
   $("#save").disabled = true;
+pp/static/char.html
   try {
+pp/static/char.html
     const d = await jpost("POST", "/api/guild/info", { items: {
+pp/static/char.html
       intro: $("#f-intro").value, discord_url: $("#f-discord-url").value,
+pp/static/char.html
       discord_note: $("#f-discord-note").value, ts_host: $("#f-ts-host").value,
+pp/static/char.html
       ts_password: $("#f-ts-pwd").value, ts_note: $("#f-ts-note").value,
+pp/static/char.html
       web_url: $("#f-web-url").value, web_note: $("#f-web-note").value,
+pp/static/char.html
     } });
+pp/static/char.html
     const fresh = await jget("/api/guild/info");
+pp/static/char.html
     INFO = fresh;
+pp/static/char.html
     fill();
+pp/static/char.html
     $("#edit-card").classList.add("hidden");
+pp/static/char.html
     $("#edit-bar").classList.toggle("hidden", !INFO.can_edit);
+pp/static/char.html
     setMsg("Page mise à jour ✓", true);
+pp/static/char.html
   } catch (e) { setMsg(e.message, false); }
+pp/static/char.html
   $("#save").disabled = false;
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
+pp/static/char.html
   ev.preventDefault();
+pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
+pp/static/char.html
   location.href = "/login";
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 (async () => {
+pp/static/char.html
   try {
+pp/static/char.html
     const me = await jget("/api/me");
+pp/static/char.html
     $("#who").textContent = me.name || me.email;
+pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
+pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+pp/static/char.html
   try {
+pp/static/char.html
     INFO = await jget("/api/guild/info");
+pp/static/char.html
     fill();
+pp/static/char.html
   } catch (e) { $("#intro").textContent = e.message; }
+pp/static/char.html
 })();
+pp/static/char.html
 </script>
+pp/static/char.html
 </body>
+pp/static/char.html
 </html>
+pp/static/char.html

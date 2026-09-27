@@ -1,156 +1,312 @@
 <!DOCTYPE html>
+pp/static/char.html
 <html lang="fr">
+pp/static/char.html
 <head>
+pp/static/char.html
 <meta charset="utf-8">
+pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+pp/static/char.html
 <title>Cohors — Mes indispos</title>
+pp/static/char.html
 <link rel="icon" href="/branding/logo">
+pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
+pp/static/char.html
 <meta name="theme-color" content="#b1002e">
+pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
+pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
+pp/static/char.html
 <style>
+pp/static/char.html
   :root {
+pp/static/char.html
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+pp/static/char.html
     --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+pp/static/char.html
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+pp/static/char.html
   }
+pp/static/char.html
   * { box-sizing: border-box; }
+pp/static/char.html
   body { margin: 0; background: var(--bg); color: var(--fg);
+pp/static/char.html
          font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+pp/static/char.html
   header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+pp/static/char.html
   .brand { display: flex; align-items: center; gap: 12px; }
+pp/static/char.html
   .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+pp/static/char.html
   .brandname span { color: var(--acc2); }
+pp/static/char.html
   .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+pp/static/char.html
   .tagline { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+pp/static/char.html
   .spacer { flex: 1; }
+pp/static/char.html
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+pp/static/char.html
   .hlink:hover { text-decoration: underline; }
+pp/static/char.html
   .who { color: var(--mut); font-size: 14px; }
+pp/static/char.html
   nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+pp/static/char.html
   .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+pp/static/char.html
          color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+pp/static/char.html
          border: 1px solid var(--line); background: transparent;
+pp/static/char.html
          transition: border-color .15s, color .15s, background .15s; }
+pp/static/char.html
   .tab:hover { color: var(--fg); border-color: #3a4763; }
+pp/static/char.html
   .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+pp/static/char.html
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+pp/static/char.html
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+pp/static/char.html
   input[type=date], input[type=text] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+pp/static/char.html
         border-radius: 10px; padding: 9px 12px; font-size: 14px; color-scheme: dark; }
+pp/static/char.html
   input[type=text] { min-width: 220px; }
+pp/static/char.html
   input:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+pp/static/char.html
   button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+pp/static/char.html
            padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+pp/static/char.html
   button:disabled { opacity: .55; cursor: default; }
+pp/static/char.html
   h2 { font-size: 17px; margin: 0 0 10px; }
+pp/static/char.html
   h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
+pp/static/char.html
   .meta { color: var(--mut); font-size: 13px; }
+pp/static/char.html
   .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
+pp/static/char.html
   .urow { display: flex; gap: 10px; align-items: baseline; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+pp/static/char.html
   .urow:last-child { border-bottom: 0; }
+pp/static/char.html
   .urow.past { opacity: .55; }
+pp/static/char.html
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
+pp/static/char.html
   .err { color: var(--err); font-size: 13px; }
+pp/static/char.html
   .hidden { display: none !important; }
+pp/static/char.html
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c28">
+pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
+pp/static/char.html
 </head>
+pp/static/char.html
 <body class="wb">
+pp/static/char.html
 <div class="wrap">
+pp/static/char.html
   <header class="topbar">
+pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
+pp/static/char.html
       <div>
+pp/static/char.html
         <div class="brandname">Cohors <span>Mes indispos</span></div>
+pp/static/char.html
         <div class="tagline">Tes périodes d'indisponibilité — visibles dans la préparation de raid.</div>
+pp/static/char.html
       </div>
+pp/static/char.html
     </a>
+pp/static/char.html
     <div class="userbox">
+pp/static/char.html
       <span class="who" id="who"></span>
+pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
+pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
+pp/static/char.html
     </div>
+pp/static/char.html
   </header>
+pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card" id="indispos">
+pp/static/char.html
     <h2>🚫 Mes indispos <span class="pc">raids surtout</span></h2>
+pp/static/char.html
     <div class="meta" style="margin:-4px 0 10px">Indique tes périodes de non-disponibilité (vacances, exams…) — surtout pour les soirs de raid. Elles apparaissent sur la page 🗓️ Calendrier (Prochains raids), croisées avec tes réponses in-game (⚠️ « indispo mais a accepté le raid »).</div>
+pp/static/char.html
     <div class="row">
+pp/static/char.html
       <span class="meta">du</span><input type="date" id="dfrom">
+pp/static/char.html
       <span class="meta">au</span><input type="date" id="dto">
+pp/static/char.html
       <input type="text" id="dnote" placeholder="Note (facultatif — ex : vacances)">
+pp/static/char.html
       <button id="dadd">➕ Ajouter</button>
+pp/static/char.html
       <span class="spacer"></span>
+pp/static/char.html
       <span class="meta" id="dmsg"></span>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div id="dlist" style="margin-top:10px"><span class="empty">Chargement…</span></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+pp/static/char.html
 </div>
-<script src="/static/nav.js?v=2026.09.152-c28"></script>
-<script src="/static/branding.js?v=2026.09.152-c28"></script>
-<script src="/static/i18n.js?v=2026.09.152-c28"></script>
-<script src="/static/esc.js?v=2026.09.152-c28"></script>
+pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/esc.js?v=2026.09.152-c29"></script>
+pp/static/char.html
 <script>
+pp/static/char.html
 const $ = (s) => document.querySelector(s);
+pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
+pp/static/char.html
   const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 const jreq = async (m, u, b) => { const r = await fetch(u, { method: m,
+pp/static/char.html
   headers: b ? { "Content-Type": "application/json" } : undefined, body: b ? JSON.stringify(b) : undefined });
+pp/static/char.html
   const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
+pp/static/char.html
 const dMsg = (t, ok) => { const m = $("#dmsg"); m.textContent = t || ""; m.style.color = ok ? "var(--ok)" : "var(--err)";
+pp/static/char.html
   if (t) setTimeout(() => { if (m.textContent === t) m.textContent = ""; }, 5000); };
+pp/static/char.html
 
+pp/static/char.html
 async function loadUnavail() {
+pp/static/char.html
   try {
+pp/static/char.html
     const d = await jget("/api/me/unavail");
+pp/static/char.html
     const items = d.items || [];
+pp/static/char.html
     if (!items.length) { $("#dlist").innerHTML = `<div class="empty">Aucune période d'indisponibilité pour l'instant.</div>`; return; }
+pp/static/char.html
     const today = new Date().toISOString().slice(0, 10);
+pp/static/char.html
     $("#dlist").innerHTML = items.map(x => `<div class="urow${x.day_to < today ? " past" : ""}">
+pp/static/char.html
       <b>${x.day_from === x.day_to ? fmtDay(x.day_from) : fmtDay(x.day_from) + " → " + fmtDay(x.day_to)}</b>
+pp/static/char.html
       ${x.note ? `<span class="meta">— ${esc(x.note)}</span>` : ""}
+pp/static/char.html
       <span class="spacer"></span>
+pp/static/char.html
       <a class="hlink" data-udel="${x.id}" style="cursor:pointer;font-size:13px">supprimer</a></div>`).join("");
+pp/static/char.html
     $("#dlist").querySelectorAll("[data-udel]").forEach(a => a.addEventListener("click", async () => {
+pp/static/char.html
       try { await jreq("DELETE", `/api/me/unavail/${a.dataset.udel}`); await loadUnavail(); dMsg("Période retirée.", true); }
+pp/static/char.html
       catch (e) { dMsg(e.message); }
+pp/static/char.html
     }));
+pp/static/char.html
   } catch (e) { $("#dlist").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+pp/static/char.html
 }
+pp/static/char.html
 $("#dadd").addEventListener("click", async () => {
+pp/static/char.html
   const from = $("#dfrom").value, to = $("#dto").value, note = $("#dnote").value.trim();
+pp/static/char.html
   if (!from) { dMsg("Choisis une date de début."); return; }
+pp/static/char.html
   try {
+pp/static/char.html
     await jreq("POST", "/api/me/unavail", { day_from: from, day_to: to || from, note });
+pp/static/char.html
     $("#dfrom").value = ""; $("#dto").value = ""; $("#dnote").value = "";
+pp/static/char.html
     await loadUnavail(); dMsg("Période ajoutée ✓", true);
+pp/static/char.html
   } catch (e) { dMsg(e.message); }
+pp/static/char.html
 });
+pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
+pp/static/char.html
   ev.preventDefault();
+pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
+pp/static/char.html
   location.href = "/login";
+pp/static/char.html
 });
+pp/static/char.html
 (async () => {
+pp/static/char.html
   try {
+pp/static/char.html
     const me = await jget("/api/me");
+pp/static/char.html
     $("#who").textContent = me.name || me.email;
+pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
+pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+pp/static/char.html
   loadUnavail();
+pp/static/char.html
 })();
+pp/static/char.html
 </script>
+pp/static/char.html
 </body>
+pp/static/char.html
 </html>
+pp/static/char.html

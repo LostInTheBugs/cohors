@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c29 - 2026-09-27
+
+### Changed
+- Recettes connues récupérées automatiquement depuis Blizzard (extension en cours + précédente) : « Mes recettes », préparation de raid et stuff conseillé. L'import de l'add-on devient facultatif.
+### Added
+- « Mes recettes » : bouton « 🔄 Relire depuis Blizzard » et date du dernier relevé.
+
 ## 2026.09.152-c28 - 2026-09-27
 
 ### Added
