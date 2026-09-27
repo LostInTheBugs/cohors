@@ -108,3 +108,14 @@ def test_officer_compose_uses_prebuilt_images_and_keeps_the_socket_isolated():
     worker = _compose_service(c, "worker")
     assert "docker.sock" not in app and "docker.sock" in worker, "isolation du socket Docker"
     assert "simsock" in app and "simsock" in worker, "socket Unix app ↔ worker manquant"
+
+
+def test_html_v_param_matches_version():
+    """Chaque ?v= dans les pages HTML pointe sur la version actuelle (régression c22→c24)."""
+    v = (ROOT / "VERSION").read_text().strip()
+    expected = f"?v={v}"
+    for p in sorted((ROOT / "app/static").glob("*.html")):
+        content = p.read_text(encoding="utf-8")
+        found = re.findall(r"\?v=[^\s\"'>]+", content)
+        for ref in found:
+            assert ref == expected, f"{p.name}: {ref} ≠ {expected}"
