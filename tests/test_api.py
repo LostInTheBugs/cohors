@@ -944,3 +944,13 @@ def test_stuff_best_crafted_filters_by_class_and_lists_crafters():
     assert [i["id"] for i in by["main_hand"]["items"]] == [272007, 272011]     # pas de hache 2M pour un chaman
     assert [i["id"] for i in by["off_hand"]["items"]] == [272008]
     assert "272009" not in str(res) and "272012" not in str(res)             # outils de métier et ancienne extension écartés
+
+
+def test_bis_murder_row_is_mythic_plus_only():
+    """Murder Row (Allée du meurtre) est un donjon M+ : absent d'un filtre « Artisanat » seul."""
+    for src in ("Murder Row", "Allée du meurtre", "Murder Row & Catalyseur"):
+        assert M.BIS_CONTENT_MAP[src] == "mplus", src
+    blk = {"slots": [{"slot": "feet", "id": 1, "src_fr": "Murder Row"},
+                     {"slot": "hands", "id": 2, "src_fr": "Crafted"}]}
+    assert [s["id"] for s in M._stuff_bis_filter(blk, ["craft"])["slots"]] == [2]
+    assert [s["id"] for s in M._stuff_bis_filter(blk, ["mplus"])["slots"]] == [1]

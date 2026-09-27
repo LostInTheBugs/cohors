@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c27 - 2026-09-27
+
+### Fixed
+- **BIS : Murder Row / Allée du meurtre classés en Mythique+.** Ces sources étaient « multi-contenus » et s'affichaient sous tous les filtres (même « Artisanat » seul).
+
 ## 2026.09.152-c26 - 2026-09-27
 
 ### Added
@@ -11,9 +16,6 @@ All notable changes to this project are documented in this file.
   connaissent la recette. Les recettes du jeu sont reliées à leurs objets via la
   recherche Blizzard par nom exact (l'API « recipe » ne renvoie plus `crafted_item`).
   Synchronisation de Couture (197) et Joaillerie (755).
-
-
-
 
 ## 2026.09.152-c25 - 2026-09-27
 
@@ -268,7 +270,6 @@ All notable changes to this project are documented in this file.
 - This release also ships the whole in-game add-on **1.9.x** line from today's iterations
   (c2–c7): recipes export on the current client APIs, guided collection with the « ▶ Ouvrir »
   button, archaeology skip, incremental saves (see the sections below).
-
 
 ## 2026.09.145-c7 - 2026-09-20
 

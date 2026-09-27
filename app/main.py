@@ -1963,6 +1963,8 @@ BIS_CONTENT_MAP = {
     "Entombed Sentinels": "mplus",
     "Galvazzt": "mplus",
     "Mor'zahi": "mplus",
+    "Murder Row": "mplus",
+    "Allée du meurtre": "mplus",   # nom FR de Murder Row (donjon M+)
     "Murder Row & Catalyseur": "mplus",
     "Ruby Life Pools": "mplus",
     "Temple of Sethraliss": "mplus",
@@ -1979,7 +1981,6 @@ BIS_CONTENT_MAP = {
     "Voidscar Arena": "mplus",
     "Voidscar Arena & Catalyseur": "mplus",
     # Delves uniquement
-    "Allée du meurtre": "delves",
     "Antre de Nalorakk": "delves",
     "Den of Nalorakk": "delves",
     "Den of Nalorakk & Catalyseur": "delves",
@@ -2030,7 +2031,6 @@ BIS_CONTENT_MAP = {
     "Travail du cuir": "craft",
     # Multi-contenus / non classifiés (toujours inclus)
     "Catalyseur": None,
-    "Murder Row": None,
     "Altar of Fangs": None,
     "Arène de la Cicatrice du Vide": None,
     "BoE Trash Drop": None,
