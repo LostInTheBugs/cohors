@@ -1,506 +1,253 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Tableau de bord</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
-pp/static/char.html
   * { box-sizing:border-box; }
-pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
-pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
-pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
-pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
-pp/static/char.html
   .brandname span { color:var(--acc2); }
-pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   .userbox { display:flex; gap:14px; align-items:center; }
-pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
-pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
-pp/static/char.html
   .hlink:hover { text-decoration:underline; }
-pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
-pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
-pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
-pp/static/char.html
          border:1px solid var(--line); background:transparent; }
-pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
-pp/static/char.html
   .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
-pp/static/char.html
   h2 { font-size:17px; margin:0 0 12px; }
-pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
-pp/static/char.html
   .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; margin-bottom:14px; }
-pp/static/char.html
   .grid .card { margin-bottom:0; }
-pp/static/char.html
   .cd { font-size:34px; font-weight:700; letter-spacing:.5px; color:var(--acc2); margin:6px 0 2px; }
-pp/static/char.html
   .cd small { font-size:14px; color:var(--mut); font-weight:500; margin-left:6px; }
-pp/static/char.html
   .note { color:var(--mut); font-size:12.5px; margin:8px 0 0; }
-pp/static/char.html
   .rhead { display:flex; flex-wrap:wrap; gap:8px; align-items:baseline; margin-bottom:4px; }
-pp/static/char.html
   .rhead .t { font-weight:700; font-size:15.5px; }
-pp/static/char.html
   .meta { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   .prow { display:flex; gap:10px; align-items:center; padding:6px 2px; border-top:1px solid var(--line); font-size:13.5px; }
-pp/static/char.html
   .prow:first-of-type { border-top:0; }
-pp/static/char.html
   .pname { font-weight:600; }
-pp/static/char.html
   .pspec { color:var(--mut); font-size:12px; }
-pp/static/char.html
   .pchip { font-weight:700; }
-pp/static/char.html
   .bossname { color:var(--mut); font-size:12px; }
-pp/static/char.html
   .erow { display:flex; gap:10px; align-items:center; padding:6px 2px; border-top:1px solid var(--line); font-size:13.5px; }
-pp/static/char.html
   .erow:first-child { border-top:0; }
-pp/static/char.html
   .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
-pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
-pp/static/char.html
   .hidden { display:none !important; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Tableau de bord</span></div>
-pp/static/char.html
         <div class="tagline">Vue d'ensemble de la guilde — raids, mouvements et vocal.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="grid">
-pp/static/char.html
     <div class="card hidden" id="setcard">
-pp/static/char.html
       <h2>🚀 Première configuration</h2>
-pp/static/char.html
       <div class="cd" id="setcount"></div>
-pp/static/char.html
       <p class="note" id="setnote"></p>
-pp/static/char.html
       <p class="note"><a class="hlink" href="/start">Ouvrir la checklist →</a></p>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="card" id="nrcard" style="display:none">
-pp/static/char.html
       <h2>🗓️ Prochain raid</h2>
-pp/static/char.html
       <div class="cd" id="nrdate"></div>
-pp/static/char.html
       <p class="note" id="nrresp"></p>
-pp/static/char.html
       <p class="note" id="nrimport"></p>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="card">
-pp/static/char.html
       <h2>📊 Dernier raid</h2>
-pp/static/char.html
       <div id="raid"><div class="empty">Chargement…</div></div>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="card">
-pp/static/char.html
       <h2>🎧 Vocal</h2>
-pp/static/char.html
       <div class="cd" id="vcount">…</div>
-pp/static/char.html
       <p class="note">connecté(s) sur TeamSpeak (hors bot)</p>
-pp/static/char.html
       <p class="note" id="vnames"></p>
-pp/static/char.html
     </div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>👥 Mouvements de guilde</h2>
-pp/static/char.html
     <p class="note" id="stats"></p>
-pp/static/char.html
     <div id="events"><div class="empty">Chargement…</div></div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/esc.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
+<script src="/static/esc.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
-pp/static/char.html
 const dtFmt = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-pp/static/char.html
 const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
-pp/static/char.html
   if (s < 60) return "à l'instant";
-pp/static/char.html
   if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
-pp/static/char.html
   if (s < 86400 * 30) return `il y a ${Math.floor(s / 86400)} j`;
-pp/static/char.html
   return new Date(ts * 1000).toLocaleDateString("fr-FR"); };
-pp/static/char.html
 
-pp/static/char.html
 const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
-pp/static/char.html
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
-pp/static/char.html
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
-pp/static/char.html
 const CLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur de démons", Druid: "Druide",
-pp/static/char.html
   Evoker: "Évocateur", Hunter: "Chasseur", Mage: "Mage", Monk: "Moine", Paladin: "Paladin",
-pp/static/char.html
   Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
-pp/static/char.html
 const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >= 95 ? "#ff8000" : p >= 75 ? "#a335ee" : p >= 50 ? "#0070dd" : p >= 25 ? "#1eff00" : "#6b6b6b";
-pp/static/char.html
 
-pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 
-pp/static/char.html
 // ---- données
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const me = await jget("/api/me");
-pp/static/char.html
     $("#who").textContent = me.name || me.email;
-pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
-pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
 
-pp/static/char.html
   // première configuration — carte réservée aux administrateurs
-pp/static/char.html
   try {
-pp/static/char.html
     const me2 = await jget("/api/me");
-pp/static/char.html
     if (me2.role === "admin" || me2.is_admin) {
-pp/static/char.html
       const s = await jget("/api/setup/status");
-pp/static/char.html
       const done = (s.steps || []).filter((x) => x.done).length;
-pp/static/char.html
       $("#setcount").textContent = done + "/" + s.total;
-pp/static/char.html
       $("#setnote").textContent = done >= s.total
-pp/static/char.html
         ? "✅ Configuration terminée — revoir la checklist."
-pp/static/char.html
         : "Il reste des étapes pour mettre la guilde en route — ouvre la checklist.";
-pp/static/char.html
       $("#setcard").classList.remove("hidden");
-pp/static/char.html
     }
-pp/static/char.html
   } catch (e) {}
-pp/static/char.html
 
-pp/static/char.html
   // vocal (TeamSpeak) — nombre de connectés, bot exclu
-pp/static/char.html
   const loadVoice = async () => {
-pp/static/char.html
     try {
-pp/static/char.html
       const v = await jget("/api/voice/count");
-pp/static/char.html
       $("#vcount").textContent = String(v.count);
-pp/static/char.html
       $("#vnames").innerHTML = (v.groups || []).map((g) =>
-pp/static/char.html
         '<div style="margin-top:5px;font-size:13px;"><b style="color:var(--fg);">' + esc(g.channel) +
-pp/static/char.html
         '</b> <span style="color:var(--mut);">—</span> ' + esc(g.names.join(", ")) + '</div>').join("");
-pp/static/char.html
     } catch (e) { $("#vcount").textContent = "—"; $("#vnames").textContent = ""; }
-pp/static/char.html
   };
-pp/static/char.html
   loadVoice(); setInterval(loadVoice, 60000);
-pp/static/char.html
 
-pp/static/char.html
   // mouvements + taille du roster
-pp/static/char.html
   let membersTxt = "";
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jget("/api/dashboard");
-pp/static/char.html
     if (d.members) membersTxt = `${d.members.count} membres`;
-pp/static/char.html
     const box = $("#events");
-pp/static/char.html
     if (!d.events.length) box.innerHTML = `<div class="empty">Aucun mouvement enregistré pour le moment.</div>`;
-pp/static/char.html
     else box.innerHTML = d.events.map(e => `
-pp/static/char.html
       <div class="erow">
-pp/static/char.html
         <span>${e.kind === "join" ? "🍃" : "🕊"}</span>
-pp/static/char.html
         <span class="pname">${esc(e.member)}</span>
-pp/static/char.html
         <span class="meta">${e.kind === "join" ? "Arrivée" : "Départ"} · ${ago(e.created)}</span>
-pp/static/char.html
       </div>`).join("");
-pp/static/char.html
 
-pp/static/char.html
     // prochain raid du calendrier in-game (import de l'addon)
-pp/static/char.html
     const nr = d.next_raid;
-pp/static/char.html
     if (nr) {
-pp/static/char.html
       $("#nrcard").style.display = "";
-pp/static/char.html
       const nd = new Date((nr.date || "").replace(" ", "T"));
-pp/static/char.html
       $("#nrdate").textContent = isNaN(nd.getTime()) ? (nr.date || "—")
-pp/static/char.html
         : nd.toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" }) +
-pp/static/char.html
           " · " + nd.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-pp/static/char.html
       $("#nrresp").textContent = `${nr.ok} dispo · ${nr.no} non · ${nr.wait} sans réponse`;
-pp/static/char.html
       $("#nrimport").textContent = "via le calendrier du jeu · importé " + ago(nr.imported_at);
-pp/static/char.html
     }
-pp/static/char.html
   } catch (e) {
-pp/static/char.html
     $("#events").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-pp/static/char.html
   }
-pp/static/char.html
 
-pp/static/char.html
   // dernier raid
-pp/static/char.html
   try {
-pp/static/char.html
     const rl = await jget("/api/wcl/reports?limit=10");
-pp/static/char.html
     if (membersTxt && rl.reports.total != null) membersTxt += ` · ${rl.reports.total} rapports au total`;
-pp/static/char.html
     $("#stats").textContent = membersTxt;
-pp/static/char.html
     const rows = rl.reports.data || [];
-pp/static/char.html
     if (!rows.length) { $("#raid").innerHTML = `<div class="empty">Aucun rapport pour le moment.</div>`; return; }
-pp/static/char.html
     let det = null, rep = null, fights = [];
-pp/static/char.html
     for (const r of rows.slice(0, 4)) {
-pp/static/char.html
       det = await jget(`/api/wcl/report/${encodeURIComponent(r.code)}`);
-pp/static/char.html
       rep = det.report || {};
-pp/static/char.html
       fights = rep.fights || [];
-pp/static/char.html
       if (fights.length) break;          // premier rapport contenant des combats de boss
-pp/static/char.html
     }
-pp/static/char.html
     const kills = fights.filter(f => f.kill).length;
-pp/static/char.html
     const bossOf = {}; for (const f of fights) bossOf[String(f.id)] = f.name;
-pp/static/char.html
     const pars = [];
-pp/static/char.html
     for (const [fid, entry] of Object.entries(det.rankings || {})) {
-pp/static/char.html
       for (const key of ["dps", "tanks", "healers"]) {
-pp/static/char.html
         const chars = (((entry.roles || {})[key]) || {}).characters || [];
-pp/static/char.html
         for (const c of chars) {
-pp/static/char.html
           if (c.rankPercent != null) pars.push({ ...c, boss: bossOf[fid] || "" });
-pp/static/char.html
         }
-pp/static/char.html
       }
-pp/static/char.html
     }
-pp/static/char.html
     pars.sort((a, b) => (b.rankPercent || 0) - (a.rankPercent || 0));
-pp/static/char.html
     const top = pars.slice(0, 5);
-pp/static/char.html
     $("#raid").innerHTML = `
-pp/static/char.html
       <div class="rhead"><span class="t">${esc(rep.title || "(sans titre)")}</span></div>
-pp/static/char.html
       <div class="meta">${esc((rep.zone || {}).name || "Zone inconnue")} · ${dtFmt(rep.startTime)} · ${fights.length} pulls · <b style="color:var(--ok)">${kills} boss tué${kills > 1 ? "s" : ""}</b></div>
-pp/static/char.html
       ${top.length ? `<div style="margin-top:8px;font-weight:600;font-size:13px;">Meilleurs parses du raid</div>` + top.map(c => `
-pp/static/char.html
         <div class="prow">
-pp/static/char.html
           <span class="pname" style="color:${CLASS_COLORS[c.class] || "var(--fg)"}">${esc(c.name)}</span>
-pp/static/char.html
           <span class="pspec">${esc(CLASS_FR[c.class] || c.class || "")} ${esc(c.spec || "")}</span>
-pp/static/char.html
           <span class="bossname">${esc(c.boss)}</span>
-pp/static/char.html
           <span style="flex:1"></span>
-pp/static/char.html
           <span class="meta">${fmt(c.amount)}</span>
-pp/static/char.html
           <span class="pchip" style="color:${parseColor(c.rankPercent)}">${c.rankPercent}</span>
-pp/static/char.html
         </div>`).join("") : `<div class="meta" style="margin-top:6px;">Pas de parses.</div>`}
-pp/static/char.html
       <p class="note"><a class="hlink" href="https://www.warcraftlogs.com/reports/${esc(rep.code)}" target="_blank" rel="noopener">Ouvrir le rapport →</a></p>`;
-pp/static/char.html
   } catch (e) {
-pp/static/char.html
     $("#raid").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-pp/static/char.html
   }
-pp/static/char.html
 })();
-pp/static/char.html
 
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
-pp/static/char.html
   ev.preventDefault();
-pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
-pp/static/char.html
   location.href = "/login";
-pp/static/char.html
 });
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

@@ -1,312 +1,156 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Mains & alts</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
-pp/static/char.html
   * { box-sizing:border-box; }
-pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
-pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
-pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
-pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
-pp/static/char.html
   .brandname span { color:var(--acc2); }
-pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   .userbox { display:flex; gap:14px; align-items:center; }
-pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
-pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
-pp/static/char.html
   .hlink:hover { text-decoration:underline; }
-pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
-pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
-pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
-pp/static/char.html
          border:1px solid var(--line); background:transparent;
-pp/static/char.html
          transition:border-color .15s, color .15s, background .15s; }
-pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
-pp/static/char.html
   .tab.active { color:#fff; background:linear-gradient(135deg, var(--acc), #7d0020); border-color:transparent; }
-pp/static/char.html
   .tab.admin { margin-left:auto; color:var(--acc2); border-color:#5e4a1e; }
-pp/static/char.html
   .tab.admin:hover { background:#241d10; color:var(--acc2); border-color:var(--acc2); }
-pp/static/char.html
   .tab.admin.active { background:linear-gradient(135deg, #b8862e, #7a5312); color:#fff; }
-pp/static/char.html
   h2 { font-size:17px; margin:0 0 12px; }
-pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
-pp/static/char.html
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-pp/static/char.html
   .spacer { flex:1; }
-pp/static/char.html
   .meta { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   input[type=text] { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
-pp/static/char.html
         padding:9px 12px; font-size:14px; flex:1; min-width:220px; }
-pp/static/char.html
   input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
-pp/static/char.html
   .accrow { border:1px solid var(--line); background:var(--card2); border-radius:12px; padding:12px 14px; margin-bottom:9px;
-pp/static/char.html
             cursor:pointer; transition:border-color .15s, background .15s; }
-pp/static/char.html
   .accrow:hover { border-color:#5a4a2a; background:#1b2537; }
-pp/static/char.html
   .acchead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
-pp/static/char.html
   .accname { color:var(--acc2); font-weight:700; font-size:15px; text-decoration:none; }
-pp/static/char.html
   .accname:hover { text-decoration:underline; }
-pp/static/char.html
   .chips { display:flex; gap:8px; flex-wrap:wrap; }
-pp/static/char.html
   .chip { display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); border-radius:999px;
-pp/static/char.html
           padding:5px 13px; font-size:13.5px; color:var(--fg); text-decoration:none; }
-pp/static/char.html
   .chip:hover { border-color:var(--acc2); color:var(--acc2); }
-pp/static/char.html
   .chip .realm { color:var(--mut); font-size:11.5px; }
-pp/static/char.html
   .chip.main { border-color:#7a5b2e; background:rgba(223,165,90,.08); font-weight:600; }
-pp/static/char.html
   .chip.main .star { color:var(--acc2); }
-pp/static/char.html
   .nommain { color:var(--mut); font-size:12px; font-style:italic; }
-pp/static/char.html
   .empty { color:var(--mut); font-size:14px; }
-pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Mains &amp; alts</span></div>
-pp/static/char.html
         <div class="tagline">Tous les personnages de la guilde, regroupés sous leur main.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/characters">👥 Mes personnages</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>⭐ Mains &amp; alts <span class="meta" id="count"></span></h2>
-pp/static/char.html
     <div class="meta" style="margin:-4px 0 12px">Clique sur le cadre d'un compte pour ouvrir la fiche de son main, ou sur un personnage pour la sienne.</div>
-pp/static/char.html
     <div class="row" style="margin-bottom:12px">
-pp/static/char.html
       <input type="text" id="q" placeholder="Rechercher un personnage ou un joueur…">
-pp/static/char.html
     </div>
-pp/static/char.html
     <div id="list"><div class="empty">Chargement…</div></div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
 <div id="toast"></div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/esc.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
+<script src="/static/esc.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const plur = (n, s) => `${n} ${s}${n > 1 ? "s" : ""}`;
-pp/static/char.html
 let DATA = [];
-pp/static/char.html
 
-pp/static/char.html
 async function load() {
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await fetch("/api/mains");
-pp/static/char.html
     if (r.status === 401) { location.href = "/login"; return; }
-pp/static/char.html
     const d = await r.json();
-pp/static/char.html
     DATA = d.accounts || [];
-pp/static/char.html
     $("#count").textContent = `· ${plur(d.total_accounts, "compte")} · ${plur(d.total_chars, "personnage")}`;
-pp/static/char.html
     render();
-pp/static/char.html
   } catch (e) {
-pp/static/char.html
     $("#list").innerHTML = '<div class="empty">Impossible de charger la liste.</div>';
-pp/static/char.html
   }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 const charUrl = (c) => `/char/${encodeURIComponent(c.realm)}/${encodeURIComponent(c.name)}`;
-pp/static/char.html
 
-pp/static/char.html
 function render() {
-pp/static/char.html
   const q = $("#q").value.trim().toLowerCase();
-pp/static/char.html
   const list = $("#list");
-pp/static/char.html
   const accs = DATA.filter(a => !q || a.user.toLowerCase().includes(q) ||
-pp/static/char.html
     a.chars.some(c => (c.display || c.name).toLowerCase().includes(q)));
-pp/static/char.html
   if (!accs.length) { list.innerHTML = '<div class="empty">Aucun personnage lié pour le moment.</div>'; return; }
-pp/static/char.html
   list.innerHTML = accs.map(a => {
-pp/static/char.html
     const hasMain = a.chars.some(c => c.main);
-pp/static/char.html
     const main = a.chars.find(c => c.main) || a.chars[0];
-pp/static/char.html
     const chips = a.chars.map(c =>
-pp/static/char.html
       `<a class="chip${c.main ? " main" : ""}" href="${charUrl(c)}">${c.main ? '<span class="star">⭐</span>' : ""}${esc(c.display || c.name)} <span class="realm">${esc(c.realm)}</span></a>`
-pp/static/char.html
     ).join("");
-pp/static/char.html
     return `<div class="accrow" data-href="${charUrl(main)}">
-pp/static/char.html
       <div class="acchead"><a class="accname" href="${charUrl(main)}">${esc(a.user)}</a>
-pp/static/char.html
         <span class="meta">${plur(a.chars.length, "personnage")}</span>${hasMain ? "" : ' <span class="nommain">aucun main défini</span>'}</div>
-pp/static/char.html
       <div class="chips">${chips}</div></div>`;
-pp/static/char.html
   }).join("");
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#list").addEventListener("click", (ev) => {
-pp/static/char.html
   if (ev.target.closest("a")) return;
-pp/static/char.html
   const row = ev.target.closest(".accrow");
-pp/static/char.html
   if (row && row.dataset.href) location.href = row.dataset.href;
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#q").addEventListener("input", render);
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => { ev.preventDefault(); await fetch("/api/logout", { method: "POST" }); location.href = "/login"; });
-pp/static/char.html
 
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try { const me = await (await fetch("/api/me")).json(); $("#who").textContent = me.name || ""; } catch (e) {}
-pp/static/char.html
   try { const h = await (await fetch("/api/health")).json(); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
   load();
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

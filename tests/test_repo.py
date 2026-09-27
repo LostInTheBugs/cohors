@@ -119,3 +119,11 @@ def test_html_v_param_matches_version():
         found = re.findall(r"\?v=[^\s\"'>]+", content)
         for ref in found:
             assert ref == expected, f"{p.name}: {ref} ≠ {expected}"
+
+
+def test_html_no_stray_path_lines():
+    """Aucune ligne ne contient seulement un chemin de fichier (régression c29 : `pp/static/char.html` inséré partout)."""
+    bad = re.compile(r"^\s*[\w./-]*static/[\w.-]+\.(html|js|css)\s*$")
+    for p in sorted((ROOT / "app/static").glob("*.html")):
+        for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
+            assert not bad.match(line), f"{p.name}:{n}: ligne parasite {line!r}"

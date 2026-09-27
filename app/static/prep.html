@@ -1,954 +1,477 @@
 <!doctype html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1">
-pp/static/char.html
 <title>Cohors — Préparation de raid</title>
-pp/static/char.html
 <meta name="theme-color" content="#0b0e14">
-pp/static/char.html
 <link rel="icon" href="/static/icon-192.png">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root {
-pp/static/char.html
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
-pp/static/char.html
     --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
-pp/static/char.html
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
-pp/static/char.html
   }
-pp/static/char.html
   * { box-sizing: border-box; }
-pp/static/char.html
   body { margin: 0; background: var(--bg); color: var(--fg);
-pp/static/char.html
          font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
-pp/static/char.html
   .brand { display: flex; align-items: center; gap: 12px; }
-pp/static/char.html
   .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
-pp/static/char.html
   .brandname span { color: var(--acc2); }
-pp/static/char.html
   .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
-pp/static/char.html
   .tagline { color: var(--mut); font-size: 12.5px; }
-pp/static/char.html
   .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
-pp/static/char.html
   .spacer { flex: 1; }
-pp/static/char.html
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
-pp/static/char.html
   .hlink:hover { text-decoration: underline; }
-pp/static/char.html
   .who { color: var(--mut); font-size: 14px; }
-pp/static/char.html
   nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
-pp/static/char.html
   .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
-pp/static/char.html
          color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
-pp/static/char.html
          border: 1px solid var(--line); background: transparent;
-pp/static/char.html
          transition: border-color .15s, color .15s, background .15s; }
-pp/static/char.html
   .tab:hover { color: var(--fg); border-color: #3a4763; }
-pp/static/char.html
   .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
-pp/static/char.html
   .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
-pp/static/char.html
   .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
-pp/static/char.html
   .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
-pp/static/char.html
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
-pp/static/char.html
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-pp/static/char.html
   input, select, textarea { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
-pp/static/char.html
         border-radius: 10px; padding: 8px 11px; font-size: 14px; }
-pp/static/char.html
   input:focus, select:focus, textarea:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
-pp/static/char.html
   h2 { font-size: 17px; margin: 0 0 10px; }
-pp/static/char.html
   h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
-pp/static/char.html
   .meta { color: var(--mut); font-size: 13px; }
-pp/static/char.html
   .empty { color: var(--mut); font-size: 14px; padding: 8px 2px; }
-pp/static/char.html
   .btn { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
-pp/static/char.html
          padding: 9px 14px; font-weight: 600; font-size: 14px; cursor: pointer; }
-pp/static/char.html
   .btn:hover { filter: brightness(1.1); }
-pp/static/char.html
   .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); }
-pp/static/char.html
   .irow, .nrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 7px 2px;
-pp/static/char.html
                  border-top: 1px solid var(--line); font-size: 14px; }
-pp/static/char.html
   .irow:first-child, .nrow:first-child { border-top: 0; }
-pp/static/char.html
   .iname { font-weight: 600; }
-pp/static/char.html
   .qty { font-weight: 700; color: var(--acc2); font-variant-numeric: tabular-nums; }
-pp/static/char.html
   .nmat { font-weight: 600; min-width: 120px; }
-pp/static/char.html
   .nneed { color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
-pp/static/char.html
   .nclaimed { font-variant-numeric: tabular-nums; white-space: nowrap; }
-pp/static/char.html
   .nclaimed.ok { color: var(--ok); font-weight: 600; }
-pp/static/char.html
   .nclaimed.warn { color: var(--warn); }
-pp/static/char.html
   .nclaims { color: var(--mut); font-size: 12.5px; flex: 1 1 140px; }
-pp/static/char.html
   .napport { display: flex; gap: 6px; align-items: center; margin-left: auto; }
-pp/static/char.html
   .napport input { width: 84px; padding: 6px 8px; }
-pp/static/char.html
   .napport button { padding: 6px 11px; font-size: 13px; }
-pp/static/char.html
   .nbank { display: inline-flex; align-items: center; gap: 4px; color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
-pp/static/char.html
   .nbank input { width: 66px; padding: 5px 7px; }
-pp/static/char.html
   .nrest { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--mut); font-size: 13px; }
-pp/static/char.html
   .nrest.ok { color: var(--ok); font-weight: 600; }
-pp/static/char.html
   .oqty { width: 76px; padding: 5px 7px; }
-pp/static/char.html
   #inewprev { min-height: 17px; }
-pp/static/char.html
   .combo { position: relative; flex: 1 1 320px; max-width: 460px; }
-pp/static/char.html
   .combo input { width: 100%; }
-pp/static/char.html
   .inlist { position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 300px; overflow-y: auto;
-pp/static/char.html
             background: var(--card2); border: 1px solid var(--line); border-radius: 10px; z-index: 40;
-pp/static/char.html
             box-shadow: 0 10px 26px rgba(0,0,0,.45); }
-pp/static/char.html
   .inrow { display: flex; gap: 8px; align-items: baseline; padding: 7px 10px; cursor: pointer; border-bottom: 1px solid rgba(35,45,66,.55); }
-pp/static/char.html
   .inrow:last-child { border-bottom: 0; }
-pp/static/char.html
   .inrow:hover, .inrow.sel { background: rgba(223,165,90,.10); }
-pp/static/char.html
   .inrow .im { font-weight: 600; }
-pp/static/char.html
   .inrow .meta { font-size: 12.5px; }
-pp/static/char.html
   .inhint { padding: 8px 10px; color: var(--mut); font-size: 13px; }
-pp/static/char.html
   .chkline { display: inline-flex; align-items: center; gap: 7px; color: var(--mut); font-size: 13px; cursor: pointer; margin-top: 6px; }
-pp/static/char.html
   .chkline input[type=checkbox] { accent-color: var(--acc2); width: 15px; height: 15px; }
-pp/static/char.html
   .bar { flex: 1 1 100%; height: 5px; border-radius: 3px; background: var(--card2); overflow: hidden; margin-top: 2px; }
-pp/static/char.html
   .chips { display: inline-flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
-pp/static/char.html
   .chip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px;
-pp/static/char.html
           padding: 4px 12px; font-size: 13px; cursor: pointer; color: var(--mut); }
-pp/static/char.html
   .chip:hover { border-color: var(--acc2); }
-pp/static/char.html
   .chip.on { border-color: var(--acc2); color: var(--acc2); font-weight: 600; }
-pp/static/char.html
   .bar i { display: block; height: 100%; background: var(--ok); }
-pp/static/char.html
   .mic { background: transparent; border: 0; color: var(--mut); cursor: pointer; font-size: 15px; padding: 4px 6px; }
-pp/static/char.html
   .mic:hover { color: var(--err); }
-pp/static/char.html
   .svg { margin-left: 8px; }
-pp/static/char.html
   #msg { min-height: 20px; font-size: 13.5px; margin: 0 0 10px; }
-pp/static/char.html
   #msg.ok { color: var(--ok); }
-pp/static/char.html
   #msg.err { color: var(--err); }
-pp/static/char.html
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
-pp/static/char.html
   .hidden { display: none !important; }
-pp/static/char.html
   .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px;
-pp/static/char.html
           border: 1px solid var(--line); color: var(--mut); }
-pp/static/char.html
   .chip-new { border-color: var(--acc2); color: var(--acc2); }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Préparation de raid</span></div>
-pp/static/char.html
         <div class="tagline">Ce que la guilde fabrique pour les raids — compos nécessaires et apports de chacun.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
   <div id="msg"></div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>🛠️ À fabriquer <span class="pc" id="itemsmeta"></span></h2>
-pp/static/char.html
     <div id="items"><div class="empty">Chargement…</div></div>
-pp/static/char.html
     <div id="itemsedit" class="hidden" style="margin-top:8px;border-top:1px solid var(--line);padding-top:10px">
-pp/static/char.html
       <div class="row">
-pp/static/char.html
         <span class="combo">
-pp/static/char.html
           <input id="inew" placeholder="Rechercher une recette… (tape pour filtrer)" autocomplete="off">
-pp/static/char.html
           <div id="inlist" class="inlist hidden"></div>
-pp/static/char.html
         </span>
-pp/static/char.html
         <input id="iqty" type="number" min="1" step="1" value="1" style="width:90px" title="Combien en fabriquer">
-pp/static/char.html
         <button class="btn" id="iadd">＋ Ajouter</button>
-pp/static/char.html
       </div>
-pp/static/char.html
       <div class="meta" id="inewprev" style="margin-top:4px"></div>
-pp/static/char.html
       <label class="chkline"><input type="checkbox" id="inguild"> Seulement les recettes connues par les joueurs de la guilde</label>
-pp/static/char.html
       <div class="row" style="margin-top:6px">
-pp/static/char.html
         <span class="meta" id="gsyncmeta"></span>
-pp/static/char.html
         <button class="btn ghost" id="objreset" title="Vide le plan et les apports (les recettes sont gardées)">♻️ Réinitialiser</button>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>🧾 Compos nécessaires <span class="pc" id="needsmeta"></span></h2>
-pp/static/char.html
     <div id="needs"><div class="empty">Chargement…</div></div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/esc.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
+<script src="/static/esc.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
-pp/static/char.html
 const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
-pp/static/char.html
   if (s < 60) return "à l'instant";
-pp/static/char.html
   if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
-pp/static/char.html
   return `il y a ${Math.floor(s / 86400)} j`; };
-pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 const jpost = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
-pp/static/char.html
     body: b === undefined ? undefined : JSON.stringify(b) });
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 let msgT = null;
-pp/static/char.html
 function setMsg(txt, ok) { const m = $("#msg"); m.textContent = txt || ""; m.className = txt ? (ok ? "ok" : "err") : "";
-pp/static/char.html
   clearTimeout(msgT); if (txt) msgT = setTimeout(() => { m.textContent = ""; m.className = ""; }, 4000); }
-pp/static/char.html
 
-pp/static/char.html
 let DATA = null, CAN = false;
-pp/static/char.html
 let PLAN = { title: "", event_ts: 0, items: [], raids: [], bosses: [] };
-pp/static/char.html
 
-pp/static/char.html
 async function savePlan() {
-pp/static/char.html
   try {
-pp/static/char.html
     await jpost("POST", "/api/prep/plan", { title: PLAN.title, event_ts: PLAN.event_ts, items: PLAN.items,
-pp/static/char.html
       raids: PLAN.raids || [], bosses: PLAN.bosses || [] });
-pp/static/char.html
     setMsg("Plan enregistré ✓", true);
-pp/static/char.html
     await load();
-pp/static/char.html
   } catch (e) { setMsg(e.message, false); }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 let OPT_MATS = {};        // recette normalisée -> entrée (maison > jeu > artisans)
-pp/static/char.html
 let OPT_LIST = [];        // toutes les entrées, ordre des sources
-pp/static/char.html
 let SEL = null;           // entrée choisie dans la liste
-pp/static/char.html
 const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-pp/static/char.html
 const SRC_TAG = { maison: "🏕️", jeu: "🎮", artisans: "👥" };
-pp/static/char.html
 
-pp/static/char.html
 let GUILD_ONLY = false;
-pp/static/char.html
 
-pp/static/char.html
 function buildIndex() {
-pp/static/char.html
   const groups = [
-pp/static/char.html
     ["maison", (DATA.recipes || []).map(r => ({ item: r.name, prof: "", mats: r.mats, who: [] }))],
-pp/static/char.html
     ["jeu", (DATA.game || []).map(g => ({ item: g.item, prof: g.prof, mats: g.mats, who: g.crafters || [] }))],
-pp/static/char.html
     ["artisans", (DATA.catalog || []).map(c => ({ item: c.item, prof: c.prof, mats: c.mats, who: c.crafters || [] }))]
-pp/static/char.html
   ];
-pp/static/char.html
   const cands = {};   // clé -> candidats dans l'ordre de priorité (maison > jeu > artisans)
-pp/static/char.html
   for (const [src, rows] of groups) {
-pp/static/char.html
     for (const x of rows) {
-pp/static/char.html
       const key = norm(x.item);
-pp/static/char.html
       if (!key) continue;
-pp/static/char.html
       x.src = src;
-pp/static/char.html
       (cands[key] = cands[key] || []).push(x);
-pp/static/char.html
     }
-pp/static/char.html
   }
-pp/static/char.html
   OPT_MATS = {}; OPT_LIST = [];
-pp/static/char.html
   for (const list of Object.values(cands)) {
-pp/static/char.html
     const keep = list[0];
-pp/static/char.html
     keep.optMats = list.map(c => c.mats || []).find(m => m.length) || [];       // comme le serveur : 1re source non vide
-pp/static/char.html
     keep.optWho = [...new Set(list.flatMap(c => c.who || []))];
-pp/static/char.html
     OPT_MATS[norm(keep.item)] = keep;
-pp/static/char.html
     OPT_LIST.push(keep);
-pp/static/char.html
   }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 const guildKnown = (x) => (x.optWho || []).length > 0;
-pp/static/char.html
 
-pp/static/char.html
 function hideInList() { $("#inlist").classList.add("hidden"); }
-pp/static/char.html
 
-pp/static/char.html
 function renderInList(q) {
-pp/static/char.html
   const box = $("#inlist");
-pp/static/char.html
   const nq = norm(q);
-pp/static/char.html
   const base = GUILD_ONLY ? OPT_LIST.filter(guildKnown) : OPT_LIST;
-pp/static/char.html
   let res = [];
-pp/static/char.html
   if (nq) {
-pp/static/char.html
     const start = [], mid = [];
-pp/static/char.html
     for (const x of base) {
-pp/static/char.html
       const n = norm(x.item);
-pp/static/char.html
       if (n.startsWith(nq)) start.push(x);
-pp/static/char.html
       else if (n.includes(nq)) mid.push(x);
-pp/static/char.html
     }
-pp/static/char.html
     res = start.concat(mid);
-pp/static/char.html
   }
-pp/static/char.html
   if (!nq) {
-pp/static/char.html
     box.innerHTML = GUILD_ONLY
-pp/static/char.html
       ? `<div class="inhint">Tape pour filtrer parmi ${base.length} recettes connues de la guilde…</div>`
-pp/static/char.html
       : `<div class="inhint">Tape pour filtrer parmi ${base.length} recettes…</div>`;
-pp/static/char.html
     box.classList.remove("hidden");
-pp/static/char.html
     return;
-pp/static/char.html
   }
-pp/static/char.html
   if (!res.length) {
-pp/static/char.html
     box.innerHTML = `<div class="inhint">Aucun résultat — si le filtre guilde est coché, essaie de le décocher ; sinon, vérifie l'orthographe.</div>`;
-pp/static/char.html
     box.classList.remove("hidden");
-pp/static/char.html
     return;
-pp/static/char.html
   }
-pp/static/char.html
   const shown = res.slice(0, 40);
-pp/static/char.html
   box.innerHTML = shown.map((x, i) => `<div class="inrow" data-i="${i}">
-pp/static/char.html
       <span class="im">${esc(x.item)}</span>
-pp/static/char.html
       <span class="meta">${SRC_TAG[x.src] || ""} ${esc(x.prof || "")}</span>
-pp/static/char.html
       ${(x.optMats || []).length ? "" : `<span class="meta">⚠️</span>`}
-pp/static/char.html
     </div>`).join("") + (res.length > shown.length ? `<div class="inhint">… ${res.length - shown.length} autres — affine ta recherche.</div>` : "");
-pp/static/char.html
   box.classList.remove("hidden");
-pp/static/char.html
   window._inRes = shown;
-pp/static/char.html
   window._inSel = -1;
-pp/static/char.html
   box.querySelectorAll("[data-i]").forEach(r => {
-pp/static/char.html
     r.addEventListener("mousedown", (ev) => ev.preventDefault());
-pp/static/char.html
     r.addEventListener("click", () => pickIn(shown[+r.dataset.i]));
-pp/static/char.html
   });
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function showPrev(x) {
-pp/static/char.html
   const p = $("#inewprev");
-pp/static/char.html
   if (!x) { p.textContent = ""; return; }
-pp/static/char.html
   if (!(x.optMats || []).length) {
-pp/static/char.html
     p.textContent = "⚠️ Compos inconnues pour cette recette (données du jeu incomplètes) — elles apparaîtront dès qu'un artisan de la guilde importera son export d'addon (🙋 Moi → 📖 Mes recettes).";
-pp/static/char.html
     return;
-pp/static/char.html
   }
-pp/static/char.html
   const mats = x.optMats.map(m => `${m.name} ×${fmt(m.qty)}`).join(" · ");
-pp/static/char.html
   p.textContent = `Compos : ${mats}` + ((x.optWho || []).length ? ` · qui : ${x.optWho.join(", ")}` : "");
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function pickIn(x) {
-pp/static/char.html
   if (!x) return;
-pp/static/char.html
   SEL = x;
-pp/static/char.html
   $("#inew").value = x.item;
-pp/static/char.html
   showPrev(x);
-pp/static/char.html
   hideInList();
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function currentEntry() {
-pp/static/char.html
   const typed = ($("#inew").value || "").trim();
-pp/static/char.html
   if (SEL && SEL.item.toLowerCase() === typed.toLowerCase()) return SEL;
-pp/static/char.html
   if (!typed) return null;
-pp/static/char.html
   const exact = OPT_MATS[norm(typed)];
-pp/static/char.html
   if (exact) return exact;
-pp/static/char.html
   const res = window._inRes || [];
-pp/static/char.html
   return res.length === 1 ? res[0] : null;
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function renderItems() {
-pp/static/char.html
   const box = $("#items");
-pp/static/char.html
   const it = PLAN.items || [];
-pp/static/char.html
   $("#itemsmeta").textContent = it.length ? `· ${it.length} objet(s)` : "";
-pp/static/char.html
   if (!it.length) {
-pp/static/char.html
     box.innerHTML = `<div class="empty">Aucun objet dans le plan pour le moment.</div>`;
-pp/static/char.html
   } else {
-pp/static/char.html
     box.innerHTML = it.map((x, i) => `<div class="irow">
-pp/static/char.html
       <span class="iname">${esc(x.name)}</span>
-pp/static/char.html
       ${CAN ? `<input type="number" class="oqty" data-qi="${i}" value="${+x.qty || 1}" min="1" step="1" title="Quantité à fabriquer">`
-pp/static/char.html
             : `<span class="qty">× ${fmt(x.qty)}</span>`}
-pp/static/char.html
       ${CAN ? `<button class="mic" data-ri="${i}" title="Retirer">✕</button>` : ""}
-pp/static/char.html
     </div>`).join("");
-pp/static/char.html
     if (CAN) box.querySelectorAll("[data-ri]").forEach(b => b.addEventListener("click", async () => {
-pp/static/char.html
       PLAN.items.splice(+b.dataset.ri, 1); await savePlan();
-pp/static/char.html
     }));
-pp/static/char.html
     if (CAN) box.querySelectorAll("[data-qi]").forEach(inp => inp.addEventListener("change", async () => {
-pp/static/char.html
       PLAN.items[+inp.dataset.qi].qty = Math.max(1, parseInt(inp.value || "1", 10) || 1);
-pp/static/char.html
       await savePlan();
-pp/static/char.html
     }));
-pp/static/char.html
   }
-pp/static/char.html
   $("#itemsedit").classList.toggle("hidden", !CAN);
-pp/static/char.html
   buildIndex();
-pp/static/char.html
   if (DATA.unknown && DATA.unknown.length) {
-pp/static/char.html
     $("#itemsmeta").textContent += ` · ⚠️ sans compos connues : ${DATA.unknown.join(", ")}`;
-pp/static/char.html
   }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function renderNeeds() {
-pp/static/char.html
   const box = $("#needs");
-pp/static/char.html
   const needs = DATA.needs || [];
-pp/static/char.html
   const total = needs.reduce((a, n) => a + (n.need > 0 ? 1 : 0), 0);
-pp/static/char.html
   const done = needs.filter(n => n.need > 0 && n.claimed >= n.need).length;
-pp/static/char.html
   $("#needsmeta").textContent = total ? `· ${done}/${total} complet${done > 1 ? "s" : ""}` : "";
-pp/static/char.html
   if (!needs.length) {
-pp/static/char.html
     box.innerHTML = `<div class="empty">Rien à préparer pour le moment.</div>`;
-pp/static/char.html
     return;
-pp/static/char.html
   }
-pp/static/char.html
   box.innerHTML = needs.map(n => {
-pp/static/char.html
     const mine = (n.claims || []).find(c => c.mine);
-pp/static/char.html
     const bank = +n.bank || 0;
-pp/static/char.html
     const claimed = +n.claimed || 0;
-pp/static/char.html
     const rest = n.rest != null ? +n.rest : Math.max(0, (n.need || 0) - claimed - bank);
-pp/static/char.html
     const cls = n.need > 0 && rest <= 0 ? "ok" : ((claimed + bank) > 0 ? "warn" : "");
-pp/static/char.html
     const claimTxt = (n.claims || []).map(c => `${esc(c.name)} ×${fmt(c.qty)}`).join(", ");
-pp/static/char.html
     const pct = n.need > 0 ? Math.min(100, Math.round(100 * (claimed + bank) / n.need)) : 0;
-pp/static/char.html
     return `<div class="nrow">
-pp/static/char.html
       <span class="nmat">${esc(n.mat)}</span>
-pp/static/char.html
       <span class="nneed">besoin : ${n.need > 0 ? fmt(n.need) : "—"}</span>
-pp/static/char.html
       <span class="nbank">${CAN
-pp/static/char.html
         ? `🏦 <input type="number" min="0" step="1" value="${bank ? bank : ""}" data-bank="${esc(n.mat)}" placeholder="0" title="Quantité déjà en banque de guilde">`
-pp/static/char.html
         : (bank > 0 ? "🏦 " + fmt(bank) : "")}</span>
-pp/static/char.html
       <span class="nclaimed ${cls}">fourni : ${fmt(n.claimed)}${n.need > 0 ? "/" + fmt(n.need) : ""}</span>
-pp/static/char.html
       ${n.need > 0 ? `<span class="nrest ${rest <= 0 ? "ok" : ""}">${rest > 0 ? `reste : ${fmt(rest)}` : "✓ complet"}</span>` : ""}
-pp/static/char.html
       <span class="napport">
-pp/static/char.html
         <input type="number" min="0" step="1" value="${mine ? (mine.qty || "") : ""}" data-mat="${esc(n.mat)}" placeholder="qté" title="Quantité que tu apportes (0 ou vide = retirer ton apport)">
-pp/static/char.html
         <button class="btn ghost" data-claim="${esc(n.mat)}">j'apporte</button>
-pp/static/char.html
       </span>
-pp/static/char.html
       <span class="nclaims">${claimTxt}</span>
-pp/static/char.html
       ${n.need > 0 ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ""}
-pp/static/char.html
     </div>`;
-pp/static/char.html
   }).join("");
-pp/static/char.html
   box.querySelectorAll("[data-bank]").forEach(inp => inp.addEventListener("change", async () => {
-pp/static/char.html
     const mat = inp.dataset.bank;
-pp/static/char.html
     const qty = parseFloat((inp.value || "0").replace(",", ".")) || 0;
-pp/static/char.html
     try {
-pp/static/char.html
       await jpost("POST", "/api/prep/bank", { mat, qty });
-pp/static/char.html
       setMsg(qty > 0 ? `Banque : ${mat} ×${qty} ✓` : `Banque : ${mat} → 0 ✓`, true);
-pp/static/char.html
       await load();
-pp/static/char.html
     } catch (e) { setMsg(e.message, false); }
-pp/static/char.html
   }));
-pp/static/char.html
   box.querySelectorAll("[data-claim]").forEach(b => b.addEventListener("click", async () => {
-pp/static/char.html
     const mat = b.dataset.claim;
-pp/static/char.html
     const inp = box.querySelector(`input[data-mat="${CSS.escape(mat)}"]`);
-pp/static/char.html
     const qty = parseFloat((inp.value || "0").replace(",", ".")) || 0;
-pp/static/char.html
     try {
-pp/static/char.html
       await jpost("POST", "/api/prep/claim", { mat, qty });
-pp/static/char.html
       setMsg(qty > 0 ? `Apport enregistré : ${mat} ×${qty} ✓` : `Apport retiré : ${mat}`, true);
-pp/static/char.html
       await load();
-pp/static/char.html
     } catch (e) { setMsg(e.message, false); }
-pp/static/char.html
   }));
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function scheduleSyncPoll() {
-pp/static/char.html
   clearInterval(window._syncT);
-pp/static/char.html
   window._syncT = setInterval(async () => {
-pp/static/char.html
     await load();
-pp/static/char.html
     if (((DATA || {}).game_sync || {}).state !== "running") {
-pp/static/char.html
       clearInterval(window._syncT);
-pp/static/char.html
       window._syncT = null;
-pp/static/char.html
     }
-pp/static/char.html
   }, 4000);
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function renderRecipes() {
-pp/static/char.html
   if (!CAN) { $("#gsyncmeta").textContent = ""; return; }
-pp/static/char.html
   const gm = $("#gsyncmeta");
-pp/static/char.html
   const s = DATA.game_sync || {};
-pp/static/char.html
   const n = (DATA.game || []).length;
-pp/static/char.html
   if (s.state === "running") gm.textContent = `· ${n} recettes du jeu · synchronisation en cours…${s.total ? ` (${s.done}/${s.total})` : ""}`;
-pp/static/char.html
   else if (s.state === "error") gm.textContent = `· ${n} recettes du jeu · erreur de synchro : ${s.error || "?"}`;
-pp/static/char.html
   else gm.textContent = `· ${n} recettes du jeu · ` + (s.ts ? `maj ${ago(s.ts)}` : "pas encore synchronisé");
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function load() {
-pp/static/char.html
   DATA = await jget("/api/prep");
-pp/static/char.html
   CAN = !!DATA.can_edit;
-pp/static/char.html
   PLAN = { title: DATA.plan.title || "", event_ts: DATA.plan.event_ts || 0,
-pp/static/char.html
            items: (DATA.plan.items || []).map(x => ({ name: x.name, qty: +x.qty || 0 })),
-pp/static/char.html
            raids: DATA.plan.raids || [], bosses: DATA.plan.bosses || [] };
-pp/static/char.html
   renderItems(); renderNeeds(); renderRecipes();
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
-pp/static/char.html
   ev.preventDefault();
-pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
-pp/static/char.html
   location.href = "/login";
-pp/static/char.html
 });
-pp/static/char.html
 $("#inguild").addEventListener("change", () => {
-pp/static/char.html
   GUILD_ONLY = $("#inguild").checked;
-pp/static/char.html
   renderInList($("#inew").value || "");
-pp/static/char.html
 });
-pp/static/char.html
 $("#inew").addEventListener("input", () => {
-pp/static/char.html
   SEL = null;
-pp/static/char.html
   const v = $("#inew").value;
-pp/static/char.html
   renderInList(v);
-pp/static/char.html
   const ex = OPT_MATS[norm(v)];
-pp/static/char.html
   showPrev(ex && ex.item.toLowerCase() === v.trim().toLowerCase() ? ex : null);
-pp/static/char.html
 });
-pp/static/char.html
 $("#inew").addEventListener("focus", () => renderInList($("#inew").value || ""));
-pp/static/char.html
 $("#inew").addEventListener("blur", () => setTimeout(hideInList, 150));
-pp/static/char.html
 $("#inew").addEventListener("keydown", (ev) => {
-pp/static/char.html
   const box = $("#inlist");
-pp/static/char.html
   if (ev.key === "Escape") { hideInList(); return; }
-pp/static/char.html
   if (box.classList.contains("hidden")) {
-pp/static/char.html
     if (ev.key === "Enter") { ev.preventDefault(); $("#iadd").click(); }
-pp/static/char.html
     return;
-pp/static/char.html
   }
-pp/static/char.html
   const rows = [...box.querySelectorAll(".inrow")];
-pp/static/char.html
   if (!rows.length) return;
-pp/static/char.html
   let i = (window._inSel != null) ? window._inSel : -1;
-pp/static/char.html
   if (ev.key === "ArrowDown") { i = Math.min(rows.length - 1, i + 1); ev.preventDefault(); }
-pp/static/char.html
   else if (ev.key === "ArrowUp") { i = Math.max(0, i - 1); ev.preventDefault(); }
-pp/static/char.html
   else if (ev.key === "Enter") { ev.preventDefault(); pickIn((window._inRes || [])[Math.max(0, i)]); return; }
-pp/static/char.html
   else return;
-pp/static/char.html
   window._inSel = i;
-pp/static/char.html
   rows.forEach((r, j) => r.classList.toggle("sel", j === i));
-pp/static/char.html
   rows[i].scrollIntoView({ block: "nearest" });
-pp/static/char.html
 });
-pp/static/char.html
 $("#iadd").addEventListener("click", async () => {
-pp/static/char.html
   const e = currentEntry();
-pp/static/char.html
   const qty = Math.max(1, parseInt($("#iqty").value || "1", 10) || 1);
-pp/static/char.html
   if (!e) { setMsg("Choisis une recette dans la liste (tape pour filtrer).", false); return; }
-pp/static/char.html
   const found = PLAN.items.find(x => x.name.toLowerCase() === e.item.toLowerCase());
-pp/static/char.html
   if (found) found.qty += qty;
-pp/static/char.html
   else PLAN.items.push({ name: e.item, qty });
-pp/static/char.html
   SEL = null;
-pp/static/char.html
   $("#inew").value = ""; $("#iqty").value = "1"; $("#inewprev").textContent = ""; hideInList();
-pp/static/char.html
   await savePlan();
-pp/static/char.html
 });
-pp/static/char.html
 $("#objreset").addEventListener("click", async () => {
-pp/static/char.html
   if (!confirm("Vider le plan et tous les apports ? (les recettes sont conservées)")) return;
-pp/static/char.html
   try { await jpost("POST", "/api/prep/reset"); setMsg("Plan réinitialisé ✓", true); await load(); }
-pp/static/char.html
   catch (e) { setMsg(e.message, false); }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const me = await jget("/api/me");
-pp/static/char.html
     $("#who").textContent = me.name || me.email;
-pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
-pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
   try {
-pp/static/char.html
     await load();
-pp/static/char.html
     if (((DATA || {}).game_sync || {}).state === "running") scheduleSyncPoll();
-pp/static/char.html
   } catch (e) {
-pp/static/char.html
     $("#needs").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`;
-pp/static/char.html
   }
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

@@ -1,230 +1,115 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Connexion</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0e14; --card:#131a26; --line:#232d42; --fg:#e7ebf5; --mut:#8c96ad; --acc:#b1002e; --acc2:#dfa55a; --err:#f87171; --ok:#34d399; }
-pp/static/char.html
   * { box-sizing: border-box; }
-pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-pp/static/char.html
   .wrap { max-width:420px; margin:0 auto; padding:64px 18px 40px; }
-pp/static/char.html
   h1 { font-size:26px; margin:0 0 4px; }
-pp/static/char.html
   h1 span { color:var(--acc2); }
-pp/static/char.html
   .crest-big { width:56px; height:56px; border-radius:12px; display:block; margin:0 auto 16px; }
-pp/static/char.html
   h1, .sub { text-align:center; }
-pp/static/char.html
   .sub { color:var(--mut); font-size:14px; margin:0 0 24px; }
-pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; }
-pp/static/char.html
   label { display:block; font-size:13px; color:var(--mut); margin:0 0 6px; }
-pp/static/char.html
   input { width:100%; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
-pp/static/char.html
           padding:10px 12px; font-size:14px; margin-bottom:14px; }
-pp/static/char.html
   input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
-pp/static/char.html
   button { width:100%; background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
-pp/static/char.html
            padding:11px 22px; font-size:15px; font-weight:600; cursor:pointer; }
-pp/static/char.html
   button:disabled { opacity:.55; cursor:default; }
-pp/static/char.html
   #msg { margin-top:12px; font-size:14px; min-height:20px; }
-pp/static/char.html
   .msg-err { color:var(--err); } .msg-ok { color:var(--ok); }
-pp/static/char.html
   .note { color:var(--mut); font-size:13px; margin-top:18px; }
-pp/static/char.html
   footer { color:var(--mut); font-size:12px; border-top:1px solid var(--line); margin-top:28px; padding-top:12px; }
-pp/static/char.html
   .langrow { margin:12px 0 0; font-size:13px; color:var(--mut); }
-pp/static/char.html
   .langrow a { color:var(--mut); text-decoration:none; margin:0 5px; }
-pp/static/char.html
   .langrow a.on { color:var(--acc2); font-weight:700; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body>
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <img src="/branding/logo" alt="Cohors" class="crest-big">
-pp/static/char.html
   <h1>Cohors</h1>
-pp/static/char.html
   <p class="sub">Connecte-toi pour lancer et consulter les simulations.</p>
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <label for="email">E-mail</label>
-pp/static/char.html
     <input type="email" id="email" autocomplete="username" autofocus>
-pp/static/char.html
     <label for="pwd">Mot de passe</label>
-pp/static/char.html
     <input type="password" id="pwd" autocomplete="current-password">
-pp/static/char.html
     <button id="go">Se connecter</button>
-pp/static/char.html
     <div id="msg"></div>
-pp/static/char.html
     <p class="langrow">
-pp/static/char.html
       <a href="#" data-lang="fr">🇫🇷 Français</a> · <a href="#" data-lang="en">🇬🇧 English</a>
-pp/static/char.html
     </p>
-pp/static/char.html
   </div>
-pp/static/char.html
   <p class="note">Pas encore de compte ? L'accès se fait <b>sur invitation</b> — demande un lien à un officier de la guilde.<br>
-pp/static/char.html
   Mot de passe oublié ? Demande un lien de réinitialisation à un officier.</p>
-pp/static/char.html
   <footer>Moteur : SimulationCraft · Données de jeu fournies par Blizzard Entertainment · Outil non affilié</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 async function login() {
-pp/static/char.html
   const msg = $("#msg");
-pp/static/char.html
   const email = $("#email").value.trim(), pwd = $("#pwd").value;
-pp/static/char.html
   if (!email || !pwd) { msg.className = "msg-err"; msg.textContent = "Remplis l'e-mail et le mot de passe."; return; }
-pp/static/char.html
   $("#go").disabled = true; msg.className = ""; msg.textContent = "Connexion…";
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
-pp/static/char.html
       body: JSON.stringify({ email, password: pwd }) });
-pp/static/char.html
     const d = await r.json().catch(() => ({}));
-pp/static/char.html
     if (!r.ok) { msg.className = "msg-err"; msg.textContent = d.detail || "Erreur de connexion."; }
-pp/static/char.html
     else {
-pp/static/char.html
       try { if (d.lang) localStorage.setItem("cohors_lang", d.lang); } catch (e) {}
-pp/static/char.html
       let nxt = null;
-pp/static/char.html
       try { nxt = new URLSearchParams(location.search).get("next"); } catch (e) {}
-pp/static/char.html
       const bs = String.fromCharCode(92);
-pp/static/char.html
       const okRel = nxt && nxt.startsWith("/") && !nxt.startsWith("//") && !nxt.includes(bs);
-pp/static/char.html
       let okAbs = false;
-pp/static/char.html
       if (nxt && !okRel) {
-pp/static/char.html
         try {
-pp/static/char.html
           const t = new URL(nxt);
-pp/static/char.html
           const base = (h) => String(h || "").split(".").slice(-2).join(".");
-pp/static/char.html
           okAbs = t.protocol === "https:" && !!t.hostname && base(t.hostname) === base(location.hostname);
-pp/static/char.html
         } catch (e) {}
-pp/static/char.html
       }
-pp/static/char.html
       if (nxt && (okRel || okAbs)) { location.href = nxt; return; }
-pp/static/char.html
       location.href = "/dashboard"; return;
-pp/static/char.html
     }
-pp/static/char.html
   } catch (e) { msg.className = "msg-err"; msg.textContent = "Erreur réseau — réessaie."; }
-pp/static/char.html
   $("#go").disabled = false;
-pp/static/char.html
 }
-pp/static/char.html
 $("#go").addEventListener("click", login);
-pp/static/char.html
 document.addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
-pp/static/char.html
 document.querySelectorAll(".langrow a").forEach(a => {
-pp/static/char.html
   let cur = "";
-pp/static/char.html
   try { cur = localStorage.getItem("cohors_lang") || ""; } catch (e) {}
-pp/static/char.html
   if (!cur) cur = String(navigator.language || "fr").toLowerCase().startsWith("en") ? "en" : "fr";
-pp/static/char.html
   if (a.dataset.lang === cur) a.classList.add("on");
-pp/static/char.html
   a.addEventListener("click", (ev) => { ev.preventDefault();
-pp/static/char.html
     try { localStorage.setItem("cohors_lang", a.dataset.lang); } catch (e) {}
-pp/static/char.html
     location.reload(); });
-pp/static/char.html
 });
-pp/static/char.html
 if ("serviceWorker" in navigator &&
-pp/static/char.html
     (location.protocol === "https:" || location.hostname === "127.0.0.1" || location.hostname === "localhost")) {
-pp/static/char.html
   window.addEventListener("load", function () {
-pp/static/char.html
     navigator.serviceWorker.register("/sw.js").catch(function () {});
-pp/static/char.html
   });
-pp/static/char.html
 }
-pp/static/char.html
 </script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

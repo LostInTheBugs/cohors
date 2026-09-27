@@ -1,618 +1,309 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Mes recettes</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root {
-pp/static/char.html
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
-pp/static/char.html
     --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
-pp/static/char.html
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
-pp/static/char.html
   }
-pp/static/char.html
   * { box-sizing: border-box; }
-pp/static/char.html
   body { margin: 0; background: var(--bg); color: var(--fg);
-pp/static/char.html
          font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
-pp/static/char.html
   .brand { display: flex; align-items: center; gap: 12px; }
-pp/static/char.html
   .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
-pp/static/char.html
   .brandname span { color: var(--acc2); }
-pp/static/char.html
   .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
-pp/static/char.html
   .tagline { color: var(--mut); font-size: 12.5px; }
-pp/static/char.html
   .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
-pp/static/char.html
   .spacer { flex: 1; }
-pp/static/char.html
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
-pp/static/char.html
   .hlink:hover { text-decoration: underline; }
-pp/static/char.html
   .who { color: var(--mut); font-size: 14px; }
-pp/static/char.html
   nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
-pp/static/char.html
   .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
-pp/static/char.html
          color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
-pp/static/char.html
          border: 1px solid var(--line); background: transparent;
-pp/static/char.html
          transition: border-color .15s, color .15s, background .15s; }
-pp/static/char.html
   .tab:hover { color: var(--fg); border-color: #3a4763; }
-pp/static/char.html
   .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
-pp/static/char.html
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; scroll-margin-top: 12px; }
-pp/static/char.html
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-pp/static/char.html
   input[type=search], input[type=number] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
-pp/static/char.html
         border-radius: 10px; padding: 9px 12px; font-size: 14px; }
-pp/static/char.html
   input[type=search] { min-width: 260px; }
-pp/static/char.html
   input:focus, select:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
-pp/static/char.html
   select { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 14px; }
-pp/static/char.html
   button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
-pp/static/char.html
            padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
-pp/static/char.html
   button:disabled { opacity: .55; cursor: default; }
-pp/static/char.html
   button.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
-pp/static/char.html
                  padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
-pp/static/char.html
   button.ghost:hover { border-color: var(--acc2); color: var(--acc2); }
-pp/static/char.html
   h2 { font-size: 17px; margin: 0 0 10px; }
-pp/static/char.html
   h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
-pp/static/char.html
   .meta { color: var(--mut); font-size: 13px; }
-pp/static/char.html
   .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
-pp/static/char.html
   .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
-pp/static/char.html
   .chkline input { accent-color: var(--acc); }
-pp/static/char.html
   .acwrap { position: relative; display: inline-block; }
-pp/static/char.html
   .aclist { position: absolute; z-index: 40; top: 100%; left: 0; min-width: 240px; margin-top: 4px;
-pp/static/char.html
     background: #182130; border: 1px solid var(--line); border-radius: 10px; padding: 4px;
-pp/static/char.html
     max-height: 240px; overflow: auto; box-shadow: 0 8px 24px #0009; }
-pp/static/char.html
   .aclist .acrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px;
-pp/static/char.html
     border-radius: 8px; font-size: 13.5px; cursor: pointer; }
-pp/static/char.html
   .aclist .acrow:hover { background: #22304a; }
-pp/static/char.html
   .aclist .acrow .meta { font-size: 12px; white-space: nowrap; }
-pp/static/char.html
   .mychip { display: inline-flex; gap: 9px; align-items: center; background: var(--card2); border: 1px solid var(--line);
-pp/static/char.html
             border-radius: 999px; padding: 5px 12px; font-size: 13.5px; }
-pp/static/char.html
   .mychip.mm { border-color: #6b4a17; color: var(--acc2); }
-pp/static/char.html
   .mychip a { cursor: pointer; color: var(--mut); font-size: 12.5px; text-decoration: none; }
-pp/static/char.html
   .mychip a:hover { color: var(--acc2); }
-pp/static/char.html
   .rcrow { display: flex; align-items: baseline; gap: 8px; padding: 3px 6px; border-radius: 8px; font-size: 13.5px; }
-pp/static/char.html
   .rcrow:hover { background: #182130; }
-pp/static/char.html
   .rcmark { display: inline-block; width: 14px; text-align: center; color: var(--ok); font-weight: 700; }
-pp/static/char.html
   .rcmark.mut { color: var(--mut); font-weight: 400; }
-pp/static/char.html
   .rclist { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px; margin-top: 10px; }
-pp/static/char.html
   .rcgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-pp/static/char.html
   .rccol { min-width: 0; }
-pp/static/char.html
   .rchead { font-size: 13.5px; font-weight: 600; margin: 12px 0 0; display: flex; gap: 6px; align-items: baseline; }
-pp/static/char.html
   .rchead .meta { font-weight: 500; }
-pp/static/char.html
   @media (max-width: 860px) { .rcgrid { grid-template-columns: 1fr; } }
-pp/static/char.html
   table { width: 100%; border-collapse: collapse; }
-pp/static/char.html
   th { text-align: left; font-size: 12.5px; color: var(--mut); padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-pp/static/char.html
   td { padding: 6px 10px; border-top: 1px solid var(--line); font-size: 13.5px; }
-pp/static/char.html
   .cname { font-weight: 600; }
-pp/static/char.html
   .chipk { display: inline-flex; gap: 6px; align-items: center; background: var(--card2); border: 1px solid var(--line);
-pp/static/char.html
            border-radius: 999px; padding: 3px 10px; font-size: 12.5px; margin: 2px 6px 2px 0; }
-pp/static/char.html
   .nfr { display: flex; gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 8px; border-left: 3px solid transparent; }
-pp/static/char.html
   .nfr.unseen { border-left-color: var(--acc2); background: rgba(223,165,90,.05); }
-pp/static/char.html
   .nfr .meta { margin-left: auto; white-space: nowrap; }
-pp/static/char.html
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
-pp/static/char.html
   .err { color: var(--err); font-size: 13px; }
-pp/static/char.html
   .hidden { display: none !important; }
-pp/static/char.html
   .wlbtn { background:none; border:0; color:var(--acc2); cursor:pointer; font-size:15px; padding:0 3px; opacity:.8; }
-pp/static/char.html
   .wlbtn:hover { opacity:1; filter:brightness(1.25); }
-pp/static/char.html
   .wlstar { opacity:.55; font-size:13px; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Mes recettes</span></div>
-pp/static/char.html
         <div class="tagline">Tes recettes de métiers — celles que tu connais et celles qu'il te reste à apprendre.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card" id="recettes">
-pp/static/char.html
     <h2>📖 Mes recettes</h2>
-pp/static/char.html
     <div class="meta" style="margin:-4px 0 10px">Tes recettes sont récupérées automatiquement depuis Blizzard (relevé tous les quelques jours, après une déconnexion du jeu) — bouton 🔄 pour relire tout de suite. L'import de l'add-on (📥) reste possible pour une mise à jour immédiate. Les recettes connues alimentent « Qui peut crafter quoi » (préparation de raid) et le stuff conseillé. ⭐ = ajoutée à ta wishlist : les recettes marquées partiront vers l'addon (export sur la page 🎯 Ma wishlist).</div>
-pp/static/char.html
     <div class="row">
-pp/static/char.html
       <select id="rcchar"><option value="">— Choisir un personnage —</option></select>
-pp/static/char.html
       <select id="rcprof"></select>
-pp/static/char.html
       <input type="search" id="rcq" placeholder="Rechercher une recette…">
-pp/static/char.html
       <span class="spacer"></span>
-pp/static/char.html
       <span class="meta" id="rcmsg"></span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="row" style="margin-top:10px">
-pp/static/char.html
       <button id="rcref" style="padding:9px 16px;font-size:14px">🔄 Relire depuis Blizzard</button>
-pp/static/char.html
       <span class="meta" id="rcts"></span>
-pp/static/char.html
       <button id="rcimp" style="padding:9px 16px;font-size:14px">📥 Importer mon export d'addon (facultatif)</button>
-pp/static/char.html
       <input type="file" id="rcfile" accept=".lua,.txt,.json" class="hidden">
-pp/static/char.html
       <span class="spacer"></span>
-pp/static/char.html
       <span class="meta">Addon in-game : téléchargement sur la page <a class="hlink" href="/guild">🛡️ Guilde</a> — commande /cohors recettes puis /reload.</span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="rcgrid hidden" id="rcgrid">
-pp/static/char.html
       <div class="rccol">
-pp/static/char.html
         <div class="rchead">✅ Connues <span class="meta" id="rccountk"></span></div>
-pp/static/char.html
         <div class="rclist" id="rclistk"></div>
-pp/static/char.html
       </div>
-pp/static/char.html
       <div class="rccol">
-pp/static/char.html
         <div class="rchead">⬜ À apprendre <span class="meta" id="rccountu"></span></div>
-pp/static/char.html
         <div class="rclist" id="rclistu"></div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/esc.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
+<script src="/static/esc.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
-pp/static/char.html
 const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
-pp/static/char.html
   if (s < 60) return "à l'instant";
-pp/static/char.html
   if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
-pp/static/char.html
   if (s < 86400 * 30) return `il y a ${Math.floor(s / 86400)} j`;
-pp/static/char.html
   return new Date(ts * 1000).toLocaleDateString("fr-FR"); };
-pp/static/char.html
 const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
-pp/static/char.html
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
-pp/static/char.html
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
-pp/static/char.html
 const RANK_LABEL = ["Maître de guilde", "Officier", "Vétéran", "Membre", "Initié", "Recrue"];
-pp/static/char.html
 const rankLabel = (r) => RANK_LABEL[r] || "Rang " + r;
-pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 const jreq = async (m, u, b) => { const r = await fetch(u, { method: m,
-pp/static/char.html
   headers: b ? { "Content-Type": "application/json" } : undefined, body: b ? JSON.stringify(b) : undefined });
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 
-pp/static/char.html
 // ---- 📖 Mes recettes (connues / à apprendre) ----
-pp/static/char.html
 let RC = { catalog: [] };
-pp/static/char.html
 const rcMsg = (t, ok) => { const m = $("#rcmsg"); m.textContent = t || ""; m.style.color = ok ? "var(--ok)" : "var(--mut)"; };
-pp/static/char.html
 const rcCount = () => RC.catalog.filter(x => x.known).length;
-pp/static/char.html
 const rcUnknownCount = () => RC.catalog.filter(x => !x.known).length;
-pp/static/char.html
 function rcRenderList() {
-pp/static/char.html
   const q = ($("#rcq").value || "").trim().toLowerCase();
-pp/static/char.html
   const match = (x) => !q || (x.name || "").toLowerCase().includes(q);
-pp/static/char.html
   const row = (x, known) => {
-pp/static/char.html
     let star = " ";
-pp/static/char.html
     if (!known && x.wkey != null)
-pp/static/char.html
       star = ` <button class="wlbtn" data-rid="${x.id}" data-on="${x.wished ? 1 : 0}" title="${x.wished ? "Retirer de ta wishlist" : "Ajouter à ta wishlist (part vers l'addon)"}">${x.wished ? "⭐" : "☆"}</button> `;
-pp/static/char.html
     else if (x.wished)
-pp/static/char.html
       star = ` <span class="wlstar" title="Dans ta wishlist — déjà apprise">⭐</span> `;
-pp/static/char.html
     return `<div class="rcrow"><span class="rcmark${known ? "" : " mut"}">${known ? "✓" : "·"}</span> <b>${esc(x.name)}</b>${star}<span class="meta">${esc(x.exp || "")}${(x.mats && x.mats.length) ? " · " + esc(x.mats.map(m => m.name + " ×" + fmt(m.qty)).join(", ")) : ""}</span></div>`;
-pp/static/char.html
   };
-pp/static/char.html
   if (!RC.catalog.length) {
-pp/static/char.html
     $("#rclistk").innerHTML = `<div class="empty">Choisis un personnage et un métier.</div>`;
-pp/static/char.html
     $("#rclistu").innerHTML = "";
-pp/static/char.html
     $("#rccountk").textContent = ""; $("#rccountu").textContent = "";
-pp/static/char.html
     return;
-pp/static/char.html
   }
-pp/static/char.html
   const klist = RC.catalog.filter(x => x.known && match(x));
-pp/static/char.html
   const ulist = RC.catalog.filter(x => !x.known && match(x));
-pp/static/char.html
   $("#rclistk").innerHTML = klist.length ? klist.map(x => row(x, true)).join("")
-pp/static/char.html
     : `<div class="empty">${q ? "Aucune recette trouvée." : "Aucune recette connue pour ce métier."}</div>`;
-pp/static/char.html
   $("#rclistu").innerHTML = ulist.length ? ulist.map(x => row(x, false)).join("")
-pp/static/char.html
     : `<div class="empty">${q ? "Aucune recette trouvée." : "Toutes les recettes de ce métier sont connues 🎉"}</div>`;
-pp/static/char.html
   $("#rccountk").textContent = "(" + rcCount() + ")";
-pp/static/char.html
   $("#rccountu").textContent = "(" + rcUnknownCount() + ")";
-pp/static/char.html
   document.querySelectorAll(".wlbtn").forEach(b => b.onclick = async () => {
-pp/static/char.html
     b.disabled = true;
-pp/static/char.html
     try {
-pp/static/char.html
       const on = b.dataset.on !== "1";
-pp/static/char.html
       await jreq("POST", "/api/wishlist/recipe", { recipe_id: Number(b.dataset.rid), on });
-pp/static/char.html
       const x = RC.catalog.find(c => String(c.id) === b.dataset.rid);
-pp/static/char.html
       if (x) x.wished = on;
-pp/static/char.html
       rcRenderList();
-pp/static/char.html
       rcMsg(on ? "Ajoutée à ta wishlist ⭐" : "Retirée de ta wishlist", true);
-pp/static/char.html
     } catch (e) { rcMsg(e.message); b.disabled = false; }
-pp/static/char.html
   });
-pp/static/char.html
 }
-pp/static/char.html
 async function rcCharChanged() {
-pp/static/char.html
   const [realm, name] = ($("#rcchar").value || "").split("|");
-pp/static/char.html
   RC.catalog = []; $("#rcgrid").classList.add("hidden"); $("#rcprof").innerHTML = "";
-pp/static/char.html
   if (!realm) { rcMsg(""); return; }
-pp/static/char.html
   rcMsg("Chargement…");
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jget(`/api/my/recipes?realm=${encodeURIComponent(realm)}&name=${encodeURIComponent(name)}`);
-pp/static/char.html
     const mine = new Set((d.professions || []).map(p => p.key));
-pp/static/char.html
     $("#rcprof").innerHTML = (d.game_profs || []).map(g =>
-pp/static/char.html
       `<option value="${esc(g.key)}">${esc(g.label + (mine.has(g.key) ? " · mon métier" : ""))}</option>`).join("");
-pp/static/char.html
     const first = (d.professions || []).map(p => p.key).find(k => (d.game_profs || []).some(g => g.key === k));
-pp/static/char.html
     if (first) $("#rcprof").value = first;
-pp/static/char.html
     await rcProfChanged();
-pp/static/char.html
   } catch (e) { rcMsg(e.message); }
-pp/static/char.html
 }
-pp/static/char.html
 async function rcProfChanged() {
-pp/static/char.html
   const [realm, name] = ($("#rcchar").value || "").split("|");
-pp/static/char.html
   const prof = $("#rcprof").value || "";
-pp/static/char.html
   if (!realm || !prof) return;
-pp/static/char.html
   rcMsg("Chargement…");
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jget(`/api/my/recipes?realm=${encodeURIComponent(realm)}&name=${encodeURIComponent(name)}&prof=${encodeURIComponent(prof)}`);
-pp/static/char.html
     RC.catalog = d.catalog || [];
-pp/static/char.html
     $("#rcts").textContent = "Relevé Blizzard : " + ago(d.profs_ts);
-pp/static/char.html
     $("#rcgrid").classList.remove("hidden");
-pp/static/char.html
     $("#rcq").value = "";
-pp/static/char.html
     rcRenderList();
-pp/static/char.html
     rcMsg(rcCount() + " recette(s) connue(s) · " + rcUnknownCount() + " à apprendre");
-pp/static/char.html
   } catch (e) { rcMsg(e.message); }
-pp/static/char.html
 }
-pp/static/char.html
 $("#rcchar").addEventListener("change", rcCharChanged);
-pp/static/char.html
 $("#rcprof").addEventListener("change", rcProfChanged);
-pp/static/char.html
 $("#rcq").addEventListener("input", rcRenderList);
-pp/static/char.html
 $("#rcref").addEventListener("click", async () => {
-pp/static/char.html
   const [realm, name] = ($("#rcchar").value || "").split("|");
-pp/static/char.html
   if (!realm) { rcMsg("Choisis d'abord un personnage."); return; }
-pp/static/char.html
   const b = $("#rcref"); b.disabled = true; rcMsg("Lecture chez Blizzard…");
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await fetch("/api/my/recipes/refresh", { method: "POST", headers: { "Content-Type": "application/json" },
-pp/static/char.html
       body: JSON.stringify({ realm, name }) });
-pp/static/char.html
     const j = await r.json().catch(() => ({}));
-pp/static/char.html
     if (!r.ok) throw new Error(j.detail || "Erreur");
-pp/static/char.html
     rcMsg("Recettes relues depuis Blizzard ✓", true);
-pp/static/char.html
     await rcCharChanged();
-pp/static/char.html
   } catch (e) { rcMsg(e.message); }
-pp/static/char.html
   b.disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 $("#rcimp").addEventListener("click", () => $("#rcfile").click());
-pp/static/char.html
 $("#rcfile").addEventListener("change", async () => {
-pp/static/char.html
   const f = $("#rcfile").files && $("#rcfile").files[0];
-pp/static/char.html
   if (!f) return;
-pp/static/char.html
   rcMsg("Import en cours…");
-pp/static/char.html
   try {
-pp/static/char.html
     const text = await f.text();
-pp/static/char.html
     const r = await fetch("/api/prep/import-recipes", { method: "POST", headers: { "Content-Type": "application/json" },
-pp/static/char.html
       body: JSON.stringify({ payload: text }) });
-pp/static/char.html
     const j = await r.json().catch(() => ({}));
-pp/static/char.html
     if (!r.ok) throw new Error(j.detail || "Erreur");
-pp/static/char.html
     rcMsg(`${j.recipes} recette(s) importée(s) de ${j.crafter} ✓`, true);
-pp/static/char.html
     $("#rcfile").value = "";
-pp/static/char.html
     if ($("#rcchar").value && $("#rcprof").value) rcProfChanged();
-pp/static/char.html
   } catch (e) { rcMsg(e.message); }
-pp/static/char.html
 });
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jget("/api/me/chars");
-pp/static/char.html
     const chars = d.chars || [];
-pp/static/char.html
     $("#rcchar").innerHTML = `<option value="">— Choisir un personnage —</option>` + chars.map(c =>
-pp/static/char.html
       `<option value="${esc((c.realm || "") + "|" + c.name)}">${esc((c.is_main ? "⭐ " : "") + (c.display || c.name))}</option>`).join("");
-pp/static/char.html
     if (!chars.length) rcMsg("Aucun personnage lié à ton compte — lie-le plus haut (🪪).");
-pp/static/char.html
   } catch (e) {}
-pp/static/char.html
 })();
-pp/static/char.html
 
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
-pp/static/char.html
   ev.preventDefault();
-pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
-pp/static/char.html
   location.href = "/login";
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const me = await jget("/api/me");
-pp/static/char.html
     $("#who").textContent = me.name || me.email;
-pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
-pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
   
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html
