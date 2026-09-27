@@ -887,6 +887,7 @@ $("#mail-test").addEventListener("click", async () => {
 
 // ---- Mises à jour de l'application ----
 function updRender(st) {
+  const ap = st.applier || {};
   $("#upd-cur").textContent = "v" + st.current;
   const badge = $("#upd-badge");
   if (st.available) { badge.textContent = "mise à jour disponible"; badge.className = "badge b-off"; }
@@ -917,7 +918,6 @@ function updRender(st) {
   }
   $("#upd-apply").disabled = !st.available || !!st.request;
   $("#upd-cancel").classList.toggle("hidden", !st.request);
-  const ap = st.applier;
   $("#upd-applier").innerHTML = ap.installed
     ? `Application automatique sur ce serveur : <b>applicateur installé</b> (vu ${ago(ap.seen_at)})${ap.result && ap.result !== "ok" && ap.result !== "attente" ? ` · <span style="color:var(--err)">${esc(ap.result)}</span>` : ""}.`
     : "Application automatique sur ce serveur : <b>applicateur non installé</b> — la demande attend son installation (README, section Updates).";

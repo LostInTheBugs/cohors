@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c22 - 2026-09-27
+
+### Fixed
+- **Settings: `updRender` no longer throws ReferenceError for `ap`.** The `const ap = st.applier`
+  declaration was placed after first use (line 896) but declared later (line 920), causing
+  `updRender` to crash in modern JS engines. Moved the declaration to the top of the function.
+
 ## 2026.09.152-c21 - 2026-09-27
 
 ### Fixed
