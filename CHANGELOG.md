@@ -1,3 +1,7 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
 ## 2026.09.152-c26 - 2026-09-27
 
 ### Added
@@ -8,9 +12,8 @@
   recherche Blizzard par nom exact (l'API « recipe » ne renvoie plus `crafted_item`).
   Synchronisation de Couture (197) et Joaillerie (755).
 
-# Changelog
 
-All notable changes to this project are documented in this file.
+
 
 ## 2026.09.152-c25 - 2026-09-27
 
