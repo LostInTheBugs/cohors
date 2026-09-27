@@ -10,8 +10,8 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -23,7 +23,7 @@ jobs:
           for sc in full calendar apifail noprofs slash legacy openbtn noapi closemid unreadable logout wishlist; do COHORS_SCENARIO=$sc lua5.1 tools/addon-harness.lua | tail -1; done
       - name: Run tests
         run: python -m pytest -q
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
       - name: Page JavaScript — syntax (node --check)
