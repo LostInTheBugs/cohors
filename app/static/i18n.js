@@ -1106,11 +1106,32 @@
  "tous les 2 jours": "every 2 days",
  "toutes les semaines": "every week",
  "appliquer automatiquement dès qu'une version est disponible": "apply automatically as soon as a version is available",
- "Intervalle de vérification": "Check interval"
+ "Intervalle de vérification": "Check interval",
+ "Filtrer le guide BIS sur": "Filter the BiS guide on",
+ "Tous les contenus cochés": "All ticked contents",
+ "Aucun contenu sélectionné": "No content selected",
+ "Coche au moins un contenu pour le filtre BIS.": "Tick at least one content for the BiS filter.",
+ "Chargement du guide BIS…": "Loading the BiS guide…",
+ "Gouffres": "Delves",
+ "Boss mondial": "World Boss",
+ "⏳ Serveur en redémarrage, attente…": "⏳ Server restarting, waiting…",
+ "⏱ Presque terminé…": "⏱ Almost done…",
+ "✅ Mise à jour terminée !": "✅ Update complete!",
+ "⚠️ Applicateur installé mais jamais vu (vérifie le timer)": "⚠️ Updater installed but never seen (check the timer)"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
   const RULES = [
+    // Stuff — listes de contenus (« Raid, Mythique+, Gouffres » / « Raid · Boss mondial »)
+    [/^(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat)(?:(?:, | · )(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat))+$/g,
+      (m) => m.replace(/Mythique\+/g, "Mythic+").replace(/Gouffres/g, "Delves")
+              .replace(/Boss mondial/g, "World Boss").replace(/Artisanat/g, "Crafting")],
+    // mises à jour — suivi du déploiement (v2026.09.152)
+    [/⚠️ Applicateur : inactif depuis (\d+) min \(>15 min\)/g, "⚠️ Updater: inactive for $1 min (>15 min)"],
+    [/applicateur actif : /g, "updater active: "],
+    [/dernière mise à jour : /g, "last update: "],
+    [/⏳ Déploiement v(\S+) en cours…/g, "⏳ Deploying v$1…"],
+    [/⏱ ~(\d+) min (\d+) sec restantes/g, "⏱ ~$1 min $2 s left"],
     // mises à jour (v2026.09.151)
     [/Application automatique sur ce serveur : /g, "Automatic apply on this server: "],
     [/applicateur installé/g, "updater installed"],

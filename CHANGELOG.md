@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c23 - 2026-09-27
+
+### Added
+- **English translations for BIS filter and update tracking.** `i18n.js` now includes
+  a comprehensive set of English strings: BIS filter labels ("Filter the BiS guide on",
+  "All ticked contents", "No content selected", etc.), content type labels ("World Boss",
+  "Delves", "Crafting"), and update tracking messages ("updater active", "inactive for N min",
+  "deploying v...", "~N min N s left", etc.). A regex rule translates full content lists
+  ("Raid · Mythique+ · Gouffres") as a whole, replacing per-key translations.
+
 ## 2026.09.152-c22 - 2026-09-27
 
 ### Fixed
