@@ -1,710 +1,355 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Aide</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
-pp/static/char.html
   * { box-sizing:border-box; }
-pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
-pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
-pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
-pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
-pp/static/char.html
   .brandname span { color:var(--acc2); }
-pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   .userbox { display:flex; gap:14px; align-items:center; }
-pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
-pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
-pp/static/char.html
   .hlink:hover { text-decoration:underline; }
-pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
-pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
-pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
-pp/static/char.html
          border:1px solid var(--line); background:transparent; }
-pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
-pp/static/char.html
   .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
-pp/static/char.html
   h2 { font-size:17px; margin:0 0 10px; }
-pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
-pp/static/char.html
   ul { margin:6px 0 2px; padding-left:20px; }
-pp/static/char.html
   li { margin:4px 0; }
-pp/static/char.html
   .toc { display:flex; flex-wrap:wrap; gap:6px 14px; }
-pp/static/char.html
   .toc a { color:var(--acc2); text-decoration:none; font-size:13.5px; font-weight:600; }
-pp/static/char.html
   .toc a:hover { text-decoration:underline; }
-pp/static/char.html
   .dot { color:var(--mut); }
-pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
-pp/static/char.html
   .hidden { display:none !important; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Aide</span></div>
-pp/static/char.html
         <div class="tagline">Toutes les fonctionnalités de l'application et comment s'en servir.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>Sommaire</h2>
-pp/static/char.html
     <div class="toc">
-pp/static/char.html
       <a href="#start">Premiers pas</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#simu">⚔️ Le simulateur</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#profils">📁 Profils &amp; sim de groupe</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#persos">👥 Personnages</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#moi">🙋 Moi</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#mains">⭐ Mains &amp; alts</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#rapports">📊 Rapports Warcraft Logs</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#classements">🏆 Classements</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#succes-fun">🎉 Succès fun</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#compare">⚖️ Comparateur</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#topstuff">🧰 Top Stuff</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#stuff">🎒 Stuff conseillé</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#calendrier">🗓️ Calendrier des raids</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#accueil">🏠 Tableau de bord</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#artisanat">🔨 Artisanat</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#prep">🧪 Préparation de raid</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#mplus">⚔️ MM+</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#addon">🧩 L'addon in-game</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#guilde">🛡️ Guilde</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#parametres">⚙️ Paramètres du compte</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#identite">🎨 Identité de la guilde</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#bot">🤖 Le bot Discord</a><span class="dot">·</span>
-pp/static/char.html
       <a href="#faq">❓ Bon à savoir (FAQ)</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="start">
-pp/static/char.html
     <h2>Premiers pas</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>L'accès se fait uniquement sur invitation : le lien reçu par e-mail est valable 7 jours.</li>
-pp/static/char.html
       <li>Trois rôles : membre (tout l'outil), officier (gère aussi les invitations et le calendrier), administrateur (tous les droits).</li>
-pp/static/char.html
       <li>La langue (FR/EN) se choisit sur la page de connexion, puis dans ⚙️ Paramètres.</li>
-pp/static/char.html
       <li>🌍 La langue choisie s'applique partout : l'interface et les données du jeu (fiches, équipement, artisanat, recettes…). En anglais, ces données sont récupérées telles quelles chez Blizzard — ce ne sont pas des traductions. À noter : les noms de boss et de zones venant de Warcraft Logs restent en anglais dans tous les cas.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="simu">
-pp/static/char.html
     <h2>⚔️ Le simulateur</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Colle ton export /simc dans la zone de texte, choisis le type de simulation et lance.</li>
-pp/static/char.html
       <li>Trois types : DPS (quel est mon DPS ?), Poids des stats (quelles stats me profitent le plus ?), Comparaison d'items (quelle pièce est la meilleure ?).</li>
-pp/static/char.html
       <li>Itérations = précision : 1 000 rapide, 10 000 précis (par défaut), 50 000 pour les puristes.</li>
-pp/static/char.html
       <li>Addon requis : SimulationCraft — tape /simc en jeu et copie la fenêtre qui s'ouvre.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="profils">
-pp/static/char.html
     <h2>📁 Profils &amp; sim de groupe</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>« 💾 Enregistrer » sauvegarde ton export comme profil réutilisable en un clic.</li>
-pp/static/char.html
       <li>Coche « Partager avec la guilde » pour permettre aux autres de te simuler.</li>
-pp/static/char.html
       <li>Pense à mettre à jour ton profil après chaque changement d'équipement.</li>
-pp/static/char.html
       <li>Coche les profils des participants en bas de la page Simulateur, puis « ▶ Lancer la sim de groupe ».</li>
-pp/static/char.html
       <li>Tout le monde est simulé ensemble dans le même combat : les buffs de raid sont pris en compte.</li>
-pp/static/char.html
       <li>Résultat : la guilde classée par DPS, du premier au dernier, avec l'écart au top.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="persos">
-pp/static/char.html
     <h2>👥 Personnages</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Depuis la page 🙋 Moi, lie tes personnages de la guilde en un clic — ils s'affichent avec leur équipement. Le champ propose les noms au fil de la frappe (ex. « sala » → Arssalag) : clique sur le bon pour le lier.</li>
-pp/static/char.html
       <li>« Détails » sur le roster ouvre la fiche complète : équipement par pièce, succès, montures, mascottes et rating M+.</li>
-pp/static/char.html
       <li>Le premier personnage lié devient ton main ; change-le quand tu veux avec « ⭐ définir main ».</li>
-pp/static/char.html
       <li>Un seul main par compte : c'est le personnage principal pour le roster et le calendrier.</li>
-pp/static/char.html
       <li>Sur la fiche d'un personnage, un sélecteur permet de passer d'un personnage à l'autre du même compte.</li>
-pp/static/char.html
       <li>🎯 « Vu dernièrement » : les personnages vus récemment, groupés par rôle (tank / heal / DPS) avec leur équipement — pratique pour compléter un groupe.</li>
-pp/static/char.html
       <li>📈 « Évolution » : courbe d'ilvl au fil des jours, comparaison du stuff entre deux dates (pièces changées surlignées) et emplacements faibles à améliorer en priorité.</li>
-pp/static/char.html
       <li>Les relevés sont quotidiens et automatiques ; les jours marqués « ° » sont reconstruits d'après les logs de raid (Warcraft Logs).</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="mains">
-pp/static/char.html
     <h2>⭐ Mains &amp; alts</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Tous les personnages de la guilde, regroupés sous leur main — avec recherche par personnage ou joueur.</li>
-pp/static/char.html
       <li>Clique sur le cadre d'un compte pour ouvrir la fiche de son main, ou sur un personnage pour la sienne.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="moi">
-pp/static/char.html
     <h2>🙋 Moi</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>La section « 🙋 Moi » regroupe des pages dédiées : 🪪 Mes personnages (liaison, ⭐ main), 📖 Mes recettes, 📊 Mes statistiques, 🔔 Alertes MM+ — plus 🎯 Ma wishlist.</li>
-pp/static/char.html
       <li>🔔 Alertes MM+ : choisis un donjon (ou tous les donjons) et un niveau minimum — dès que quelqu'un annonce une clé correspondante dans ⚔️ MM+, tu reçois une notification sur la page Alertes MM+ (badge dans le menu).</li>
-pp/static/char.html
       <li>🚫 Mes indispos : déclare tes périodes de non-disponibilité (vacances, exams…) — elles s'affichent sur la page 🗓️ Calendrier (Prochains raids), croisées avec tes réponses du calendrier in-game.</li>
-pp/static/char.html
       <li>📊 Tes statistiques : iLvl (équipé et moyen), présence aux soirées de raid, recettes déclarées et dernière connexion, pour chacun de tes personnages.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="rapports">
-pp/static/char.html
     <h2>📊 Rapports Warcraft Logs</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Tous les rapports Warcraft Logs de la guilde, du plus récent au plus ancien.</li>
-pp/static/char.html
       <li>Un « parse » = ta performance comparée aux autres joueurs de ta spé et de ton niveau d'équipement.</li>
-pp/static/char.html
       <li>Couleurs des parses : gris &lt; 25 · vert &lt; 50 · bleu &lt; 75 · violet &lt; 95 · orange &lt; 100 · doré = 100.</li>
-pp/static/char.html
       <li>📋 « Assiduité » : la présence de chaque joueur sur les 14, 30 ou 60 derniers jours — soirées présentes, pourcentage et dernier raid.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="classements">
-pp/static/char.html
     <h2>🏆 Classements</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Les meilleurs parses de la guilde sur les derniers rapports, filtrables par rôle.</li>
-pp/static/char.html
       <li>Par boss : les trois meilleurs joueurs. Et le rating M+ (clés mythiques) des mains liés.</li>
-pp/static/char.html
       <li>📈 « Progression » : les gains sur 7 ou 30 jours — ilvl, hauts faits, montures, mascottes — et la courbe d'ilvl moyen de la guilde.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="succes-fun">
-pp/static/char.html
     <h2>🎉 Succès fun</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Le palmarès rigolo de la guilde : cimetière (qui meurt le plus), première tombe, cause n°1 de décès, intouchables, massacre du raid…</li>
-pp/static/char.html
       <li>Et les titres maison : savants fous (simulations), piliers de raid (présences), collectionneurs (montures), cœurs d'or (profils partagés).</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="compare">
-pp/static/char.html
     <h2>⚖️ Comparateur</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Choisis deux personnages et compare-les côte à côte : équipement (ilvl) et parses.</li>
-pp/static/char.html
       <li>Pratique pour préparer un recrutement ou un défi amical.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="topstuff">
-pp/static/char.html
     <h2>🧰 Top Stuff</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Choisis un personnage, colle les liens Wowhead des pièces convoitées, et lance : chaque pièce est chiffrée en DPS. Le bouton ⭐ l'ajoute en prioritaire : les pièces prioritaires (ou qui ressortent BIS dans ton Top Stuff) passent en tête de ta wishlist et sont signalées ⭐ sur les dates de raid.</li>
-pp/static/char.html
       <li>Utilise-le avant un raid pour savoir quoi demander en loot.</li>
-pp/static/char.html
       <li>Le bouton 🎯 ajoute une pièce à ta <b>wishlist</b> (« 🎯 Ma wishlist ») : tu vois quels personnages la possèdent déjà, où la trouver (raid, donjon/MM+) et, si ça se fabrique, les compos, qui a le métier dans la guilde et qui a déclaré la recette ; et si tu as le métier, le site te dit si tu peux la fabriquer ou s'il te manque la recette — et tu peux simuler les gains de DPS. Les pièces prioritaires (⭐) passent en tête de la liste.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="stuff">
-pp/static/char.html
     <h2>🎒 Stuff conseillé</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Choisis un de tes exports <b>/simc</b> (enregistrés sur la page Simulateur — ils contiennent ton équipement, les pièces de tes sacs et tes builds sauvegardés), puis un <b>build</b> (ceux que tu as enregistrés en jeu) et un <b>contenu</b> : Mythique+, Raid ou Gouffres.</li>
-pp/static/char.html
       <li>Le site te dit alors quelles pièces <b>de ce que tu possèdes déjà</b> tu devrais porter, emplacement par emplacement, avec la raison (niveau d'objet, statistiques).</li>
-pp/static/char.html
       <li><b>Spés de soin</b> : SimulationCraft ne sait pas simuler les soins. Les pièces sont donc classées par <b>niveau d'objet</b> puis par <b>priorité de statistiques</b> du guide de la spécialisation (source citée sur la page) — une priorité par contenu quand le guide en donne une (Chaman, Druide, Paladin, Prêtre Sacré/Discipline, Moine, Évocateur).</li>
-pp/static/char.html
       <li><b>Spés DPS</b> : vraies simulations — chaque pièce de tes sacs est portée à tour de rôle et comparée à ton équipement actuel (comme le Top Stuff). Le <b>contenu</b> change les réglages : donjon (DungeonSlice) en Mythique+, combat de 5 min avec buffs de raid en Raid, combat court de 90 s <b>sans buffs de raid</b> (solo) en Gouffres — les chiffres diffèrent donc bien d'un contenu à l'autre.</li>
-pp/static/char.html
       <li>Les pièces que ton personnage ne peut pas porter (autre type d'armure, autre classe) sont écartées automatiquement. Les paires d'armes (arme à deux mains / main gauche) sont comparées emplacement par emplacement, pas en combinaison.</li>
-pp/static/char.html
       <li><b>Gouffres</b> : aucune priorité de stats spécifique aux gouffres n'est publiée par les guides — la page utilise donc celle du Mythique+ (combats courts) et te le dit dans le résultat ; côté DPS le calcul est bien un combat solo et court, différent du raid.</li>
-pp/static/char.html
       <li><b>Deux modes</b> : « Pièces à leur niveau actuel » (ce que tu portes aujourd'hui) ou « <b>Toutes les pièces au rang d'amélioration max</b> » — chaque pièce est alors modélisée à sa version la plus haute publiée par Wowhead (le résultat indique combien de pièces ont été remontées, ex. 308 → 334).</li>
-pp/static/char.html
       <li>Le <b>build</b> choisi est appliqué au calcul (les talents du build sont utilisés) ; pour les soins, les guides donnent la même priorité de statistiques quel que soit l'arbre héroïque.</li>
-pp/static/char.html
       <li>Références utilisées : <b>Wowhead</b>, <b>Icy Veins</b> et <b>Archon</b> (guides de classe et données de saison) — liens en bas de la page.</li>
-pp/static/char.html
       <li><b>Première configuration (administration)</b> : pour mettre la guilde en route (guilde, clés API, identité, SMTP, bot Discord, premiers membres), suis la checklist <b>🚀 Première configuration</b> — page <i>/start</i>, aussi accessible depuis le tableau de bord (carte administrateur tant que des étapes restent à faire).</li>
-pp/static/char.html
       <li><b>E-mail / SMTP (administration)</b> : l'envoi des e-mails du site (invitations) se règle dans <i>Paramètres → Administration → ✉️ E-mail (SMTP)</i> — serveur, port, sécurité (STARTTLS / SSL / aucune), identifiant, mot de passe, expéditeur. La connexion est vérifiée à l'enregistrement et un <b>e-mail de test</b> peut être envoyé. Sans configuration SMTP, les invitations restent utilisables via le lien à copier.</li>
-pp/static/char.html
       <li><b>Synchronisations (administration)</b> : la cadence des tâches automatiques — relevés des personnages (niveau, équipement, métiers) et passages du bot Discord — se règle dans <i>Paramètres → Administration → 🔄 Synchronisations</i> : intervalle, fréquence de re-relevé (personnages liés / roster), nombre de personnages par passage, durée de conservation de l'historique. La page affiche l'heure du dernier passage et un bouton <b>▶ Lancer maintenant</b>. Un intervalle plus court = davantage d'appels API ; la conservation reste limitée à 30 jours (conditions Blizzard).</li>
-pp/static/char.html
       <li><b>Clés API (administration)</b> : les clés des services externes — <b>Battle.net</b> (roster, objets) et <b>Warcraft Logs</b> (rapports de raid, parses) — se renseignent dans <i>Paramètres → Administration → 🔑 Clés API</i>. Elles sont testées à l'enregistrement et remplacent celles du serveur.</li>
-pp/static/char.html
       <li><b>Guilde (administration)</b> : le <b>royaume</b> (slug), la <b>région</b> Battle.net, le <b>slug de guilde</b>, la langue des données et le <b>nom Warcraft Logs</b> se règlent dans <i>Paramètres → Administration → 🏰 Guilde (royaume & WCL)</i> — c'est ce que le site interroge pour le roster, les fiches de personnages et les rapports de raid. Le bouton <b>🔎 Vérifier</b> contrôle que la guilde est trouvée sur les deux services ; indispensable pour réutiliser le site avec une autre guilde.</li>
-pp/static/char.html
       <li><b>BIS</b> : la liste des meilleures pièces de la saison, reprise du guide Wowhead de ta spécialisation (instantané daté, affiché dans le résultat) — emplacement par emplacement, avec la provenance (raid, donjon, catalyseur) et ce que tu possèdes déjà (✅ portée, 🎒 dans tes sacs, — manquante). Le build et le contenu ne changent pas cette liste.</li>
-pp/static/char.html
       <li>Pense à réexporter ton personnage quand tu changes de stuff : la page travaille toujours sur le dernier export enregistré.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="calendrier">
-pp/static/char.html
     <h2>🗓️ Calendrier des raids</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Les officiers créent les raids (date, heure, durée, note).</li>
-pp/static/char.html
       <li>Réponds en un clic : ✅ Présent · ❓ Peut-être · ❌ Absent — re-clique pour annuler ta réponse.</li>
-pp/static/char.html
       <li>Tu vois qui vient d'un coup d'œil, et le bot Discord relance une heure avant le raid (si activé).</li>
-pp/static/char.html
       <li>🗓️ « Prochains raids » : les officiers importent le calendrier de guilde de WoW (addon Cohors → /cohors → « Exporter ») — les raids, les réponses des membres et les indisponibilités déclarées apparaissent directement (création et invitations en jeu uniquement). Les joueurs y apparaissent aux couleurs de leur classe (comme en jeu) ; et quand les boss visés sont précisés, la page liste les pièces de wishlist de la guilde qui tombent sur ces boss (🎁, avec qui les veut). Sur chaque date, les officiers peuvent préciser le ou les raids visés, les boss, et le raid de départ 🚩 (bouton ✏️) ; ils y définissent aussi le rôle des présents (🛡️ tank / 💚 heal / ⚔️ dps) et peuvent forcer les réponses (accepter ou refuser quelqu'un qui ne répond jamais en jeu).</li>
-pp/static/char.html
       <li>🚫 Indisponibilités : tu vois qui est indisponible pour chaque raid, croisé avec les réponses in-game — ⚠️ signale « indispo mais a accepté le raid ». Ça se déclare dans 🙋 Moi → 🚫 Mes indispos.</li>
-pp/static/char.html
       <li>« 📣 Relancer » (officiers, si le bot Discord est actif) poste une relance dans Discord pour les membres qui n'ont pas encore répondu.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="accueil">
-pp/static/char.html
     <h2>🏠 Tableau de bord</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Le récapitulatif : compte à rebours du reset hebdo, dernier raid avec les meilleurs parses, arrivées et départs de la guilde. On y accède en cliquant le logo en haut à gauche (ou à l'adresse /dashboard).</li>
-pp/static/char.html
       <li>🗓️ « Prochain raid » : la date du prochain raid issu du calendrier in-game, avec les compteurs de réponses (dispo · non · sans réponse).</li>
-pp/static/char.html
       <li>🎧 La carte « Vocal » montre qui est connecté sur TeamSpeak.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="artisanat">
-pp/static/char.html
     <h2>🔨 Artisanat</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Qui peut crafter quoi : les métiers de toute la guilde, regroupés par profession, avec les points de chaque personnage.</li>
-pp/static/char.html
       <li>Recherche un métier ou un personnage, et clique pour ouvrir sa fiche — les métiers se mettent à jour automatiquement depuis le jeu.</li>
-pp/static/char.html
       <li>📖 « Mes recettes » (page 🙋 Moi) : chaque joueur importe l'export de l'addon (/cohors recettes) — ses recettes connues et celles qui restent à apprendre s'affichent (lecture seule, la source c'est le jeu).</li>
-pp/static/char.html
       <li>Ce que chacun déclare alimente « Qui peut crafter quoi » et les compos de 🧪 Préparation de raid.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="prep">
-pp/static/char.html
     <h2>🧪 Préparation de raid</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>L'atelier du raid : les officiers choisissent les recettes à fabriquer dans un champ de recherche (tape pour filtrer parmi les recettes maison, du jeu et des artisans ; « ＋ Ajouter » pour en ajouter une autre, avec la quantité voulue ; coche « Seulement les recettes connues par les joueurs de la guilde » pour ne garder que ce que la guilde sait fabriquer). Les compos nécessaires se calculent tout seuls : les officiers notent ce qui est déjà en banque 🏦, chacun peut indiquer ce qu'il apporte, et le reste à réunir se met à jour. Si une recette du jeu arrive sans compos connues (données Blizzard incomplètes — souvent du contenu récent), elle est signalée ⚠️ ; dès qu'un artisan importe son export d'addon (🙋 Moi → 📖 Mes recettes), ses vraies compos sont utilisées.</li>
-pp/static/char.html
       <li>La page agrège les compos nécessaires (besoin / fourni, barre de progression) et chaque membre clique « j'apporte » pour annoncer sa part.</li>
-pp/static/char.html
       <li>🔎 Choix des recettes : le champ de recherche puise dans les recettes du jeu (2 dernières extensions, synchronisées automatiquement), les recettes des artisans de la guilde (déclarées sur la page 📖 Mes recettes) et les recettes maison. Coche « Seulement les recettes connues par les joueurs de la guilde » pour ne garder que ce que la guilde sait fabriquer.</li>
-pp/static/char.html
       <li>🔄 Recettes du jeu : le catalogue (~1000 recettes et leurs compos) se resynchronise tout seul depuis l'API du jeu — au démarrage, puis au plus une fois par jour. Rien à faire.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="mplus">
-pp/static/char.html
     <h2>⚔️ MM+</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Organise les clés mythiques+ : choisis tes rôles (🛡️ tank / 💚 heal / ⚔️ DPS), tes créneaux (les 14 prochains jours, avec heures) et les clés que tu as (perso, donjon, niveau).</li>
-pp/static/char.html
       <li>📅 « Qui est dispo » montre jour par jour qui peut jouer ; 🔑 « Clés annoncées » liste toutes les clés de la guilde, triées par niveau.</li>
-pp/static/char.html
       <li>La liste des donjons de la saison est récupérée automatiquement (noms français).</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="addon">
-pp/static/char.html
     <h2>🧩 L'addon in-game</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>L'addon Cohors s'installe dans le dossier AddOns de World of Warcraft ; le zip se télécharge depuis la page 🛡️ Guilde (« ⬇️ Télécharger l'addon »).</li>
-pp/static/char.html
       <li>🗓️ Officiers : en jeu, /cohors → « Exporter » lit le calendrier de guilde (raids et réponses) ; colle la chaîne dans la page Calendrier, ou importe le fichier Cohors.lua.</li>
-pp/static/char.html
       <li>📚 Artisans : /cohors recettes (ou le bouton 📚) liste les recettes connues de tes métiers ; importe l'export toi-même depuis la section 🙋 Moi → 📖 Mes recettes.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="guilde">
-pp/static/char.html
     <h2>🛡️ Guilde</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Les liens Discord et TeamSpeak sont sur la page 🛡️ Guilde (tenue à jour par les administrateurs).</li>
-pp/static/char.html
       <li>« 🚀 Ouvrir dans TeamSpeak » lance ton client installé avec l'adresse et le mot de passe déjà remplis.</li>
-pp/static/char.html
       <li>🎧 Pas de client installé ? Le client web (lien sur la même page) fait tourner TeamSpeak dans le navigateur — aucun logiciel à installer.</li>
-pp/static/char.html
       <li>🎧 Page « Vocal » : le panneau vocal s'ouvre à gauche (salons TeamSpeak, micro) et reste en place pendant que tu navigues dans l'app. Le pseudo se règle dans ⚙️ Paramètres.</li>
-pp/static/char.html
       <li>📦 Le client portable Windows (préconfiguré avec l'adresse et le mot de passe) se télécharge depuis la page 🎧 Vocal — réservé aux membres connectés.</li>
-pp/static/char.html
       <li>🎵 Page « Musique » (officiers/admins) : lecteur du bot TeamSpeak — lancer, pause, volume, bibliothèque, liens et envoi de mp3.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="parametres">
-pp/static/char.html
     <h2>⚙️ Paramètres du compte</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Nom affiché, langue et mot de passe — tout se règle dans ⚙️ Paramètres.</li>
-pp/static/char.html
       <li>Changer le mot de passe déconnecte tes autres appareils (sécurité).</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="identite">
-pp/static/char.html
     <h2>🎨 Identité de la guilde</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Dans ⚙️ Paramètres → 🎨 Identité : change le logo, le nom de la guilde et le fond du site — pratique pour réutiliser le site avec une autre guilde.</li>
-pp/static/char.html
       <li>Le logo sert aussi d'icône d'onglet et d'icône d'application (PWA) ; le fond peut être une couleur et/ou une image.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="bot">
-pp/static/char.html
     <h2>🤖 Le bot Discord</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Si le bot est activé : chaque nouveau rapport Warcraft Logs, chaque arrivée/départ et chaque raid planifié sont annoncés dans le salon Discord.</li>
-pp/static/char.html
       <li>Alertes de personnage : paliers d'ilvl tous les 5 niveaux, nouvelles montures et mascottes des personnages liés.</li>
-pp/static/char.html
       <li>📰 Récap hebdomadaire, le lundi matin : progressions de la semaine, soirées de raid et mouvements de guilde.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <section class="card" id="faq">
-pp/static/char.html
     <h2>❓ Bon à savoir (FAQ)</h2>
-pp/static/char.html
     <ul>
-pp/static/char.html
       <li>Mon DPS simulé est plus haut que mes logs : c'est normal — la simulation est un combat parfait (Patchwerk), sans mouvement ni mécaniques.</li>
-pp/static/char.html
       <li>Mon résultat semble faux : vérifie que ton export /simc est complet et récent, puis réessaie.</li>
-pp/static/char.html
       <li>Les simulations identiques sont mises en cache : les relancer est instantané.</li>
-pp/static/char.html
       <li>📱 Sur téléphone, l'app s'installe comme une application depuis le navigateur (« Ajouter à l'écran d'accueil ») — elle s'ouvre alors en plein écran.</li>
-pp/static/char.html
     </ul>
-pp/static/char.html
   </section>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await fetch("/api/me");
-pp/static/char.html
     if (r.status === 401) { location.href = "/login"; return; }
-pp/static/char.html
     const me = await r.json();
-pp/static/char.html
     $("#who").textContent = me.name || me.email;
-pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
-pp/static/char.html
   try { const h = await fetch("/api/health").then(x => x.json()); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
 })();
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
-pp/static/char.html
   ev.preventDefault();
-pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
-pp/static/char.html
   location.href = "/login";
-pp/static/char.html
 });
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

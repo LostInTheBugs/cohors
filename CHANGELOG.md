@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c30 - 2026-09-28
+
+### Fixed
+- Affichage cassé sur toutes les pages en c29 : une ligne parasite `pp/static/char.html` avait été insérée entre chaque ligne de 29 pages HTML (script de mise à jour des `?v=`). Lignes retirées, test ajouté.
+
 ## 2026.09.152-c29 - 2026-09-27
 
 ### Changed

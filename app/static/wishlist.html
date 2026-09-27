@@ -1,706 +1,353 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Wishlist</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
-pp/static/char.html
   * { box-sizing:border-box; }
-pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   .topbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
-pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
-pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
-pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
-pp/static/char.html
   .brandname span { color:var(--acc2); }
-pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   .userbox { margin-left:auto; display:flex; gap:14px; align-items:center; }
-pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
-pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
-pp/static/char.html
   .hlink:hover { text-decoration:underline; }
-pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
-pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
-pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
-pp/static/char.html
          border:1px solid var(--line); background:transparent; }
-pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
-pp/static/char.html
   .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
-pp/static/char.html
   h2 { font-size:17px; margin:0 0 12px; }
-pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
-pp/static/char.html
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-pp/static/char.html
   .spacer { flex:1; }
-pp/static/char.html
   .btn { background:linear-gradient(135deg,var(--acc),#7d0020); border:0; color:#fff; border-radius:10px;
-pp/static/char.html
          padding:8px 16px; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; }
-pp/static/char.html
   .btn:disabled { opacity:.55; cursor:default; }
-pp/static/char.html
   .gbtn { background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:10px;
-pp/static/char.html
           padding:8px 14px; font-size:13.5px; font-weight:600; cursor:pointer; }
-pp/static/char.html
   .gbtn:hover { border-color:#3a4763; }
-pp/static/char.html
   .gbtn:disabled { opacity:.55; cursor:default; }
-pp/static/char.html
   input[type=text] { background:var(--card2); border:1px solid var(--line); color:var(--fg); border-radius:10px;
-pp/static/char.html
                      padding:8px 12px; font-size:14px; min-width:260px; }
-pp/static/char.html
   select { background:var(--card2); border:1px solid var(--line); color:var(--fg); border-radius:10px;
-pp/static/char.html
            padding:8px 12px; font-size:14px; min-width:220px; }
-pp/static/char.html
   .meta { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   table.rtab { width:100%; border-collapse:collapse; margin-top:6px; }
-pp/static/char.html
   table.rtab th, table.rtab td { padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; font-size:13.5px; }
-pp/static/char.html
   table.rtab th { color:var(--mut); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
-pp/static/char.html
   .icn { width:26px; height:26px; border-radius:6px; display:block; }
-pp/static/char.html
   .chip { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:1px 9px; font-size:12px;
-pp/static/char.html
           color:var(--mut); margin-right:6px; }
-pp/static/char.html
   .chip.ok { color:var(--ok); border-color:#1f5c43; }
-pp/static/char.html
   .del { background:transparent; border:0; cursor:pointer; font-size:15px; padding:0 4px; }
-pp/static/char.html
   .del:hover { filter:brightness(1.4); }
-pp/static/char.html
   .q-common { color:#fff; } .q-uncommon { color:#1eff00; } .q-rare { color:#0070dd; }
-pp/static/char.html
   .q-epic { color:#a335ee; } .q-legendary { color:#ff8000; } .q-artifact { color:#e6cc80; } .q-heirloom { color:#00ccff; }
-pp/static/char.html
   .gv { text-align:right; }
-pp/static/char.html
   .gpos { color:var(--ok); } .gneg { color:var(--err); }
-pp/static/char.html
   .gbest { background:rgba(56,201,142,.07); }
-pp/static/char.html
   .gbase { color:var(--mut); }
-pp/static/char.html
   .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
-pp/static/char.html
   .err { color:var(--err); font-size:13.5px; padding:6px 2px; }
-pp/static/char.html
   .ok-msg { color:var(--ok); font-size:13.5px; }
-pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
-pp/static/char.html
   .hidden { display:none !important; }
-pp/static/char.html
   #exp { width:100%; background:var(--card2); border:1px solid var(--line); border-radius:10px; color:var(--fg);
-pp/static/char.html
          font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; padding:10px; resize:vertical; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Wishlist</span></div>
-pp/static/char.html
         <div class="tagline">Tes pièces à obtenir — vois qui les possède déjà, simule ce que ça rapporte.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>🎯 Mes pièces <span class="meta">(<span id="count">0</span>)</span></h2>
-pp/static/char.html
     <div class="row" style="margin-bottom:8px">
-pp/static/char.html
       <input type="text" id="addref" placeholder="Ex. 235623 ou un lien Wowhead">
-pp/static/char.html
       <button class="btn" id="addbtn">Ajouter</button>
-pp/static/char.html
       <span class="spacer"></span>
-pp/static/char.html
       <span class="meta" id="addmsg"></span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div id="items"></div>
-pp/static/char.html
     <p class="meta" style="margin:10px 0 0">Astuce : ajoute des pièces depuis 🧰 Top Stuff avec le bouton 🎯 — ou ⭐ pour la marquer prioritaire.</p>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card" id="exp-card">
-pp/static/char.html
     <h2>📤 Export pour l'addon</h2>
-pp/static/char.html
     <p class="meta" style="margin:-6px 0 8px">Copie ce texte dans l'addon en jeu (fenêtre Cohors → bouton « Wishlist », ou /cohors wishlist) : en entrant dans une instance, l'addon te signalera les boss qui ont un objet — ou une recette — de ta wishlist.</p>
-pp/static/char.html
     <textarea id="exp" readonly rows="7" spellcheck="false"></textarea>
-pp/static/char.html
     <div class="row" style="margin-top:8px">
-pp/static/char.html
       <button class="gbtn" id="expcopy">📋 Copier</button>
-pp/static/char.html
       <span class="meta" id="expmsg"></span>
-pp/static/char.html
     </div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card hidden" id="sim-card">
-pp/static/char.html
     <h2>⚡ Simuler les gains</h2>
-pp/static/char.html
     <div class="row" style="margin-bottom:8px">
-pp/static/char.html
       <select id="prof"></select>
-pp/static/char.html
       <button class="btn" id="run" disabled>▶ Lancer la simulation</button>
-pp/static/char.html
       <span class="spacer"></span>
-pp/static/char.html
       <span class="meta" id="simstatus"></span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <p class="meta" id="simhint"></p>
-pp/static/char.html
     <div id="simres"></div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/esc.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
+<script src="/static/esc.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
-pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 const jfetch = async (method, u, body) => { const r = await fetch(u, { method, headers: { "Content-Type": "application/json" },
-pp/static/char.html
   body: body === undefined ? undefined : JSON.stringify(body) });
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 
-pp/static/char.html
 let W = null;
-pp/static/char.html
 let POLL = null;
-pp/static/char.html
 
-pp/static/char.html
 function slotFr(s) { return s || ""; }
-pp/static/char.html
 
-pp/static/char.html
 function renderItems() {
-pp/static/char.html
   const items = W.items || [];
-pp/static/char.html
   $("#count").textContent = items.length;
-pp/static/char.html
   const chars = W.chars || [];
-pp/static/char.html
   if (!items.length) {
-pp/static/char.html
     $("#items").innerHTML = `<div class="empty">Ta wishlist est vide — ajoute une pièce ci-dessus ou depuis 🧰 Top Stuff avec le bouton 🎯.</div>`;
-pp/static/char.html
     return;
-pp/static/char.html
   }
-pp/static/char.html
   const thChars = chars.length ? `<th>Possédé</th>` : `<th></th>`;
-pp/static/char.html
   $("#items").innerHTML = `<table class="rtab"><thead><tr>
-pp/static/char.html
       <th style="width:36px"></th><th>Pièce</th><th>Emplacement</th>${thChars}<th></th></tr></thead><tbody>` +
-pp/static/char.html
     items.map(it => {
-pp/static/char.html
       const qcls = "q-" + (it.quality || "common").toLowerCase();
-pp/static/char.html
       const isRecipe = it.kind === "recipe";
-pp/static/char.html
       // Recettes : la colonne Emplacement dit déjà « Recette » — pas de pastille en double
-pp/static/char.html
       const chips = isRecipe ? ""
-pp/static/char.html
         : chars.length
-pp/static/char.html
         ? chars.map(c => `<span class="chip ${it.owned && it.owned[c.name] ? "ok" : ""}" title="${esc(c.display || c.name)}">${c.is_main ? "⭐ " : ""}${esc(c.display || c.name)}${it.owned && it.owned[c.name] ? " ✓" : ""}</span>`).join("")
-pp/static/char.html
         : `<span class="meta">Lie tes personnages (page 👥 Personnages) pour voir qui possède quoi.</span>`;
-pp/static/char.html
       const srcs = (it.source || []).map(s => s.kind === "raid"
-pp/static/char.html
         ? `🗡️ Raid : ${esc(s.inst)}${s.bosses && s.bosses.length ? " — " + s.bosses.map(esc).join(", ") : ""}`
-pp/static/char.html
         : `🕳️ Donjon : ${esc(s.inst)} (MM+)`);
-pp/static/char.html
       const cr = it.craft;
-pp/static/char.html
       let crTxt = "", metTxt = "", recTxt = "", meTxt = "";
-pp/static/char.html
       if (cr) {
-pp/static/char.html
         crTxt = `🔨 Fabriqué${cr.who && cr.who.length ? " par " + cr.who.map(esc).join(", ") : ""}${cr.prof ? " (" + esc(cr.prof) + ")" : ""} — compos : ${(cr.mats || []).map(m => `${esc(m.name)} ×${fmt(m.qty)}`).join(" · ") || "—"}`;
-pp/static/char.html
         if (cr.holders && cr.holders.length)
-pp/static/char.html
           metTxt = `🛠️ Métier : ${esc(cr.prof)} — ${cr.holders.map(esc).join(", ")}${cr.holders_n > cr.holders.length ? " (+" + (cr.holders_n - cr.holders.length) + ")" : ""}`;
-pp/static/char.html
         recTxt = cr.who && cr.who.length ? `📗 Recette : ${cr.who.map(esc).join(", ")}` : "📗 Recette : pas encore déclarée par un artisan";
-pp/static/char.html
         if (it.me) meTxt = (it.me.recipe && it.me.recipe.length)
-pp/static/char.html
           ? `✅ Tu peux la fabriquer — recette déclarée (${it.me.recipe.map(esc).join(", ")}).`
-pp/static/char.html
           : `⚠️ Tu as le métier (${esc(cr.prof)} · ${(it.me.chars || []).map(esc).join(", ")}) — il te manque la recette.`;
-pp/static/char.html
       }
-pp/static/char.html
       const bisTxt = (it.bis || []).map(b => `⭐ BIS pour ${esc(b.char)} (+${b.gain} %)`).join(" · ");
-pp/static/char.html
       return `<tr><td>${it.icon ? `<img class="icn" src="${esc(it.icon)}" alt="">` : ""}</td>
-pp/static/char.html
         <td class="${qcls}">${it.prio ? "⭐ " : ""}${esc(it.name)}${srcs.length ? `<div class="meta">${srcs.join(" · ")}</div>` : ""}${crTxt ? `<div class="meta">${crTxt}</div>` : ""}${metTxt ? `<div class="meta">${metTxt}</div>` : ""}${recTxt ? `<div class="meta">${recTxt}</div>` : ""}${meTxt ? `<div class="meta">${meTxt}</div>` : ""}${bisTxt ? `<div class="meta">${bisTxt}</div>` : ""}</td>
-pp/static/char.html
         <td class="meta">${esc(it.slot_fr || "")}</td>
-pp/static/char.html
         <td>${chips}</td>
-pp/static/char.html
         <td><button class="prio" data-prio="${it.item_id}" data-on="${it.prio ? 1 : 0}" title="Prioritaire">${it.prio ? "⭐" : "☆"}</button> <button class="del" data-id="${it.item_id}" title="Retirer">🗑</button></td></tr>`;
-pp/static/char.html
     }).join("") + `</tbody></table>`;
-pp/static/char.html
   document.querySelectorAll(".del").forEach(b => b.onclick = async () => {
-pp/static/char.html
     b.disabled = true;
-pp/static/char.html
     try { await jfetch("DELETE", "/api/wishlist/" + b.dataset.id); await load(); } catch (e) { b.disabled = false; }
-pp/static/char.html
   });
-pp/static/char.html
   document.querySelectorAll(".prio").forEach(b => b.onclick = async () => {
-pp/static/char.html
     b.disabled = true;
-pp/static/char.html
     try { await jfetch("POST", `/api/wishlist/${b.dataset.prio}/prio`, { on: b.dataset.on !== "1" }); await load(); }
-pp/static/char.html
     catch (e) { b.disabled = false; }
-pp/static/char.html
   });
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function loadProfiles() {
-pp/static/char.html
   const d = await jget("/api/profiles");
-pp/static/char.html
   const all = [...(d.mine || []), ...(d.shared || [])];
-pp/static/char.html
   const gear = (W.items || []).filter(i => i.kind !== "recipe");
-pp/static/char.html
   const sel = $("#prof");
-pp/static/char.html
   sel.innerHTML = all.length
-pp/static/char.html
     ? all.map(p => `<option value="${p.id}">${esc(p.name)}${p.shared ? " (partagé)" : ""}</option>`).join("")
-pp/static/char.html
     : "";
-pp/static/char.html
   $("#run").disabled = !all.length || !gear.length;
-pp/static/char.html
   $("#simhint").textContent = all.length
-pp/static/char.html
     ? `Les ${Math.min(gear.length, 15)} première(s) pièce(s) de ta wishlist seront simulées avec le profil choisi.`
-pp/static/char.html
     : `Aucun profil enregistré — crée-en un sur la page ⚔️ Simulateur (bouton « Sauvegarder »).`;
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function load() {
-pp/static/char.html
   W = await jget("/api/wishlist");
-pp/static/char.html
   renderItems();
-pp/static/char.html
   const gear = (W.items || []).filter(i => i.kind !== "recipe");
-pp/static/char.html
   $("#sim-card").classList.toggle("hidden", !gear.length);
-pp/static/char.html
   if (gear.length) await loadProfiles();
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await fetch("/api/wishlist/export");
-pp/static/char.html
     const txt = await r.text();
-pp/static/char.html
     $("#exp").value = txt;
-pp/static/char.html
     const n = Math.max(0, txt.trim().split("\n").length - 1);
-pp/static/char.html
     $("#expmsg").textContent = n ? `${n} objet(s) dans l'export` : "Ta wishlist est vide — rien à exporter pour l'addon.";
-pp/static/char.html
   } catch (e) { $("#expmsg").textContent = ""; }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#expcopy").addEventListener("click", async () => {
-pp/static/char.html
   const t = $("#exp").value || "";
-pp/static/char.html
   if (!t) return;
-pp/static/char.html
   try {
-pp/static/char.html
     await navigator.clipboard.writeText(t);
-pp/static/char.html
   } catch (e) {
-pp/static/char.html
     $("#exp").removeAttribute("readonly"); $("#exp").select();
-pp/static/char.html
     document.execCommand("copy");
-pp/static/char.html
     $("#exp").setAttribute("readonly", "");
-pp/static/char.html
   }
-pp/static/char.html
   $("#expmsg").textContent = "Copié ✓ — colle-le dans l'addon (bouton Wishlist).";
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 // --- ajout
-pp/static/char.html
 async function addRef() {
-pp/static/char.html
   const v = ($("#addref").value || "").trim();
-pp/static/char.html
   if (!v) return;
-pp/static/char.html
   $("#addmsg").className = "meta";
-pp/static/char.html
   $("#addmsg").textContent = "…";
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jfetch("POST", "/api/wishlist", { item: v });
-pp/static/char.html
     $("#addmsg").className = "ok-msg";
-pp/static/char.html
     $("#addmsg").textContent = d.already ? `${d.name} — déjà dans ta wishlist` : `${d.name} ajoutée ✓`;
-pp/static/char.html
     $("#addref").value = "";
-pp/static/char.html
     await load();
-pp/static/char.html
   } catch (e) {
-pp/static/char.html
     $("#addmsg").className = "err";
-pp/static/char.html
     $("#addmsg").textContent = e.message;
-pp/static/char.html
   }
-pp/static/char.html
 }
-pp/static/char.html
 $("#addbtn").addEventListener("click", addRef);
-pp/static/char.html
 $("#addref").addEventListener("keydown", (e) => { if (e.key === "Enter") addRef(); });
-pp/static/char.html
 
-pp/static/char.html
 // --- simulation
-pp/static/char.html
 function stopPoll() { if (POLL) { clearInterval(POLL); POLL = null; } }
-pp/static/char.html
 
-pp/static/char.html
 function simTable(d) {
-pp/static/char.html
   const rows = [];
-pp/static/char.html
   if (d.gear_base_dps) {
-pp/static/char.html
     rows.push(`<tr class="gbase"><td></td><td>Équipement actuel</td><td>référence</td>
-pp/static/char.html
       <td class="gv">${fmt(d.gear_base_dps)}</td><td class="gv">—</td></tr>`);
-pp/static/char.html
   }
-pp/static/char.html
   (d.gear || []).forEach((g, i) => {
-pp/static/char.html
     const q = "q-" + (g.quality || "common").toLowerCase();
-pp/static/char.html
     const dl = g.delta_pct;
-pp/static/char.html
     const dcls = dl > 0.05 ? "gpos" : (dl < -0.05 ? "gneg" : "");
-pp/static/char.html
     const sign = dl > 0 ? "+" : "";
-pp/static/char.html
     const best = (i === 0 && dl > 0.05) ? " gbest" : "";
-pp/static/char.html
     const icon = g.icon ? `<img class="icn" src="${esc(g.icon)}" alt="">` : "";
-pp/static/char.html
     rows.push(`<tr class="${best}"><td>${icon}</td>
-pp/static/char.html
       <td class="${q}">${esc(g.name)}</td><td class="meta">${esc(g.slot_fr || "")}</td>
-pp/static/char.html
       <td class="gv">${fmt(g.dps)}</td>
-pp/static/char.html
       <td class="gv ${dcls}">${sign}${fmt(g.delta)} <small>(${sign}${(dl ?? 0).toFixed(2)} %)</small></td></tr>`);
-pp/static/char.html
   });
-pp/static/char.html
   $("#simres").innerHTML = `<table class="rtab"><thead><tr>
-pp/static/char.html
       <th style="width:36px"></th><th>Pièce</th><th>Emplacement</th>
-pp/static/char.html
       <th style="text-align:right">DPS</th><th style="text-align:right">Gain vs équipement actuel</th></tr></thead>
-pp/static/char.html
     <tbody>${rows.join("")}</tbody></table>
-pp/static/char.html
     <p class="meta" style="margin-top:8px">${fmt(d.iterations)} itérations · ${d.wall_s != null ? d.wall_s.toFixed(0) + " s" : ""} ·
-pp/static/char.html
     <a class="hlink" href="/reports/${encodeURIComponent(d.id)}/report.html" target="_blank" rel="noopener">Rapport complet →</a></p>`;
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function launch() {
-pp/static/char.html
   stopPoll();
-pp/static/char.html
   const items = (W.items || []).filter(i => i.kind !== "recipe").slice(0, 15);
-pp/static/char.html
   const pid = $("#prof").value;
-pp/static/char.html
   if (!pid) return;
-pp/static/char.html
   $("#run").disabled = true;
-pp/static/char.html
   $("#simstatus").textContent = "Simulation en cours…";
-pp/static/char.html
   $("#simres").innerHTML = "";
-pp/static/char.html
   try {
-pp/static/char.html
     const p = await jget("/api/profiles/" + encodeURIComponent(pid));
-pp/static/char.html
     const d = await jfetch("POST", "/api/sim", {
-pp/static/char.html
       input: p.input, kind: "gear", label: "Wishlist", iterations: 1000,
-pp/static/char.html
       items: items.map(i => i.item_id).join(" "),
-pp/static/char.html
     });
-pp/static/char.html
     if (d.cached) {
-pp/static/char.html
       const full = await jget("/api/sims/" + encodeURIComponent(d.id));
-pp/static/char.html
       simTable(full); $("#simstatus").textContent = "Résultat en cache ✓"; $("#run").disabled = false; return;
-pp/static/char.html
     }
-pp/static/char.html
     let n = 0;
-pp/static/char.html
     POLL = setInterval(async () => {
-pp/static/char.html
       n++;
-pp/static/char.html
       try {
-pp/static/char.html
         const full = await jget("/api/sims/" + encodeURIComponent(d.id));
-pp/static/char.html
         if (full.status === "done" && full.gear) {
-pp/static/char.html
           stopPoll(); simTable(full);
-pp/static/char.html
           $("#simstatus").textContent = "Terminé ✓"; $("#run").disabled = false;
-pp/static/char.html
         } else if (full.status === "failed") {
-pp/static/char.html
           stopPoll();
-pp/static/char.html
           $("#simstatus").textContent = "";
-pp/static/char.html
           $("#simres").innerHTML = `<div class="err">Échec de la simulation — vérifie que ton profil /simc est complet.</div>`;
-pp/static/char.html
           $("#run").disabled = false;
-pp/static/char.html
         } else if (n > 90) { stopPoll(); $("#simstatus").textContent = ""; $("#run").disabled = false; }
-pp/static/char.html
       } catch (e) { stopPoll(); $("#simstatus").textContent = ""; $("#run").disabled = false; }
-pp/static/char.html
     }, 2000);
-pp/static/char.html
   } catch (e) {
-pp/static/char.html
     $("#simstatus").textContent = "";
-pp/static/char.html
     $("#simres").innerHTML = `<div class="err">${esc(e.message)}</div>`;
-pp/static/char.html
     $("#run").disabled = false;
-pp/static/char.html
   }
-pp/static/char.html
 }
-pp/static/char.html
 $("#run").addEventListener("click", launch);
-pp/static/char.html
 
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
-pp/static/char.html
   ev.preventDefault();
-pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
-pp/static/char.html
   location.href = "/login";
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const me = await jget("/api/me");
-pp/static/char.html
     $("#who").textContent = me.name || me.email;
-pp/static/char.html
   } catch (e) { return; }
-pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
   try { await load(); } catch (e) { $("#items").innerHTML = `<div class="err">${esc(e.message)}</div>`; }
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

@@ -1,2712 +1,1356 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Paramètres</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
-pp/static/char.html
   * { box-sizing:border-box; }
-pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
-pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
-pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
-pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
-pp/static/char.html
   .brandname span { color:var(--acc2); }
-pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   .userbox { display:flex; gap:14px; align-items:center; }
-pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
-pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
-pp/static/char.html
   .hlink:hover { text-decoration:underline; }
-pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
-pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
-pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
-pp/static/char.html
          border:1px solid var(--line); background:transparent; }
-pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
-pp/static/char.html
   h2 { font-size:17px; margin:0 0 12px; }
-pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
-pp/static/char.html
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-pp/static/char.html
   .plab { color:var(--mut); font-size:13.5px; }
-pp/static/char.html
   input[type=email], input[type=text], input[type=password] { background:var(--bg); color:var(--fg);
-pp/static/char.html
         border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; flex:1; min-width:260px; }
-pp/static/char.html
   input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
-pp/static/char.html
   .radio { display:flex; gap:8px; align-items:center; border:1px solid var(--line); border-radius:10px;
-pp/static/char.html
            padding:8px 15px; cursor:pointer; font-size:14px; }
-pp/static/char.html
   .radio input { accent-color:var(--acc); }
-pp/static/char.html
   .radio:has(input:checked) { border-color:var(--acc2); color:var(--acc2); }
-pp/static/char.html
   button { background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
-pp/static/char.html
            padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; }
-pp/static/char.html
   button:disabled { opacity:.55; cursor:default; }
-pp/static/char.html
   .note { color:var(--mut); font-size:12.5px; margin:10px 0 0; }
-pp/static/char.html
   .msg-ok { color:var(--ok); font-size:13px; }
-pp/static/char.html
   .msg-err { color:var(--err); font-size:13px; }
-pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
-pp/static/char.html
   .hidden { display:none !important; }
-pp/static/char.html
 
-pp/static/char.html
   /* ---- Administration (dans Paramètres, v2026.09.112) ---- */
-pp/static/char.html
   #adm .sub { color:var(--mut); font-size:14px; margin:0 0 20px; }
-pp/static/char.html
   #adm .spacer { flex:1; }
-pp/static/char.html
   #adm select { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; min-width:200px; }
-pp/static/char.html
   #adm button.small { padding:5px 12px; font-size:12.5px; font-weight:500; border-radius:8px; }
-pp/static/char.html
   #adm button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
-pp/static/char.html
   #adm button.danger { background:transparent; border:1px solid #5a2626; color:var(--err); }
-pp/static/char.html
   #adm .item { border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:11px 14px; margin-bottom:9px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-pp/static/char.html
   #adm .item .main { display:flex; flex-direction:column; min-width:200px; }
-pp/static/char.html
   #adm .item .name { font-weight:600; }
-pp/static/char.html
   #adm .item .meta { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   #adm .badge { font-size:12px; padding:2px 10px; border-radius:999px; border:1px solid var(--line); color:var(--mut); white-space:nowrap; }
-pp/static/char.html
   #adm .b-used { color:var(--ok); border-color:#1d4a3a; }
-pp/static/char.html
   #adm .b-expired { color:var(--mut); }
-pp/static/char.html
   #adm .b-admin { color:var(--acc2); border-color:#6b4a17; }
-pp/static/char.html
   #adm .b-officer { color:#9db8e8; border-color:#33415e; }
-pp/static/char.html
   #adm .rolesel { min-width:130px; padding:5px 10px; font-size:12.5px; border-radius:8px; }
-pp/static/char.html
   /* Comptes : grille stable — nom à gauche, actions à droite, détails sur une ligne pleine
-pp/static/char.html
      largeur ; les positions ne dépendent plus de la longueur de l'email / du perso. */
-pp/static/char.html
   #adm .item.ucard { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:14px; row-gap:5px; align-items:center; }
-pp/static/char.html
   #adm .ucard .uacts { display:flex; gap:7px; align-items:center; justify-content:flex-end; }
-pp/static/char.html
   #adm .ucard .meta { grid-column:1 / -1; }
-pp/static/char.html
   #adm .ucard .rolesel.r-admin { color:var(--acc2); border-color:#6b4a17; }
-pp/static/char.html
   #adm .ucard .rolesel.r-officer { color:#9db8e8; border-color:#33415e; }
-pp/static/char.html
   @media (max-width: 760px) {
-pp/static/char.html
     #adm .item.ucard { grid-template-columns:1fr; }
-pp/static/char.html
     #adm .ucard .uacts { justify-content:flex-start; flex-wrap:wrap; }
-pp/static/char.html
   }
-pp/static/char.html
   #adm .b-off { color:var(--err); border-color:#5a2626; }
-pp/static/char.html
   #adm .linkbox { margin-top:14px; background:var(--card2); border:1px dashed var(--acc); border-radius:10px; padding:12px 14px; }
-pp/static/char.html
   #adm .linkbox code { user-select:all; word-break:break-all; font-size:13px; color:var(--acc2); }
-pp/static/char.html
   #adm .chk { display:flex; gap:7px; align-items:center; color:var(--mut); font-size:13.5px; cursor:pointer; }
-pp/static/char.html
   #adm .chk input { accent-color:var(--acc); }
-pp/static/char.html
   #adm .fld { display:flex; flex-direction:column; gap:4px; color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   #adm .fld input[type=file] { font-size:12.5px; color:var(--fg); max-width:260px; }
-pp/static/char.html
   #adm .empty { color:var(--mut); font-size:14px; }
-pp/static/char.html
   #toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--card2); border:1px solid var(--acc); color:var(--fg); border-radius:10px; padding:9px 18px; font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none; }
-pp/static/char.html
   #toast.on { opacity:1; }
-pp/static/char.html
   #adm .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
-pp/static/char.html
   #adm .tab { cursor:pointer; }
-pp/static/char.html
 
-pp/static/char.html
   /* ---- Menu à gauche de Paramètres (v2026.09.113) ---- */
-pp/static/char.html
   .slayout { display:grid; grid-template-columns:232px minmax(0,1fr); gap:18px; align-items:start; }
-pp/static/char.html
   .smenu { display:flex; flex-direction:column; gap:5px; position:sticky; top:12px; }
-pp/static/char.html
   .smenu .sbtn { display:flex; align-items:center; gap:9px; text-align:left; width:100%;
-pp/static/char.html
         background:transparent; border:1px solid transparent; color:var(--mut); padding:9px 13px;
-pp/static/char.html
         border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; }
-pp/static/char.html
   .smenu .sbtn:hover { color:var(--fg); border-color:var(--line); }
-pp/static/char.html
   .smenu .sbtn.on { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); }
-pp/static/char.html
   .smenu .stitle { color:var(--mut); font-size:11.5px; text-transform:uppercase; letter-spacing:.7px; margin:14px 6px 3px; }
-pp/static/char.html
   @media (max-width:760px) {
-pp/static/char.html
     .slayout { grid-template-columns:1fr; gap:12px; }
-pp/static/char.html
     .smenu { flex-direction:row; flex-wrap:wrap; position:static; }
-pp/static/char.html
     .smenu .sbtn { width:auto; border-color:var(--line); }
-pp/static/char.html
     .smenu .stitle { width:100%; margin:6px 0 0; }
-pp/static/char.html
   }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Paramètres</span></div>
-pp/static/char.html
         <div class="tagline">Langue, nom, vocal et mot de passe — liés à ton compte.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/">← Retour à l'application</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="slayout">
-pp/static/char.html
     <aside class="smenu" id="smenu">
-pp/static/char.html
       <button class="sbtn on" type="button" data-sec="sec-profil">👤 Profil</button>
-pp/static/char.html
       <button class="sbtn" type="button" data-sec="sec-vocal">🎧 Vocal (TeamSpeak)</button>
-pp/static/char.html
       <button class="sbtn" type="button" data-sec="sec-pw">🔒 Mot de passe</button>
-pp/static/char.html
       <div class="stitle hidden" id="smenu-adm">🛡️ Administration</div>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-invitations" id="sbtn-invitations">✉️ Invitations</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-comptes" id="sbtn-comptes">👤 Comptes</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-bot" id="sbtn-bot">🤖 Bot Discord</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-api" id="sbtn-api">🔑 Clés API</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-guilde" id="sbtn-guilde">🏰 Guilde (royaume & WCL)</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-jobs" id="sbtn-jobs">🔄 Synchronisations</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-mail" id="sbtn-mail">✉️ E-mail (SMTP)</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-identite" id="sbtn-identite">🎨 Identité</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-sauvegarde" id="sbtn-sauvegarde">💾 Sauvegarde</button>
-pp/static/char.html
       <button class="sbtn hidden" type="button" data-sec="sec-maj" id="sbtn-maj">⬆️ Mises à jour</button>
-pp/static/char.html
     </aside>
-pp/static/char.html
     <div class="spanel">
-pp/static/char.html
 
-pp/static/char.html
   <div id="sec-profil">
-pp/static/char.html
 <div class="card">
-pp/static/char.html
     <h2>👤 Profil</h2>
-pp/static/char.html
     <div class="row">
-pp/static/char.html
       <span class="plab">Langue :</span>
-pp/static/char.html
       <label class="radio"><input type="radio" name="lang" value="fr"> 🇫🇷 Français</label>
-pp/static/char.html
       <label class="radio"><input type="radio" name="lang" value="en"> 🇬🇧 English</label>
-pp/static/char.html
       <span id="lang-msg"></span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="row" style="margin-top:11px">
-pp/static/char.html
       <input type="text" id="name" maxlength="60" placeholder="Nom affiché">
-pp/static/char.html
       <button id="name-save">💾 Enregistrer</button>
-pp/static/char.html
       <span id="name-msg"></span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <p class="note">Langue et nom sont liés à ton compte (ils te suivent sur tous tes appareils).</p>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div id="sec-vocal" class="hidden">
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
 <div class="card">
-pp/static/char.html
     <h2>🎧 Vocal (TeamSpeak)</h2>
-pp/static/char.html
     <div class="row">
-pp/static/char.html
       <input type="text" id="voice-nick" maxlength="60" placeholder="Pseudo dans le vocal">
-pp/static/char.html
       <button id="voice-save">💾 Enregistrer</button>
-pp/static/char.html
       <span id="voice-msg"></span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <p class="note">Par défaut : le nom de ton personnage principal (fiche 👥 Personnages). Ce pseudo est pré-rempli quand tu rejoins le vocal depuis l'app.</p>
-pp/static/char.html
   </div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
 <div id="sec-pw" class="hidden">
-pp/static/char.html
 <div class="card">
-pp/static/char.html
     <h2>🔒 Mot de passe</h2>
-pp/static/char.html
     <div class="row">
-pp/static/char.html
       <input type="password" id="pw-cur" placeholder="Mot de passe actuel" autocomplete="current-password">
-pp/static/char.html
       <input type="password" id="pw-new" placeholder="Nouveau mot de passe (8 caractères minimum)" autocomplete="new-password">
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="row" style="margin-top:9px">
-pp/static/char.html
       <input type="password" id="pw-new2" placeholder="Confirmer le nouveau mot de passe" autocomplete="new-password">
-pp/static/char.html
       <button id="pw-save">Changer le mot de passe</button>
-pp/static/char.html
     </div>
-pp/static/char.html
     <p class="note">⚠️ Tes autres appareils seront déconnectés. <span id="pw-msg"></span></p>
-pp/static/char.html
   </div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
 <div id="adm">
-pp/static/char.html
   
-pp/static/char.html
     <div id="sec-invitations" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>Créer une invitation</h2>
-pp/static/char.html
         <div class="row">
-pp/static/char.html
           <input type="email" id="inv-email" placeholder="e-mail du membre (vide = lien libre)" style="min-width:300px">
-pp/static/char.html
           <input type="text" id="inv-note" placeholder="note (optionnelle)" maxlength="120" style="min-width:180px">
-pp/static/char.html
           <label class="chk" title="Saisis d'abord un e-mail"><input type="checkbox" id="inv-send" checked disabled> ✉️ Envoyer par e-mail</label>
-pp/static/char.html
           <button id="inv-create">Créer le lien</button>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div id="inv-result" class="linkbox hidden"></div>
-pp/static/char.html
       </div>
-pp/static/char.html
   
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>Invitations</h2>
-pp/static/char.html
         <div id="invites"><div class="empty">Chargement…</div></div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
   
-pp/static/char.html
     <div id="sec-comptes" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>Comptes</h2>
-pp/static/char.html
         <div id="users"><div class="empty">Chargement…</div></div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
   
-pp/static/char.html
     <div id="sec-bot" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>🤖 Bot Discord <span class="badge" id="bot-status">…</span></h2>
-pp/static/char.html
         <p class="sub" style="margin:4px 0 14px">Annonce automatiquement les <b>nouveaux rapports de raid</b> (Warcraft Logs) et les <b>mouvements de guilde</b> (arrivées / départs) dans un salon Discord.</p>
-pp/static/char.html
         <details style="background:var(--card2); border:1px dashed var(--line); border-radius:10px; padding:10px 14px; margin-bottom:14px;">
-pp/static/char.html
           <summary style="cursor:pointer; font-weight:600; color:var(--acc2);">❓ Créer l'application Discord (une seule fois)</summary>
-pp/static/char.html
           <ol style="margin:10px 0 6px; padding-left:22px; color:var(--mut); font-size:13.5px;">
-pp/static/char.html
             <li>Ouvre le <a class="hlink" href="https://discord.com/developers/applications" target="_blank" rel="noopener">Portail développeurs Discord</a> → <b>New Application</b> (nom : « Cohors »).</li>
-pp/static/char.html
             <li>Copie l'<b>Application ID</b> (General Information) → colle-le ci-dessous.</li>
-pp/static/char.html
             <li>Onglet <b>Bot</b> → <b>Reset Token</b> → copie le <b>token</b> → colle-le ci-dessous (secret).</li>
-pp/static/char.html
             <li>Clique <b>📎 Lien d'invitation</b>, ouvre-le et ajoute le bot à ton serveur — il faut la permission « Gérer le serveur » sur le serveur visé (sinon, transmets le lien à un administrateur du serveur).</li>
-pp/static/char.html
             <li><b>🔄 Charger les salons</b>, choisis le salon, <b>💾 Enregistrer</b> puis <b>📨 Message de test</b>.</li>
-pp/static/char.html
           </ol>
-pp/static/char.html
           <p style="color:var(--mut); font-size:12.5px; margin:6px 0 2px;">Au premier passage, le bot pose ses références (aucune annonce rétroactive) : les annonces démarrent à partir de l'activation.</p>
-pp/static/char.html
         </details>
-pp/static/char.html
         <div class="row" style="margin-bottom:12px">
-pp/static/char.html
           <label class="chk"><input type="checkbox" id="bot-enabled"> Bot actif</label>
-pp/static/char.html
           <label class="chk"><input type="checkbox" id="bot-reports"> 📊 Nouveaux rapports de raid</label>
-pp/static/char.html
           <label class="chk"><input type="checkbox" id="bot-roster"> 👥 Mouvements de guilde</label>
-pp/static/char.html
           <label class="chk"><input type="checkbox" id="bot-chars"> 📈 Paliers des personnages liés</label>
-pp/static/char.html
           <label class="chk"><input type="checkbox" id="bot-weekly"> 📰 Récap hebdo (lundi matin)</label>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row">
-pp/static/char.html
           <input type="text" id="bot-appid" placeholder="Application ID (Portail développeurs)" style="min-width:260px">
-pp/static/char.html
           <button class="small ghost" id="bot-invite">📎 Lien d'invitation</button>
-pp/static/char.html
           <button class="small ghost" id="bot-guilds">🔄 Charger les salons</button>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row" style="margin-top:10px">
-pp/static/char.html
           <select id="bot-guild" class="hidden"></select>
-pp/static/char.html
           <select id="bot-channel" class="hidden"></select>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row" style="margin-top:12px">
-pp/static/char.html
           <input type="text" id="bot-token" placeholder="Token du bot" style="min-width:320px">
-pp/static/char.html
           <button id="bot-save">💾 Enregistrer</button>
-pp/static/char.html
           <button class="small ghost" id="bot-test">📨 Message de test</button>
-pp/static/char.html
           <button class="small ghost" id="bot-recap">📰 Tester le récap</button>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="linkbox hidden" id="bot-invite-box" style="margin-top:12px"></div>
-pp/static/char.html
         <div class="empty" id="bot-info" style="margin-top:12px; line-height:1.9"></div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
   
-pp/static/char.html
     <div id="sec-api" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>🔑 Clés API</h2>
-pp/static/char.html
         <p class="sub" style="margin:4px 0 14px">Clés utilisées par le site pour interroger les services externes (roster et objets Battle.net, rapports de raid et parses Warcraft Logs). Enregistrées ici, elles sont <b>prioritaires sur le fichier de configuration du serveur</b> — pratique pour les renouveler sans redéployer.</p>
-pp/static/char.html
         <div id="api-providers"></div>
-pp/static/char.html
         <p class="note">Les secrets ne sont jamais réaffichés (seuls les 4 derniers caractères). Un test de connexion est fait à l'enregistrement.</p>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
 
-pp/static/char.html
     <div id="sec-guilde" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>🏰 Guilde (royaume & WCL)</h2>
-pp/static/char.html
         <p class="sub" style="margin:4px 0 14px">Où le site trouve ta guilde : roster et fiches de personnages (Battle.net), rapports de raid (Warcraft Logs). Les valeurs enregistrées ici remplacent celles du fichier serveur — indispensable pour installer le site sur une autre guilde.</p>
-pp/static/char.html
         <div class="row" style="justify-content:space-between; margin-bottom:8px"><b>Royaume & guilde</b><span class="badge" id="guild-badge">…</span></div>
-pp/static/char.html
         <div class="row" style="flex-wrap:wrap">
-pp/static/char.html
           <label class="fld">Région Battle.net
-pp/static/char.html
             <select id="g-region" style="min-width:120px">
-pp/static/char.html
               <option value="eu">Europe (eu)</option>
-pp/static/char.html
               <option value="us">Amériques (us)</option>
-pp/static/char.html
               <option value="kr">Corée (kr)</option>
-pp/static/char.html
               <option value="tw">Taïwan (tw)</option>
-pp/static/char.html
             </select>
-pp/static/char.html
           </label>
-pp/static/char.html
           <label class="fld">Royaume (slug) <input type="text" id="g-realm" placeholder="ex. hyjal" style="min-width:140px" autocomplete="off"></label>
-pp/static/char.html
           <label class="fld">Langue des données <input type="text" id="g-locale" placeholder="fr_FR" list="g-locales" style="min-width:110px" autocomplete="off"></label>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row" style="margin-top:8px">
-pp/static/char.html
           <label class="fld">Slug de la guilde (Battle.net) <input type="text" id="g-slug" placeholder="ex. ma-guilde" style="min-width:230px" autocomplete="off"></label>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row" style="flex-wrap:wrap; margin-top:8px">
-pp/static/char.html
           <label class="fld">Région Warcraft Logs
-pp/static/char.html
             <select id="g-wcl_region" style="min-width:120px">
-pp/static/char.html
               <option value="EU">Europe (EU)</option>
-pp/static/char.html
               <option value="US">Amériques (US)</option>
-pp/static/char.html
               <option value="KR">Corée (KR)</option>
-pp/static/char.html
               <option value="TW">Taïwan (TW)</option>
-pp/static/char.html
               <option value="CN">Chine (CN)</option>
-pp/static/char.html
             </select>
-pp/static/char.html
           </label>
-pp/static/char.html
           <label class="fld">Nom de la guilde (Warcraft Logs) <input type="text" id="g-wcl_name" placeholder="Ma Guilde" style="min-width:230px" autocomplete="off"></label>
-pp/static/char.html
         </div>
-pp/static/char.html
         <datalist id="g-locales">
-pp/static/char.html
           <option>fr_FR</option><option>en_US</option><option>en_GB</option><option>de_DE</option><option>es_ES</option>
-pp/static/char.html
           <option>es_MX</option><option>it_IT</option><option>pt_BR</option><option>ru_RU</option><option>ko_KR</option>
-pp/static/char.html
           <option>zh_TW</option><option>zh_CN</option>
-pp/static/char.html
         </datalist>
-pp/static/char.html
         <div class="row" style="margin-top:10px">
-pp/static/char.html
           <button class="small" id="guild-save">💾 Enregistrer</button>
-pp/static/char.html
           <button class="small ghost" id="guild-test">🔎 Vérifier</button>
-pp/static/char.html
           <button class="small ghost" id="guild-clear">🗑 Retirer (revenir au serveur)</button>
-pp/static/char.html
           <span class="note" id="guild-msg"></span>
-pp/static/char.html
         </div>
-pp/static/char.html
         <p class="note" style="margin:8px 0 0" id="guild-effective">…</p>
-pp/static/char.html
         <p class="note" style="margin:8px 0 0">Le slug du royaume se lit dans l'adresse de la page de guilde sur worldofwarcraft.blizzard.com ; la vérification contrôle que la guilde est trouvée sur Battle.net et sur Warcraft Logs. Un champ vidé revient à la valeur du fichier serveur.</p>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
 
-pp/static/char.html
     <div id="sec-jobs" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>🔄 Synchronisations</h2>
-pp/static/char.html
         <p class="sub" style="margin:4px 0 14px">Cadence des tâches automatiques du site : relevés de personnages (niveaux, équipement, métiers) et passages du bot Discord (rapports de raid, mouvements de guilde). Les valeurs remplacent celles du serveur ; le prochain passage les prend en compte.</p>
-pp/static/char.html
 
-pp/static/char.html
         <div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px; margin-bottom:12px;">
-pp/static/char.html
           <div class="row" style="justify-content:space-between"><b>📊 Relevés des personnages</b><span class="badge" id="job-snap-badge">…</span></div>
-pp/static/char.html
           <div class="row" style="margin-top:10px">
-pp/static/char.html
             <label class="chk"><input type="checkbox" id="j-snap_enabled"> tâche active</label>
-pp/static/char.html
           </div>
-pp/static/char.html
           <div class="row" style="margin-top:8px; flex-wrap:wrap">
-pp/static/char.html
             <label class="fld">Passage toutes les <input type="number" id="j-snap_interval_min" min="1" max="1440" style="width:80px"> min</label>
-pp/static/char.html
             <label class="fld">Perso lié : re-relevé toutes les <input type="number" id="j-snap_linked_h" min="1" max="168" style="width:80px"> h</label>
-pp/static/char.html
             <label class="fld">Roster : toutes les <input type="number" id="j-snap_roster_h" min="1" max="720" style="width:80px"> h</label>
-pp/static/char.html
           </div>
-pp/static/char.html
           <div class="row" style="margin-top:8px; flex-wrap:wrap">
-pp/static/char.html
             <label class="fld">Max <input type="number" id="j-snap_max_tick" min="1" max="500" style="width:80px"> persos par passage</label>
-pp/static/char.html
             <label class="fld">Historique conservé <input type="number" id="j-snap_keep_days" min="2" max="30" style="width:80px"> jours</label>
-pp/static/char.html
             <label class="fld">Métiers toutes les <input type="number" id="j-prof_days" min="1" max="60" style="width:80px"> j</label>
-pp/static/char.html
           </div>
-pp/static/char.html
           <div class="row" style="margin-top:10px">
-pp/static/char.html
             <button class="small" id="job-snap-save">💾 Enregistrer</button>
-pp/static/char.html
             <button class="small ghost" id="job-snap-run">▶ Lancer maintenant</button>
-pp/static/char.html
             <span class="note" id="job-snap-msg"></span>
-pp/static/char.html
           </div>
-pp/static/char.html
           <p class="note" style="margin:8px 0 0" id="job-snap-status">…</p>
-pp/static/char.html
         </div>
-pp/static/char.html
 
-pp/static/char.html
         <div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px;">
-pp/static/char.html
           <div class="row" style="justify-content:space-between"><b>🤖 Bot Discord — cadence</b><span class="badge" id="job-bot-badge">…</span></div>
-pp/static/char.html
           <div class="row" style="margin-top:8px; flex-wrap:wrap">
-pp/static/char.html
             <label class="fld">Passage toutes les <input type="number" id="j-bot_interval_min" min="1" max="1440" style="width:80px"> min</label>
-pp/static/char.html
             <button class="small" id="job-bot-save">💾 Enregistrer</button>
-pp/static/char.html
             <span class="note" id="job-bot-msg"></span>
-pp/static/char.html
           </div>
-pp/static/char.html
           <p class="note" style="margin:8px 0 0" id="job-bot-status">…</p>
-pp/static/char.html
           <p class="note" style="margin:6px 0 0">Le bot s'active et se règle dans la section <b>🤖 Bot Discord</b> (salon, annonces, message de test).</p>
-pp/static/char.html
         </div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
 
-pp/static/char.html
     <div id="sec-maj" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>⬆️ Mises à jour de l'application</h2>
-pp/static/char.html
         <p class="sub" style="margin:4px 0 14px">Le site compare sa version à la dernière publiée du dépôt. Il ne peut pas redémarrer ses propres conteneurs : « Appliquer » dépose une demande, qu'un service de l'hôte exécute ensuite en quelques minutes (installation : voir le README, section Updates).</p>
-pp/static/char.html
 
-pp/static/char.html
         <div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px; margin-bottom:12px;">
-pp/static/char.html
           <div class="row" style="justify-content:space-between"><b>Version installée</b>&nbsp;<span id="upd-cur">…</span><span class="badge" id="upd-badge">…</span></div>
-pp/static/char.html
           <p class="note" style="margin:8px 0 0" id="upd-line">…</p>
-pp/static/char.html
           <div class="row" style="margin-top:10px; flex-wrap:wrap">
-pp/static/char.html
             <button class="small ghost" id="upd-check">🔎 Vérifier maintenant</button>
-pp/static/char.html
             <button class="small" id="upd-apply">⬆️ Appliquer la mise à jour</button>
-pp/static/char.html
             <button class="small ghost hidden" id="upd-cancel">Annuler la demande</button>
-pp/static/char.html
             <span class="note" id="upd-msg"></span>
-pp/static/char.html
           </div>
-pp/static/char.html
           <!-- Barre de progression mise à jour -->
-pp/static/char.html
           <div id="upd-progress" style="display:none; margin-top:12px; background:var(--card2); border-radius:8px; padding:10px 14px;">
-pp/static/char.html
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-pp/static/char.html
               <span id="upd-prog-text" style="font-weight:600;">⏳ Déploiement en cours…</span>
-pp/static/char.html
               <span id="upd-prog-time" style="font-variant-numeric:tabular-nums; font-size:0.9em;">—</span>
-pp/static/char.html
             </div>
-pp/static/char.html
             <div style="background:var(--bg2); border-radius:4px; overflow:hidden; height:8px;">
-pp/static/char.html
               <div id="upd-prog-bar" style="height:100%; width:0%; background:linear-gradient(90deg, var(--accent), var(--accent2)); border-radius:4px; transition:width 0.5s ease;"></div>
-pp/static/char.html
             </div>
-pp/static/char.html
             <p id="upd-prog-eta" style="margin:6px 0 0; font-size:0.85em; color:var(--text-dim);"></p>
-pp/static/char.html
           </div>
-pp/static/char.html
         </div>
-pp/static/char.html
 
-pp/static/char.html
         <div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px;">
-pp/static/char.html
           <b>Vérifications automatiques</b>
-pp/static/char.html
           <div class="row" style="margin-top:8px; flex-wrap:wrap">
-pp/static/char.html
             <label class="fld">Intervalle de vérification <select id="upd-check_h">
-pp/static/char.html
               <option value="0">— aucune —</option>
-pp/static/char.html
               <option value="6">toutes les 6 h</option>
-pp/static/char.html
               <option value="12">toutes les 12 h</option>
-pp/static/char.html
               <option value="24">toutes les 24 h</option>
-pp/static/char.html
               <option value="48">tous les 2 jours</option>
-pp/static/char.html
               <option value="168">toutes les semaines</option>
-pp/static/char.html
             </select></label>
-pp/static/char.html
             <label class="chk"><input type="checkbox" id="upd-apply_auto"> appliquer automatiquement dès qu'une version est disponible</label>
-pp/static/char.html
           </div>
-pp/static/char.html
           <div class="row" style="margin-top:10px"><button class="small" id="upd-save">💾 Enregistrer</button><span class="note" id="upd-savemsg"></span></div>
-pp/static/char.html
           <p class="note" style="margin:8px 0 0" id="upd-applier">…</p>
-pp/static/char.html
         </div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
 
-pp/static/char.html
     <div id="sec-mail" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>✉️ E-mail (SMTP)</h2>
-pp/static/char.html
         <p class="sub" style="margin:4px 0 14px">Serveur d'envoi des e-mails du site (invitations). Les valeurs enregistrées ici remplacent celles du serveur ; la connexion est vérifiée à l'enregistrement. Sans configuration, les invitations restent possibles en copiant le lien.</p>
-pp/static/char.html
         <div class="row" style="justify-content:space-between; margin-bottom:8px"><b>Serveur d'envoi</b><span class="badge" id="mail-badge">…</span></div>
-pp/static/char.html
         <div class="row" style="flex-wrap:wrap">
-pp/static/char.html
           <label class="fld">Serveur <input type="text" id="m-host" placeholder="smtp.exemple.fr" style="min-width:200px" autocomplete="off"></label>
-pp/static/char.html
           <label class="fld">Port <input type="number" id="m-port" min="1" max="65535" style="width:90px"></label>
-pp/static/char.html
           <label class="fld">Sécurité
-pp/static/char.html
             <select id="m-mode" style="min-width:150px">
-pp/static/char.html
               <option value="starttls">STARTTLS (587)</option>
-pp/static/char.html
               <option value="ssl">SSL/TLS (465)</option>
-pp/static/char.html
               <option value="none">Aucune (25)</option>
-pp/static/char.html
             </select>
-pp/static/char.html
           </label>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row" style="flex-wrap:wrap; margin-top:8px">
-pp/static/char.html
           <label class="fld">Identifiant <input type="text" id="m-user" placeholder="notifications@exemple.fr" style="min-width:230px" autocomplete="off"></label>
-pp/static/char.html
           <label class="fld">Mot de passe <input type="password" id="m-password" placeholder="•••• (vide = inchangé)" style="min-width:200px" autocomplete="off"></label>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row" style="flex-wrap:wrap; margin-top:8px">
-pp/static/char.html
           <label class="fld">Expéditeur <input type="text" id="m-sender" placeholder="défaut : l'identifiant" style="min-width:230px" autocomplete="off"></label>
-pp/static/char.html
           <label class="fld">HELO <input type="text" id="m-helo" placeholder="défaut : domaine de l'expéditeur" style="min-width:230px" autocomplete="off"></label>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row" style="margin-top:10px">
-pp/static/char.html
           <button class="small" id="mail-save">💾 Enregistrer</button>
-pp/static/char.html
           <button class="small ghost" id="mail-clear">🗑 Retirer (revenir au serveur)</button>
-pp/static/char.html
           <span class="note" id="mail-msg"></span>
-pp/static/char.html
         </div>
-pp/static/char.html
         <p class="note" style="margin:8px 0 0" id="mail-effective">…</p>
-pp/static/char.html
 
-pp/static/char.html
         <div class="row" style="margin-top:12px; flex-wrap:wrap">
-pp/static/char.html
           <label class="fld">Envoyer un test à <input type="text" id="mail-test-to" placeholder="ton@adresse.fr" style="min-width:230px" autocomplete="off"></label>
-pp/static/char.html
           <button class="small ghost" id="mail-test">✉️ Envoyer le test</button>
-pp/static/char.html
           <span class="note" id="mail-test-msg"></span>
-pp/static/char.html
         </div>
-pp/static/char.html
         <p class="note" style="margin:8px 0 0">Le mot de passe n'est jamais réaffiché (seuls les 4 derniers caractères). Le message de test part avec le nom de la guilde défini dans <b>🎨 Identité</b>.</p>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
 
-pp/static/char.html
     <div id="sec-identite" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>🎨 Identité de la guilde</h2>
-pp/static/char.html
         <p class="sub" style="margin:4px 0 14px">Personnalise le site pour ta guilde : logo, nom et fond. Utile pour réutiliser le site avec une autre guilde.</p>
-pp/static/char.html
         <div class="row" style="margin-bottom:12px">
-pp/static/char.html
           <label class="fld">Logo<br><input type="file" id="bi-logo" accept="image/png,image/jpeg,image/webp,image/gif"></label>
-pp/static/char.html
           <button class="small ghost" id="bi-logo-del" title="Revenir au logo par défaut">🗑 Retirer</button>
-pp/static/char.html
           <label class="fld">Fond : image<br><input type="file" id="bi-bg" accept="image/png,image/jpeg,image/webp,image/gif"></label>
-pp/static/char.html
           <button class="small ghost" id="bi-bg-del" title="Revenir au fond par défaut">🗑 Retirer</button>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row" style="margin-bottom:12px">
-pp/static/char.html
           <label class="fld">Nom de la guilde<br><input type="text" id="bi-name" maxlength="60" placeholder="Ma Guilde" style="min-width:240px"></label>
-pp/static/char.html
           <label class="fld">Nom court<br><input type="text" id="bi-short" maxlength="24" placeholder="Cohors" style="min-width:110px"></label>
-pp/static/char.html
           <label class="fld">Fond : couleur<br><input type="color" id="bi-color" value="#0b0f17"></label>
-pp/static/char.html
           <button class="small ghost" id="bi-color-del" title="Revenir à la couleur par défaut">🗑 Défaut</button>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row">
-pp/static/char.html
           <button id="bi-save">💾 Enregistrer</button>
-pp/static/char.html
           <button class="small ghost" id="bi-reload">↺ Recharger</button>
-pp/static/char.html
           <button class="small ghost" id="bi-reset">Tout réinitialiser</button>
-pp/static/char.html
           <span class="empty" id="bi-state"></span>
-pp/static/char.html
         </div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div id="sec-sauvegarde" class="hidden">
-pp/static/char.html
       <div class="card">
-pp/static/char.html
         <h2>💾 Sauvegarde & restauration</h2>
-pp/static/char.html
         <p class="sub" style="margin:4px 0 14px">La sauvegarde contient l'irremplaçable : la base (comptes, personnages, recettes, réglages) et l'identité (logo, fond). Télécharge-la avant un redéploiement, recharge-la sur la nouvelle instance.</p>
-pp/static/char.html
         <div class="row" style="margin-bottom:12px">
-pp/static/char.html
           <button id="bk-dl">⬇️ Télécharger une sauvegarde</button>
-pp/static/char.html
         </div>
-pp/static/char.html
         <div class="row">
-pp/static/char.html
           <label class="fld">Restaurer une sauvegarde<br><input type="file" id="bk-file" accept=".gz,.tgz,.tar.gz,application/gzip"></label>
-pp/static/char.html
           <button class="small ghost" id="bk-check">🔎 Vérifier</button>
-pp/static/char.html
           <button id="bk-restore" disabled>⬆️ Restaurer</button>
-pp/static/char.html
         </div>
-pp/static/char.html
         <p class="empty" id="bk-state" style="margin:10px 0 0"></p>
-pp/static/char.html
         <p class="sub" style="margin:6px 0 0">⚠️ La restauration remplace la base et l'identité actuelles : tout ce qui a été fait depuis la sauvegarde est perdu.</p>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>
-pp/static/char.html
     </div>
-pp/static/char.html
 <div id="toast"></div>
-pp/static/char.html
 
-pp/static/char.html
     </div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/esc.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
+<script src="/static/esc.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 const jpost = async (u, b) => { const r = await fetch(u, { method: "POST", headers: { "Content-Type": "application/json" },
-pp/static/char.html
   body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 
-pp/static/char.html
 function setMsg(sel, t, ok) { const e = $(sel); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; }
-pp/static/char.html
 
-pp/static/char.html
 // ---- 💾 Sauvegarde & restauration ----
-pp/static/char.html
 let bkOk = false;
-pp/static/char.html
 $("#bk-dl").addEventListener("click", async () => {
-pp/static/char.html
   setMsg("#bk-state", "Préparation…", true);
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await fetch("/api/admin/backup");
-pp/static/char.html
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.detail || "Erreur API"); }
-pp/static/char.html
     const blob = await r.blob();
-pp/static/char.html
     const cd = r.headers.get("content-disposition") || "";
-pp/static/char.html
     const m = cd.match(/filename="([^"]+)"/);
-pp/static/char.html
     const a = document.createElement("a");
-pp/static/char.html
     a.href = URL.createObjectURL(blob);
-pp/static/char.html
     a.download = m ? m[1] : "cohors-backup.tar.gz";
-pp/static/char.html
     document.body.appendChild(a); a.click(); a.remove();
-pp/static/char.html
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-pp/static/char.html
     setMsg("#bk-state", "Sauvegarde prête ✓ (" + Math.round(blob.size / 1024) + " Ko)", true);
-pp/static/char.html
   } catch (e) { setMsg("#bk-state", e.message, false); }
-pp/static/char.html
 });
-pp/static/char.html
 $("#bk-file").addEventListener("change", () => { bkOk = false; $("#bk-restore").disabled = true; setMsg("#bk-state", "", true); });
-pp/static/char.html
 $("#bk-check").addEventListener("click", async () => {
-pp/static/char.html
   const f = $("#bk-file").files && $("#bk-file").files[0];
-pp/static/char.html
   if (!f) { setMsg("#bk-state", "Choisis d'abord un fichier de sauvegarde.", false); return; }
-pp/static/char.html
   setMsg("#bk-state", "Vérification…", true);
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await fetch("/api/admin/restore/preview", { method: "POST", headers: { "Content-Type": "application/gzip" }, body: f });
-pp/static/char.html
     const j = await r.json().catch(() => ({}));
-pp/static/char.html
     if (!r.ok) throw new Error(j.detail || "Erreur");
-pp/static/char.html
     const c = j.counts || {};
-pp/static/char.html
     const w = (j.warnings && j.warnings.length) ? " ⚠️ " + j.warnings.join(" ; ") : "";
-pp/static/char.html
     setMsg("#bk-state", `Sauvegarde valide ✓ (v${j.manifest && j.manifest.version || "?"}) — comptes : ${c.users ?? "?"} · profils : ${c.char_professions ?? "?"} · recettes : ${c.craft_recipes ?? "?"} · sims : ${c.sims ?? "?"}${w}`, true);
-pp/static/char.html
     bkOk = true; $("#bk-restore").disabled = false;
-pp/static/char.html
   } catch (e) { bkOk = false; $("#bk-restore").disabled = true; setMsg("#bk-state", e.message, false); }
-pp/static/char.html
 });
-pp/static/char.html
 $("#bk-restore").addEventListener("click", async () => {
-pp/static/char.html
   const f = $("#bk-file").files && $("#bk-file").files[0];
-pp/static/char.html
   if (!f || !bkOk) return;
-pp/static/char.html
   if (!confirm("Restaurer cette sauvegarde ? La base et l'identité actuelles seront remplacées.")) return;
-pp/static/char.html
   setMsg("#bk-state", "Restauration…", true);
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await fetch("/api/admin/restore", { method: "POST", headers: { "Content-Type": "application/gzip" }, body: f });
-pp/static/char.html
     const j = await r.json().catch(() => ({}));
-pp/static/char.html
     if (!r.ok) throw new Error(j.detail || "Erreur");
-pp/static/char.html
     const w = (j.warnings && j.warnings.length) ? " ⚠️ " + j.warnings.join(" ; ") : "";
-pp/static/char.html
     setMsg("#bk-state", "Sauvegarde restaurée ✓ — la page va se recharger…" + w, true);
-pp/static/char.html
     setTimeout(() => location.reload(), 2500);
-pp/static/char.html
   } catch (e) { setMsg("#bk-state", e.message, false); }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#logout").addEventListener("click", async () => { await fetch("/api/logout", { method: "POST" }); location.href = "/login"; });
-pp/static/char.html
 
-pp/static/char.html
 document.querySelectorAll("input[name=lang]").forEach(r => r.addEventListener("change", async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     try { localStorage.setItem("cohors_lang", r.value); } catch (e) {}
-pp/static/char.html
     await jpost("/api/me/settings", { lang: r.value });
-pp/static/char.html
     location.reload();
-pp/static/char.html
   } catch (e) { setMsg("#lang-msg", e.message, false); }
-pp/static/char.html
 }));
-pp/static/char.html
 
-pp/static/char.html
 $("#name-save").addEventListener("click", async () => {
-pp/static/char.html
   $("#name-save").disabled = true;
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jpost("/api/me/settings", { name: $("#name").value });
-pp/static/char.html
     $("#who").textContent = d.name || "";
-pp/static/char.html
     setMsg("#name-msg", "Nom mis à jour ✓", true);
-pp/static/char.html
   } catch (e) { setMsg("#name-msg", e.message, false); }
-pp/static/char.html
   $("#name-save").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#voice-save").addEventListener("click", async () => {
-pp/static/char.html
   $("#voice-save").disabled = true;
-pp/static/char.html
   try {
-pp/static/char.html
     await jpost("/api/me/settings", { voice_nick: $("#voice-nick").value });
-pp/static/char.html
     setMsg("#voice-msg", "Pseudo vocal mis à jour ✓", true);
-pp/static/char.html
   } catch (e) { setMsg("#voice-msg", e.message, false); }
-pp/static/char.html
   $("#voice-save").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#pw-save").addEventListener("click", async () => {
-pp/static/char.html
   const cur = $("#pw-cur").value, nw = $("#pw-new").value, nw2 = $("#pw-new2").value;
-pp/static/char.html
   if (!cur || !nw || !nw2) { setMsg("#pw-msg", "Remplis tous les champs.", false); return; }
-pp/static/char.html
   if (nw.length < 8) { setMsg("#pw-msg", "Le mot de passe doit faire au moins 8 caractères.", false); return; }
-pp/static/char.html
   if (nw !== nw2) { setMsg("#pw-msg", "Les deux mots de passe ne correspondent pas.", false); return; }
-pp/static/char.html
   $("#pw-save").disabled = true;
-pp/static/char.html
   try {
-pp/static/char.html
     await jpost("/api/me/password", { current: cur, new: nw });
-pp/static/char.html
     setMsg("#pw-msg", "Mot de passe modifié ✓", true);
-pp/static/char.html
     $("#pw-cur").value = ""; $("#pw-new").value = ""; $("#pw-new2").value = "";
-pp/static/char.html
   } catch (e) { setMsg("#pw-msg", e.message, false); }
-pp/static/char.html
   $("#pw-save").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 const ago = (ts) => { if (!ts) return "jamais"; const s = Math.max(0, Date.now()/1000 - ts);
-pp/static/char.html
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
-pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s/3600)} h`; return `il y a ${Math.floor(s/86400)} j`; };
-pp/static/char.html
 const onDate = (ts) => new Date(ts * 1000).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-pp/static/char.html
 let SMTP_OK = false;
-pp/static/char.html
 
-pp/static/char.html
 let toastTimer = null;
-pp/static/char.html
 function toast(msg) {
-pp/static/char.html
   const t = $("#toast"); t.textContent = msg; t.classList.add("on");
-pp/static/char.html
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 1800);
-pp/static/char.html
 }
-pp/static/char.html
 async function copy(text) {
-pp/static/char.html
   try { await navigator.clipboard.writeText(text); toast("Copié ✓"); }
-pp/static/char.html
   catch (e) { window.prompt("Copie le lien :", text); }
-pp/static/char.html
 }
-pp/static/char.html
 async function api(method, path, body) {
-pp/static/char.html
   const r = await fetch(path, { method, headers: { "Content-Type": "application/json" },
-pp/static/char.html
     body: body === undefined ? undefined : JSON.stringify(body) });
-pp/static/char.html
   if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
-pp/static/char.html
   const d = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { toast(d.detail || "Erreur"); throw new Error(d.detail || "http"); }
-pp/static/char.html
   return d;
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function showLink(text) {
-pp/static/char.html
   $("#inv-result").classList.remove("hidden");
-pp/static/char.html
   $("#inv-result").innerHTML = `Lien à envoyer :<br><code>${esc(text)}</code> <button class="small" id="copy-now">Copier</button>`;
-pp/static/char.html
   $("#copy-now").addEventListener("click", () => copy(text));
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function loadInvites() {
-pp/static/char.html
   const d = await api("GET", "/api/admin/invites");
-pp/static/char.html
   SMTP_OK = !!d.smtp_configured;
-pp/static/char.html
   const sendBox = $("#inv-send");
-pp/static/char.html
   if (SMTP_OK) {
-pp/static/char.html
     if (!$("#inv-email").value.trim()) { sendBox.disabled = true; }
-pp/static/char.html
   } else {
-pp/static/char.html
     sendBox.checked = false;
-pp/static/char.html
     sendBox.disabled = true;
-pp/static/char.html
     sendBox.title = "SMTP non configuré sur le serveur";
-pp/static/char.html
   }
-pp/static/char.html
   const box = $("#invites");
-pp/static/char.html
   if (!d.invites.length) { box.innerHTML = '<div class="empty">Aucune invitation.</div>'; return; }
-pp/static/char.html
   const BADGE = { pending: ["En attente", "b-pending"], used: ["Utilisé", "b-used"], expired: ["Expiré", "b-expired"] };
-pp/static/char.html
   box.innerHTML = d.invites.map(v => {
-pp/static/char.html
     const [txt, cls] = BADGE[v.status];
-pp/static/char.html
     const info = v.status === "used" ? `utilisé` : v.status === "expired" ? `expiré le ${onDate(v.expires)}` : `expire le ${onDate(v.expires)}`;
-pp/static/char.html
     const canMail = v.status === "pending" && v.email;
-pp/static/char.html
     const actions = v.status === "pending"
-pp/static/char.html
       ? `${canMail ? `<button class="small ghost" data-mail="${esc(v.token)}" title="Renvoyer par e-mail à ${esc(v.email)}">✉️ Renvoyer</button> ` : ""}<button class="small ghost" data-copy="${esc(v.link)}">Copier le lien</button>
-pp/static/char.html
          <button class="small danger" data-revoke="${esc(v.token)}">Révoquer</button>` : "";
-pp/static/char.html
     return `<div class="item">
-pp/static/char.html
       <div class="main"><span class="name">${esc(v.email || "(lien libre)")}</span>
-pp/static/char.html
       <span class="meta">${esc(v.note || "")}${v.note ? " · " : ""}cr\u00e9\u00e9 ${ago(v.created)} \u00b7 ${info}</span></div>
-pp/static/char.html
       <span class="badge ${cls}">${txt}</span><span class="spacer"></span>${actions}</div>`;
-pp/static/char.html
   }).join("");
-pp/static/char.html
   box.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => copy(b.dataset.copy)));
-pp/static/char.html
   box.querySelectorAll("[data-mail]").forEach(b => b.addEventListener("click", async () => {
-pp/static/char.html
     try { const r = await api("POST", `/api/admin/invites/${b.dataset.mail}/send`); toast(`Relance envoyée à ${r.sent_to} ✓`); }
-pp/static/char.html
     catch (e) {}
-pp/static/char.html
   }));
-pp/static/char.html
   box.querySelectorAll("[data-revoke]").forEach(b => b.addEventListener("click", async () => {
-pp/static/char.html
     if (!confirm("Révoquer cette invitation ?")) return;
-pp/static/char.html
     await api("DELETE", "/api/admin/invites/" + b.dataset.revoke); toast("Invitation révoquée"); loadInvites();
-pp/static/char.html
   }));
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 let ME = null, IM_ADMIN = false;
-pp/static/char.html
 
-pp/static/char.html
 function charInfo(u) {
-pp/static/char.html
   if (!u.main_char) return "";
-pp/static/char.html
   const alts = (u.chars_count || 0) - 1;
-pp/static/char.html
   return ` · ⭐ ${esc(u.main_char)}${alts > 0 ? ` (+${alts})` : ""}`;
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function loadUsers() {
-pp/static/char.html
   const d = await api("GET", "/api/admin/users");
-pp/static/char.html
   const box = $("#users");
-pp/static/char.html
   box.innerHTML = d.users.map(u => {
-pp/static/char.html
     const roleBadge = u.role === "admin" ? '<span class="badge b-admin">Administrateur</span> '
-pp/static/char.html
                     : u.role === "officer" ? '<span class="badge b-officer">Officier</span> '
-pp/static/char.html
                     : '<span class="badge">Membre</span> ';
-pp/static/char.html
     const isSelf = !!(ME && u.email === ME.email);
-pp/static/char.html
     // Le select de rôle EST l'indicateur de rôle (pas de badge qui répète) ; sur sa propre
-pp/static/char.html
     // ligne : ni select ni actions — l'API refuse toute auto-modification de toute façon.
-pp/static/char.html
     const badges = (isSelf ? roleBadge : "") + (u.active ? '' : '<span class="badge b-off">Désactivé</span>');
-pp/static/char.html
     const btnActive = `<button class="small ghost" data-active="${u.id}" data-val="${u.active ? 0 : 1}">${u.active ? "Désactiver" : "Réactiver"}</button>`;
-pp/static/char.html
     const btnReset = `<button class="small ghost" data-reset="${u.id}">Lien de réinitialisation</button>`;
-pp/static/char.html
     const btnDel = `<button class="small danger" data-del="${u.id}" data-name="${esc(u.name)}">Supprimer</button>`;
-pp/static/char.html
     const roleSel = (!isSelf && IM_ADMIN)
-pp/static/char.html
       ? `<select class="rolesel r-${esc(u.role)}" data-role="${u.id}" title="Rôle du compte">
-pp/static/char.html
            <option value="member"${u.role === "member" ? " selected" : ""}>Membre</option>
-pp/static/char.html
            <option value="officer"${u.role === "officer" ? " selected" : ""}>Officier</option>
-pp/static/char.html
            <option value="admin"${u.role === "admin" ? " selected" : ""}>Administrateur</option>
-pp/static/char.html
          </select>`
-pp/static/char.html
       : "";
-pp/static/char.html
     const uacts = isSelf ? "" : `${roleSel}${btnActive}${btnReset}${btnDel}`;
-pp/static/char.html
     return `<div class="item ucard">
-pp/static/char.html
       <span class="name">${esc(u.name || u.email)} ${badges}</span>
-pp/static/char.html
       <span class="uacts">${uacts}</span>
-pp/static/char.html
       <span class="meta">${esc(u.email)} · créé le ${onDate(u.created)} · dernière connexion ${ago(u.last_login)} · ${u.sims_count} sim(s)${charInfo(u)}</span>
-pp/static/char.html
     </div>`;
-pp/static/char.html
   }).join("");
-pp/static/char.html
   box.querySelectorAll("[data-active]").forEach(b => b.addEventListener("click", async () => {
-pp/static/char.html
     await api("POST", `/api/admin/users/${b.dataset.active}/active`, { active: b.dataset.val === "1" });
-pp/static/char.html
     toast("Compte mis à jour"); loadUsers();
-pp/static/char.html
   }));
-pp/static/char.html
   box.querySelectorAll("[data-reset]").forEach(b => b.addEventListener("click", async () => {
-pp/static/char.html
     const d2 = await api("POST", `/api/admin/users/${b.dataset.reset}/reset-link`);
-pp/static/char.html
     showLink(d2.link); toast("Lien de réinitialisation créé");
-pp/static/char.html
   }));
-pp/static/char.html
   box.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", async () => {
-pp/static/char.html
     if (!confirm(`Supprimer définitivement le compte « ${b.dataset.name} » ?`)) return;
-pp/static/char.html
     await api("DELETE", "/api/admin/users/" + b.dataset.del); toast("Compte supprimé"); loadUsers();
-pp/static/char.html
   }));
-pp/static/char.html
   box.querySelectorAll("[data-role]").forEach(s => s.addEventListener("change", async () => {
-pp/static/char.html
     try {
-pp/static/char.html
       await api("POST", `/api/admin/users/${s.dataset.role}/role`, { role: s.value });
-pp/static/char.html
       toast("Rôle mis à jour ✓");
-pp/static/char.html
     } catch (e) {}
-pp/static/char.html
     loadUsers();
-pp/static/char.html
   }));
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 // ---- Menu à gauche : sections de Paramètres (v2026.09.113) ----
-pp/static/char.html
 function showSec(id) {
-pp/static/char.html
   document.querySelectorAll("#sec-profil, #sec-vocal, #sec-pw, #adm > div[id^=sec-]").forEach((d) => {
-pp/static/char.html
     d.classList.toggle("hidden", d.id !== id);
-pp/static/char.html
   });
-pp/static/char.html
 }
-pp/static/char.html
 document.querySelectorAll(".smenu .sbtn").forEach((b) => b.addEventListener("click", () => {
-pp/static/char.html
   showSec(b.dataset.sec);
-pp/static/char.html
   document.querySelectorAll(".smenu .sbtn").forEach((o) => o.classList.toggle("on", o === b));
-pp/static/char.html
   if (b.dataset.sec === "sec-invitations") loadInvites();
-pp/static/char.html
   if (b.dataset.sec === "sec-comptes" && IM_ADMIN) loadUsers();
-pp/static/char.html
   if (b.dataset.sec === "sec-maj" && IM_ADMIN) loadUpdates();
-pp/static/char.html
   if (b.dataset.sec === "sec-bot") loadBot();
-pp/static/char.html
   if (b.dataset.sec === "sec-identite") loadBrand();
-pp/static/char.html
   if (b.dataset.sec === "sec-guilde") loadGuild();
-pp/static/char.html
   try { history.replaceState(null, "", "#" + b.dataset.sec.replace(/^sec-/, "")); } catch (e) {}
-pp/static/char.html
 }));
-pp/static/char.html
 function openFromHash() {
-pp/static/char.html
   const h = (location.hash || "").replace(/^#/, "");
-pp/static/char.html
   if (!h) return;
-pp/static/char.html
   const b = document.querySelector('.smenu .sbtn[data-sec="sec-' + h + '"]');
-pp/static/char.html
   if (b && !b.classList.contains("hidden")) b.click();
-pp/static/char.html
 }
-pp/static/char.html
 window.addEventListener("hashchange", openFromHash);
-pp/static/char.html
 
-pp/static/char.html
 $("#inv-email").addEventListener("input", () => {
-pp/static/char.html
   const has = $("#inv-email").value.trim().length > 0;
-pp/static/char.html
   $("#inv-send").disabled = !has || !SMTP_OK;
-pp/static/char.html
   if (has && SMTP_OK) $("#inv-send").checked = true;
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#inv-create").addEventListener("click", async () => {
-pp/static/char.html
   $("#inv-create").disabled = true;
-pp/static/char.html
   try {
-pp/static/char.html
     const email = $("#inv-email").value.trim();
-pp/static/char.html
     const d = await api("POST", "/api/admin/invites", { email, note: $("#inv-note").value.trim(), send_email: $("#inv-send").checked && !!email });
-pp/static/char.html
     showLink(d.link);
-pp/static/char.html
     if (d.mail && d.mail.sent) toast(`Invitation envoyée à ${email} ✓`);
-pp/static/char.html
     else if (d.mail && !d.mail.sent) toast("Lien créé — envoi e-mail échoué");
-pp/static/char.html
     else toast("Invitation créée");
-pp/static/char.html
     $("#inv-email").value = ""; $("#inv-note").value = ""; $("#inv-send").disabled = true;
-pp/static/char.html
     loadInvites();
-pp/static/char.html
   } catch (e) {}
-pp/static/char.html
   $("#inv-create").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 // ---- Bot Discord ----
-pp/static/char.html
 async function loadBot() {
-pp/static/char.html
   const d = await api("GET", "/api/admin/bot");
-pp/static/char.html
   const st = $("#bot-status");
-pp/static/char.html
   if (d.status === "ok") { st.textContent = `🟢 En ligne — ${d.bot_user}`; st.className = "badge b-used"; }
-pp/static/char.html
   else if (d.status === "error") { st.textContent = "🔴 Token refusé"; st.className = "badge b-off"; }
-pp/static/char.html
   else { st.textContent = "⚪ Non configuré"; st.className = "badge"; }
-pp/static/char.html
   $("#bot-enabled").checked = d.enabled;
-pp/static/char.html
   $("#bot-reports").checked = d.notify_reports;
-pp/static/char.html
   $("#bot-roster").checked = d.notify_roster;
-pp/static/char.html
   $("#bot-chars").checked = d.notify_chars;
-pp/static/char.html
   $("#bot-weekly").checked = d.notify_weekly;
-pp/static/char.html
   $("#bot-appid").value = d.app_id || "";
-pp/static/char.html
   $("#bot-token").placeholder = d.token_set ? `Token actuel : …${d.token_hint} (laisser vide = inchangé)` : "Token du bot (Portail développeurs → onglet Bot)";
-pp/static/char.html
   const bits = [];
-pp/static/char.html
   if (d.channel_name || d.channel_id) bits.push(`Salon : <b>#${esc(d.channel_name || d.channel_id)}</b>`);
-pp/static/char.html
   if (d.last_message) bits.push(esc(d.last_message));
-pp/static/char.html
   if (d.last_error) bits.push(`<span style="color:var(--err)">⚠ ${esc(d.last_error)}</span>`);
-pp/static/char.html
   if (d.status_error) bits.push(`<span style="color:var(--err)">${esc(d.status_error)}</span>`);
-pp/static/char.html
   $("#bot-info").innerHTML = bits.join("<br>");
-pp/static/char.html
   const bx = $("#bot-invite-box");
-pp/static/char.html
   if (d.invite_url) {
-pp/static/char.html
     bx.classList.remove("hidden");
-pp/static/char.html
     bx.innerHTML = `📎 Lien d'invitation — ouvre-le, choisis ton serveur et autorise (permission « Gérer le serveur » requise) :<br><code>${esc(d.invite_url)}</code>
-pp/static/char.html
       <button class="small" id="bot-invite-copy">Copier</button>
-pp/static/char.html
       <a class="hlink" style="margin-left:10px" href="${esc(d.invite_url)}" target="_blank" rel="noopener">Ouvrir →</a>`;
-pp/static/char.html
     $("#bot-invite-copy").addEventListener("click", () => copy(d.invite_url));
-pp/static/char.html
   }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#bot-invite").addEventListener("click", () => {
-pp/static/char.html
   const appId = $("#bot-appid").value.trim();
-pp/static/char.html
   if (!appId) { toast("Colle d'abord l'Application ID (Portail développeurs Discord)"); return; }
-pp/static/char.html
   const url = `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(appId)}&scope=bot&permissions=19456`;
-pp/static/char.html
   const bx = $("#bot-invite-box");
-pp/static/char.html
   bx.classList.remove("hidden");
-pp/static/char.html
   bx.innerHTML = `Lien d'invitation — ouvre-le et choisis ton serveur :<br><code>${esc(url)}</code>
-pp/static/char.html
     <button class="small" id="bot-invite-copy">Copier</button>
-pp/static/char.html
     <a class="hlink" style="margin-left:10px" href="${esc(url)}" target="_blank" rel="noopener">Ouvrir →</a>`;
-pp/static/char.html
   $("#bot-invite-copy").addEventListener("click", () => copy(url));
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 async function loadBotChannels() {
-pp/static/char.html
   const gid = $("#bot-guild").value;
-pp/static/char.html
   if (!gid) return;
-pp/static/char.html
   const d = await api("GET", `/api/admin/bot/guilds/${gid}/channels`);
-pp/static/char.html
   $("#bot-channel").classList.remove("hidden");
-pp/static/char.html
   $("#bot-channel").innerHTML = d.channels.map(c => `<option value="${esc(c.id)}">#${esc(c.name)}</option>`).join("");
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#bot-guild").addEventListener("change", loadBotChannels);
-pp/static/char.html
 
-pp/static/char.html
 $("#bot-guilds").addEventListener("click", async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await api("GET", "/api/admin/bot/guilds");
-pp/static/char.html
     $("#bot-guild").classList.remove("hidden");
-pp/static/char.html
     $("#bot-guild").innerHTML = d.guilds.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
-pp/static/char.html
     await loadBotChannels();
-pp/static/char.html
   } catch (e) {}
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 // ---- E-mail (SMTP) ----
-pp/static/char.html
 const MAIL_FIELDS = ["host", "port", "mode", "user", "password", "sender", "helo"];
-pp/static/char.html
 
-pp/static/char.html
 async function loadMail() {
-pp/static/char.html
   const d = await api("GET", "/api/admin/mail");
-pp/static/char.html
   const c = d.config || {};
-pp/static/char.html
   for (const k of MAIL_FIELDS) {
-pp/static/char.html
     const el = $("#m-" + k);
-pp/static/char.html
     if (!el) continue;
-pp/static/char.html
     el.value = k === "password" ? "" : (c[k] || "");
-pp/static/char.html
   }
-pp/static/char.html
   if (!c.mode) $("#m-mode").value = "starttls";
-pp/static/char.html
   if (!c.port) $("#m-port").value = 587;
-pp/static/char.html
   const badge = $("#mail-badge");
-pp/static/char.html
   if (d.configured && d.source === "admin") { badge.textContent = "🟢 Configurée (ici)"; badge.className = "badge b-used"; }
-pp/static/char.html
   else if (d.configured && d.source === "env") { badge.textContent = "🟢 Configurée (serveur)"; badge.className = "badge b-used"; }
-pp/static/char.html
   else if (d.configured) { badge.textContent = "🟢 Configurée"; badge.className = "badge b-used"; }
-pp/static/char.html
   else { badge.textContent = "⚪ Non configurée"; badge.className = "badge b-off"; }
-pp/static/char.html
   $("#m-password").placeholder = d.password_hint ? "Secret : " + d.password_hint + " (vide = inchangé)" : "Mot de passe";
-pp/static/char.html
   $("#mail-effective").textContent = d.configured
-pp/static/char.html
     ? `Envoi via ${d.effective.host}:${d.effective.port} (${d.effective.mode}), expéditeur ${d.effective.sender}.`
-pp/static/char.html
     : "Aucun serveur configuré : les invitations utilisent le lien à copier.";
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#mail-save").addEventListener("click", async () => {
-pp/static/char.html
   const msg = $("#mail-msg");
-pp/static/char.html
   msg.textContent = "Vérification de la connexion…";
-pp/static/char.html
   const values = {};
-pp/static/char.html
   for (const k of MAIL_FIELDS) values[k] = $("#m-" + k).value.trim();
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await api("POST", "/api/admin/mail", { values });
-pp/static/char.html
     msg.textContent = "✅ Enregistré — " + (r.test || "");
-pp/static/char.html
     toast("Configuration e-mail enregistrée ✓");
-pp/static/char.html
     loadMail();
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#mail-clear").addEventListener("click", async () => {
-pp/static/char.html
   if (!confirm("Retirer ces réglages ? Le site utilisera le serveur configuré dans le fichier serveur, s'il existe.")) return;
-pp/static/char.html
   try { await api("POST", "/api/admin/mail", { clear: true }); toast("Réglages retirés"); loadMail(); }
-pp/static/char.html
   catch (e) {}
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#mail-test").addEventListener("click", async () => {
-pp/static/char.html
   const msg = $("#mail-test-msg");
-pp/static/char.html
   const to = $("#mail-test-to").value.trim();
-pp/static/char.html
   if (!to) { msg.textContent = "Indique une adresse."; return; }
-pp/static/char.html
   msg.textContent = "Envoi…";
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await api("POST", "/api/admin/mail/test", { to });
-pp/static/char.html
     msg.innerHTML = r.ok ? `✅ ${esc(r.detail)}` : `<span style="color:var(--err)">⚠ ${esc(r.detail)}</span>`;
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 // ---- Mises à jour de l'application ----
-pp/static/char.html
 function updRender(st) {
-pp/static/char.html
   const ap = st.applier || {};
-pp/static/char.html
   $("#upd-cur").textContent = "v" + st.current;
-pp/static/char.html
   const badge = $("#upd-badge");
-pp/static/char.html
   if (st.available) { badge.textContent = "mise à jour disponible"; badge.className = "badge b-off"; }
-pp/static/char.html
   else if (st.latest) { badge.textContent = "à jour ✓"; badge.className = "badge b-used"; }
-pp/static/char.html
   else { badge.textContent = "jamais vérifié"; badge.className = "badge"; }
-pp/static/char.html
   const bits = [];
-pp/static/char.html
   if (ap.installed && ap.seen_at) {
-pp/static/char.html
     const minsAgo = (Date.now() / 1000 - ap.seen_at) / 60;
-pp/static/char.html
     if (minsAgo > 15) bits.push(`⚠️ Applicateur : inactif depuis ${Math.round(minsAgo)} min (>15 min)`);
-pp/static/char.html
     else bits.push(`applicateur actif : ${ago(ap.seen_at)}`);
-pp/static/char.html
   } else if (ap.installed && !ap.seen_at) {
-pp/static/char.html
     bits.push(`⚠️ Applicateur installé mais jamais vu (vérifie le timer)`);
-pp/static/char.html
   }
-pp/static/char.html
   if (st.latest) bits.push(st.available
-pp/static/char.html
     ? `nouvelle version v${esc(st.latest.version)}`
-pp/static/char.html
     : `dernière version publiée : v${esc(st.latest.version)}`);
-pp/static/char.html
   if (st.check.error) bits.push(`⚠ ${esc(st.check.error)}`);
-pp/static/char.html
   if (st.request) bits.push(`demande en cours : v${esc(st.request.version)} (${ago(st.request.requested_at)})`);
-pp/static/char.html
   if (st.request && st.sims_busy) bits.push("des simulations tournent encore");
-pp/static/char.html
   if (st.applier.applied) bits.push(`dernière mise à jour : v${esc(st.applier.applied)}${st.applier.applied_at ? " " + ago(st.applier.applied_at) : ""}`);
-pp/static/char.html
   const line = $("#upd-line");
-pp/static/char.html
   line.innerHTML = bits.length ? esc(bits.join(" · ")) : "Aucune vérification pour le moment.";
-pp/static/char.html
   if (st.available && st.latest && st.latest.url) {
-pp/static/char.html
     const a = document.createElement("a");
-pp/static/char.html
     a.href = st.latest.url; a.target = "_blank"; a.rel = "noopener";
-pp/static/char.html
     a.textContent = "notes de version";
-pp/static/char.html
     line.append(" · ", a);
-pp/static/char.html
   }
-pp/static/char.html
   $("#upd-apply").disabled = !st.available || !!st.request;
-pp/static/char.html
   $("#upd-cancel").classList.toggle("hidden", !st.request);
-pp/static/char.html
   $("#upd-applier").innerHTML = ap.installed
-pp/static/char.html
     ? `Application automatique sur ce serveur : <b>applicateur installé</b> (vu ${ago(ap.seen_at)})${ap.result && ap.result !== "ok" && ap.result !== "attente" ? ` · <span style="color:var(--err)">${esc(ap.result)}</span>` : ""}.`
-pp/static/char.html
     : "Application automatique sur ce serveur : <b>applicateur non installé</b> — la demande attend son installation (README, section Updates).";
-pp/static/char.html
   $("#upd-check_h").value = String(st.settings.upd_check_h);
-pp/static/char.html
   $("#upd-apply_auto").checked = !!st.settings.upd_apply_auto;
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function loadUpdates() {
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await api("GET", "/api/admin/updates");
-pp/static/char.html
     updRender(r.state);
-pp/static/char.html
     // Si une mise à jour est en cours, lancer le suivi de progression
-pp/static/char.html
     if (r.state.applier?.running) {
-pp/static/char.html
       _upd_startPoll(r.state);
-pp/static/char.html
     }
-pp/static/char.html
   }
-pp/static/char.html
   catch (e) { $("#upd-line").textContent = e.message || "Échec du chargement"; }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#upd-check").addEventListener("click", async () => {
-pp/static/char.html
   const msg = $("#upd-msg");
-pp/static/char.html
   msg.textContent = "Vérification…";
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await api("POST", "/api/admin/updates/check");
-pp/static/char.html
     updRender(r.state);
-pp/static/char.html
     msg.textContent = r.state.available ? "Mise à jour disponible." : "Aucune nouveauté.";
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#upd-apply").addEventListener("click", async () => {
-pp/static/char.html
   if (!confirm("Déposer une demande de mise à jour ?")) return;
-pp/static/char.html
   const msg = $("#upd-msg");
-pp/static/char.html
   msg.textContent = "Demande…";
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await api("POST", "/api/admin/updates/apply");
-pp/static/char.html
     updRender(r.state);
-pp/static/char.html
     msg.textContent = "Demande déposée — l'applicateur s'en charge au prochain passage.";
-pp/static/char.html
     toast("Mise à jour demandée ✓");
-pp/static/char.html
     // Lancer le suivi de progression
-pp/static/char.html
     _upd_startPoll(r);
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#upd-cancel").addEventListener("click", async () => {
-pp/static/char.html
   try { updRender((await api("DELETE", "/api/admin/updates/request")).state); }
-pp/static/char.html
   catch (e) { $("#upd-msg").innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#upd-save").addEventListener("click", async () => {
-pp/static/char.html
   const msg = $("#upd-savemsg");
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await api("POST", "/api/admin/updates", { values: {
-pp/static/char.html
       upd_check_h: $("#upd-check_h").value,
-pp/static/char.html
       upd_apply_auto: $("#upd-apply_auto").checked ? "1" : "0" } });
-pp/static/char.html
     updRender(r.state);
-pp/static/char.html
     msg.textContent = "✅ Enregistré.";
-pp/static/char.html
     toast("Réglages enregistrés ✓");
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 // ---- Synchronisations (jobs) ----
-pp/static/char.html
 function jobStatusLine(st, badgeId, statusId) {
-pp/static/char.html
   const badge = $(badgeId), line = $(statusId);
-pp/static/char.html
   if (!st) { badge.textContent = "jamais lancée"; badge.className = "badge"; line.textContent = ""; return; }
-pp/static/char.html
   const ran = st.last_run ? `dernier passage ${ago(st.last_run)}` : "jamais lancée";
-pp/static/char.html
   if (st.error) { badge.textContent = "🔴 erreur"; badge.className = "badge b-off"; }
-pp/static/char.html
   else { badge.textContent = "🟢 OK"; badge.className = "badge b-used"; }
-pp/static/char.html
   line.innerHTML = `${esc(ran)}${st.detail ? " · " + esc(st.detail) : ""}` +
-pp/static/char.html
     (st.error ? ` · <span style="color:var(--err)">⚠ ${esc(st.error)}</span>` : "");
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function loadJobs() {
-pp/static/char.html
   const d = await api("GET", "/api/admin/jobs");
-pp/static/char.html
   for (const [k, v] of Object.entries(d.config || {})) {
-pp/static/char.html
     const el = $("#j-" + k);
-pp/static/char.html
     if (!el) continue;
-pp/static/char.html
     if (el.type === "checkbox") el.checked = v === "1";
-pp/static/char.html
     else el.value = v;
-pp/static/char.html
   }
-pp/static/char.html
   jobStatusLine((d.status || {}).snapshots, "#job-snap-badge", "#job-snap-status");
-pp/static/char.html
   jobStatusLine((d.status || {}).bot, "#job-bot-badge", "#job-bot-status");
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function saveJobKeys(keys, msgSel) {
-pp/static/char.html
   const msg = $(msgSel);
-pp/static/char.html
   const values = {};
-pp/static/char.html
   for (const k of keys) {
-pp/static/char.html
     const el = $("#j-" + k);
-pp/static/char.html
     if (!el) continue;
-pp/static/char.html
     values[k] = el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value;
-pp/static/char.html
   }
-pp/static/char.html
   try {
-pp/static/char.html
     await api("POST", "/api/admin/jobs", { values });
-pp/static/char.html
     msg.textContent = "✅ Enregistré.";
-pp/static/char.html
     toast("Réglages enregistrés ✓");
-pp/static/char.html
     loadJobs();
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 const SNAP_KEYS = ["snap_enabled", "snap_interval_min", "snap_linked_h", "snap_roster_h",
-pp/static/char.html
                    "snap_max_tick", "snap_keep_days", "prof_days"];
-pp/static/char.html
 $("#job-snap-save").addEventListener("click", () => saveJobKeys(SNAP_KEYS, "#job-snap-msg"));
-pp/static/char.html
 $("#job-bot-save").addEventListener("click", () => saveJobKeys(["bot_interval_min"], "#job-bot-msg"));
-pp/static/char.html
 $("#job-snap-run").addEventListener("click", async () => {
-pp/static/char.html
   const msg = $("#job-snap-msg");
-pp/static/char.html
   try {
-pp/static/char.html
     await api("POST", "/api/admin/jobs/run", { slug: "snapshots" });
-pp/static/char.html
     msg.textContent = "Passage lancé — l'état se met à jour dans un instant.";
-pp/static/char.html
     setTimeout(loadJobs, 8000);
-pp/static/char.html
     setTimeout(loadJobs, 25000);
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 // ---- Clés API (Battle.net, Warcraft Logs) ----
-pp/static/char.html
 async function loadApiKeys() {
-pp/static/char.html
   const d = await api("GET", "/api/admin/api-keys");
-pp/static/char.html
   const box = $("#api-providers");
-pp/static/char.html
   box.innerHTML = (d.providers || []).map(p => {
-pp/static/char.html
     const badge = p.configured
-pp/static/char.html
       ? `<span class="badge b-used">${p.source === "env" ? "🟢 Configurée (serveur)" : "🟢 Configurée"}</span>`
-pp/static/char.html
       : '<span class="badge b-off">⚪ Non configurée</span>';
-pp/static/char.html
     const src = p.source === "admin" ? "enregistrée ici" : (p.source === "env" ? "fichier du serveur (.env)" : "—");
-pp/static/char.html
     return `<div style="border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:12px 14px; margin-bottom:12px;">
-pp/static/char.html
       <div class="row" style="justify-content:space-between"><b>${esc(p.label)}</b>${badge}</div>
-pp/static/char.html
       <p class="note" style="margin:6px 0 10px">Clé actuelle : ${src} · <a class="hlink" href="${esc(p.help_url)}" target="_blank" rel="noopener">Créer les clés ↗</a><br>${esc(p.help_fr)}</p>
-pp/static/char.html
       <div class="row">
-pp/static/char.html
         <input type="text" id="k-${p.provider}-id" placeholder="${p.id_hint ? "Client ID actuel : " + esc(p.id_hint) : "Client ID"}" style="min-width:270px">
-pp/static/char.html
         <input type="password" id="k-${p.provider}-secret" autocomplete="off" placeholder="${p.configured ? "Secret : " + esc(p.secret_hint || "••••") + " (vide = inchangé)" : "Client Secret"}" style="min-width:270px">
-pp/static/char.html
       </div>
-pp/static/char.html
       <div class="row" style="margin-top:9px">
-pp/static/char.html
         <button class="small" data-kapi-save="${p.provider}">💾 Enregistrer</button>
-pp/static/char.html
         <button class="small ghost" data-kapi-test="${p.provider}">🧪 Tester</button>
-pp/static/char.html
         ${p.source === "admin" ? `<button class="small ghost" data-kapi-clear="${p.provider}">🗑 Retirer (revenir au serveur)</button>` : ""}
-pp/static/char.html
         <span class="note" id="k-${p.provider}-msg"></span>
-pp/static/char.html
       </div>
-pp/static/char.html
     </div>`;
-pp/static/char.html
   }).join("");
-pp/static/char.html
   box.querySelectorAll("[data-kapi-save]").forEach(b => b.addEventListener("click", () => saveApiKey(b.dataset.kapiSave)));
-pp/static/char.html
   box.querySelectorAll("[data-kapi-test]").forEach(b => b.addEventListener("click", () => testApiKey(b.dataset.kapiTest)));
-pp/static/char.html
   box.querySelectorAll("[data-kapi-clear]").forEach(b => b.addEventListener("click", async () => {
-pp/static/char.html
     if (!confirm("Retirer ces clés ? Le site utilisera celles du fichier serveur si elles existent.")) return;
-pp/static/char.html
     try { await api("POST", "/api/admin/api-keys", { provider: b.dataset.kapiClear, clear: true }); toast("Clés retirées"); loadApiKeys(); }
-pp/static/char.html
     catch (e) {}
-pp/static/char.html
   }));
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function saveApiKey(prov) {
-pp/static/char.html
   const msg = $("#k-" + prov + "-msg");
-pp/static/char.html
   msg.textContent = "Test des clés…";
-pp/static/char.html
   try {
-pp/static/char.html
     await api("POST", "/api/admin/api-keys", {
-pp/static/char.html
       provider: prov,
-pp/static/char.html
       client_id: $("#k-" + prov + "-id").value.trim() || null,
-pp/static/char.html
       client_secret: $("#k-" + prov + "-secret").value,
-pp/static/char.html
     });
-pp/static/char.html
     toast("Clés enregistrées ✓");
-pp/static/char.html
     loadApiKeys();
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function testApiKey(prov) {
-pp/static/char.html
   const msg = $("#k-" + prov + "-msg");
-pp/static/char.html
   msg.textContent = "Test en cours…";
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await api("POST", "/api/admin/api-keys/test", { provider: prov });
-pp/static/char.html
     msg.innerHTML = r.ok ? `✅ ${esc(r.detail)}` : `<span style="color:var(--err)">⚠ ${esc(r.detail)}</span>`;
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec")}</span>`; }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 // ---- 🏰 Guilde (royaume & WCL) ----
-pp/static/char.html
 const GUILD_FIELDS = ["region", "realm", "slug", "locale", "wcl_region", "wcl_name"];
-pp/static/char.html
 
-pp/static/char.html
 async function loadGuild() {
-pp/static/char.html
   const d = await api("GET", "/api/admin/guild");
-pp/static/char.html
   const c = d.config || {};
-pp/static/char.html
   for (const k of GUILD_FIELDS) { const el = $("#g-" + k); if (el) el.value = c[k] || ""; }
-pp/static/char.html
   const badge = $("#guild-badge");
-pp/static/char.html
   const fromAdmin = Object.values(d.source || {}).some((s) => s === "admin");
-pp/static/char.html
   badge.textContent = fromAdmin ? "🟢 Configurée (ici)" : "🟢 Configurée (serveur)";
-pp/static/char.html
   badge.className = "badge b-used";
-pp/static/char.html
   $("#guild-effective").textContent = "Battle.net : " + (c.region || "") + " · " + (c.realm || "") + " · "
-pp/static/char.html
     + (c.slug || "") + " — Warcraft Logs : " + (c.wcl_region || "") + " · " + (c.wcl_name || "");
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function saveGuild(clear) {
-pp/static/char.html
   const msg = $("#guild-msg");
-pp/static/char.html
   const values = {};
-pp/static/char.html
   for (const k of GUILD_FIELDS) values[k] = clear ? "" : $("#g-" + k).value.trim();
-pp/static/char.html
   try {
-pp/static/char.html
     await api("POST", "/api/admin/guild", { values, clear: !!clear });
-pp/static/char.html
     toast(clear ? "Réglages de guilde retirés" : "Réglages de guilde enregistrés ✓");
-pp/static/char.html
     msg.textContent = "";
-pp/static/char.html
     await loadGuild();
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec.")}</span>`; }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#guild-save").addEventListener("click", () => saveGuild(false));
-pp/static/char.html
 $("#guild-clear").addEventListener("click", () => {
-pp/static/char.html
   if (confirm("Retirer ces réglages ? Le site utilisera les valeurs du fichier serveur.")) saveGuild(true);
-pp/static/char.html
 });
-pp/static/char.html
 $("#guild-test").addEventListener("click", async () => {
-pp/static/char.html
   const msg = $("#guild-msg");
-pp/static/char.html
   msg.textContent = "Vérification…";
-pp/static/char.html
   const values = {};
-pp/static/char.html
   for (const k of GUILD_FIELDS) values[k] = $("#g-" + k).value.trim();
-pp/static/char.html
   try {
-pp/static/char.html
     const r = await api("POST", "/api/admin/guild/test", { values });
-pp/static/char.html
     const line = (lab, x) => (x && x.ok)
-pp/static/char.html
       ? `<span style="color:var(--ok)">✓ ${lab} — ${esc(x.name || "OK")}${x.members != null ? " (" + x.members + " membres)" : ""}</span>`
-pp/static/char.html
       : `<span style="color:var(--err)">⚠ ${lab} — ${esc((x && x.detail) || "Échec.")}</span>`;
-pp/static/char.html
     msg.innerHTML = line("Battle.net", r.bnet) + "<br>" + line("Warcraft Logs", r.wcl);
-pp/static/char.html
   } catch (e) { msg.innerHTML = `<span style="color:var(--err)">${esc(e.message || "Échec.")}</span>`; }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#bot-save").addEventListener("click", async () => {
-pp/static/char.html
   const body = {
-pp/static/char.html
     enabled: $("#bot-enabled").checked,
-pp/static/char.html
     notify_reports: $("#bot-reports").checked,
-pp/static/char.html
     notify_roster: $("#bot-roster").checked,
-pp/static/char.html
     notify_chars: $("#bot-chars").checked,
-pp/static/char.html
     notify_weekly: $("#bot-weekly").checked,
-pp/static/char.html
     app_id: $("#bot-appid").value.trim(),
-pp/static/char.html
     token: $("#bot-token").value.trim(),
-pp/static/char.html
   };
-pp/static/char.html
   const sel = $("#bot-channel");
-pp/static/char.html
   if (sel.value) {
-pp/static/char.html
     body.channel_id = sel.value;
-pp/static/char.html
     body.channel_name = (sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : "").replace(/^#/, "");
-pp/static/char.html
   }
-pp/static/char.html
   try {
-pp/static/char.html
     await api("POST", "/api/admin/bot", body);
-pp/static/char.html
     $("#bot-token").value = "";
-pp/static/char.html
     toast("Configuration enregistrée ✓");
-pp/static/char.html
     loadBot();
-pp/static/char.html
   } catch (e) {}
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#bot-test").addEventListener("click", async () => {
-pp/static/char.html
   try { await api("POST", "/api/admin/bot/test"); toast("Message de test envoyé 📨"); loadBot(); }
-pp/static/char.html
   catch (e) {}
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#bot-recap").addEventListener("click", async () => {
-pp/static/char.html
   try { await api("POST", "/api/admin/bot/recap"); toast("Récap envoyé 📰"); loadBot(); }
-pp/static/char.html
   catch (e) {}
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 // ---- 🎨 Identité de la guilde ----
-pp/static/char.html
 let BRF = { logo: 0, bg: 0, color: 0 };
-pp/static/char.html
 async function loadBrand() {
-pp/static/char.html
   const d = await api("GET", "/api/branding");
-pp/static/char.html
   BRF = { logo: 0, bg: 0, color: 0 };
-pp/static/char.html
   const raw = d.raw || {};
-pp/static/char.html
   $("#bi-name").value = raw.name || "";
-pp/static/char.html
   $("#bi-short").value = raw.short || "";
-pp/static/char.html
   $("#bi-color").value = raw.color || "#0b0f17";
-pp/static/char.html
   $("#bi-logo").value = ""; $("#bi-bg").value = "";
-pp/static/char.html
   const bits = [d.custom_logo ? "Logo personnalisé ✓" : "Logo par défaut",
-pp/static/char.html
                 d.custom_bg ? "Fond personnalisé ✓" : "Fond par défaut"];
-pp/static/char.html
   if (raw.color) bits.push(`Couleur : ${raw.color}`);
-pp/static/char.html
   $("#bi-state").textContent = bits.join(" · ");
-pp/static/char.html
 }
-pp/static/char.html
 $("#bi-logo-del").addEventListener("click", () => { BRF.logo = 1; $("#bi-logo").value = ""; $("#bi-state").textContent = "Logo retiré — pense à Enregistrer"; });
-pp/static/char.html
 $("#bi-bg-del").addEventListener("click", () => { BRF.bg = 1; $("#bi-bg").value = ""; $("#bi-state").textContent = "Fond retiré — pense à Enregistrer"; });
-pp/static/char.html
 $("#bi-color-del").addEventListener("click", () => { BRF.color = 1; $("#bi-state").textContent = "Couleur par défaut — pense à Enregistrer"; });
-pp/static/char.html
 $("#bi-logo").addEventListener("change", () => { if ($("#bi-logo").files[0]) BRF.logo = 0; });
-pp/static/char.html
 $("#bi-bg").addEventListener("change", () => { if ($("#bi-bg").files[0]) BRF.bg = 0; });
-pp/static/char.html
 $("#bi-color").addEventListener("change", () => { BRF.color = 0; });
-pp/static/char.html
 $("#bi-reload").addEventListener("click", loadBrand);
-pp/static/char.html
 async function saveBrand(resetAll) {
-pp/static/char.html
   const fd = new FormData();
-pp/static/char.html
   fd.append("guild_name", resetAll ? "" : $("#bi-name").value.trim());
-pp/static/char.html
   fd.append("guild_short", resetAll ? "" : $("#bi-short").value.trim());
-pp/static/char.html
   fd.append("bg_color", (resetAll || BRF.color) ? "" : $("#bi-color").value);
-pp/static/char.html
   if (resetAll) {
-pp/static/char.html
     fd.append("reset_all", "1");
-pp/static/char.html
   } else {
-pp/static/char.html
     if (BRF.logo) fd.append("reset_logo", "1");
-pp/static/char.html
     if (BRF.bg) fd.append("reset_bg", "1");
-pp/static/char.html
     if (BRF.color) fd.append("reset_color", "1");
-pp/static/char.html
     const lf = $("#bi-logo").files[0]; if (lf) fd.append("logo", lf);
-pp/static/char.html
     const bf = $("#bi-bg").files[0]; if (bf) fd.append("bg", bf);
-pp/static/char.html
   }
-pp/static/char.html
   const r = await fetch("/api/admin/branding", { method: "POST", body: fd });
-pp/static/char.html
   const d = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) throw new Error(d.detail || "Erreur");
-pp/static/char.html
 }
-pp/static/char.html
 $("#bi-save").addEventListener("click", async () => {
-pp/static/char.html
   $("#bi-save").disabled = true;
-pp/static/char.html
   try {
-pp/static/char.html
     await saveBrand(false);
-pp/static/char.html
     toast("Identité enregistrée ✓");
-pp/static/char.html
     await loadBrand();
-pp/static/char.html
     if (window.__cohorsBranding) window.__cohorsBranding.refresh();
-pp/static/char.html
   } catch (e) { toast(e.message || "Erreur"); }
-pp/static/char.html
   $("#bi-save").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 $("#bi-reset").addEventListener("click", async () => {
-pp/static/char.html
   if (!confirm("Réinitialiser l'identité : logo, nom et fond par défaut ?")) return;
-pp/static/char.html
   try {
-pp/static/char.html
     await saveBrand(true);
-pp/static/char.html
     toast("Identité réinitialisée ✓");
-pp/static/char.html
     await loadBrand();
-pp/static/char.html
     if (window.__cohorsBranding) window.__cohorsBranding.refresh();
-pp/static/char.html
   } catch (e) { toast(e.message || "Erreur"); }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 (async () => {
-pp/static/char.html
   let me = null;
-pp/static/char.html
   let _updTimer = null;
-pp/static/char.html
   window._upd_stopPoll = function() { if (_updTimer) { clearTimeout(_updTimer); _updTimer = null; } };
-pp/static/char.html
   window._upd_showProgress = function() { const el = $("#upd-progress"); if (el) { el.style.display = "block"; } };
-pp/static/char.html
   function _upd_hideProgress() { const el = $("#upd-progress"); if (el) { el.style.display = "none"; } _upd_stopPoll(); }
-pp/static/char.html
   function _upd_setBar(pct, text, time, eta) {
-pp/static/char.html
     const bar = $("#upd-prog-bar"), txt = $("#upd-prog-text"), tm = $("#upd-prog-time"), et = $("#upd-prog-eta");
-pp/static/char.html
     if (bar) bar.style.width = pct + "%";
-pp/static/char.html
     if (txt) txt.textContent = text;
-pp/static/char.html
     if (tm) tm.textContent = time;
-pp/static/char.html
     if (et) et.textContent = eta;
-pp/static/char.html
   }
-pp/static/char.html
   window._upd_startPoll = function(st) {
-pp/static/char.html
     // Arrêter tout timer précédent avant d'en lancer un nouveau
-pp/static/char.html
     if (_updTimer) { clearTimeout(_updTimer); _updTimer = null; }
-pp/static/char.html
     let _updRetryCount = 0;
-pp/static/char.html
     let startedAt = st.applier?.running_at ? st.applier.running_at * 1000 : Date.now();
-pp/static/char.html
     const version = st.applier?.running || st.request?.version;
-pp/static/char.html
     _upd_showProgress();
-pp/static/char.html
     _upd_setBar(10, `⏳ Déploiement v${version || "?"} en cours…`, "0:00", "Calcul en cours…");
-pp/static/char.html
     // Estimation basée sur le mode (sources ~2min, images ~1min)
-pp/static/char.html
     let elapsedSec = 0, totalEst = 120;
-pp/static/char.html
     let elapsedStr = "0:00";
-pp/static/char.html
     let etaStr = "";
-pp/static/char.html
     // Référence temporelle = horodatage de la demande (serveur)
-pp/static/char.html
     const reqAt = st.request?.requested_at ? st.request.requested_at * 1000 : Date.now();
-pp/static/char.html
     const tick = () => {
-pp/static/char.html
       elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
-pp/static/char.html
       // Progression linéaire sur estimation totale + 30% de marge
-pp/static/char.html
       const progress = Math.min(95, (elapsedSec / (totalEst * 1.3)) * 100);
-pp/static/char.html
       const mins = Math.floor(elapsedSec / 60);
-pp/static/char.html
       const secs = elapsedSec % 60;
-pp/static/char.html
       elapsedStr = `${mins}:${secs.toString().padStart(2, "0")}`;
-pp/static/char.html
       const remaining = Math.max(0, totalEst * 1.3 - elapsedSec);
-pp/static/char.html
       const remMins = Math.floor(remaining / 60);
-pp/static/char.html
       const remSecs = remaining % 60;
-pp/static/char.html
       etaStr = remaining > 0 ? `⏱ ~${remMins} min ${Math.round(remSecs)} sec restantes` : "⏱ Presque terminé…";
-pp/static/char.html
       _upd_setBar(progress, `⏳ Déploiement v${version || "?"} en cours…`, elapsedStr, etaStr);
-pp/static/char.html
     };
-pp/static/char.html
     tick();
-pp/static/char.html
     // Polling récursif avec backoff exponentiel (setTimeout, pas setInterval)
-pp/static/char.html
     function pollOnce() {
-pp/static/char.html
       const delay = _updRetryCount ? Math.min(5000 * Math.pow(1.5, _updRetryCount - 1), 30000) : 5000;
-pp/static/char.html
       _updTimer = setTimeout(async () => {
-pp/static/char.html
         try {
-pp/static/char.html
           const r = await api("GET", "/api/admin/updates");
-pp/static/char.html
           const st = r.state || r;
-pp/static/char.html
           // En cours de déploiement
-pp/static/char.html
           if (st.applier?.running) {
-pp/static/char.html
             startedAt = st.applier.running_at ? st.applier.running_at * 1000 : startedAt;
-pp/static/char.html
             tick();
-pp/static/char.html
             _updRetryCount = 0;  // reset backoff tant que ça tourne
-pp/static/char.html
             pollOnce();
-pp/static/char.html
             return;
-pp/static/char.html
           }
-pp/static/char.html
           // Terminé seulement si :
-pp/static/char.html
           //  - applied correspond à la version demandée, OU
-pp/static/char.html
           //  - result indique un échec ("échec…", "version refusée…") écrit après la demande
-pp/static/char.html
           const result = st.applier?.result || "";
-pp/static/char.html
           const applied = st.applier?.applied || "";
-pp/static/char.html
           const appliedAt = st.applier?.applied_at || 0;
-pp/static/char.html
           const failed = result.startsWith("échec") || result.startsWith("version refusée");
-pp/static/char.html
           const resultAt = st.applier?.running_at || 0;
-pp/static/char.html
           const isFailedAfterReq = failed && (resultAt * 1000 >= reqAt || appliedAt * 1000 >= reqAt);
-pp/static/char.html
           const isVersionMatch = applied && version && applied === version;
-pp/static/char.html
           if (isVersionMatch || isFailedAfterReq) {
-pp/static/char.html
             if (_updTimer) { clearTimeout(_updTimer); _updTimer = null; }
-pp/static/char.html
             _upd_setBar(isVersionMatch ? 100 : 0,
-pp/static/char.html
               isVersionMatch ? "✅ Mise à jour terminée !" :
-pp/static/char.html
               isFailedAfterReq ? `⚠ Échec : ${result}` :
-pp/static/char.html
               `⚠ Échec : ${result}`,
-pp/static/char.html
               elapsedStr, "");
-pp/static/char.html
             _upd_showProgress();
-pp/static/char.html
             updRender(st);
-pp/static/char.html
             if (isVersionMatch) { setTimeout(() => { location.reload(); }, 2000); }
-pp/static/char.html
             return;
-pp/static/char.html
           }
-pp/static/char.html
           // Sinon : l'applicateur n'a pas encore détecté la demande → on continue le polling
-pp/static/char.html
           _updRetryCount = 0;  // reset backoff si OK mais pas prêt
-pp/static/char.html
           pollOnce();
-pp/static/char.html
         } catch (e) {
-pp/static/char.html
           // Erreur réseau pendant le redémarrage : on relance le polling avec backoff
-pp/static/char.html
           _upd_setBar(0, "⏳ Serveur en redémarrage, attente…", elapsedStr, "");
-pp/static/char.html
           _updRetryCount += 1;
-pp/static/char.html
           pollOnce();  // récursif : délai calculé au prochain appel
-pp/static/char.html
         }
-pp/static/char.html
       }, delay);
-pp/static/char.html
     }
-pp/static/char.html
     pollOnce();
-pp/static/char.html
   }
-pp/static/char.html
   try {
-pp/static/char.html
     me = await jget("/api/me");
-pp/static/char.html
     $("#who").textContent = me.name || me.email;
-pp/static/char.html
     $("#name").value = me.name || "";
-pp/static/char.html
     $("#voice-nick").value = me.voice_nick_raw || "";
-pp/static/char.html
     $("#voice-nick").placeholder = "Par défaut : " + (me.voice_default || "…");
-pp/static/char.html
     let lang = "";
-pp/static/char.html
     try { lang = localStorage.getItem("cohors_lang") || ""; } catch (e) {}
-pp/static/char.html
     if (!lang) lang = document.documentElement.lang === "en" ? "en" : "fr";
-pp/static/char.html
     const r = document.querySelector('input[name=lang][value="' + lang + '"]');
-pp/static/char.html
     if (r) r.checked = true;
-pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
-pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
   // ---- Administration (officiers et admin) ----
-pp/static/char.html
   ME = me; IM_ADMIN = !!me.is_admin;
-pp/static/char.html
   const staff = !!me.is_admin || me.role === "officer";
-pp/static/char.html
   if (staff) {
-pp/static/char.html
     $("#smenu-adm").classList.remove("hidden");
-pp/static/char.html
     $("#sbtn-invitations").classList.remove("hidden");
-pp/static/char.html
     if (IM_ADMIN) {
-pp/static/char.html
       $("#sbtn-comptes").classList.remove("hidden");
-pp/static/char.html
       $("#sbtn-bot").classList.remove("hidden");
-pp/static/char.html
       $("#sbtn-api").classList.remove("hidden");
-pp/static/char.html
       $("#sbtn-guilde").classList.remove("hidden");
-pp/static/char.html
       $("#sbtn-jobs").classList.remove("hidden");
-pp/static/char.html
       $("#sbtn-sauvegarde").classList.remove("hidden");
-pp/static/char.html
       $("#sbtn-mail").classList.remove("hidden");
-pp/static/char.html
       $("#sbtn-identite").classList.remove("hidden");
-pp/static/char.html
       $("#sbtn-maj").classList.remove("hidden");
-pp/static/char.html
     }
-pp/static/char.html
     loadInvites();
-pp/static/char.html
     if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); loadGuild(); loadJobs(); loadMail(); loadUpdates(); }
-pp/static/char.html
     openFromHash();
-pp/static/char.html
   }
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

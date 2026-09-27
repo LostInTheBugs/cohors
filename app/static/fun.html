@@ -1,376 +1,188 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Succès fun</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
-pp/static/char.html
   * { box-sizing:border-box; }
-pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   .topbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
-pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
-pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
-pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
-pp/static/char.html
   .brandname span { color:var(--acc2); }
-pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   .userbox { margin-left:auto; display:flex; gap:14px; align-items:center; }
-pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
-pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
-pp/static/char.html
   .hlink:hover { text-decoration:underline; }
-pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
-pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
-pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
-pp/static/char.html
          border:1px solid var(--line); background:transparent; }
-pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
-pp/static/char.html
   .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
-pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
-pp/static/char.html
   h2 { font-size:17px; margin:0 0 4px; }
-pp/static/char.html
   .sub { color:var(--mut); font-size:12.5px; margin:0 0 10px; }
-pp/static/char.html
   .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(310px, 1fr)); gap:14px; }
-pp/static/char.html
   .grid .card { margin-bottom:0; }
-pp/static/char.html
   .wide { grid-column:1 / -1; }
-pp/static/char.html
   .row { display:flex; gap:10px; align-items:center; padding:4px 0; font-size:13.5px; border-top:1px solid var(--line); }
-pp/static/char.html
   .row:first-of-type { border-top:0; }
-pp/static/char.html
   .row .sp { flex:1; }
-pp/static/char.html
   .rk { min-width:26px; color:var(--acc2); font-weight:700; }
-pp/static/char.html
   .val { font-weight:700; }
-pp/static/char.html
   .hero { font-size:15px; }
-pp/static/char.html
   .hero b { color:var(--acc2); }
-pp/static/char.html
   .note { color:var(--mut); font-size:12.5px; margin-top:10px; }
-pp/static/char.html
   .chipline { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-pp/static/char.html
   .diffchip { display:inline-block; font-size:10.5px; font-weight:700; color:var(--mut);
-pp/static/char.html
               border:1px solid var(--line); border-radius:6px; padding:0 5px; }
-pp/static/char.html
   .gbtn { background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:10px;
-pp/static/char.html
           padding:8px 14px; font-size:13.5px; font-weight:600; cursor:pointer; }
-pp/static/char.html
   .gbtn:hover { border-color:#3a4763; }
-pp/static/char.html
   .gbtn:disabled { opacity:.55; cursor:default; }
-pp/static/char.html
   .empty { color:var(--mut); font-size:13.5px; padding:6px 2px; }
-pp/static/char.html
   .err { color:var(--err); font-size:13.5px; }
-pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
-pp/static/char.html
   .hidden { display:none !important; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Succès fun</span></div>
-pp/static/char.html
         <div class="tagline">Le palmarès rigolo de la guilde — morts, tombes et titres maison.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <div class="chipline">
-pp/static/char.html
       <span class="sub" id="status" style="margin:0"></span>
-pp/static/char.html
       <span class="sp" style="flex:1"></span>
-pp/static/char.html
       <button class="gbtn" id="ref">🔄 Actualiser</button>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="err hidden" id="err"></div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="grid" id="grid">
-pp/static/char.html
     <div class="card wide" id="c-massacre"><h2>☠️ Le massacre</h2><p class="sub">Le fight le plus sanglant des derniers rapports.</p><div class="hero" id="massacre"></div></div>
-pp/static/char.html
     <div class="card" id="c-cemetery"><h2>💀 Le cimetière</h2><p class="sub">Ils sont tombés avec honneur (ou pas).</p><div id="cemetery"></div></div>
-pp/static/char.html
     <div class="card" id="c-first"><h2>🩸 Premier sang</h2><p class="sub">Ils meurent en premier le plus souvent. Des héros, vraiment.</p><div id="first"></div></div>
-pp/static/char.html
     <div class="card" id="c-cause"><h2>🗡️ La cause n°1 de décès</h2><p class="sub">L'arme qui a le plus de sang sur les mains.</p><div class="hero" id="cause"></div></div>
-pp/static/char.html
     <div class="card" id="c-intouch"><h2>😇 Intouchables</h2><p class="sub">Jamais morts, jamais tremblés.</p><div id="intouch"></div></div>
-pp/static/char.html
     <div class="card" id="c-scholars"><h2>🎲 Savants fous</h2><p class="sub">Les plus acharnés du simulateur.</p><div id="scholars"></div></div>
-pp/static/char.html
     <div class="card" id="c-pillars"><h2>📅 Piliers de raid</h2><p class="sub">Présents, encore et toujours.</p><div id="pillars"></div></div>
-pp/static/char.html
     <div class="card" id="c-collectors"><h2>🐎 Collectionneurs</h2><p class="sub">Montures et mascottes des mains liés.</p><div id="collectors"></div></div>
-pp/static/char.html
     <div class="card" id="c-hearts"><h2>❤️ Cœurs d'or</h2><p class="sub">Ils partagent leurs profils avec la guilde.</p><div id="hearts"></div></div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <p class="note">Le palmarès se construit à partir des derniers rapports Warcraft Logs et des stats du site — mis à jour toutes les 30 minutes.</p>
-pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment · Données Warcraft Logs</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/esc.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
+<script src="/static/esc.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
-pp/static/char.html
 const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
-pp/static/char.html
   if (s < 60) return "à l'instant";
-pp/static/char.html
   if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
-pp/static/char.html
   return `il y a ${Math.floor(s / 86400)} j`; };
-pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 
-pp/static/char.html
 const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
-pp/static/char.html
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
-pp/static/char.html
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
-pp/static/char.html
 const CLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur de démons", Druid: "Druide",
-pp/static/char.html
   Evoker: "Évocateur", Hunter: "Chasseur", Mage: "Mage", Monk: "Moine", Paladin: "Paladin",
-pp/static/char.html
   Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
-pp/static/char.html
 const MEDALS = ["🥇", "🥈", "🥉"];
-pp/static/char.html
 const dt = (ms) => ms ? new Date(ms).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
-pp/static/char.html
 
-pp/static/char.html
 function nameCol(nm, cls) {
-pp/static/char.html
   const col = CLASS_COLORS[cls] || "var(--fg)";
-pp/static/char.html
   return `<b style="color:${col}">${esc(nm)}</b>${cls ? ` <span class="sub" style="display:inline">${esc(CLASS_FR[cls] || cls)}</span>` : ""}`;
-pp/static/char.html
 }
-pp/static/char.html
 function rows(list, unit, valKey, extra) {
-pp/static/char.html
   if (!list || !list.length) return `<div class="empty">Pas encore de données.</div>`;
-pp/static/char.html
   return list.map((r, i) => `<div class="row"><span class="rk">${i < 3 ? MEDALS[i] : i + 1}</span>
-pp/static/char.html
     ${extra ? extra(r) : nameCol(r.name, r.class)}<span class="sp"></span>
-pp/static/char.html
     <span class="val">${fmt(r[valKey])}</span><span class="sub" style="display:inline"> ${unit}</span></div>`).join("");
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 function render(D) {
-pp/static/char.html
   const m = D.massacre;
-pp/static/char.html
   $("#massacre").innerHTML = m
-pp/static/char.html
     ? `Boss <b>${esc(m.boss)}</b> — <b>${fmt(m.deaths)}</b> morts <span class="sub" style="display:inline">(${m.kill ? "tué" : "wipe"})</span>
-pp/static/char.html
        · ${esc(dt(m.date))} · <a class="hlink" href="/raids" title="Rapports">report</a>`
-pp/static/char.html
     : `<div class="empty">Aucune mort ces derniers temps — la guilde est en feu 🔥</div>`;
-pp/static/char.html
   $("#cemetery").innerHTML = rows(D.cemetery, "morts", "deaths");
-pp/static/char.html
   $("#first").innerHTML = rows(D.first_blood, "fois", "count");
-pp/static/char.html
   $("#cause").innerHTML = D.cause ? `Ability <b>${esc(D.cause.name)}</b> — <b>${fmt(D.cause.count)}</b> morts` : `<div class="empty">Pas encore de données.</div>`;
-pp/static/char.html
   $("#intouch").innerHTML = rows(D.intouchables, "combats sans mourir", "fights");
-pp/static/char.html
   $("#scholars").innerHTML = rows(D.scholars, "simulations", "n");
-pp/static/char.html
   $("#pillars").innerHTML = rows(D.pillars, "présences", "n");
-pp/static/char.html
   $("#collectors").innerHTML = rows(D.collectors, "montures", "mounts",
-pp/static/char.html
     (r) => `<b>${esc(r.name)}</b> <span class="sub" style="display:inline">🐾 ${fmt(r.pets)}</span>`);
-pp/static/char.html
   $("#hearts").innerHTML = rows(D.hearts, "profils partagés", "n");
-pp/static/char.html
   $("#status").textContent = `Actualisé ${ago(D.built)}`;
-pp/static/char.html
   if (D.error) { $("#err").textContent = D.error; $("#err").classList.remove("hidden"); }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function load(refresh = 0) {
-pp/static/char.html
   $("#ref").disabled = true;
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jget("/api/fun" + (refresh ? "?refresh=1" : ""));
-pp/static/char.html
     render(d);
-pp/static/char.html
   } catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
-pp/static/char.html
   $("#ref").disabled = false;
-pp/static/char.html
 }
-pp/static/char.html
 $("#ref").addEventListener("click", () => load(1));
-pp/static/char.html
 
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
-pp/static/char.html
   ev.preventDefault();
-pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
-pp/static/char.html
   location.href = "/login";
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const me = await jget("/api/me");
-pp/static/char.html
     $("#who").textContent = me.name || me.email;
-pp/static/char.html
   } catch (e) { return; }
-pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
   load();
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

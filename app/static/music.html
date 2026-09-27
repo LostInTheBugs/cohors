@@ -1,640 +1,320 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Musique</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; }
-pp/static/char.html
   * { box-sizing:border-box; }
-pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
-pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
-pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
-pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
-pp/static/char.html
   .brandname span { color:var(--acc2); }
-pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
-pp/static/char.html
   .userbox { display:flex; gap:14px; align-items:center; }
-pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
-pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
-pp/static/char.html
   .hlink:hover { text-decoration:underline; }
-pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
-pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
-pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
-pp/static/char.html
          border:1px solid var(--line); background:transparent; }
-pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
-pp/static/char.html
   h2 { font-size:17px; margin:0 0 12px; }
-pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
-pp/static/char.html
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-pp/static/char.html
   .spacer { flex:1; }
-pp/static/char.html
   .plab { color:var(--mut); font-size:13.5px; }
-pp/static/char.html
   input[type=text] { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
-pp/static/char.html
         padding:9px 12px; font-size:14px; flex:1; min-width:240px; }
-pp/static/char.html
   input[type=file] { color:var(--mut); font-size:13px; }
-pp/static/char.html
   input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
-pp/static/char.html
   input[type=range] { accent-color: var(--acc); }
-pp/static/char.html
   button { background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
-pp/static/char.html
            padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; }
-pp/static/char.html
   button.gbtn2 { background:transparent; border:1px solid var(--line); color:var(--fg); }
-pp/static/char.html
   button.gbtn2:hover { border-color:#3a4763; }
-pp/static/char.html
   button:disabled { opacity:.55; cursor:default; }
-pp/static/char.html
   button.on { border-color:var(--acc2); color:var(--acc2); }
-pp/static/char.html
   .badge { padding:3px 11px; border-radius:999px; font-size:12.5px; font-weight:700; border:1px solid var(--line); color:var(--mut); }
-pp/static/char.html
   .badge.ok { color:var(--ok); border-color:#1f5f46; }
-pp/static/char.html
   .badge.play { color:var(--acc2); border-color:#7a5b2e; }
-pp/static/char.html
   .note { color:var(--mut); font-size:12.5px; margin:10px 0 0; }
-pp/static/char.html
   .msg-ok { color:var(--ok); font-size:13px; }
-pp/static/char.html
   .msg-err { color:var(--err); font-size:13px; }
-pp/static/char.html
   .tracks { display:flex; flex-direction:column; gap:6px; }
-pp/static/char.html
   .trackrow { display:flex; align-items:center; gap:8px; padding:7px 10px; border:1px solid var(--line); border-radius:10px; }
-pp/static/char.html
   .trackrow .ttl { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13.5px; }
-pp/static/char.html
   .trackrow button { padding:4px 11px; font-size:13px; }
-pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Musique</span></div>
-pp/static/char.html
         <div class="tagline">Le jukebox de la guilde — réservé aux officiers et administrateurs.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/voice">🎧 Vocal</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>🎵 Lecteur</h2>
-pp/static/char.html
     <div class="row">
-pp/static/char.html
       <span id="state" class="badge">…</span>
-pp/static/char.html
       <span id="track" class="plab">—</span>
-pp/static/char.html
       <span class="spacer"></span>
-pp/static/char.html
       <span id="pos" class="plab">0:00</span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="row" style="margin-top:12px">
-pp/static/char.html
       <button id="btn-play">▶ Lire</button>
-pp/static/char.html
       <button id="btn-pause" class="gbtn2">⏸ Pause</button>
-pp/static/char.html
       <button id="btn-stop" class="gbtn2">⏹ Stop</button>
-pp/static/char.html
       <span class="plab" style="margin-left:10px">Volume</span>
-pp/static/char.html
       <input type="range" id="vol" min="0" max="100" step="5" style="flex:1;min-width:150px">
-pp/static/char.html
       <span id="volval" class="plab">50</span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="row" style="margin-top:10px">
-pp/static/char.html
       <button id="btn-shuffle" class="gbtn2">🔀 Aléatoire</button>
-pp/static/char.html
       <button id="btn-loop" class="gbtn2">🔁 Boucler</button>
-pp/static/char.html
     </div>
-pp/static/char.html
     <p class="note" id="player-msg"></p>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>🤖 Bot</h2>
-pp/static/char.html
     <div class="row">
-pp/static/char.html
       <span class="plab" style="min-width:130px">Nom du bot</span>
-pp/static/char.html
       <input type="text" id="bot-nick" maxlength="30" style="flex:1;min-width:200px">
-pp/static/char.html
       <button id="bot-rename">Renommer</button>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="row" style="margin-top:10px">
-pp/static/char.html
       <span class="plab" style="min-width:130px">Salon</span>
-pp/static/char.html
       <select id="bot-chan" style="flex:1;min-width:240px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px"></select>
-pp/static/char.html
       <button id="bot-move">Déplacer</button>
-pp/static/char.html
     </div>
-pp/static/char.html
     <p class="note">Renommer ou déplacer redémarre le bot (~10 s) — il se reconnecte tout seul.</p>
-pp/static/char.html
     <p class="note" id="bot-msg"></p>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>📚 Bibliothèque</h2>
-pp/static/char.html
     <div id="tracks" class="tracks"><p class="note">Chargement…</p></div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card">
-pp/static/char.html
     <h2>➕ Ajouter un titre</h2>
-pp/static/char.html
     <div class="row">
-pp/static/char.html
       <input type="text" id="url" placeholder="https://… (lien direct mp3 / flux)">
-pp/static/char.html
       <button id="add-url">Ajouter le lien</button>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div class="row" style="margin-top:10px">
-pp/static/char.html
       <input type="file" id="file" accept=".mp3,.ogg,.wav,.m4a,.flac,.opus,audio/*">
-pp/static/char.html
       <button id="upload">Envoyer un mp3</button>
-pp/static/char.html
       <span id="add-msg"></span>
-pp/static/char.html
     </div>
-pp/static/char.html
     <p class="note">Les fichiers envoyés sont stockés sur le serveur de la guilde et joués par le bot dans le salon TeamSpeak.</p>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Bot : SinusBot · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 const jpost = async (u, b) => { const r = await fetch(u, { method: "POST", headers: { "Content-Type": "application/json" },
-pp/static/char.html
   body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 const msg = (sel, t, ok) => { const e = $(sel); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; };
-pp/static/char.html
 const fmt = (ms) => { const s = Math.max(0, Math.round((ms || 0) / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
-pp/static/char.html
 const pretty = (t) => {
-pp/static/char.html
   if (!t) return "";
-pp/static/char.html
   if (/^https?:\/\//i.test(t)) {
-pp/static/char.html
     try {
-pp/static/char.html
       const u = new URL(t);
-pp/static/char.html
       const last = decodeURIComponent((u.pathname.split("/").pop() || t));
-pp/static/char.html
       return last.replace(/\.[a-z0-9]{2,4}$/i, "") || t;
-pp/static/char.html
     } catch (e) { return t; }
-pp/static/char.html
   }
-pp/static/char.html
   return t;
-pp/static/char.html
 };
-pp/static/char.html
 
-pp/static/char.html
 let lastTrack = null;
-pp/static/char.html
 let dragging = false;
-pp/static/char.html
 
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => { ev.preventDefault(); await fetch("/api/logout", { method: "POST" }); location.href = "/login"; });
-pp/static/char.html
 
-pp/static/char.html
 async function refresh() {
-pp/static/char.html
   try {
-pp/static/char.html
     const st = await jget("/api/music/status");
-pp/static/char.html
     const b = $("#state");
-pp/static/char.html
     if (!st.connected) { b.textContent = "🔴 Éteint"; b.className = "badge"; }
-pp/static/char.html
     else if (st.playing) { b.textContent = "▶️ En lecture"; b.className = "badge play"; }
-pp/static/char.html
     else if (st.paused) { b.textContent = "⏸ En pause"; b.className = "badge"; }
-pp/static/char.html
     else if (st.stopped) { b.textContent = "⏹ Arrêté"; b.className = "badge"; }
-pp/static/char.html
     else { b.textContent = "🟢 En ligne"; b.className = "badge ok"; }
-pp/static/char.html
     lastTrack = st.track || null;
-pp/static/char.html
     $("#track").textContent = st.track ? pretty(st.track.title) : "—";
-pp/static/char.html
     $("#pos").textContent = fmt(st.position);
-pp/static/char.html
     if (!dragging) { $("#vol").value = st.volume; $("#volval").textContent = st.volume; }
-pp/static/char.html
     const m = st.modes || {};
-pp/static/char.html
     $("#btn-shuffle").classList.toggle("on", !!m.shuffle);
-pp/static/char.html
     $("#btn-loop").classList.toggle("on", !!m.loop);
-pp/static/char.html
     $("#btn-play").disabled = !st.track;
-pp/static/char.html
   } catch (e) {
-pp/static/char.html
     $("#state").textContent = "⚠️ Bot injoignable"; $("#state").className = "badge";
-pp/static/char.html
   }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 async function loadTracks() {
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jget("/api/music/tracks");
-pp/static/char.html
     const box = $("#tracks");
-pp/static/char.html
     if (!d.tracks.length) { box.innerHTML = '<p class="note">Aucun titre — ajoute un lien ou envoie un fichier.</p>'; return; }
-pp/static/char.html
     box.innerHTML = "";
-pp/static/char.html
     d.tracks.forEach((t) => {
-pp/static/char.html
       const row = document.createElement("div");
-pp/static/char.html
       row.className = "trackrow";
-pp/static/char.html
       const ttl = document.createElement("span"); ttl.className = "ttl"; ttl.textContent = pretty(t.title) || t.uuid;
-pp/static/char.html
       const bplay = document.createElement("button"); bplay.textContent = "▶"; bplay.title = "Lire";
-pp/static/char.html
       bplay.addEventListener("click", async () => { try { await jpost("/api/music/play", { uuid: t.uuid }); setTimeout(refresh, 800); } catch (e) { msg("#player-msg", e.message, false); } });
-pp/static/char.html
       const bdel = document.createElement("button"); bdel.className = "gbtn2"; bdel.textContent = "🗑"; bdel.title = "Supprimer";
-pp/static/char.html
       bdel.addEventListener("click", async () => {
-pp/static/char.html
         if (!confirm("Supprimer « " + (t.title || t.uuid) + " » ?")) return;
-pp/static/char.html
         try { const r = await fetch("/api/music/track/" + encodeURIComponent(t.uuid), { method: "DELETE" });
-pp/static/char.html
           const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.detail || "Erreur"); loadTracks(); }
-pp/static/char.html
         catch (e) { msg("#player-msg", e.message, false); }
-pp/static/char.html
       });
-pp/static/char.html
       row.appendChild(ttl); row.appendChild(bplay); row.appendChild(bdel);
-pp/static/char.html
       box.appendChild(row);
-pp/static/char.html
     });
-pp/static/char.html
   } catch (e) { $("#tracks").innerHTML = '<p class="note">Bibliothèque indisponible.</p>'; }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#btn-play").addEventListener("click", async () => {
-pp/static/char.html
   if (!lastTrack) return;
-pp/static/char.html
   try { await jpost("/api/music/play", { uuid: lastTrack.uuid }); setTimeout(refresh, 800); }
-pp/static/char.html
   catch (e) { msg("#player-msg", e.message, false); }
-pp/static/char.html
 });
-pp/static/char.html
 $("#btn-pause").addEventListener("click", async () => {
-pp/static/char.html
   try { await jpost("/api/music/pause", {}); setTimeout(refresh, 600); } catch (e) { msg("#player-msg", e.message, false); }
-pp/static/char.html
 });
-pp/static/char.html
 $("#btn-stop").addEventListener("click", async () => {
-pp/static/char.html
   try { await jpost("/api/music/stop", {}); setTimeout(refresh, 600); } catch (e) { msg("#player-msg", e.message, false); }
-pp/static/char.html
 });
-pp/static/char.html
 $("#vol").addEventListener("mousedown", () => { dragging = true; });
-pp/static/char.html
 $("#vol").addEventListener("touchstart", () => { dragging = true; });
-pp/static/char.html
 $("#vol").addEventListener("input", () => { $("#volval").textContent = $("#vol").value; });
-pp/static/char.html
 $("#vol").addEventListener("change", async () => {
-pp/static/char.html
   dragging = false;
-pp/static/char.html
   try { await jpost("/api/music/volume", { volume: Number($("#vol").value) }); } catch (e) { msg("#player-msg", e.message, false); }
-pp/static/char.html
 });
-pp/static/char.html
 async function setMode(which, val) {
-pp/static/char.html
   try {
-pp/static/char.html
     await jpost("/api/music/modes", { [which]: val });
-pp/static/char.html
     msg("#player-msg", val ? (which === "shuffle" ? "Lecture aléatoire activée ✓" : "Boucle activée ✓") : "Mode désactivé", true);
-pp/static/char.html
     setTimeout(refresh, 700);
-pp/static/char.html
   } catch (e) { msg("#player-msg", e.message, false); }
-pp/static/char.html
 }
-pp/static/char.html
 $("#btn-shuffle").addEventListener("click", () => setMode("shuffle", !$("#btn-shuffle").classList.contains("on")));
-pp/static/char.html
 $("#btn-loop").addEventListener("click", () => setMode("loop", !$("#btn-loop").classList.contains("on")));
-pp/static/char.html
 $("#add-url").addEventListener("click", async () => {
-pp/static/char.html
   const u = $("#url").value.trim();
-pp/static/char.html
   if (!u) return;
-pp/static/char.html
   $("#add-url").disabled = true;
-pp/static/char.html
   try { await jpost("/api/music/add-url", { url: u }); msg("#add-msg", "Lien ajouté ✓", true); $("#url").value = ""; loadTracks(); }
-pp/static/char.html
   catch (e) { msg("#add-msg", e.message, false); }
-pp/static/char.html
   $("#add-url").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 $("#upload").addEventListener("click", async () => {
-pp/static/char.html
   const f = $("#file").files[0];
-pp/static/char.html
   if (!f) { msg("#add-msg", "Choisis d'abord un fichier.", false); return; }
-pp/static/char.html
   $("#upload").disabled = true; msg("#add-msg", "Envoi en cours…", true);
-pp/static/char.html
   try {
-pp/static/char.html
     const fd = new FormData(); fd.append("file", f);
-pp/static/char.html
     const r = await fetch("/api/music/upload", { method: "POST", body: fd });
-pp/static/char.html
     const j = await r.json().catch(() => ({}));
-pp/static/char.html
     if (!r.ok) throw new Error(j.detail || "Erreur d'envoi");
-pp/static/char.html
     msg("#add-msg", "Fichier envoyé ✓", true); $("#file").value = ""; loadTracks();
-pp/static/char.html
   } catch (e) { msg("#add-msg", e.message, false); }
-pp/static/char.html
   $("#upload").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 let botCfg = { nick: "", channel: "" };
-pp/static/char.html
 
-pp/static/char.html
 async function loadBot() {
-pp/static/char.html
   try {
-pp/static/char.html
     botCfg = await jget("/api/music/bot");
-pp/static/char.html
     $("#bot-nick").value = botCfg.nick || "";
-pp/static/char.html
     const c = await jget("/api/music/channels");
-pp/static/char.html
     const sel = $("#bot-chan");
-pp/static/char.html
     sel.innerHTML = "";
-pp/static/char.html
     (c.channels || []).forEach((ch) => {
-pp/static/char.html
       const o = document.createElement("option");
-pp/static/char.html
       o.value = ch.path;
-pp/static/char.html
       o.textContent = ch.name + (ch.hasPassword ? " 🔒" : "");
-pp/static/char.html
       if (ch.path === botCfg.channel) o.selected = true;
-pp/static/char.html
       sel.appendChild(o);
-pp/static/char.html
     });
-pp/static/char.html
   } catch (e) { $("#bot-msg").textContent = e.message; }
-pp/static/char.html
 }
-pp/static/char.html
 
-pp/static/char.html
 $("#bot-rename").addEventListener("click", async () => {
-pp/static/char.html
   const nick = $("#bot-nick").value.trim();
-pp/static/char.html
   if (!nick) return;
-pp/static/char.html
   $("#bot-rename").disabled = true;
-pp/static/char.html
   try {
-pp/static/char.html
     await jpost("/api/music/bot", { nick: nick });
-pp/static/char.html
     $$("#bot-msg", "Nom modifié ✓ — le bot redémarre (~10 s)…", "#38c98e");
-pp/static/char.html
     setTimeout(refresh, 9000); setTimeout(loadBot, 11000);
-pp/static/char.html
   } catch (e) { $$("#bot-msg", e.message, "#ff6b6b"); }
-pp/static/char.html
   $("#bot-rename").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 $("#bot-move").addEventListener("click", async () => {
-pp/static/char.html
   const chan = $("#bot-chan").value;
-pp/static/char.html
   if (!chan) return;
-pp/static/char.html
   $("#bot-move").disabled = true;
-pp/static/char.html
   try {
-pp/static/char.html
     await jpost("/api/music/bot", { channel: chan });
-pp/static/char.html
     $$("#bot-msg", "Salon modifié ✓ — le bot redémarre (~10 s)…", "#38c98e");
-pp/static/char.html
     setTimeout(refresh, 9000); setTimeout(loadBot, 11000);
-pp/static/char.html
   } catch (e) { $$("#bot-msg", e.message, "#ff6b6b"); }
-pp/static/char.html
   $("#bot-move").disabled = false;
-pp/static/char.html
 });
-pp/static/char.html
 const $$ = (sel, t, color) => { const e = $(sel); e.textContent = t || ""; e.style.color = color || ""; };
-pp/static/char.html
 
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try { const me = await jget("/api/me"); $("#who").textContent = me.name || me.email; } catch (e) { return; }
-pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
   refresh(); loadTracks(); loadBot();
-pp/static/char.html
   setInterval(refresh, 6000);
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

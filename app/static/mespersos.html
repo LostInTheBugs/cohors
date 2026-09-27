@@ -1,500 +1,250 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Mes personnages</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root {
-pp/static/char.html
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
-pp/static/char.html
     --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
-pp/static/char.html
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
-pp/static/char.html
   }
-pp/static/char.html
   * { box-sizing: border-box; }
-pp/static/char.html
   body { margin: 0; background: var(--bg); color: var(--fg);
-pp/static/char.html
          font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
-pp/static/char.html
   header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
-pp/static/char.html
   .brand { display: flex; align-items: center; gap: 12px; }
-pp/static/char.html
   .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
-pp/static/char.html
   .brandname span { color: var(--acc2); }
-pp/static/char.html
   .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
-pp/static/char.html
   .tagline { color: var(--mut); font-size: 12.5px; }
-pp/static/char.html
   .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
-pp/static/char.html
   .spacer { flex: 1; }
-pp/static/char.html
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
-pp/static/char.html
   .hlink:hover { text-decoration: underline; }
-pp/static/char.html
   .who { color: var(--mut); font-size: 14px; }
-pp/static/char.html
   nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
-pp/static/char.html
   .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
-pp/static/char.html
          color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
-pp/static/char.html
          border: 1px solid var(--line); background: transparent;
-pp/static/char.html
          transition: border-color .15s, color .15s, background .15s; }
-pp/static/char.html
   .tab:hover { color: var(--fg); border-color: #3a4763; }
-pp/static/char.html
   .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
-pp/static/char.html
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; scroll-margin-top: 12px; }
-pp/static/char.html
   .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-pp/static/char.html
   input[type=search], input[type=number] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
-pp/static/char.html
         border-radius: 10px; padding: 9px 12px; font-size: 14px; }
-pp/static/char.html
   input[type=search] { min-width: 260px; }
-pp/static/char.html
   input:focus, select:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
-pp/static/char.html
   select { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 14px; }
-pp/static/char.html
   button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
-pp/static/char.html
            padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
-pp/static/char.html
   button:disabled { opacity: .55; cursor: default; }
-pp/static/char.html
   button.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
-pp/static/char.html
                  padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
-pp/static/char.html
   button.ghost:hover { border-color: var(--acc2); color: var(--acc2); }
-pp/static/char.html
   h2 { font-size: 17px; margin: 0 0 10px; }
-pp/static/char.html
   h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
-pp/static/char.html
   .meta { color: var(--mut); font-size: 13px; }
-pp/static/char.html
   .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
-pp/static/char.html
   .chkline { display: flex; gap: 8px; align-items: center; color: var(--mut); font-size: 13.5px; }
-pp/static/char.html
   .chkline input { accent-color: var(--acc); }
-pp/static/char.html
   .acwrap { position: relative; display: inline-block; }
-pp/static/char.html
   .aclist { position: absolute; z-index: 40; top: 100%; left: 0; min-width: 240px; margin-top: 4px;
-pp/static/char.html
     background: #182130; border: 1px solid var(--line); border-radius: 10px; padding: 4px;
-pp/static/char.html
     max-height: 240px; overflow: auto; box-shadow: 0 8px 24px #0009; }
-pp/static/char.html
   .aclist .acrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px;
-pp/static/char.html
     border-radius: 8px; font-size: 13.5px; cursor: pointer; }
-pp/static/char.html
   .aclist .acrow:hover { background: #22304a; }
-pp/static/char.html
   .aclist .acrow .meta { font-size: 12px; white-space: nowrap; }
-pp/static/char.html
   .mychip { display: inline-flex; gap: 9px; align-items: center; background: var(--card2); border: 1px solid var(--line);
-pp/static/char.html
             border-radius: 999px; padding: 5px 12px; font-size: 13.5px; }
-pp/static/char.html
   .mychip.mm { border-color: #6b4a17; color: var(--acc2); }
-pp/static/char.html
   .mychip a { cursor: pointer; color: var(--mut); font-size: 12.5px; text-decoration: none; }
-pp/static/char.html
   .mychip a:hover { color: var(--acc2); }
-pp/static/char.html
   .rcrow { display: flex; align-items: baseline; gap: 8px; padding: 3px 6px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
-pp/static/char.html
   .rcrow:hover { background: #182130; }
-pp/static/char.html
   .rcrow input { accent-color: var(--acc); transform: translateY(1px); }
-pp/static/char.html
   .rclist { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 6px; margin-top: 10px; }
-pp/static/char.html
   table { width: 100%; border-collapse: collapse; }
-pp/static/char.html
   th { text-align: left; font-size: 12.5px; color: var(--mut); padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-pp/static/char.html
   td { padding: 6px 10px; border-top: 1px solid var(--line); font-size: 13.5px; }
-pp/static/char.html
   .cname { font-weight: 600; }
-pp/static/char.html
   .chipk { display: inline-flex; gap: 6px; align-items: center; background: var(--card2); border: 1px solid var(--line);
-pp/static/char.html
            border-radius: 999px; padding: 3px 10px; font-size: 12.5px; margin: 2px 6px 2px 0; }
-pp/static/char.html
   .nfr { display: flex; gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 8px; border-left: 3px solid transparent; }
-pp/static/char.html
   .nfr.unseen { border-left-color: var(--acc2); background: rgba(223,165,90,.05); }
-pp/static/char.html
   .nfr .meta { margin-left: auto; white-space: nowrap; }
-pp/static/char.html
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
-pp/static/char.html
   .err { color: var(--err); font-size: 13px; }
-pp/static/char.html
   .hidden { display: none !important; }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div class="wrap">
-pp/static/char.html
   <header class="topbar">
-pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
-pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
-pp/static/char.html
       <div>
-pp/static/char.html
         <div class="brandname">Cohors <span>Mes personnages</span></div>
-pp/static/char.html
         <div class="tagline">Tes personnages de guilde — liaison, ⭐ main et suggestions du roster.</div>
-pp/static/char.html
       </div>
-pp/static/char.html
     </a>
-pp/static/char.html
     <div class="userbox">
-pp/static/char.html
       <span class="who" id="who"></span>
-pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
-pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </header>
-pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
-pp/static/char.html
 
-pp/static/char.html
   <div class="card" id="persos">
-pp/static/char.html
     <h2>🪪 Mes personnages</h2>
-pp/static/char.html
     <div class="meta" style="margin:-4px 0 10px">Lie ton compte à tes personnages de guilde — ⭐ = ton main. Le champ propose les noms du roster au fil de la frappe.</div>
-pp/static/char.html
     <div class="row" id="mychips"><span class="empty">Chargement…</span></div>
-pp/static/char.html
     <div class="row" style="margin-top:10px">
-pp/static/char.html
       <span class="acwrap"><input type="search" id="mynew" placeholder="Nom du personnage à lier (ex. Ganathielle)" autocomplete="off"><div id="mylist" class="aclist hidden"></div></span>
-pp/static/char.html
       <label class="chkline"><input type="checkbox" id="mymain"> ⭐ en faire mon main</label>
-pp/static/char.html
       <button id="myadd">📌 Lier à mon compte</button>
-pp/static/char.html
     </div>
-pp/static/char.html
     <div id="mymsg" class="meta" style="margin-top:6px"></div>
-pp/static/char.html
   </div>
-pp/static/char.html
 
-pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/nav.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
-<script src="/static/esc.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c30"></script>
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
+<script src="/static/esc.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 const $ = (s) => document.querySelector(s);
-pp/static/char.html
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
-pp/static/char.html
 const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
-pp/static/char.html
   if (s < 60) return "à l'instant";
-pp/static/char.html
   if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
-pp/static/char.html
   if (s < 86400 * 30) return `il y a ${Math.floor(s / 86400)} j`;
-pp/static/char.html
   return new Date(ts * 1000).toLocaleDateString("fr-FR"); };
-pp/static/char.html
 const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
-pp/static/char.html
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
-pp/static/char.html
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
-pp/static/char.html
 const RANK_LABEL = ["Maître de guilde", "Officier", "Vétéran", "Membre", "Initié", "Recrue"];
-pp/static/char.html
 const rankLabel = (r) => RANK_LABEL[r] || "Rang " + r;
-pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 const jreq = async (m, u, b) => { const r = await fetch(u, { method: m,
-pp/static/char.html
   headers: b ? { "Content-Type": "application/json" } : undefined, body: b ? JSON.stringify(b) : undefined });
-pp/static/char.html
   const j = await r.json().catch(() => ({}));
-pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-pp/static/char.html
 
-pp/static/char.html
 // ---- 🪪 Mes personnages ----
-pp/static/char.html
 let MYCHARS = [];
-pp/static/char.html
 function myMsg(t, isErr) {
-pp/static/char.html
   const el = $("#mymsg");
-pp/static/char.html
   el.textContent = t || "";
-pp/static/char.html
   el.style.color = isErr ? "var(--err)" : "var(--ok)";
-pp/static/char.html
   if (t) setTimeout(() => { if (el.textContent === t) el.textContent = ""; }, 5000);
-pp/static/char.html
 }
-pp/static/char.html
 async function loadMyChars() {
-pp/static/char.html
   try { const d = await jget("/api/me/chars"); MYCHARS = d.chars || []; }
-pp/static/char.html
   catch (e) { MYCHARS = []; }
-pp/static/char.html
   renderMyChips();
-pp/static/char.html
 }
-pp/static/char.html
 function renderMyChips() {
-pp/static/char.html
   const box = $("#mychips");
-pp/static/char.html
   if (!MYCHARS.length) { box.innerHTML = `<span class="empty">Aucun personnage lié pour l'instant.</span>`; return; }
-pp/static/char.html
   box.innerHTML = MYCHARS.map(c => `<span class="mychip ${c.is_main ? "mm" : ""}">
-pp/static/char.html
     ${c.is_main ? "⭐" : "•"} <b>${esc(c.display)}</b>
-pp/static/char.html
     ${c.is_main ? "" : `<a data-mmain="${c.id}" title="Définir comme main">⭐ définir main</a>`}
-pp/static/char.html
     <a data-mdel="${c.id}" title="Retirer de mon compte">✕</a></span>`).join("");
-pp/static/char.html
   box.querySelectorAll("[data-mmain]").forEach(a => a.addEventListener("click", async () => {
-pp/static/char.html
     try { await jreq("POST", `/api/me/chars/${a.dataset.mmain}/main`); await loadMyChars(); myMsg("Main mis à jour ⭐"); }
-pp/static/char.html
     catch (e) { myMsg(e.message, true); }
-pp/static/char.html
   }));
-pp/static/char.html
   box.querySelectorAll("[data-mdel]").forEach(a => a.addEventListener("click", async () => {
-pp/static/char.html
     try { await jreq("DELETE", `/api/me/chars/${a.dataset.mdel}`); await loadMyChars(); myMsg("Personnage retiré."); }
-pp/static/char.html
     catch (e) { myMsg(e.message, true); }
-pp/static/char.html
   }));
-pp/static/char.html
 }
-pp/static/char.html
 $("#myadd").addEventListener("click", async () => {
-pp/static/char.html
   const name = $("#mynew").value.trim();
-pp/static/char.html
   if (!name) { myMsg("Saisis le nom du personnage (comme dans le roster).", true); return; }
-pp/static/char.html
   try {
-pp/static/char.html
     const d = await jreq("POST", "/api/me/chars", { name, main: $("#mymain").checked });
-pp/static/char.html
     $("#mynew").value = ""; $("#mymain").checked = false;
-pp/static/char.html
     await loadMyChars();
-pp/static/char.html
     myMsg(d.taken ? "Lié ✓ — attention : ce personnage est aussi lié à un autre compte." : `« ${d.display} » lié à ton compte ✓`, d.taken);
-pp/static/char.html
   } catch (e) { myMsg(e.message, true); }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 // ---- 🔎 Suggestions du roster au fil de la frappe ----
-pp/static/char.html
 let AC_ROSTER = null;
-pp/static/char.html
 async function acMembers() {
-pp/static/char.html
   if (AC_ROSTER) return AC_ROSTER;
-pp/static/char.html
   try { const d = await jget("/api/roster"); AC_ROSTER = d.members || []; } catch (e) { AC_ROSTER = []; }
-pp/static/char.html
   return AC_ROSTER;
-pp/static/char.html
 }
-pp/static/char.html
 async function acSuggest() {
-pp/static/char.html
   const box = $("#mylist");
-pp/static/char.html
   const q = $("#mynew").value.trim().toLowerCase();
-pp/static/char.html
   if (q.length < 2) { box.classList.add("hidden"); box.innerHTML = ""; return; }
-pp/static/char.html
   const mems = await acMembers();
-pp/static/char.html
   if (q !== $("#mynew").value.trim().toLowerCase()) return;
-pp/static/char.html
   const hits = mems.filter(m => (m.name || "").toLowerCase().includes(q))
-pp/static/char.html
     .sort((a, b) => {
-pp/static/char.html
       const A = a.name.toLowerCase(), B2 = b.name.toLowerCase();
-pp/static/char.html
       return (A.startsWith(q) ? 0 : 1) - (B2.startsWith(q) ? 0 : 1) || A.localeCompare(B2);
-pp/static/char.html
     }).slice(0, 8);
-pp/static/char.html
   if (!hits.length) { box.classList.add("hidden"); box.innerHTML = ""; return; }
-pp/static/char.html
   box.innerHTML = hits.map(m => `<div class="acrow" data-nm="${esc(m.name)}"><b>${esc(m.name)}</b><span class="meta">niv. ${m.level || "?"} · ${esc(rankLabel(m.rank))}</span></div>`).join("");
-pp/static/char.html
   box.classList.remove("hidden");
-pp/static/char.html
 }
-pp/static/char.html
 $("#mynew").addEventListener("input", acSuggest);
-pp/static/char.html
 $("#mynew").addEventListener("focus", acSuggest);
-pp/static/char.html
 $("#mynew").addEventListener("keydown", (ev) => {
-pp/static/char.html
   if (ev.key === "Escape") { $("#mylist").classList.add("hidden"); }
-pp/static/char.html
   if (ev.key === "Enter") {
-pp/static/char.html
     const first = $("#mylist").querySelector(".acrow");
-pp/static/char.html
     if (first && !$("#mylist").classList.contains("hidden")) { ev.preventDefault(); first.click(); }
-pp/static/char.html
   }
-pp/static/char.html
 });
-pp/static/char.html
 $("#mylist").addEventListener("click", (ev) => {
-pp/static/char.html
   const r = ev.target.closest(".acrow");
-pp/static/char.html
   if (!r) return;
-pp/static/char.html
   $("#mynew").value = r.dataset.nm;
-pp/static/char.html
   $("#mylist").classList.add("hidden");
-pp/static/char.html
   $("#mylist").innerHTML = "";
-pp/static/char.html
   myMsg("");
-pp/static/char.html
 });
-pp/static/char.html
 document.addEventListener("click", (ev) => {
-pp/static/char.html
   if (!ev.target.closest(".acwrap")) { $("#mylist").classList.add("hidden"); }
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
-pp/static/char.html
   ev.preventDefault();
-pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
-pp/static/char.html
   location.href = "/login";
-pp/static/char.html
 });
-pp/static/char.html
 
-pp/static/char.html
 (async () => {
-pp/static/char.html
   try {
-pp/static/char.html
     const me = await jget("/api/me");
-pp/static/char.html
     $("#who").textContent = me.name || me.email;
-pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
-pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-pp/static/char.html
   loadMyChars();
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html

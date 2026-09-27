@@ -1,200 +1,100 @@
 <!DOCTYPE html>
-pp/static/char.html
 <html lang="fr">
-pp/static/char.html
 <head>
-pp/static/char.html
 <meta charset="utf-8">
-pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-pp/static/char.html
 <title>Cohors — Vocal</title>
-pp/static/char.html
 <link rel="icon" href="/branding/logo">
-pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
-pp/static/char.html
 <meta name="theme-color" content="#b1002e">
-pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
-pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
-pp/static/char.html
 <style>
-pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
-pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; }
-pp/static/char.html
   * { box-sizing:border-box; }
-pp/static/char.html
   html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
-pp/static/char.html
     font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
-pp/static/char.html
   #shell { display:flex; height:100vh; }
-pp/static/char.html
   #side { display:flex; flex-direction:column; width:432px; min-width:320px; max-width:48vw;
-pp/static/char.html
           background:var(--card); border-right:1px solid var(--line); }
-pp/static/char.html
   #sidehead { display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid var(--line); }
-pp/static/char.html
   .sidetitle { font-weight:700; font-size:13.5px; letter-spacing:.3px; }
-pp/static/char.html
   .sidebtn { margin-left:auto; color:var(--acc2); text-decoration:none; font-size:14px; font-weight:700;
-pp/static/char.html
              border:1px solid var(--line); border-radius:8px; padding:3px 10px; }
-pp/static/char.html
   .sidebtn:hover { border-color:var(--acc2); }
-pp/static/char.html
   #vframe { flex:1; width:100%; border:0; background:#0b0f17; }
-pp/static/char.html
   #sidefoot { display:flex; align-items:center; gap:8px; padding:6px 10px; border-top:1px solid var(--line);
-pp/static/char.html
               font-size:12px; color:var(--mut); white-space:nowrap; }
-pp/static/char.html
   #sidefoot a { color:var(--acc2); text-decoration:none; font-weight:600; }
-pp/static/char.html
   #sidefoot a:hover { text-decoration:underline; }
-pp/static/char.html
   #mainwrap { flex:1; min-width:0; display:flex; background:var(--bg); }
-pp/static/char.html
   #mainframe { flex:1; width:100%; border:0; }
-pp/static/char.html
   body.side-hidden #side { display:none; }
-pp/static/char.html
   #reopen { position:fixed; right:16px; bottom:16px; z-index:220; width:46px; height:46px; border-radius:50%;
-pp/static/char.html
             border:1px solid var(--line); background:var(--card2); color:var(--fg); font-size:20px; cursor:pointer;
-pp/static/char.html
             box-shadow:0 8px 24px rgba(0,0,0,.5); }
-pp/static/char.html
   #reopen:hover { border-color:var(--acc2); }
-pp/static/char.html
   @media (max-width: 940px) {
-pp/static/char.html
     #side { position:fixed; top:0; bottom:0; left:0; z-index:210; width:min(92vw, 400px); max-width:none;
-pp/static/char.html
             border-right:0; box-shadow:0 0 44px rgba(0,0,0,.65); }
-pp/static/char.html
   }
-pp/static/char.html
 </style>
-pp/static/char.html
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
-pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
 </head>
-pp/static/char.html
 <body class="wb">
-pp/static/char.html
 <div id="shell">
-pp/static/char.html
   <aside id="side">
-pp/static/char.html
     <div id="sidehead">
-pp/static/char.html
       <span class="sidetitle">🎧 Vocal</span>
-pp/static/char.html
       <a class="sidebtn" href="/dashboard" id="exit" title="Quitter le mode panneau vocal">⇱</a>
-pp/static/char.html
     </div>
-pp/static/char.html
     <iframe id="vframe" src="about:blank" allow="microphone; autoplay" title="WebSpeak — client web TeamSpeak"></iframe>
-pp/static/char.html
     <div id="sidefoot">
-pp/static/char.html
       <a href="/api/voice/client" id="dlclient">📦 Client portable</a>
-pp/static/char.html
       <span>·</span>
-pp/static/char.html
       <a href="/guild">🛡️ Infos &amp; liens</a>
-pp/static/char.html
     </div>
-pp/static/char.html
   </aside>
-pp/static/char.html
   <main id="mainwrap">
-pp/static/char.html
     <iframe id="mainframe" name="cohors-main" src="/dashboard" title="Cohors — application"></iframe>
-pp/static/char.html
   </main>
-pp/static/char.html
   <button id="reopen" hidden title="Afficher le panneau vocal">🎧</button>
-pp/static/char.html
 </div>
-pp/static/char.html
-<script src="/static/i18n.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c30"></script>
 <script>
-pp/static/char.html
 (function () {
-pp/static/char.html
   if (window.self !== window.top) { location.replace("/dashboard"); return; }
-pp/static/char.html
   var $ = function (s) { return document.querySelector(s); };
-pp/static/char.html
   var narrow = function () { return window.matchMedia("(max-width: 940px)").matches; };
-pp/static/char.html
   function setPanel(open) {
-pp/static/char.html
     document.body.classList.toggle("side-hidden", !open);
-pp/static/char.html
     $("#reopen").hidden = open;
-pp/static/char.html
   }
-pp/static/char.html
   setPanel(!narrow());
-pp/static/char.html
   $("#reopen").addEventListener("click", function () { setPanel(true); });
-pp/static/char.html
   window.addEventListener("message", function (ev) {
-pp/static/char.html
     if (ev.origin !== location.origin) return;
-pp/static/char.html
     if (ev.data && ev.data.type === "cohors-voice-toggle") {
-pp/static/char.html
       setPanel(document.body.classList.contains("side-hidden"));
-pp/static/char.html
     }
-pp/static/char.html
   });
-pp/static/char.html
   function openVoice(nick) {
-pp/static/char.html
     fetch("/api/voice/config").then(function (r) { return r.json(); }).then(function (cfg) {
-pp/static/char.html
       var host = (cfg && cfg.host) || "";
-pp/static/char.html
       if (!host) return;
-pp/static/char.html
       $("#vframe").src = host + "/" + (nick ? "#nickname=" + encodeURIComponent(nick) + "&autojoin=1" : "#autojoin=1");
-pp/static/char.html
     }).catch(function () {});
-pp/static/char.html
   }
-pp/static/char.html
   fetch("/api/voice/handoff?json=1").catch(function () {}).then(function () {
-pp/static/char.html
     return fetch("/api/me").then(function (r) { return r.ok ? r.json() : null; });
-pp/static/char.html
   }).then(function (me) {
-pp/static/char.html
     openVoice((me && (me.voice_nick || "").trim()) || "");
-pp/static/char.html
   }).catch(function () { openVoice(""); });
-pp/static/char.html
 })();
-pp/static/char.html
 </script>
-pp/static/char.html
-<script src="/static/branding.js?v=2026.09.152-c29"></script>
-pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c30"></script>
 </body>
-pp/static/char.html
 </html>
-pp/static/char.html
