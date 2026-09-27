@@ -2,29 +2,63 @@
 
 All notable changes to this project are documented in this file.
 
-## 2026.09.152-c19 - 2026-09-26
-
-### Fixed
-- **BIS_CONTENT_MAP: Sszorak categorization.** The BiS snapshot for "Kings Rest & Catalyseur" (from Wowhead) actually targets Kings Rest, a raid — it was wrongly mapped to M+. Corrected to "worldboss" for Szorak aliases and "raid" for Kings Rest. Tier Set variants moved to their correct categories (raid for Tier Set & The Coiled Altar, worldboss for Szorak aliases). This restores correct filtering: Szorak items are no longer shown as Mythic+ rewards and vice versa.
-- **POST /api/stuff compatibility: max_rank without mode.** When the client sends max_rank: true without specifying a mode, the endpoint now sets mode = "max" so the plan's max_rank field is True (was falling through to mode = "cur" with max_rank: false).
-- **POST /api/stuff mode=cur deadlock.** The endpoint now handles the default mode without deadlocking on the request lock — it reads the profile, applies mode/max_rank logic, and returns within milliseconds.
-- **Update applier: running_at and at timestamps.** deploy/apply-update.py now records running_at when an update starts, at when it finishes (success or failure), and resets running to "" on failure. The app's /api/admin/updates endpoint exposes these as applier.running_at and applier.at.
-- **Settings page polling: recursive backoff with setTimeout.** The progress bar polling now uses a recursive setTimeout chain instead of setInterval, with exponential backoff (5s to 30s). The reference time comes from request.requested_at (server timestamp) instead of Date.now().
-- **test_admin_updates adapted to ok/state format.** The endpoint returns ok + state; the test now accesses the state field and verifies applier.running and applier.running_at are present.
-
-### Notes
-- app/VERSION aligned with VERSION (both now 2026.09.152-c18).
-
 ## 2026.09.152-c21 - 2026-09-27
 
 ### Fixed
-- **Settings page: applier heartbeat warning.** Replaced `check.last_at` (GitHub release check, every 24 h) with `applier.seen_at` (applier heartbeat, every 5 min). The warning now only shows when `applier.installed` is `true`.
-- **BIS content labels: `worldboss` and `craft` entries.** The render function now maps `worldboss` → "World Boss" and `craft` → "Craft" in addition to `mplus`, `raid`, and `delves`, so those content types display properly.
-- **`/stuff` route: cache headers restored.** Removed `Cache-Control: no-store` from the `/stuff` page handler so browsers can cache the static file.
-- **`apply-update.py`: stop writing `applied`/`result="ok"` on success.** The applier now only records `at` (timestamp) and clears `running` on success; no false `applied` or `result` fields are written.
-- **`cohors-update.service` & README: WorkingDirectory clarified.** The service file and README explicitly note that `WorkingDirectory` must be the repository root (where `deploy/` sits), not `app/`.
+- **Updater dry-run no longer reports a fake success.** `apply-update.py --dry-run` used to write
+  `applied=<version>` / `result="ok"`, so the settings page could show the update as done before it
+  ran. A dry-run now records `result="dry-run ok"` only; a real run still records `applied`, `at`
+  and `result="ok"`.
+- **Settings: updater heartbeat warning.** A warning is shown when the updater is installed but has
+  not been seen for more than 15 minutes (`applier.seen_at`), pointing at `cohors-update.timer`.
+- **Stuff: BIS labels** for `worldboss` and `craft` in the results.
+- **`/stuff`: no more page-specific `no-store` headers**; static assets are cache-busted by version
+  (`?v=`) and the service-worker cache name.
 
-## 2026.09.152-c20 - 2026-09-20
+### Removed
+- Dead code in `stuff.html` (`pollMultiple`, `renderMultiple`).
+
+### Docs
+- `cohors-update.service` / README: `WorkingDirectory` must be the repository root (where
+  `deploy/` sits), not `app/`.
+
+## 2026.09.152-c20 - 2026-09-26
+
+### Changed
+- **Stuff: simulated contents vs BIS filter.** `STUFF_CONTENTS` now only holds simulable contents
+  (raid, M+, delves); `BIS_CONTENTS` (with labels) adds World Boss and Craft for the BIS filter.
+  `content: "craft"` outside BIS mode is rejected with 400.
+- **`bis_content` validation**: at most 10 raw values, de-duplicated, unknown values rejected (422).
+
+### Fixed
+- **BIS with only World Boss or Craft ticked** no longer silently falls back to Raid.
+- **BIS filter**: a source missing from `BIS_CONTENT_MAP` is still shown but now logged, instead of
+  being treated like a multi-content source.
+- **Sim label** shows "· rang max" again in max-rank mode.
+
+### Tests
+- Every `src_fr` of `bis.json` must be mapped; no duplicate key in `BIS_CONTENT_MAP` (checked on the
+  source); SimC export parsing regression test (`shaman="Name"`).
+
+## 2026.09.152-c19 - 2026-09-26
+
+### Fixed
+- **Stuff: deadlock on "current" / "max rank" mode.** `POST /api/stuff` re-acquired the database
+  lock it already held and froze every database request until a restart. The per-user limit check
+  and the insert now share a single locked block.
+- **Stuff: max-rank mode ignored.** `mode: "max"` (and legacy `max_rank: true` without `mode`) now
+  actually enables max rank.
+- **Updates: progress bar.** The state exposes `applier.running` / `running_at`; the updater clears
+  `running` and records `at` on success and failure; the page polls with a real backoff, survives
+  the app restart, and only reports "done" when the requested version is applied.
+- **BIS mapping**: duplicate keys removed; `Szorak` alias added (raid); `Kings Rest & Catalyseur`
+  mplus → worldboss; `Tier Set & The Coiled Altar` mplus → raid. The `Szorak` sources stay raid.
+
+### Notes
+- `app/VERSION` aligned with `VERSION`.
+- Tag `2026.09.152-c18` points to the pre-fix code; use c19 or later.
+
+## 2026.09.151-c1 - 2026-09-20
 
 ### Fixed
 - **Admin settings: the *Updates* button is now actually visible.** It was wired in JavaScript but

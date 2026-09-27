@@ -246,7 +246,7 @@ $("#prof").addEventListener("change", async () => {
 });
 
 // ---- Mode change: show BIS filter checkboxes when BIS selected
-const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", worldboss: "World Boss", craft: "Craft" };
+const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", worldboss: "Boss mondial", craft: "Artificier" };
 $("#mode").addEventListener("change", () => {
   const isBis = $("#mode").value === "bis";
   $("#bis-filter-wrap").classList.toggle("hidden", !isBis);

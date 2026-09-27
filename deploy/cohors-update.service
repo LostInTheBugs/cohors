@@ -10,6 +10,6 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=cohors
-WorkingDirectory=/opt/cohors
+WorkingDirectory=/opt/cohors  # MUST be the repo root (where deploy/ sits)
 ExecStart=/usr/bin/python3 deploy/apply-update.py
 TimeoutStartSec=2400

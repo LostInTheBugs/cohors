@@ -165,9 +165,11 @@ def main() -> int:
         status(result=f"échec : {exc}"[:300], running="", running_at=0, at=time.time())
         return 1
     log(f"mise à jour vers {version} terminée")
-    if not DRY:
+    if DRY:
+        status(result="dry-run ok", running="", at=time.time())
+    else:
         REQ.unlink(missing_ok=True)
-    status(at=time.time(), running="")
+        status(applied=version, at=time.time(), result="ok", running="")
     return 0
 
 

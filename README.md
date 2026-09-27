@@ -320,8 +320,8 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
   sudo cp deploy/cohors-update.service /etc/systemd/system/   # edit User/WorkingDirectory first
   sudo cp deploy/cohors-update.timer /etc/systemd/system/
   # ⚠️ WorkingDirectory MUST be the repository root (where deploy/ sits), not app/
-  # Correct: WorkingDirectory=/home/cpt-hermes/wow-companion
-  # Wrong:   WorkingDirectory=/home/cpt-hermes/wow-companion/app
+  # Correct: WorkingDirectory=/opt/cohors
+  # Wrong:   WorkingDirectory=/opt/cohors/app
   sudo systemctl daemon-reload && sudo systemctl enable --now cohors-update.timer
   python3 deploy/apply-update.py --dry-run   # sanity check, changes nothing
   ```

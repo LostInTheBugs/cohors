@@ -556,8 +556,9 @@ def test_applier_script_refuses_bad_version_and_signals_heartbeat(tmp_path):
     assert res.returncode == 0
     assert (app / "data/update-request.json").exists()
     st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
-    # After the c21 patch, result/applied are no longer set on success
-    assert st.get("result") == "" and st.get("applied") is None
+    # dry-run : result="dry-run ok", applied reste inchangé
+    assert st.get("result") == "dry-run ok"
+    assert st.get("applied") is None
 
 
 def test_stuff_cur_returns_200_and_max_rank_modes(monkeypatch):
@@ -664,7 +665,7 @@ def test_applier_dry_run_succeeds_and_sets_at(tmp_path):
     assert res.returncode == 0, res.stderr
     st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
     assert st["running"] == "", st
-    assert st["result"] == "", st
+    assert st["result"] == "dry-run ok", st
     assert st["at"] > 0, st
 
 
