@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c25 - 2026-09-27
+
+### Changed
+- **Crash fallback on Segfault (rc 139).** SimulationCraft's official Docker image is
+ Alpine/musl-based; secondary threads get only 128 KB stack and crash on certain
+ objects (e.g. *Réceptacle rituel de l'Entortillâme*, id 270162). The new
+ `_sim_with_crash_fallback()` retries with `threads=1` first, keeping the object
+ in the calculation (full result, just slower). The object is stripped only as a
+ last resort.
+- **Stuff stats readout** now uses `threads=1` (single iteration gains nothing from
+ parallelism, and avoids false "crash" classifications for the same object).
+
 ## 2026.09.152-c24 - 2026-09-27
 
 ### Added

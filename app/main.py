@@ -807,7 +807,8 @@ def _next_queued() -> str | None:
         return row["id"]
 
 
-# Certains objets font planter SimulationCraft (segfault) — retirés automatiquement et signalés.
+# Objets qui font planter l'image officielle de SimulationCraft (segfault en multi-cœur,
+# voir _sim_with_crash_fallback) — relancés sur un seul cœur, retirés en dernier recours.
 CRASH_ITEM_IDS = {"270162": "Réceptacle rituel de l'Entortillâme"}
 
 
@@ -823,6 +824,41 @@ def _strip_crash_items(text: str) -> tuple[str, list[str]]:
                 continue
         kept.append(line)
     return "\n".join(kept), removed
+
+
+def _sim_with_crash_fallback(profile: Path, iterations: int, extra: list[str] | None,
+                             timeout: int, outdir: Path | None = None) -> tuple[dict, str | None]:
+    """Lance la sim ; si le moteur plante (139) sur un objet connu, relance sur un seul cœur.
+
+    Cause réelle (vérifiée en 2026-09 sur l'image officielle simulationcraftorg/simc) :
+    l'image est basée sur Alpine/musl, dont les threads secondaires n'ont que 128 Ko de
+    pile ; l'effet du Réceptacle rituel en demande plus. Le même objet passe sans souci
+    avec threads=1 (fil principal) ou sur un SimC compilé pour glibc. On relance donc
+    d'abord avec threads=1 (résultat complet, juste plus lent) et on ne retire l'objet
+    qu'en dernier recours. Renvoie (résultat, note à afficher ou None).
+    """
+    res = run_sim(profile_path=profile, iterations=iterations, outdir=outdir, timeout=timeout, extra=extra)
+    if res.get("ok") or res.get("rc") != 139:
+        return res, None
+    try:
+        text = profile.read_text()
+        stripped, removed = _strip_crash_items(text)
+        if not removed:
+            return res, None
+        single = list(extra or []) + ["threads=1"]
+        res = run_sim(profile_path=profile, iterations=iterations, outdir=outdir, timeout=timeout, extra=single)
+        if res.get("ok"):
+            return res, ("Calcul lancé sur un seul cœur : " + ", ".join(removed) + " fait planter le moteur "
+                         "SimulationCraft en multi-cœur (bug de l'image du moteur, pas de l'export) — "
+                         "résultat complet, juste plus lent.")
+        profile.write_text(stripped)
+        res = run_sim(profile_path=profile, iterations=iterations, outdir=outdir, timeout=timeout, extra=extra)
+        if res.get("ok"):
+            return res, ("Sim lancée SANS " + ", ".join(removed) + " — cet objet fait planter le moteur "
+                         "SimulationCraft (bug du moteur, pas de l'export).")
+    except Exception:  # noqa: BLE001
+        pass
+    return res, None
 
 
 def _run_one(sim_id: str) -> None:
@@ -841,18 +877,9 @@ def _run_one(sim_id: str) -> None:
         extra = ["calculate_scale_factors=1"] if kind == "weights" else None
         if kind == "group":
             extra = ["calculate_scale_factors=0", "fight_style=Patchwerk", "max_time=300"]
-        res = run_sim(profile_path=input_file, iterations=iterations, outdir=input_file.parent, timeout=SIM_TIMEOUT, extra=extra)
-        if not res.get("ok") and res.get("rc") == 139:
-            # Segfault du moteur : réessayer sans les objets connus comme faisant planter SimC.
-            try:
-                stripped, removed = _strip_crash_items(input_file.read_text())
-                if removed:
-                    input_file.write_text(stripped)
-                    res = run_sim(profile_path=input_file, iterations=iterations, outdir=input_file.parent, timeout=SIM_TIMEOUT, extra=extra)
-                    if res.get("ok"):
-                        res["note"] = "Sim lancée SANS " + ", ".join(removed) + " — cet objet fait planter le moteur SimulationCraft (bug du moteur, pas de l'export)."
-            except Exception:  # noqa: BLE001
-                pass
+        res, crash_note = _sim_with_crash_fallback(input_file, iterations, extra, SIM_TIMEOUT, input_file.parent)
+        if crash_note:
+            res["note"] = crash_note
         if not res.get("ok") and res.get("rc") == 139 and not res.get("note"):
             res["log_tail"] = ("Le moteur a planté (segfault) sur cet export — c'est un bug du moteur SimC (souvent un objet précis, connu : Réceptacle rituel de l'Entortillâme). " + (res.get("log_tail") or ""))[:2000]
         ok = bool(res.get("ok"))
@@ -998,17 +1025,7 @@ def _run_stuff(row: sqlite3.Row) -> None:
             sim_file = workdir / "stuff.simc"
             sim_file.write_text(text)
             extra = list(STUFF_CONTENTS[content]["opts"])
-            res = run_sim(profile_path=sim_file, iterations=STUFF_ITERATIONS, outdir=workdir,
-                          timeout=SIM_TIMEOUT, extra=extra)
-            note = None
-            if not res.get("ok") and res.get("rc") == 139:
-                stripped, removed = _strip_crash_items(text)
-                if removed:
-                    sim_file.write_text(stripped)
-                    res = run_sim(profile_path=sim_file, iterations=STUFF_ITERATIONS, outdir=workdir,
-                                  timeout=SIM_TIMEOUT, extra=extra)
-                    if res.get("ok"):
-                        note = "Calcul lancé sans " + ", ".join(removed) + " — cet objet fait planter le moteur SimulationCraft (bug connu)."
+            res, note = _sim_with_crash_fallback(sim_file, STUFF_ITERATIONS, extra, SIM_TIMEOUT, workdir)
             if not res.get("ok"):
                 raise RuntimeError("La simulation a échoué : " + ((res.get("log_tail") or "raison inconnue")[-400:]))
             base = None
@@ -2222,7 +2239,9 @@ def _stuff_fetch_stats(items: list[dict], cls: str, spec: str, workdir: Path) ->
                       "region=eu", f'spec={spec or "restoration"}', f'{c["slot"]}={c["opts"]}', ""]
         profile = workdir / "stats.simc"
         profile.write_text("\n".join(lines))
-        res = run_sim(profile_path=profile, iterations=1, outdir=workdir, extra=["max_time=1"], timeout=300)
+        # threads=1 : une seule itération, rien à paralléliser — et évite le plantage des
+        # objets comme le Réceptacle rituel sur l'image Alpine (pile des threads trop petite).
+        res = run_sim(profile_path=profile, iterations=1, outdir=workdir, extra=["max_time=1", "threads=1"], timeout=300)
         got = _stuff_gear_stats(res.get("json"))
         if got:
             stats.update(got)

@@ -799,3 +799,58 @@ def test_stuff_parse_export_real_format():
     r2 = _stuff_parse_export('druid="Chamoisdort"\nspec=restoration\n')
     assert r2["cls"] == "druid"
     assert r2["name"] == "Chamoisdort"
+
+
+# --- Objets qui font planter l'image SimC (Alpine/musl) en multi-cœur -----------------------
+
+_CRASH_PROFILE = 'shaman="X"\nlevel=90\nspec=restoration\ntrinket1=,id=270162,bonus_id=6652/13333/12838\n'
+
+
+def _fake_run_sim(calls, crash_single_thread=False):
+    def fake(profile_path=None, iterations=0, outdir=None, timeout=0, extra=None, **_kw):
+        extra = list(extra or [])
+        calls.append(extra)
+        has_item = "id=270162" in Path(profile_path).read_text()
+        if has_item and ("threads=1" not in extra or crash_single_thread):
+            return {"ok": False, "rc": 139, "log_tail": "Segmentation fault"}
+        return {"ok": True, "rc": 0, "dps": 42000.0}
+    return fake
+
+
+def test_crash_fallback_retries_single_thread_and_keeps_item(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(M, "run_sim", _fake_run_sim(calls))
+    p = tmp_path / "input.simc"
+    p.write_text(_CRASH_PROFILE)
+    res, note = M._sim_with_crash_fallback(p, 1000, ["calculate_scale_factors=1"], 60, tmp_path)
+    assert res["ok"] and res["dps"] == 42000.0
+    assert "un seul cœur" in note and "Réceptacle rituel" in note
+    assert "id=270162" in p.read_text()                      # l'objet reste dans la sim
+    assert calls == [["calculate_scale_factors=1"], ["calculate_scale_factors=1", "threads=1"]]
+
+
+def test_crash_fallback_strips_item_as_last_resort(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(M, "run_sim", _fake_run_sim(calls, crash_single_thread=True))
+    p = tmp_path / "input.simc"
+    p.write_text(_CRASH_PROFILE)
+    res, note = M._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
+    assert res["ok"]
+    assert note.startswith("Sim lancée SANS Réceptacle rituel")
+    assert "id=270162" not in p.read_text()
+    assert len(calls) == 3
+
+
+def test_crash_fallback_no_retry_without_known_item_or_segfault(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(M, "run_sim", lambda **kw: calls.append(kw.get("extra")) or {"ok": False, "rc": 139})
+    p = tmp_path / "input.simc"
+    p.write_text('shaman="X"\nlevel=90\nspec=restoration\ntrinket1=,id=1234\n')
+    res, note = M._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
+    assert not res["ok"] and note is None and len(calls) == 1   # objet inconnu : pas de relance
+
+    calls.clear()
+    monkeypatch.setattr(M, "run_sim", lambda **kw: calls.append(kw.get("extra")) or {"ok": False, "rc": 1})
+    p.write_text(_CRASH_PROFILE)
+    res, note = M._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
+    assert not res["ok"] and note is None and len(calls) == 1   # autre erreur que 139 : pas de relance
