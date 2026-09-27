@@ -330,7 +330,10 @@ function renderCrafted(cr, en) {
     `<div class="gwrap"><table class="gtable"><tr><th>Emplacement</th><th>Pièce</th><th>Métier</th><th>Artisans de la guilde</th><th>Tu l'as ?</th></tr>` +
     slots.map(s => s.items.map((it, i) => {
       const nm = en ? (it.name_en || it.name_fr) : (it.name_fr || it.name_en);
-      const who = (it.crafters || []).length ? it.crafters.map(esc).join(", ") : '<span class="gnil">personne</span>';
+      const pm = (it.prof_members || []).map(m => esc(m.name) + (m.points ? ` <small class="gnil">(${m.points})</small>` : "")).join(", ");
+      const who = (it.crafters || []).length ? it.crafters.map(esc).join(", ")
+        : pm ? `<span class="gnil">recette connue de personne — ont le métier :</span> ${pm}`
+        : '<span class="gnil">personne</span>';
       const have = it.equipped ? '<span class="gpos">✅ portée</span>' : it.owned ? '<span class="msg-warn">🎒 dans tes sacs</span>' : '<span class="gnil">—</span>';
       const more = i === s.items.length - 1 && s.more ? ` <small class="gnil">(+${s.more} autre(s))</small>` : "";
       return `<tr><td>${i === 0 ? esc(s.slot_fr) : ""}</td>` +

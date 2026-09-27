@@ -1127,7 +1127,8 @@
  "Arme": "Weapon",
  "Main gauche": "Off-hand",
  "Choisis avec l'artisan les stats secondaires de ta priorité.": "Pick the secondary stats of your priority with the crafter.",
- "Aucune recette d'équipement connue pour l'instant — la liste se remplit à la prochaine synchronisation des recettes du jeu.": "No gear recipe known yet — the list fills in at the next game-recipe sync."
+ "Aucune recette d'équipement connue pour l'instant — la liste se remplit à la prochaine synchronisation des recettes du jeu.": "No gear recipe known yet — the list fills in at the next game-recipe sync.",
+ "recette connue de personne — ont le métier :": "recipe known by nobody — have the profession:"
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 

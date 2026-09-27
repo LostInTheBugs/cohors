@@ -615,6 +615,8 @@ def _init_db() -> None:
             ("loc_en_recipes_v1", "UPDATE game_recipes SET updated = 0"),
             # objets fabriqués + Couture/Joaillerie : force un re-relevé complet
             ("craft_items_v1", "UPDATE game_recipes SET updated = 0"),
+            # recettes connues par personnage (API Blizzard) : re-relevé des métiers
+            ("known_recipes_v1", "UPDATE char_professions SET ts = 0"),
         ):
             if conn.execute("SELECT value FROM meta WHERE key=?", (_key,)).fetchone() is None:
                 conn.execute(_stmt)
@@ -2136,13 +2138,28 @@ def _stuff_best_crafted(conn, cls: str, spec: str, contents: list[str], owned_id
     else:
         weapons -= {"Wand", "Miscellaneous"}
     rows = conn.execute(
-        "SELECT prof, item, item_en, item_id, inv_type, subclass_en, ilvl FROM game_recipes "
+        "SELECT id, prof, tier, item, item_en, item_id, inv_type, subclass_en, ilvl FROM game_recipes "
         "WHERE exp_rank=0 AND item_id>0 AND inv_type<>''").fetchall()
     crafters: dict[str, set[str]] = {}
+    # 1) recettes envoyées par l'add-on (« Mes recettes »)
     for c in conn.execute("SELECT crafter, item, item_id FROM craft_recipes").fetchall():
         for k in (f'id:{int(c["item_id"] or 0)}', f'nm:{(c["item"] or "").strip().casefold()}'):
             if k not in ("id:0", "nm:"):
                 crafters.setdefault(k, set()).add((c["crafter"] or "").strip().title())
+    # 2) recettes connues d'après l'API Blizzard (métiers des personnages du roster) ;
+    #    + repli : membres ayant le métier au palier de l'extension, par points décroissants
+    prof_members: dict[tuple[str, str], list[tuple[int, str]]] = {}
+    for pr in conn.execute("SELECT name, data FROM char_professions").fetchall():
+        try:
+            profs = (json.loads(pr["data"]) or {}).get("profs") or []
+        except (ValueError, TypeError):
+            continue
+        who_name = (pr["name"] or "").strip().title()
+        for p in profs:
+            for rid in p.get("known") or []:
+                crafters.setdefault(f"rc:{int(rid)}", set()).add(who_name)
+            key = ((p.get("name_fr") or p.get("name") or ""), (p.get("tier") or ""))
+            prof_members.setdefault(key, []).append((int(p.get("points") or 0), who_name))
     by_slot: dict[str, dict[int, dict]] = {}
     for r in rows:
         slot = CRAFT_INV_SLOT.get(r["inv_type"] or "")
@@ -2155,7 +2172,8 @@ def _stuff_best_crafted(conn, cls: str, spec: str, contents: list[str], owned_id
             continue
         iid = int(r["item_id"])
         names = {(r["item"] or "").strip().casefold(), (r["item_en"] or "").strip().casefold()} - {""}
-        who = set(crafters.get(f"id:{iid}", set()))
+        who = set(crafters.get(f"id:{iid}", set())) | crafters.get(f"rc:{int(r['id'])}", set())
+        members = sorted(prof_members.get((r["prof"] or "", r["tier"] or ""), []), key=lambda m: (-m[0], m[1]))
         for n in names:
             who |= crafters.get(f"nm:{n}", set())
         cur = by_slot.setdefault(slot, {}).get(iid)
@@ -2163,6 +2181,7 @@ def _stuff_best_crafted(conn, cls: str, spec: str, contents: list[str], owned_id
             by_slot[slot][iid] = {"id": iid, "name_fr": r["item"] or r["item_en"], "name_en": r["item_en"] or r["item"],
                                   "prof": r["prof"], "ilvl": int(r["ilvl"] or 0),
                                   "crafters": sorted(who - {""}),
+                                  "prof_members": [{"name": n, "points": pts} for pts, n in members[:3] if n],
                                   "owned": iid in owned_ids, "equipped": iid in equipped_ids}
         else:
             cur["crafters"] = sorted(set(cur["crafters"]) | (who - {""}))
