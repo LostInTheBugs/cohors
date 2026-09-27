@@ -954,3 +954,38 @@ def test_bis_murder_row_is_mythic_plus_only():
                      {"slot": "hands", "id": 2, "src_fr": "Crafted"}]}
     assert [s["id"] for s in M._stuff_bis_filter(blk, ["craft"])["slots"]] == [2]
     assert [s["id"] for s in M._stuff_bis_filter(blk, ["mplus"])["slots"]] == [1]
+
+
+def test_bnet_professions_keeps_known_recipes_of_latest_tier(monkeypatch):
+    payload = {"primaries": [{"profession": {"name": "Leatherworking", "id": 165}, "tiers": [
+        {"tier": {"name": "Khaz Algar Leatherworking"}, "skill_points": 100, "max_skill_points": 100,
+         "known_recipes": [{"id": 111}]},
+        {"tier": {"name": "Midnight Leatherworking"}, "skill_points": 92, "max_skill_points": 100,
+         "known_recipes": [{"id": 930002}, {"id": 930001}, {"id": 930001}]}]}]}
+    monkeypatch.setattr(M.bnet, "_get", lambda *a, **k: payload)
+    data, _ts = M.bnet.professions("hyjal", "Knownrecipetest", force=True, locale="fr_FR")
+    p = data["profs"][0]
+    assert p["known"] == [930001, 930002] and p["points"] == 92      # palier le plus récent seulement
+
+
+def test_stuff_best_crafted_uses_known_recipes_and_profession_fallback():
+    with M._db_lock, M._db() as conn:
+        for rid, fr, iid in ((930001, "Heaume connu", 273001), (930002, "Bottes inconnues", 273002)):
+            conn.execute("INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats,"
+                         " updated, item_en, tier_en, prof_en, mats_en, inv_type, subclass_en, ilvl)"
+                         " VALUES (?,'Travail du cuir','Travail du cuir de Midnight',0,?,?,1,'[]',0,?,'','','[]',?,'Mail',290)",
+                         (rid, fr, iid, fr, "HEAD" if rid == 930001 else "FEET"))
+        for name, pts, known in (("lithinie", 100, [930001]), ("arssalag", 40, []), ("tanneur", 75, [])):
+            data = {"profs": [{"name": "Travail du cuir", "name_fr": "Travail du cuir", "tier": "Travail du cuir de Midnight",
+                               "points": pts, "max": 100, "known": known}]}
+            conn.execute("INSERT OR REPLACE INTO char_professions (realm, name, ts, data) VALUES ('hyjal', ?, 0, ?)",
+                         (name, json.dumps(data)))
+        res = M._stuff_best_crafted(conn, "shaman", "restoration", ["craft"], set(), set())
+        conn.execute("DELETE FROM game_recipes WHERE id IN (930001, 930002)")
+        conn.execute("DELETE FROM char_professions WHERE name IN ('lithinie', 'arssalag', 'tanneur')")
+    by = {s["slot"]: s["items"] for s in res["slots"]}
+    head = next(i for i in by["head"] if i["id"] == 273001)
+    feet = next(i for i in by["feet"] if i["id"] == 273002)
+    assert head["crafters"] == ["Lithinie"]                                   # recette connue (API Blizzard)
+    assert feet["crafters"] == []                                             # personne ne la connaît…
+    assert [m["name"] for m in feet["prof_members"]] == ["Lithinie", "Tanneur", "Arssalag"]  # …repli par points

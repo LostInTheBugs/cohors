@@ -417,6 +417,8 @@ def professions(realm: str, name: str, force: bool = False, locale: str | None =
             "tier": (tier.get("tier") or {}).get("name"),
             "points": points,
             "max": maxp,
+            # recettes connues du palier le plus récent (ids = ceux de game_recipes)
+            "known": sorted({int(r["id"]) for r in (tier.get("known_recipes") or []) if r.get("id")}),
         })
     data = {"profs": profs}
     return data, _store(key, data)
