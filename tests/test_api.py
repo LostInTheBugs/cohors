@@ -644,7 +644,7 @@ def test_applier_failure_clears_running_and_sets_at(tmp_path):
 
 
 def test_applier_dry_run_succeeds_and_sets_at(tmp_path):
-    """Applikateur en dry-run : running == '', result == 'ok' et at est renseigné."""
+    """Applikateur en dry-run : running == '', result == 'dry-run ok', at absent (ne pas tromper le panneau)."""
     import shutil as _sh
     import subprocess as _sp
     import sys as _sys
@@ -666,7 +666,7 @@ def test_applier_dry_run_succeeds_and_sets_at(tmp_path):
     st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
     assert st["running"] == "", st
     assert st["result"] == "dry-run ok", st
-    assert st["at"] > 0, st
+    assert st.get("at") is None or st.get("at") == 0, st
 
 
 def test_bis_json_all_src_fr_in_bis_content_map():

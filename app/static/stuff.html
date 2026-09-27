@@ -149,10 +149,10 @@
           <input type="checkbox" name="biscontent" value="delves" checked> Gouffres
         </label>
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
-          <input type="checkbox" name="biscontent" value="worldboss" checked> World Boss
+          <input type="checkbox" name="biscontent" value="worldboss" checked> Boss mondial
         </label>
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
-          <input type="checkbox" name="biscontent" value="craft" checked> Craft
+          <input type="checkbox" name="biscontent" value="craft" checked> Artisanat
         </label>
       </div>
       <span id="bis-filter-hint" style="font-size:12px;color:var(--mut);">Tous les contenus cochés</span>
@@ -246,7 +246,7 @@ $("#prof").addEventListener("change", async () => {
 });
 
 // ---- Mode change: show BIS filter checkboxes when BIS selected
-const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", worldboss: "Boss mondial", craft: "Artificier" };
+const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", worldboss: "Boss mondial", craft: "Artisanat" };
 $("#mode").addEventListener("change", () => {
   const isBis = $("#mode").value === "bis";
   $("#bis-filter-wrap").classList.toggle("hidden", !isBis);
@@ -321,9 +321,9 @@ function render(d) {
   // st.content peut être une chaîne (non-BIS) ou un tableau (BIS)
   let contentLabel;
   if (Array.isArray(st.content)) {
-    contentLabel = st.content.map(c => ({ mplus: "Mythique+", raid: "Raid", delves: "Gouffres", worldboss: "World Boss", craft: "Craft" }[c] || c)).join(" · ");
+    contentLabel = st.content.map(c => ({ mplus: "Mythique+", raid: "Raid", delves: "Gouffres", worldboss: "Boss mondial", craft: "Artisanat" }[c] || c)).join(" · ");
   } else {
-    contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres", worldboss: "World Boss", craft: "Craft" }[st.content] || st.content || "BIS";
+    contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres", worldboss: "Boss mondial", craft: "Artisanat" }[st.content] || st.content || "BIS";
   }
 
   if (st.mode === "bis") {

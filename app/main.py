@@ -1837,8 +1837,8 @@ BIS_CONTENTS = {
     "raid": {"label_fr": "Raid"},
     "mplus": {"label_fr": "Mythique+"},
     "delves": {"label_fr": "Gouffres"},
-    "worldboss": {"label_fr": "World Boss"},
-    "craft": {"label_fr": "Craft"},
+    "worldboss": {"label_fr": "Boss mondial"},
+    "craft": {"label_fr": "Artisanat"},
 }
 # Spés de soin (le moteur ne les simule pas) — classement par stats pondérées.
 HEAL_SPECS = {"restoration", "holy", "discipline", "mistweaver", "preservation"}
