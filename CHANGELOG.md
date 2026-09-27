@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c24 - 2026-09-27
+
+### Added
+- **CI: ESLint on page JavaScript.** `tools/lint-js.mjs` runs `no-undef` and
+  `no-use-before-define` on every page's inline scripts. Combined with the existing
+  `check-inline-js.py` (which checks `node --check` syntax), this now catches bugs that
+  were previously only found at runtime in the browser:
+  - `_updRetryCount` used without being declared (caught by `no-undef`);
+  - `const ap` read before its declaration in `updRender` (caught by `no-use-before-define`).
+  Shared scripts (`nav.js`, `esc.js`, etc.) are linted first; their top-level declarations
+  and `window.NAME = …` exports are fed as globals to the page linter, so no manual
+  maintenance is needed.
+
+### Fixed
+- **Settings: `let me = null` declaration restored.** The declaration was removed in
+  commit 4c9d14b (c8); `me = await jget("/api/me")` then created an implicit global,
+  which works in non-strict mode but only by accident. ESLint now catches this pattern.
+
 ## 2026.09.152-c23 - 2026-09-27
 
 ### Added

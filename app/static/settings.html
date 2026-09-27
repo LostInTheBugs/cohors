@@ -1226,6 +1226,7 @@ $("#bi-reset").addEventListener("click", async () => {
 });
 
 (async () => {
+  let me = null;
   let _updTimer = null;
   window._upd_stopPoll = function() { if (_updTimer) { clearTimeout(_updTimer); _updTimer = null; } };
   window._upd_showProgress = function() { const el = $("#upd-progress"); if (el) { el.style.display = "block"; } };

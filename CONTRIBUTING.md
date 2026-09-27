@@ -21,6 +21,14 @@ pip install pytest
 python -m pytest -q
 ```
 
+The pages hold most of their JavaScript inline; two checks cover it (both run in CI):
+
+```bash
+python3 tools/check-inline-js.py                 # syntax (node --check)
+npm install --no-save eslint@9 globals@15        # once
+node tools/lint-js.mjs                           # undeclared variables, const/let used before definition
+```
+
 The suite covers the stdlib-only security helpers (`app/security.py`: password hashing,
 SimulationCraft profile guard) and repository consistency (VERSION/CHANGELOG/i18n/add-on).
 CI runs it on every push and pull request.
@@ -45,7 +53,7 @@ CI runs it on every push and pull request.
 ## Pull requests
 
 - Keep each PR focused; describe the user-visible effect.
-- Run `python -m pytest -q` before submitting.
+- Run `python -m pytest -q` and `node tools/lint-js.mjs` before submitting.
 - Note behavior changes in `CHANGELOG.md` (an "Unreleased" section is fine).
 - Screenshots help a lot for UI changes.
 
