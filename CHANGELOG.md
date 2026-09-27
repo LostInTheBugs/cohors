@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c28 - 2026-09-27
+
+### Added
+- **Artisans de la guilde d'après les recettes connues renvoyées par l'API Blizzard.** Quand une recette n'a aucun artisan signalé, le tableau affiche les membres qui ont le métier, triés par points.
+
 ## 2026.09.152-c27 - 2026-09-27
 
 ### Fixed
