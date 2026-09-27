@@ -79,7 +79,7 @@
   .src { font-size: 12.5px; }
   .src a { color: var(--acc2); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c25">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c26">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -168,6 +168,7 @@
     <div class="gwrap"><table class="gtable hidden" id="restable"></table></div>
     <p class="gsum" id="ressum"></p>
     <p class="src" id="ressrc"></p>
+    <div id="rescraft"></div>
   </div>
 
   <footer>
@@ -178,10 +179,10 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.152-c25"></script>
-<script src="/static/branding.js?v=2026.09.152-c25"></script>
-<script src="/static/i18n.js?v=2026.09.152-c25"></script>
-<script src="/static/esc.js?v=2026.09.152-c25"></script>
+<script src="/static/nav.js?v=2026.09.152-c26"></script>
+<script src="/static/branding.js?v=2026.09.152-c26"></script>
+<script src="/static/i18n.js?v=2026.09.152-c26"></script>
+<script src="/static/esc.js?v=2026.09.152-c26"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
@@ -312,11 +313,37 @@ function itemCell(it) {
   return `<span class="gname">${esc(it.name)}</span> <small>(${it.ilvl || "?"})</small>` +
     (statLine(it) ? `<div class="stats">${esc(statLine(it))}</div>` : "");
 }
+// Mode BIS + « Artisanat » : meilleures pièces fabricables par emplacement, avec les artisans de la guilde.
+function renderCrafted(cr, en) {
+  const box = $("#rescraft");
+  const slots = cr.slots || [];
+  const statHint = (cr.stats || []).length
+    ? `Stats secondaires à demander à l'artisan : <b>${cr.stats.map(k => esc(STAT_FR[k] || k)).join(" + ")}</b>.`
+    : "Choisis avec l'artisan les stats secondaires de ta priorité.";
+  if (!slots.length) {
+    box.innerHTML = `<h3>🔨 Meilleures pièces d'artisanat</h3><p class="gnil">Aucune recette d'équipement connue pour l'instant — ` +
+      `la liste se remplit à la prochaine synchronisation des recettes du jeu.</p>`;
+    return;
+  }
+  box.innerHTML = `<h3>🔨 Meilleures pièces d'artisanat</h3>` +
+    `<p class="meta"><span>Recettes de l'extension en cours portables par ta classe${cr.armor ? " (armure : " + esc(en ? cr.armor : (cr.armor_fr || cr.armor)) + ")" : ""}.</span> <span>${statHint}</span></p>` +
+    `<div class="gwrap"><table class="gtable"><tr><th>Emplacement</th><th>Pièce</th><th>Métier</th><th>Artisans de la guilde</th><th>Tu l'as ?</th></tr>` +
+    slots.map(s => s.items.map((it, i) => {
+      const nm = en ? (it.name_en || it.name_fr) : (it.name_fr || it.name_en);
+      const who = (it.crafters || []).length ? it.crafters.map(esc).join(", ") : '<span class="gnil">personne</span>';
+      const have = it.equipped ? '<span class="gpos">✅ portée</span>' : it.owned ? '<span class="msg-warn">🎒 dans tes sacs</span>' : '<span class="gnil">—</span>';
+      const more = i === s.items.length - 1 && s.more ? ` <small class="gnil">(+${s.more} autre(s))</small>` : "";
+      return `<tr><td>${i === 0 ? esc(s.slot_fr) : ""}</td>` +
+        `<td><a class="hlink" href="https://www.wowhead.com/item=${it.id}" target="_blank" rel="noopener">${esc(nm)}</a>${more}</td>` +
+        `<td class="islot">${esc(it.prof)}</td><td>${who}</td><td>${have}</td></tr>`;
+    }).join("")).join("") + "</table></div>";
+}
+
 function render(d) {
   const st = d.stuff;
   const card = $("#rescard"), meta = $("#resmeta"), table = $("#restable"), sum = $("#ressum"), src = $("#ressrc");
   card.classList.remove("hidden");
-  sum.innerHTML = ""; src.innerHTML = "";
+  sum.innerHTML = ""; src.innerHTML = ""; $("#rescraft").innerHTML = "";
   if (!st) { meta.textContent = "Pas de résultat."; table.classList.add("hidden"); return; }
   // st.content peut être une chaîne (non-BIS) ou un tableau (BIS)
   let contentLabel;
@@ -358,6 +385,7 @@ function render(d) {
       sum.textContent = "Tu as déjà toutes les pièces BIS de la liste — bravo !";
     }
     src.innerHTML = st.source ? `Liste : <a href="${esc(st.source)}" target="_blank" rel="noopener">${esc(st.source_fr || st.source)}</a>.` : "";
+    if (st.crafted) renderCrafted(st.crafted, en);
     if (d.note) setMsg(d.note, "msg-warn");
     return;
   }

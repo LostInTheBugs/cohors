@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c26 - 2026-09-27
+
+### Added
+- **Meilleures pièces d'artisanat par emplacement dans Stuff conseillé.** Quand la case
+  « Artisanat » est cochée, une table séparée affiche les objets fabricables de
+  l'extension en cours adaptés au personnage, avec les artisans de la guilde qui
+  connaissent la recette. Les recettes du jeu sont reliées à leurs objets via la
+  recherche Blizzard par nom exact (l'API « recipe » ne renvoie plus `crafted_item`).
+  Synchronisation de Couture (197) et Joaillerie (755).
+
+
+
+
 ## 2026.09.152-c25 - 2026-09-27
 
 ### Changed

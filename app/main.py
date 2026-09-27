@@ -598,6 +598,10 @@ def _init_db() -> None:
             "ALTER TABLE game_recipes ADD COLUMN tier_en TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE game_recipes ADD COLUMN prof_en TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE game_recipes ADD COLUMN mats_en TEXT NOT NULL DEFAULT '[]'",
+            # v2026.09.152-c26 — objet fabriqué retrouvé par son nom (l'API « recipe » ne le donne plus)
+            "ALTER TABLE game_recipes ADD COLUMN inv_type TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE game_recipes ADD COLUMN subclass_en TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE game_recipes ADD COLUMN ilvl INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE prep_plan ADD COLUMN raids TEXT NOT NULL DEFAULT '[]'",
             "ALTER TABLE prep_plan ADD COLUMN bosses TEXT NOT NULL DEFAULT '[]'",
         ):
@@ -609,6 +613,8 @@ def _init_db() -> None:
         for _key, _stmt in (
             ("loc_en_profs_v1", "UPDATE char_professions SET ts = 0"),
             ("loc_en_recipes_v1", "UPDATE game_recipes SET updated = 0"),
+            # objets fabriqués + Couture/Joaillerie : force un re-relevé complet
+            ("craft_items_v1", "UPDATE game_recipes SET updated = 0"),
         ):
             if conn.execute("SELECT value FROM meta WHERE key=?", (_key,)).fetchone() is None:
                 conn.execute(_stmt)
@@ -954,6 +960,9 @@ def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0:
         _stuff_max_levels(need_stats, conn)
         for row, st in zip(results["slots"], need_stats):
             row["max_ilvl"] = st.get("max_ilvl")
+        if "craft" in contents:
+            results["crafted"] = _stuff_best_crafted(conn, parsed["cls"], parsed["spec"], contents,
+                                                     set(owned_by_id), equipped_by_id)
     results["missing"] = sum(1 for r in results["slots"] if not r["owned"] and not r["equipped"])
     results["have"] = len(results["slots"]) - results["missing"]
     wall = time.time() - t0
@@ -2061,6 +2070,116 @@ def _stuff_bis_filter(blk: dict, contents: list[str]) -> dict:
             elif mapped in contents_set:
                 filtered_slots.append(slot)
     return {**blk, "slots": filtered_slots}
+
+
+# ---------------------------------------------------------------------------
+# Meilleures pièces d'artisanat (mode BIS, case « Artisanat »)
+#
+# Le guide BIS ne donne qu'un objet par emplacement — rarement fabriqué. Ici on part des
+# recettes du jeu (game_recipes, objet retrouvé par son nom lors de la synchro) : pour
+# chaque emplacement, les objets fabricables de l'extension en cours que la classe peut
+# porter, avec les artisans de la guilde qui connaissent la recette.
+# ---------------------------------------------------------------------------
+CLASS_ARMOR = {"mage": "Cloth", "priest": "Cloth", "warlock": "Cloth",
+               "druid": "Leather", "rogue": "Leather", "monk": "Leather", "demonhunter": "Leather",
+               "hunter": "Mail", "shaman": "Mail", "evoker": "Mail",
+               "warrior": "Plate", "paladin": "Plate", "deathknight": "Plate"}
+CRAFT_INV_SLOT = {"HEAD": "head", "NECK": "neck", "SHOULDER": "shoulder", "CLOAK": "back", "BACK": "back",
+                  "CHEST": "chest", "ROBE": "chest", "WRIST": "wrist", "HAND": "hands", "HANDS": "hands",
+                  "WAIST": "waist", "LEGS": "legs", "FEET": "feet", "FINGER": "finger", "TRINKET": "trinket",
+                  "WEAPON": "main_hand", "TWOHWEAPON": "main_hand", "WEAPONMAINHAND": "main_hand",
+                  "RANGED": "main_hand", "RANGEDRIGHT": "main_hand",
+                  "HOLDABLE": "off_hand", "SHIELD": "off_hand", "WEAPONOFFHAND": "off_hand"}
+CRAFT_SLOT_ORDER = ["head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist", "legs", "feet",
+                    "finger", "trinket", "main_hand", "off_hand"]
+CRAFT_ARMOR_SLOTS = {"head", "shoulder", "chest", "wrist", "hands", "waist", "legs", "feet"}
+# Armes maniables par classe (noms anglais des sous-classes Blizzard) ; « Miscellaneous » = main gauche tenue.
+CLASS_WEAPONS = {
+    "warrior": {"Axe", "Mace", "Sword", "Polearm", "Staff", "Dagger", "Fist Weapon", "Shield"},
+    "paladin": {"Axe", "Mace", "Sword", "Polearm", "Shield", "Miscellaneous"},
+    "hunter": {"Bow", "Gun", "Crossbow", "Polearm", "Staff", "Axe", "Sword", "Dagger", "Fist Weapon"},
+    "rogue": {"Dagger", "Fist Weapon", "Axe", "Mace", "Sword"},
+    "priest": {"Mace", "Dagger", "Staff", "Wand", "Miscellaneous"},
+    "shaman": {"Axe", "Mace", "Fist Weapon", "Dagger", "Staff", "Shield", "Miscellaneous"},
+    "mage": {"Sword", "Dagger", "Staff", "Wand", "Miscellaneous"},
+    "warlock": {"Sword", "Dagger", "Staff", "Wand", "Miscellaneous"},
+    "monk": {"Fist Weapon", "Axe", "Mace", "Sword", "Polearm", "Staff", "Miscellaneous"},
+    "druid": {"Dagger", "Fist Weapon", "Mace", "Polearm", "Staff", "Miscellaneous"},
+    "demonhunter": {"Warglaives", "Fist Weapon", "Axe", "Sword"},
+    "deathknight": {"Axe", "Mace", "Sword", "Polearm"},
+    "evoker": {"Axe", "Dagger", "Fist Weapon", "Mace", "Sword", "Staff", "Miscellaneous"},
+}
+# Spés à Intelligence : armes de lanceur de sorts seulement (pas de hache 2M pour un chaman Restauration).
+CASTER_WEAPONS = {"Staff", "Mace", "Dagger", "Sword", "Wand", "Miscellaneous", "Shield"}
+CASTER_CLASSES = {"mage", "warlock", "evoker"}
+CASTER_SPECS = {"restoration", "holy", "discipline", "mistweaver", "preservation", "shadow", "elemental", "balance"}
+CRAFT_SLOT_FR = {"head": "Tête", "neck": "Cou", "shoulder": "Épaules", "back": "Dos", "chest": "Torse",
+                 "wrist": "Poignets", "hands": "Mains", "waist": "Taille", "legs": "Jambes", "feet": "Pieds",
+                 "finger": "Anneau", "trinket": "Bijou", "main_hand": "Arme", "off_hand": "Main gauche"}
+CRAFT_MAX_PER_SLOT = 3
+
+
+def _stuff_best_crafted(conn, cls: str, spec: str, contents: list[str], owned_ids: set[int],
+                        equipped_ids: set[int]) -> dict:
+    """Objets fabricables (extension en cours) utiles au personnage, par emplacement.
+
+    Filtre : type d'armure de la classe pour les pièces d'armure, armes maniables par la
+    classe (armes de lanceur de sorts pour les spés à Intelligence), bijoux/anneaux/cou/dos pour tous ; outils et tenues de métier, objets cosmétiques
+    écartés. Classement : niveau d'objet de base, puis nom. Pour les soigneurs, les deux stats
+    secondaires à demander à l'artisan viennent de la priorité connue de la spé.
+    """
+    cls = (cls or "").lower()
+    armor = CLASS_ARMOR.get(cls, "")
+    weapons = set(CLASS_WEAPONS.get(cls, set()))
+    if cls in CASTER_CLASSES or (spec or "").lower() in CASTER_SPECS:
+        weapons &= CASTER_WEAPONS
+    else:
+        weapons -= {"Wand", "Miscellaneous"}
+    rows = conn.execute(
+        "SELECT prof, item, item_en, item_id, inv_type, subclass_en, ilvl FROM game_recipes "
+        "WHERE exp_rank=0 AND item_id>0 AND inv_type<>''").fetchall()
+    crafters: dict[str, set[str]] = {}
+    for c in conn.execute("SELECT crafter, item, item_id FROM craft_recipes").fetchall():
+        for k in (f'id:{int(c["item_id"] or 0)}', f'nm:{(c["item"] or "").strip().casefold()}'):
+            if k not in ("id:0", "nm:"):
+                crafters.setdefault(k, set()).add((c["crafter"] or "").strip().title())
+    by_slot: dict[str, dict[int, dict]] = {}
+    for r in rows:
+        slot = CRAFT_INV_SLOT.get(r["inv_type"] or "")
+        sub = r["subclass_en"] or ""
+        if not slot or sub == "Cosmetic":
+            continue
+        if slot in CRAFT_ARMOR_SLOTS and sub != armor:
+            continue
+        if slot in ("main_hand", "off_hand") and sub not in weapons:
+            continue
+        iid = int(r["item_id"])
+        names = {(r["item"] or "").strip().casefold(), (r["item_en"] or "").strip().casefold()} - {""}
+        who = set(crafters.get(f"id:{iid}", set()))
+        for n in names:
+            who |= crafters.get(f"nm:{n}", set())
+        cur = by_slot.setdefault(slot, {}).get(iid)
+        if cur is None:
+            by_slot[slot][iid] = {"id": iid, "name_fr": r["item"] or r["item_en"], "name_en": r["item_en"] or r["item"],
+                                  "prof": r["prof"], "ilvl": int(r["ilvl"] or 0),
+                                  "crafters": sorted(who - {""}),
+                                  "owned": iid in owned_ids, "equipped": iid in equipped_ids}
+        else:
+            cur["crafters"] = sorted(set(cur["crafters"]) | (who - {""}))
+    out = []
+    for slot in CRAFT_SLOT_ORDER:
+        cands = sorted(by_slot.get(slot, {}).values(), key=lambda c: (-c["ilvl"], c["name_fr"].casefold()))
+        if cands:
+            out.append({"slot": slot, "slot_fr": CRAFT_SLOT_FR[slot], "items": cands[:CRAFT_MAX_PER_SLOT],
+                        "more": max(0, len(cands) - CRAFT_MAX_PER_SLOT)})
+    stats = []
+    sim_content = next((c for c in contents if c in STUFF_CONTENTS), "raid")
+    prio = (STUFF_HEAL_PRIO.get(f"{cls}/{(spec or '').lower()}") or {}).get("orders", {}).get(sim_content)
+    if prio:
+        stats = list(prio[:2])
+    armor_fr = {"Cloth": "Tissu", "Leather": "Cuir", "Mail": "Mailles", "Plate": "Plaques"}.get(armor, armor)
+    return {"slots": out, "armor": armor, "armor_fr": armor_fr, "stats": stats,
+            "stats_content": sim_content if stats else ""}
 
 
 def _stuff_bis_list(cls: str, spec: str) -> dict | None:
@@ -6206,7 +6325,8 @@ def api_prep_reset(request: Request):
 
 # ---- Recettes du jeu (API Game Data Blizzard) --------------------------------
 GAME_PREP_PROFS = ((185, "Cuisine"), (171, "Alchimie"), (773, "Calligraphie"),
-                   (164, "Forge"), (165, "Travail du cuir"), (202, "Ingénierie"))
+                   (164, "Forge"), (165, "Travail du cuir"), (202, "Ingénierie"),
+                   (197, "Couture"), (755, "Joaillerie"))
 GAME_SYNC_TTL = 86400.0  # resynchro auto au plus une fois par jour (boucle 6 h + au démarrage)
 _game_sync_state = {"state": "idle", "prof": "", "done": 0, "total": 0, "error": "", "ts": 0.0}
 
@@ -6515,13 +6635,24 @@ def _game_sync(profs=None) -> None:
                         rrank = int(d.get("rank") or 1)
                     except (TypeError, ValueError):
                         rrank = 1
+                    item_id, inv_type, subclass_en, ilvl = int(ci.get("id") or 0), "", "", 0
+                    if not item_id:
+                        # l'API ne donne plus l'objet fabriqué : on le retrouve par son nom anglais exact
+                        try:
+                            found = bnet.search_item_exact(ci_en.get("name") or d_en.get("name") or "")
+                        except bnet.BnetError:
+                            found = None
+                        if found:
+                            item_id, inv_type = found["id"], found["inv_type"]
+                            subclass_en, ilvl = found["subclass_en"], found["ilvl"]
                     rows_all.append((int(d.get("id") or r["id"]), nom, tier.get("name") or "", rank,
-                                     ci.get("name") or d.get("name") or "", ci.get("id") or 0, rrank,
+                                     ci.get("name") or d.get("name") or "", item_id, rrank,
                                      json.dumps(mats, ensure_ascii=False), time.time(),
                                      ci_en.get("name") or d_en.get("name") or "",
                                      tiers_en.get(tier["id"]) or "",
                                      prof_en.get("name") or "",
-                                     json.dumps(mats_en, ensure_ascii=False)))
+                                     json.dumps(mats_en, ensure_ascii=False),
+                                     inv_type, subclass_en, ilvl))
                     st["done"] += 1
                     if st["done"] % 4 == 0:
                         time.sleep(0.02)  # politesse (limite Blizzard : 100 req/s)
@@ -6529,7 +6660,17 @@ def _game_sync(profs=None) -> None:
                 conn.execute("DELETE FROM game_recipes WHERE prof=?", (nom,))
                 conn.executemany(
                     "INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats, updated, "
-                    "item_en, tier_en, prof_en, mats_en) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", rows_all)
+                    "item_en, tier_en, prof_en, mats_en, inv_type, subclass_en, ilvl) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows_all)
+                # Recettes de la wishlist enregistrées avant qu'on connaisse l'objet (clé négative dérivée
+                # du nom) : on les rebascule sur l'id de l'objet, sinon l'étoile disparaîtrait.
+                for row in rows_all:
+                    name_fr, item_id = row[4], int(row[5] or 0)
+                    if item_id > 0:
+                        old_key = _recipe_wish_key(0, name_fr)
+                        conn.execute("UPDATE OR IGNORE wishlist SET item_id=? WHERE kind='recipe' AND item_id=?",
+                                     (item_id, old_key))
+                        conn.execute("DELETE FROM wishlist WHERE kind='recipe' AND item_id=?", (old_key,))
             total_written += len(rows_all)
         st.update({"state": "done", "ts": time.time()})
         print(f"[game-recipes] synchro OK : {total_written} recettes", flush=True)

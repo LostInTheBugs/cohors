@@ -1117,7 +1117,17 @@
  "⏳ Serveur en redémarrage, attente…": "⏳ Server restarting, waiting…",
  "⏱ Presque terminé…": "⏱ Almost done…",
  "✅ Mise à jour terminée !": "✅ Update complete!",
- "⚠️ Applicateur installé mais jamais vu (vérifie le timer)": "⚠️ Updater installed but never seen (check the timer)"
+ "⚠️ Applicateur installé mais jamais vu (vérifie le timer)": "⚠️ Updater installed but never seen (check the timer)",
+ "🔨 Meilleures pièces d'artisanat": "🔨 Best crafted items",
+ "Artisans de la guilde": "Guild crafters",
+ "Métier": "Profession",
+ "personne": "nobody",
+ "Anneau": "Ring",
+ "Bijou": "Trinket",
+ "Arme": "Weapon",
+ "Main gauche": "Off-hand",
+ "Choisis avec l'artisan les stats secondaires de ta priorité.": "Pick the secondary stats of your priority with the crafter.",
+ "Aucune recette d'équipement connue pour l'instant — la liste se remplit à la prochaine synchronisation des recettes du jeu.": "No gear recipe known yet — the list fills in at the next game-recipe sync."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1126,6 +1136,11 @@
     [/^(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat)(?:(?:, | · )(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat))+$/g,
       (m) => m.replace(/Mythique\+/g, "Mythic+").replace(/Gouffres/g, "Delves")
               .replace(/Boss mondial/g, "World Boss").replace(/Artisanat/g, "Crafting")],
+    // Stuff — meilleures pièces d'artisanat (v2026.09.152-c26)
+    [/Recettes de l'extension en cours portables par ta classe \(armure : ([A-Za-z]+)\)\./g, "Current-expansion recipes your class can wear (armor: $1)."],
+    [/Recettes de l'extension en cours portables par ta classe\./g, "Current-expansion recipes your class can wear."],
+    [/Stats secondaires à demander à l'artisan : /g, "Secondary stats to ask the crafter for: "],
+    [/^\(\+(\d+) autre\(s\)\)$/g, "(+$1 more)"],
     // mises à jour — suivi du déploiement (v2026.09.152)
     [/⚠️ Applicateur : inactif depuis (\d+) min \(>15 min\)/g, "⚠️ Updater: inactive for $1 min (>15 min)"],
     [/applicateur actif : /g, "updater active: "],
