@@ -508,6 +508,44 @@ INV_TO_SLOTS = {
 }
 
 
+def search_item_exact(name_en: str) -> dict | None:
+    """Objet dont le nom anglais est EXACTEMENT `name_en` (API de recherche Game Data), ou None.
+
+    Depuis Dragonflight, l'API « recipe » ne renvoie plus l'objet fabriqué (`crafted_item`
+    absent) : on le retrouve par son nom. La recherche est plein texte (résultats approchants),
+    d'où le filtre sur le nom exact. S'il reste plusieurs objets, on préfère un objet équipable,
+    puis le niveau d'objet le plus haut, puis l'identifiant le plus récent.
+    Renvoie {"id", "inv_type", "subclass_en", "ilvl"} — cache mémoire 30 min.
+    """
+    name = (name_en or "").strip()
+    if not name:
+        return None
+    key = f"isearch/{REGION}/{name.casefold()}"
+    hit = _cached(key, False)
+    if hit:
+        return hit["data"] or None
+    res = _get("/data/wow/search/item",
+               {"namespace": f"static-{REGION}", "name.en_US": name, "orderby": "id:desc",
+                "_pageSize": 100, "_page": 1},
+               not_found="Recherche d'objet impossible.")
+    best = None
+    for r in res.get("results") or []:
+        d = r.get("data") or {}
+        if ((d.get("name") or {}).get("en_US") or "").strip().casefold() != name.casefold():
+            continue
+        inv = (d.get("inventory_type") or {}).get("type") or ""
+        cand = {"id": int(d.get("id") or 0),
+                "inv_type": inv,
+                "subclass_en": ((d.get("item_subclass") or {}).get("name") or {}).get("en_US") or "",
+                "ilvl": int(d.get("level") or 0)}
+        rank = (inv not in ("", "NON_EQUIP"), cand["ilvl"], cand["id"])
+        if best is None or rank > best[0]:
+            best = (rank, cand)
+    data = best[1] if best else {}
+    _store(key, data)
+    return data or None
+
+
 # ---------------------------------------------------------------------------
 # Recettes du jeu (Game Data — base « préparation de raid »)
 # ---------------------------------------------------------------------------

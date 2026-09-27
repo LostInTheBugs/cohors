@@ -854,3 +854,93 @@ def test_crash_fallback_no_retry_without_known_item_or_segfault(tmp_path, monkey
     p.write_text(_CRASH_PROFILE)
     res, note = M._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
     assert not res["ok"] and note is None and len(calls) == 1   # autre erreur que 139 : pas de relance
+
+
+# --- Meilleures pièces d'artisanat --------------------------------------------------------------
+
+def test_bnet_search_item_exact_filters_fuzzy_results(monkeypatch):
+    """La recherche Blizzard est plein texte : seul le nom exact compte, équipable et plus haut niveau d'abord."""
+    from app import bnet as B
+
+    def fake_get(path, params=None, not_found=""):
+        assert path == "/data/wow/search/item" and params["name.en_US"] == "Row Walker's Deflectors"
+        mk = lambda i, n, inv, sub, lvl: {"data": {"id": i, "name": {"en_US": n}, "level": lvl,
+                                                   "inventory_type": {"type": inv},
+                                                   "item_subclass": {"name": {"en_US": sub}}}}
+        return {"results": [mk(280644, "Row Walker's Decor", "NON_EQUIP", "Decor", 1),
+                            mk(267271, "Row Walker's Deflectors", "WRIST", "Plate", 197),
+                            mk(271900, "Row Walker's Deflectors", "NON_EQUIP", "Other", 250),
+                            mk(271901, "row walker's deflectors", "WRIST", "Plate", 285)]}
+    monkeypatch.setattr(B, "_get", fake_get)
+    B._cache.clear()
+    got = B.search_item_exact("Row Walker's Deflectors")
+    assert got == {"id": 271901, "inv_type": "WRIST", "subclass_en": "Plate", "ilvl": 285}
+    assert B.search_item_exact("") is None
+
+
+def test_game_sync_resolves_crafted_item_by_name(monkeypatch):
+    from app import bnet as B
+    monkeypatch.setattr(B, "game_profession", lambda pid, locale=None: {
+        "name": "Leatherworking" if locale == "en_US" else "Travail du cuir",
+        "skill_tiers": [{"id": 1, "name": "Midnight Leatherworking"}]})
+    monkeypatch.setattr(B, "game_tier_recipes", lambda pid, tid, locale=None: [{"id": 910001}])
+    monkeypatch.setattr(B, "game_recipe", lambda rid, locale=None: {
+        "id": rid, "name": "Casque serpentin" if locale != "en_US" else "Serpentine Helm", "reagents": []})
+    monkeypatch.setattr(B, "search_item_exact", lambda name: {"id": 271999, "inv_type": "HEAD",
+                                                              "subclass_en": "Mail", "ilvl": 285}
+                        if name == "Serpentine Helm" else None)
+    old_key = M._recipe_wish_key(0, "Casque serpentin")      # étoile posée quand l'objet était inconnu
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, added) VALUES (?,?,?,?,?)",
+                     ("wlsync@test.local", old_key, "Casque serpentin", "recipe", 0))
+    M._game_sync_state["state"] = "idle"
+    M._game_sync(["Travail du cuir"])
+    with M._db_lock, M._db() as conn:
+        row = conn.execute("SELECT item_id, inv_type, subclass_en, ilvl, item_en FROM game_recipes "
+                           "WHERE id=910001").fetchone()
+        wl = [r["item_id"] for r in conn.execute("SELECT item_id FROM wishlist WHERE user_email='wlsync@test.local'")]
+        conn.execute("DELETE FROM game_recipes WHERE prof='Travail du cuir'")
+        conn.execute("DELETE FROM wishlist WHERE user_email='wlsync@test.local'")
+    assert wl == [271999]                                      # l'étoile suit l'objet retrouvé
+    assert dict(row) == {"item_id": 271999, "inv_type": "HEAD", "subclass_en": "Mail", "ilvl": 285,
+                         "item_en": "Serpentine Helm"}
+
+
+def test_stuff_best_crafted_filters_by_class_and_lists_crafters():
+    rows = [  # id, prof, fr, en, item_id, inv, sub, ilvl
+        (920001, "Travail du cuir", "Heaume de mailles", "Mail Helm", 272001, "HEAD", "Mail", 285),
+        (920002, "Forge", "Heaume de plaques", "Plate Helm", 272002, "HEAD", "Plate", 285),
+        (920003, "Couture", "Cape de parade", "Parade Cloak", 272003, "CLOAK", "Cosmetic", 1),
+        (920004, "Couture", "Cape tissée", "Woven Cloak", 272004, "CLOAK", "Cloth", 285),
+        (920005, "Joaillerie", "Anneau serti", "Set Ring", 272005, "FINGER", "Miscellaneous", 285),
+        (920006, "Forge", "Hache de guerre", "War Axe", 272006, "TWOHWEAPON", "Axe", 285),
+        (920007, "Forge", "Masse bénie", "Blessed Mace", 272007, "WEAPON", "Mace", 285),
+        (920008, "Forge", "Rempart", "Bulwark", 272008, "SHIELD", "Shield", 285),
+        (920009, "Travail du cuir", "Tablier de tanneur", "Tanner Apron", 272009, "PROFESSION_GEAR",
+         "Leatherworking", 285),
+        (920010, "Ingénierie", "Lunettes de mailles", "Mail Goggles", 272010, "HEAD", "Mail", 270),
+        (920011, "Forge", "Masse ancienne", "Old Mace", 272011, "WEAPON", "Mace", 250),
+    ]
+    with M._db_lock, M._db() as conn:
+        for r in rows:
+            conn.execute("INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats,"
+                         " updated, item_en, tier_en, prof_en, mats_en, inv_type, subclass_en, ilvl)"
+                         " VALUES (?,?,'T',0,?,?,1,'[]',0,?,'T','','[]',?,?,?)",
+                         (r[0], r[1], r[2], r[4], r[3], r[5], r[6], r[7]))
+        conn.execute("INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats,"
+                     " updated, item_en, tier_en, prof_en, mats_en, inv_type, subclass_en, ilvl)"
+                     " VALUES (920012,'Forge','T',1,'Vieux heaume',272012,1,'[]',0,'Old Helm','T','','[]','HEAD','Mail',400)")
+        conn.execute("INSERT OR REPLACE INTO craft_recipes (crafter, item, item_id) VALUES ('brokk', 'Heaume de mailles', 0)")
+        conn.execute("INSERT OR REPLACE INTO craft_recipes (crafter, item, item_id) VALUES ('sindri', 'x', 272005)")
+        res = M._stuff_best_crafted(conn, "shaman", "restoration", ["craft"], {272005}, set())
+        conn.execute("DELETE FROM game_recipes WHERE id BETWEEN 920001 AND 920012")
+        conn.execute("DELETE FROM craft_recipes WHERE crafter IN ('brokk', 'sindri')")
+    by = {s["slot"]: s for s in res["slots"]}
+    assert res["armor"] == "Mail" and res["stats"] == ["crit", "vers"]          # priorité raid du chaman resto
+    assert [i["id"] for i in by["head"]["items"]] == [272001, 272010]          # mailles seulement, niveau décroissant
+    assert by["head"]["items"][0]["crafters"] == ["Brokk"]                     # artisan trouvé par le nom
+    assert [i["id"] for i in by["back"]["items"]] == [272004]                  # cosmétique écarté
+    assert by["finger"]["items"][0]["owned"] is True and by["finger"]["items"][0]["crafters"] == ["Sindri"]
+    assert [i["id"] for i in by["main_hand"]["items"]] == [272007, 272011]     # pas de hache 2M pour un chaman
+    assert [i["id"] for i in by["off_hand"]["items"]] == [272008]
+    assert "272009" not in str(res) and "272012" not in str(res)             # outils de métier et ancienne extension écartés
