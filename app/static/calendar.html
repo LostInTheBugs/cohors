@@ -1,394 +1,788 @@
 <!DOCTYPE html>
+pp/static/char.html
 <html lang="fr">
+pp/static/char.html
 <head>
+pp/static/char.html
 <meta charset="utf-8">
+pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+pp/static/char.html
 <title>Cohors — Calendrier</title>
+pp/static/char.html
 <link rel="icon" href="/branding/logo">
+pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
+pp/static/char.html
 <meta name="theme-color" content="#b1002e">
+pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
+pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
+pp/static/char.html
 <style>
+pp/static/char.html
   :root { --bg:#0b0f17; --card:#131a26; --card2:#182130; --line:#2a3446; --fg:#e8edf7; --mut:#8b96ad;
+pp/static/char.html
           --acc:#b1002e; --acc2:#dfa55a; --ok:#38c98e; --err:#ff6b6b; --warn:#dfa55a; }
+pp/static/char.html
   * { box-sizing:border-box; }
+pp/static/char.html
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+pp/static/char.html
   .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+pp/static/char.html
   .brand { display:flex; gap:12px; align-items:center; }
+pp/static/char.html
   .crest { width:44px; height:44px; border-radius:9px; }
+pp/static/char.html
   .brandname { font-size:19px; font-weight:700; letter-spacing:.2px; }
+pp/static/char.html
   .brandname span { color:var(--acc2); }
+pp/static/char.html
   .tagline { color:var(--mut); font-size:12.5px; }
+pp/static/char.html
   .userbox { display:flex; gap:14px; align-items:center; }
+pp/static/char.html
   .who { color:var(--acc2); font-weight:600; font-size:14px; }
+pp/static/char.html
   .hlink { color:var(--acc2); text-decoration:none; font-size:14px; font-weight:600; }
+pp/static/char.html
   .hlink:hover { text-decoration:underline; }
+pp/static/char.html
   nav.tabs { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 14px; }
+pp/static/char.html
   .tab { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+pp/static/char.html
          color:var(--mut); text-decoration:none; font-weight:600; font-size:14px; line-height:1.55;
+pp/static/char.html
          border:1px solid var(--line); background:transparent; }
+pp/static/char.html
   .tab:hover { color:var(--fg); border-color:#3a4763; }
+pp/static/char.html
   .tab.active { color:#fff; background:linear-gradient(135deg,var(--acc),#7d0020); border-color:transparent; }
+pp/static/char.html
   h2 { font-size:17px; margin:0 0 12px; }
+pp/static/char.html
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+pp/static/char.html
   .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+pp/static/char.html
   input[type=text], input[type=datetime-local], input[type=number] { background:var(--bg); color:var(--fg);
+pp/static/char.html
         border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; }
+pp/static/char.html
   input:focus { outline:2px solid var(--acc); border-color:var(--acc); }
+pp/static/char.html
   button { background:linear-gradient(135deg,var(--acc),#7d0020); color:#fff; border:0; border-radius:10px;
+pp/static/char.html
            padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; }
+pp/static/char.html
   button:disabled { opacity:.55; cursor:default; }
+pp/static/char.html
   button.small { padding:6px 12px; font-size:12.5px; font-weight:500; border-radius:8px; }
+pp/static/char.html
   button.ghost { background:transparent; border:1px solid var(--line); color:var(--fg); }
+pp/static/char.html
   button.ghost.act { border-color:var(--acc2); color:var(--acc2); font-weight:700; }
+pp/static/char.html
   button.danger { background:transparent; border:1px solid #5a2626; color:var(--err); }
+pp/static/char.html
   .item { border:1px solid var(--line); background:var(--card2); border-radius:11px; padding:11px 14px;
+pp/static/char.html
           margin-bottom:9px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+pp/static/char.html
   .item .main { display:flex; flex-direction:column; min-width:240px; gap:1px; }
+pp/static/char.html
   .item .name { font-weight:700; font-size:15px; }
+pp/static/char.html
   .item .meta { color:var(--mut); font-size:12.5px; }
+pp/static/char.html
   .badge { font-size:12.5px; padding:2px 10px; border-radius:999px; border:1px solid var(--line); color:var(--mut); white-space:nowrap; }
+pp/static/char.html
   .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
+pp/static/char.html
   .msg-ok { color:var(--ok); font-size:13.5px; }
+pp/static/char.html
   .msg-err { color:var(--err); font-size:13.5px; }
+pp/static/char.html
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
+pp/static/char.html
   .warn { color:var(--acc2); }
+pp/static/char.html
   textarea { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px;
+pp/static/char.html
              padding:9px 12px; font-size:13px; min-width:min(520px,100%); font-family:inherit; }
+pp/static/char.html
   input[type=file] { font-size:12.5px; color:var(--mut); }
+pp/static/char.html
   code { background:var(--card2); border:1px solid var(--line); border-radius:6px; padding:0 5px; font-size:12px; }
+pp/static/char.html
   .chips { display: inline-flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
+pp/static/char.html
   .chip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px;
+pp/static/char.html
           padding: 4px 12px; font-size: 13px; cursor: pointer; color: var(--mut); }
+pp/static/char.html
   .chip:hover { border-color: var(--acc2); }
+pp/static/char.html
   .chip.on { border-color: var(--acc2); color: var(--acc2); font-weight: 600; }
+pp/static/char.html
   select { background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:14px; }
+pp/static/char.html
   .gedit { border:1px dashed var(--line); border-radius:11px; padding:10px 12px; margin:-4px 0 9px; }
+pp/static/char.html
   .erow { display:flex; align-items:center; gap:8px; padding:3px 0; flex-wrap:wrap; }
+pp/static/char.html
   .erow b { min-width:120px; font-size:13.5px; }
+pp/static/char.html
   .erow .est { width:18px; text-align:center; }
+pp/static/char.html
   .erow select { padding:3px 8px; font-size:12.5px; border-radius:8px; }
+pp/static/char.html
   .ebtns { display:flex; gap:4px; margin-left:auto; }
+pp/static/char.html
   .eb { padding:2px 8px; font-size:12.5px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--mut); cursor:pointer; }
+pp/static/char.html
   .eb.on { border-color:var(--acc2); color:var(--acc2); font-weight:700; }
+pp/static/char.html
   .hidden { display:none !important; }
+pp/static/char.html
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c28">
+pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
+pp/static/char.html
 </head>
+pp/static/char.html
 <body class="wb">
+pp/static/char.html
 <div class="wrap">
+pp/static/char.html
   <header class="topbar">
+pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
+pp/static/char.html
       <div>
+pp/static/char.html
         <div class="brandname">Cohors <span>Calendrier</span></div>
+pp/static/char.html
         <div class="tagline">Raids planifiés dans le jeu (addon Cohors) et indisponibilités des joueurs.</div>
+pp/static/char.html
       </div>
+pp/static/char.html
     </a>
+pp/static/char.html
     <div class="userbox">
+pp/static/char.html
       <span class="who" id="who"></span>
+pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
+pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
+pp/static/char.html
     </div>
+pp/static/char.html
   </header>
+pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>🗓️ Prochains raids <span class="meta" id="gmeta" style="color:var(--mut);font-size:12.5px;font-weight:400"></span></h2>
+pp/static/char.html
     <div class="row" style="margin-bottom:6px">
+pp/static/char.html
       <span class="meta" style="color:var(--mut);font-size:12.5px">Addon : page 🛡️ Guilde. En jeu : /cohors → « Exporter » → colle la chaîne ci-dessous (ou importe le fichier SavedVariables/Cohors.lua).</span>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div id="gimport" class="hidden" style="margin:6px 0 10px">
+pp/static/char.html
       <div class="row">
+pp/static/char.html
         <input type="file" id="gfile" accept=".lua,.txt">
+pp/static/char.html
         <button class="small ghost" id="gbtn-file">📥 Importer le fichier</button>
+pp/static/char.html
       </div>
+pp/static/char.html
       <div class="row" style="margin-top:6px">
+pp/static/char.html
         <textarea id="gtext" rows="3" placeholder="…ou colle ici la chaîne exportée (/cohors export → Ctrl+C)"></textarea>
+pp/static/char.html
         <button class="small ghost" id="gbtn-text">📥 Importer la chaîne</button>
+pp/static/char.html
       </div>
+pp/static/char.html
       <div id="gmsg" class="meta"></div>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div id="glist"><div class="empty">Chargement…</div></div>
+pp/static/char.html
     <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+pp/static/char.html
       <div class="meta" style="color:var(--fg);font-weight:700;font-size:13.5px">🚫 Indisponibilités déclarées — 14 prochains jours <span style="font-weight:400">(déclarées dans 🙋 Moi → 🚫 Mes indispos)</span></div>
+pp/static/char.html
       <div id="unavlist" style="margin-top:4px"><div class="empty">Chargement…</div></div>
+pp/static/char.html
     </div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+pp/static/char.html
 </div>
-<script src="/static/nav.js?v=2026.09.152-c28"></script>
-<script src="/static/branding.js?v=2026.09.152-c28"></script>
-<script src="/static/i18n.js?v=2026.09.152-c28"></script>
-<script src="/static/esc.js?v=2026.09.152-c28"></script>
+pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/esc.js?v=2026.09.152-c29"></script>
+pp/static/char.html
 <script>
+pp/static/char.html
 const $ = (s) => document.querySelector(s);
+pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
+pp/static/char.html
   const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 const jpost = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
+pp/static/char.html
   body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 
+pp/static/char.html
 const dateTxt = (ms) => new Date(ms * 1000).toLocaleDateString("fr-FR", { weekday: "short", day: "2-digit", month: "2-digit" })
+pp/static/char.html
   + " · " + new Date(ms * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+pp/static/char.html
 
+pp/static/char.html
 function setMsg(sel, t, ok) { const e = $(sel); e.textContent = t || ""; e.className = ok ? "msg-ok" : "msg-err"; }
+pp/static/char.html
 
+pp/static/char.html
 // ---- 🧩 Calendrier in-game (addon Cohors)
+pp/static/char.html
 let GCAL = null, CAN_IMP = false;
+pp/static/char.html
 let GCAL_CAT = { raids: [] };
+pp/static/char.html
 let EDBOX = null;   // édition officier : { key, raids, bosses, start }
+pp/static/char.html
 
+pp/static/char.html
 const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
+pp/static/char.html
 const perTxt = (r) => (r.periods || []).map(x =>
+pp/static/char.html
   fmtDay(x.from) + (x.to !== x.from ? " → " + fmtDay(x.to) : "") + (x.note ? ` (${esc(x.note)})` : "")).join(", ");
+pp/static/char.html
 
+pp/static/char.html
 function renderUnav(d) {
+pp/static/char.html
   const rows = ((d || {}).unavail || {}).rows || [];
+pp/static/char.html
   const box = $("#unavlist");
+pp/static/char.html
   if (!rows.length) { box.innerHTML = `<div class="empty">Aucune indisponibilité déclarée pour les 14 prochains jours.</div>`; return; }
+pp/static/char.html
   box.innerHTML = rows.map(r =>
+pp/static/char.html
     `<div class="meta" style="padding:2px 0">🚫 <b style="color:var(--fg)">${esc(r.name)}</b> — ${perTxt(r)}</div>`).join("");
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 const CLASS_COLORS = {
+pp/static/char.html
   "Chevalier de la mort": "#C41E3A", "Chasseur de démons": "#A330C9", "Druide": "#FF7C0A",
+pp/static/char.html
   "Évocateur": "#33937F", "Chasseur": "#AAD372", "Mage": "#3FC7EB", "Moine": "#00FF98",
+pp/static/char.html
   "Paladin": "#F48CBA", "Prêtre": "#FFFFFF", "Voleur": "#FFF468", "Chaman": "#0070DD",
+pp/static/char.html
   "Démoniste": "#8788EE", "Guerrier": "#C69B6D",
+pp/static/char.html
   DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+pp/static/char.html
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+pp/static/char.html
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D"
+pp/static/char.html
 };
+pp/static/char.html
 let GCAL_CLS = {};
+pp/static/char.html
 const clsOf = (n) => {
+pp/static/char.html
   const k = String(n || "").toLowerCase();
+pp/static/char.html
   return GCAL_CLS[k] || (k.includes("-") ? GCAL_CLS[k.slice(0, k.lastIndexOf("-"))] : "") || "";
+pp/static/char.html
 };
+pp/static/char.html
 const cName = (n) => {
+pp/static/char.html
   const col = CLASS_COLORS[clsOf(n)];
+pp/static/char.html
   return col ? `<span style="color:${col}">${esc(n)}</span>` : esc(n);
+pp/static/char.html
 };
+pp/static/char.html
 
+pp/static/char.html
 const ago = (ts) => { if (!ts) return "jamais"; const s = Math.max(0, Date.now() / 1000 - ts);
+pp/static/char.html
   if (s < 90) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+pp/static/char.html
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`; return `il y a ${Math.floor(s / 86400)} j`; };
+pp/static/char.html
 
+pp/static/char.html
 async function loadGcal() {
+pp/static/char.html
   try { GCAL = await jget("/api/gcal"); renderGcal(); }
+pp/static/char.html
   catch (e) { $("#glist").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function playerRows(e) {
+pp/static/char.html
   const ORD = { ok: 0, maybe: 1, no: 2, wait: 3 };
+pp/static/char.html
   const stOf = (i) => EDBOX.ovr[i.n] || (i.s === 1 || i.s === 3 ? "ok" : i.s === 8 ? "maybe" : i.s === 2 ? "no" : "wait");
+pp/static/char.html
   const SE = { ok: "✅", maybe: "❓", no: "❌", wait: "⏳" };
+pp/static/char.html
   const rows = [...(e.inv || [])].sort((a, b) => (ORD[stOf(a)] - ORD[stOf(b)]) || String(a.n).localeCompare(String(b.n)));
+pp/static/char.html
   return rows.map(i => {
+pp/static/char.html
     const st = stOf(i), r = EDBOX.roles[i.n] || "", ov = EDBOX.ovr[i.n] || "";
+pp/static/char.html
     const sel = (v, lab) => `<option value="${v}"${r === v ? " selected" : ""}>${lab}</option>`;
+pp/static/char.html
     return `<div class="erow">
+pp/static/char.html
       <span class="est">${SE[st]}</span><b>${cName(i.n)}</b>
+pp/static/char.html
       <select data-rname="${esc(i.n)}">${sel("", "—")}${sel("tank", "🛡️ tank")}${sel("heal", "💚 heal")}${sel("dps", "⚔️ dps")}</select>
+pp/static/char.html
       <span class="ebtns">
+pp/static/char.html
         <button class="eb${ov === "ok" ? " on" : ""}" data-fname="${esc(i.n)}" data-fv="ok" title="Forcer présent">✅</button>
+pp/static/char.html
         <button class="eb${ov === "no" ? " on" : ""}" data-fname="${esc(i.n)}" data-fv="no" title="Forcer absent">❌</button>
+pp/static/char.html
         <button class="eb${ov ? "" : " on"}" data-fname="${esc(i.n)}" data-fv="" title="Réponse du jeu">↺</button>
+pp/static/char.html
       </span></div>`;
+pp/static/char.html
   }).join("") || `<div class="empty">Aucun invité.</div>`;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function editHTML(e) {
+pp/static/char.html
   const ra = (GCAL_CAT.raids || []);
+pp/static/char.html
   const sel = ra.filter(r => EDBOX.raids.includes(r.name));
+pp/static/char.html
   const bs = [];
+pp/static/char.html
   sel.forEach(r => (r.bosses || []).forEach(b => { if (!bs.includes(b)) bs.push(b); }));
+pp/static/char.html
   return `<div class="gedit">
+pp/static/char.html
     <div class="row" style="align-items:flex-start"><span class="meta" style="padding-top:5px">🗺️ Raids :</span>
+pp/static/char.html
       <span class="chips">${ra.length
+pp/static/char.html
         ? ra.map(r => `<span class="chip${EDBOX.raids.includes(r.name) ? " on" : ""}" data-er="${esc(r.name)}">${esc(r.name)}</span>`).join("")
+pp/static/char.html
         : `<span class="meta">Catalogue du jeu indisponible pour le moment.</span>`}</span></div>
+pp/static/char.html
     <div class="row" style="margin-top:6px;align-items:flex-start"><span class="meta" style="padding-top:5px">⚔️ Boss :</span>
+pp/static/char.html
       <span class="chips">${sel.length
+pp/static/char.html
         ? bs.map(b => `<span class="chip${EDBOX.bosses.includes(b) ? " on" : ""}" data-eb="${esc(b)}">${esc(b)}</span>`).join("")
+pp/static/char.html
         : `<span class="meta">— choisis d'abord un ou des raids</span>`}</span></div>
+pp/static/char.html
     <div class="row" style="margin-top:8px">
+pp/static/char.html
       <span class="meta">🚩 Départ :</span>
+pp/static/char.html
       <select id="edep"><option value="">—</option>${sel.map(r => `<option value="${esc(r.name)}"${EDBOX.start === r.name ? " selected" : ""}>${esc(r.name)}</option>`).join("")}</select>
+pp/static/char.html
       <button class="small" id="esave">💾 Enregistrer</button>
+pp/static/char.html
       ${EDBOX.existing ? `<button class="small ghost" id="eclear">🧹 Effacer</button>` : ""}
+pp/static/char.html
       <button class="small ghost" id="ecancel">Annuler</button>
+pp/static/char.html
     </div>
+pp/static/char.html
     <details style="margin-top:8px"><summary class="meta" style="cursor:pointer">👥 Joueurs — rôles & réponses (${(e.inv || []).length})</summary>
+pp/static/char.html
       <div style="margin-top:6px;max-height:320px;overflow:auto">${playerRows(e)}</div>
+pp/static/char.html
     </details>
+pp/static/char.html
   </div>`;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function renderGcal() {
+pp/static/char.html
   const d = GCAL || { events: [], imported_at: 0, player: "" };
+pp/static/char.html
   $("#gmeta").textContent = d.imported_at
+pp/static/char.html
     ? `· importé ${ago(d.imported_at)} par ${d.player || "?"}`
+pp/static/char.html
     : "· aucun import pour le moment";
+pp/static/char.html
   renderUnav(d);
+pp/static/char.html
   GCAL_CAT = d.raid_catalog || { raids: [] };
+pp/static/char.html
   GCAL_CLS = d.classes || {};
+pp/static/char.html
   const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
+pp/static/char.html
   const box = $("#glist");
+pp/static/char.html
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
+pp/static/char.html
   box.innerHTML = evs.map(e => {
+pp/static/char.html
     const mt = e.meta || {};
+pp/static/char.html
     const ROLES = mt.roles || {}, OVR = mt.ovr || {};
+pp/static/char.html
     const REMO = { tank: "🛡️", heal: "💚", dps: "⚔️" };
+pp/static/char.html
     const stOf = (i) => OVR[i.n] || (i.s === 1 || i.s === 3 ? "ok" : i.s === 8 ? "maybe" : i.s === 2 ? "no" : "wait");
+pp/static/char.html
     const nmTxt = (n) => cName(n) + (ROLES[n] ? " " + (REMO[ROLES[n]] || "") : "") + (OVR[n] ? " (officier)" : "");
+pp/static/char.html
     const c = { ok: 0, maybe: 0, no: 0, wait: 0 };
+pp/static/char.html
     const lists = { ok: [], maybe: [], no: [] }, wait = [];
+pp/static/char.html
     const rc2 = { tank: 0, heal: 0, dps: 0 };
+pp/static/char.html
     for (const i of (e.inv || [])) {
+pp/static/char.html
       const st = stOf(i);
+pp/static/char.html
       if (st === "ok") { c.ok++; lists.ok.push(nmTxt(i.n)); if (ROLES[i.n]) rc2[ROLES[i.n]]++; }
+pp/static/char.html
       else if (st === "maybe") { c.maybe++; lists.maybe.push(nmTxt(i.n)); }
+pp/static/char.html
       else if (st === "no") { c.no++; lists.no.push(nmTxt(i.n)); }
+pp/static/char.html
       else { c.wait++; wait.push(nmTxt(i.n)); }
+pp/static/char.html
     }
+pp/static/char.html
     const line = (emo, arr) => arr.length ? `<span class="meta">${emo} ${arr.join(", ")}</span>` : "";
+pp/static/char.html
     const roleTxt = (rc2.tank || rc2.heal || rc2.dps)
+pp/static/char.html
       ? [rc2.tank ? `🛡️ ${rc2.tank}` : "", rc2.heal ? `💚 ${rc2.heal}` : "", rc2.dps ? `⚔️ ${rc2.dps}` : ""].filter(Boolean).join(" · ")
+pp/static/char.html
       : "";
+pp/static/char.html
     const mTxt = (mt.raids && mt.raids.length) || mt.start
+pp/static/char.html
       ? `🗺️ ${(mt.raids || []).map(esc).join(" · ")}${mt.start ? ` · 🚩 départ : <b>${esc(mt.start)}</b>` : ""}` : "";
+pp/static/char.html
     return `<div class="item"><div class="main">
+pp/static/char.html
       <span class="name">${esc(e.title)}</span>
+pp/static/char.html
       <span class="meta">${e.ts ? dateTxt(e.ts) : esc(e.date || "")}</span>
+pp/static/char.html
       ${line("✅", lists.ok)}${line("❓", lists.maybe)}${line("❌", lists.no)}
+pp/static/char.html
       ${wait.length ? `<span class="meta warn">⏳ sans réponse : ${wait.join(", ")}</span>` : ""}
+pp/static/char.html
       ${(e.unav || []).map(u => u.conflict
+pp/static/char.html
         ? `<span class="meta" style="color:var(--warn)">⚠️ ${cName(u.n)} — indispo mais a accepté le raid · ${perTxt(u)}</span>`
+pp/static/char.html
         : `<span class="meta">🚫 ${cName(u.n)} · ${perTxt(u)}</span>`).join("")}
+pp/static/char.html
       ${mTxt ? `<span class="meta">${mTxt}</span>` : ""}
+pp/static/char.html
       ${mt.bosses && mt.bosses.length ? `<span class="meta">⚔️ ${mt.bosses.map(esc).join(" · ")}</span>` : ""}
+pp/static/char.html
       ${(e.wanted || []).map((w, wi) => `<span class="meta">${wi === 0 ? "🎁 Pièces voulues — " : "🎁 "}${esc(w.boss)} : ${w.items.map(i => `${i.prio ? "⭐ " : ""}${esc(i.name)}${i.who.length ? " (" + i.who.map(cName).join(", ") + ")" : ""}`).join(" · ")}</span>`).join("")}
+pp/static/char.html
     </div>
+pp/static/char.html
     <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}${(e.unav || []).length ? ` · 🚫 ${e.unav.length}` : ""}${roleTxt ? ` · ${roleTxt}` : ""}</span>
+pp/static/char.html
     ${wait.length && CAN_IMP ? `<button class="small ghost" data-rel="${e.id}">📣 Relancer</button>` : ""}
+pp/static/char.html
     ${CAN_IMP ? `<button class="small ghost" data-ed="${esc(e.key)}" title="Raids & boss visés">✏️</button>` : ""}
+pp/static/char.html
     </div>` + (EDBOX && EDBOX.key === e.key ? editHTML(e) : "");
+pp/static/char.html
   }).join("");
+pp/static/char.html
   box.querySelectorAll("button[data-rel]").forEach(b => b.addEventListener("click", async () => {
+pp/static/char.html
     b.disabled = true;
+pp/static/char.html
     try { const r = await jpost("POST", `/api/gcal/relance/${b.dataset.rel}`); setMsg("#gmsg", `Relance envoyée pour ${r.count} membre(s) ✓`, true); }
+pp/static/char.html
     catch (e) { setMsg("#gmsg", e.message, false); }
+pp/static/char.html
     b.disabled = false;
+pp/static/char.html
   }));
+pp/static/char.html
   box.querySelectorAll("button[data-ed]").forEach(b => b.addEventListener("click", () => {
+pp/static/char.html
     const e = evs.find(x => String(x.key) === b.dataset.ed);
+pp/static/char.html
     if (!e) return;
+pp/static/char.html
     EDBOX = { key: e.key, existing: !!e.meta,
+pp/static/char.html
               raids: [...(((e.meta || {}).raids) || [])], bosses: [...(((e.meta || {}).bosses) || [])],
+pp/static/char.html
               start: (e.meta || {}).start || "",
+pp/static/char.html
               roles: { ...(((e.meta || {}).roles) || {}) }, ovr: { ...(((e.meta || {}).ovr) || {}) } };
+pp/static/char.html
     renderGcal();
+pp/static/char.html
   }));
+pp/static/char.html
   if (EDBOX) {
+pp/static/char.html
     box.querySelectorAll("[data-er]").forEach(ch => ch.addEventListener("click", () => {
+pp/static/char.html
       const nm = ch.dataset.er;
+pp/static/char.html
       if (EDBOX.raids.includes(nm)) {
+pp/static/char.html
         EDBOX.raids = EDBOX.raids.filter(x => x !== nm);
+pp/static/char.html
         const del = new Set(((GCAL_CAT.raids.find(r => r.name === nm) || {}).bosses) || []);
+pp/static/char.html
         EDBOX.bosses = EDBOX.bosses.filter(b => !del.has(b));
+pp/static/char.html
         if (EDBOX.start === nm) EDBOX.start = "";
+pp/static/char.html
       } else EDBOX.raids.push(nm);
+pp/static/char.html
       renderGcal();
+pp/static/char.html
     }));
+pp/static/char.html
     box.querySelectorAll("[data-eb]").forEach(ch => ch.addEventListener("click", () => {
+pp/static/char.html
       const nm = ch.dataset.eb;
+pp/static/char.html
       EDBOX.bosses = EDBOX.bosses.includes(nm) ? EDBOX.bosses.filter(x => x !== nm) : EDBOX.bosses.concat([nm]);
+pp/static/char.html
       renderGcal();
+pp/static/char.html
     }));
+pp/static/char.html
     const dep = $("#edep");
+pp/static/char.html
     if (dep) dep.addEventListener("change", () => { EDBOX.start = dep.value || ""; });
+pp/static/char.html
     box.querySelectorAll("[data-rname]").forEach(sl => sl.addEventListener("change", () => {
+pp/static/char.html
       const nm = sl.dataset.rname;
+pp/static/char.html
       if (sl.value) EDBOX.roles[nm] = sl.value; else delete EDBOX.roles[nm];
+pp/static/char.html
     }));
+pp/static/char.html
     box.querySelectorAll("button[data-fname]").forEach(bt => bt.addEventListener("click", () => {
+pp/static/char.html
       const nm = bt.dataset.fname, v = bt.dataset.fv;
+pp/static/char.html
       if (v) EDBOX.ovr[nm] = v; else delete EDBOX.ovr[nm];
+pp/static/char.html
       bt.closest(".ebtns").querySelectorAll("button[data-fname]").forEach(x =>
+pp/static/char.html
         x.classList.toggle("on", (EDBOX.ovr[nm] || "") === x.dataset.fv));
+pp/static/char.html
     }));
+pp/static/char.html
     const sv = $("#esave");
+pp/static/char.html
     if (sv) sv.addEventListener("click", async () => {
+pp/static/char.html
       sv.disabled = true;
+pp/static/char.html
       try {
+pp/static/char.html
         await jpost("POST", "/api/gcal/event/" + encodeURIComponent(EDBOX.key),
+pp/static/char.html
                     { raids: EDBOX.raids, bosses: EDBOX.bosses, start: ($("#edep") || {}).value || "",
+pp/static/char.html
                       roles: EDBOX.roles, ovr: EDBOX.ovr });
+pp/static/char.html
         setMsg("#gmsg", "Enregistré ✓", true);
+pp/static/char.html
         EDBOX = null;
+pp/static/char.html
         await loadGcal();
+pp/static/char.html
       } catch (err) { setMsg("#gmsg", err.message, false); sv.disabled = false; }
+pp/static/char.html
     });
+pp/static/char.html
     const cl = $("#eclear");
+pp/static/char.html
     if (cl) cl.addEventListener("click", async () => {
+pp/static/char.html
       if (!confirm("Effacer les raids/boss visés pour cette date ?")) return;
+pp/static/char.html
       try {
+pp/static/char.html
         await jpost("POST", "/api/gcal/event/" + encodeURIComponent(EDBOX.key), { raids: [], bosses: [], start: "", roles: {}, ovr: {} });
+pp/static/char.html
         EDBOX = null;
+pp/static/char.html
         await loadGcal();
+pp/static/char.html
       } catch (err) { setMsg("#gmsg", err.message, false); }
+pp/static/char.html
     });
+pp/static/char.html
     const cx = $("#ecancel");
+pp/static/char.html
     if (cx) cx.addEventListener("click", () => { EDBOX = null; renderGcal(); });
+pp/static/char.html
   }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 async function gcalImport(payload) {
+pp/static/char.html
   setMsg("#gmsg", "Import en cours…", true);
+pp/static/char.html
   try {
+pp/static/char.html
     const r = await jpost("POST", "/api/gcal/import", { payload });
+pp/static/char.html
     setMsg("#gmsg", `Import OK — ${r.events} événement(s), ${r.responses} réponse(s) ✓`, true);
+pp/static/char.html
     $("#gtext").value = "";
+pp/static/char.html
     await loadGcal();
+pp/static/char.html
   } catch (e) { setMsg("#gmsg", e.message, false); }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 $("#gbtn-file").addEventListener("click", async () => {
+pp/static/char.html
   const f = $("#gfile").files[0];
+pp/static/char.html
   if (!f) { setMsg("#gmsg", "Choisis d'abord le fichier Cohors.lua", false); return; }
+pp/static/char.html
   gcalImport(await f.text());
+pp/static/char.html
 });
+pp/static/char.html
 $("#gbtn-text").addEventListener("click", () => {
+pp/static/char.html
   const t = $("#gtext").value.trim();
+pp/static/char.html
   if (!t) { setMsg("#gmsg", "Colle la chaîne exportée en jeu (/cohors export)", false); return; }
+pp/static/char.html
   gcalImport(t);
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
+pp/static/char.html
   ev.preventDefault();
+pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
+pp/static/char.html
   location.href = "/login";
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 (async () => {
+pp/static/char.html
   try {
+pp/static/char.html
     const me = await jget("/api/me");
+pp/static/char.html
     $("#who").textContent = me.name || me.email;
+pp/static/char.html
     if (me.is_admin || me.role === "officer") {
+pp/static/char.html
       CAN_IMP = true;
+pp/static/char.html
       $("#gimport").classList.remove("hidden");
+pp/static/char.html
     }
+pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
+pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+pp/static/char.html
   loadGcal();
+pp/static/char.html
 })();
+pp/static/char.html
 </script>
+pp/static/char.html
 </body>
+pp/static/char.html
 </html>
+pp/static/char.html

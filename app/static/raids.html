@@ -1,325 +1,650 @@
 <!DOCTYPE html>
+pp/static/char.html
 <html lang="fr">
+pp/static/char.html
 <head>
+pp/static/char.html
 <meta charset="utf-8">
+pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+pp/static/char.html
 <title>Cohors — Rapports de raid</title>
+pp/static/char.html
 <link rel="icon" href="/branding/logo">
+pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
+pp/static/char.html
 <meta name="theme-color" content="#b1002e">
+pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
+pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
+pp/static/char.html
 <style>
+pp/static/char.html
   :root {
+pp/static/char.html
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+pp/static/char.html
     --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+pp/static/char.html
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+pp/static/char.html
   }
+pp/static/char.html
   * { box-sizing: border-box; }
+pp/static/char.html
   body { margin: 0; background: var(--bg); color: var(--fg);
+pp/static/char.html
          font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+pp/static/char.html
   header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+pp/static/char.html
   .brand { display: flex; align-items: center; gap: 12px; }
+pp/static/char.html
   .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+pp/static/char.html
   .brandname span { color: var(--acc2); }
+pp/static/char.html
   .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+pp/static/char.html
   .tagline { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+pp/static/char.html
   .spacer { flex: 1; }
+pp/static/char.html
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+pp/static/char.html
   .hlink:hover { text-decoration: underline; }
+pp/static/char.html
   .who { color: var(--mut); font-size: 14px; }
+pp/static/char.html
   nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+pp/static/char.html
   .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+pp/static/char.html
          color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+pp/static/char.html
          border: 1px solid var(--line); background: transparent;
+pp/static/char.html
          transition: border-color .15s, color .15s, background .15s; }
+pp/static/char.html
   .tab:hover { color: var(--fg); border-color: #3a4763; }
+pp/static/char.html
   .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+pp/static/char.html
   .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+pp/static/char.html
   .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+pp/static/char.html
   .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
+pp/static/char.html
   .sub { color: var(--mut); font-size: 14px; margin: 0 0 18px; }
+pp/static/char.html
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+pp/static/char.html
   h2 { font-size: 17px; margin: 0 0 12px; }
+pp/static/char.html
   button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+pp/static/char.html
            padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+pp/static/char.html
   button:disabled { opacity: .55; cursor: default; }
+pp/static/char.html
   button.ghost { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+pp/static/char.html
                  padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
+pp/static/char.html
   button.ghost:hover { border-color: var(--acc2); color: var(--acc2); }
+pp/static/char.html
   .meta { color: var(--mut); font-size: 13px; }
+pp/static/char.html
   .rrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line);
+pp/static/char.html
           background: var(--card2); border-radius: 11px; padding: 10px 14px; margin-bottom: 8px; cursor: pointer; }
+pp/static/char.html
   .rrow:hover { border-color: var(--acc2); }
+pp/static/char.html
   .rrow .rdate { color: var(--mut); font-size: 13px; min-width: 150px; }
+pp/static/char.html
   .rrow .rtitle { font-weight: 600; }
+pp/static/char.html
   .rrow .rz { color: var(--acc2); font-size: 12.5px; border: 1px solid #6b4a17; border-radius: 999px; padding: 1px 10px; }
+pp/static/char.html
   .badge { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
+pp/static/char.html
   .b-kill { color: var(--ok); border-color: #1d4a3a; }
+pp/static/char.html
   .b-wipe { color: var(--err); border-color: #5a2626; }
+pp/static/char.html
   .frow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line);
+pp/static/char.html
           background: var(--card2); border-radius: 11px; padding: 9px 14px; margin-bottom: 7px; }
+pp/static/char.html
   .frow .fidx { color: var(--mut); font-size: 12.5px; min-width: 26px; }
+pp/static/char.html
   .frow .fname { font-weight: 600; min-width: 180px; }
+pp/static/char.html
   .frow .fmeta { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   .det { width: 100%; margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 8px; }
+pp/static/char.html
   .roleh { color: var(--acc2); font-size: 13px; font-weight: 700; margin: 8px 0 4px; }
+pp/static/char.html
   .prow { display: flex; gap: 10px; align-items: baseline; font-size: 13.5px; padding: 2px 4px; }
+pp/static/char.html
   .prow .pname { font-weight: 600; min-width: 130px; }
+pp/static/char.html
   .prow .pspec { color: var(--mut); font-size: 12.5px; min-width: 120px; }
+pp/static/char.html
   .prow .pamt { font-variant-numeric: tabular-nums; }
+pp/static/char.html
   .prow .pchip { font-weight: 700; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+pp/static/char.html
   .reph { display: flex; gap: 14px; flex-wrap: wrap; align-items: baseline; margin-bottom: 10px; }
+pp/static/char.html
   .reph a { color: var(--acc2); text-decoration: none; font-weight: 600; }
+pp/static/char.html
   .reph a:hover { text-decoration: underline; }
+pp/static/char.html
   .empty { color: var(--mut); font-size: 14px; padding: 8px 2px; }
+pp/static/char.html
   .evev { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 12px; }
+pp/static/char.html
   .evchip { background: transparent; border: 1px solid var(--line); color: var(--fg); font-weight: 500;
+pp/static/char.html
             padding: 3px 10px; font-size: 12.5px; border-radius: 8px; cursor: pointer; }
+pp/static/char.html
   .evchip:hover { border-color: var(--acc2); color: var(--acc2); }
+pp/static/char.html
   table.attab { width: 100%; border-collapse: collapse; }
+pp/static/char.html
   table.attab th, table.attab td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13.5px; }
+pp/static/char.html
   table.attab th { color: var(--mut); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; }
+pp/static/char.html
   .attab .abar { display: inline-block; width: 90px; height: 7px; border-radius: 4px; background: var(--line);
+pp/static/char.html
                  overflow: hidden; vertical-align: middle; margin-right: 7px; }
+pp/static/char.html
   .attab .abar i { display: block; height: 100%; background: linear-gradient(90deg, var(--acc), var(--acc2)); }
+pp/static/char.html
   .attab .aname { font-weight: 600; text-decoration: none; }
+pp/static/char.html
   .attab .aname:hover { text-decoration: underline; }
+pp/static/char.html
   .err { color: var(--err); font-size: 13px; }
+pp/static/char.html
   .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+pp/static/char.html
   @keyframes spin { to { transform: rotate(360deg); } }
+pp/static/char.html
   .hidden { display: none !important; }
+pp/static/char.html
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 24px; padding-top: 14px; }
+pp/static/char.html
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c28">
+pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
+pp/static/char.html
 </head>
+pp/static/char.html
 <body class="wb">
+pp/static/char.html
 <div class="wrap">
+pp/static/char.html
   <header class="topbar">
+pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
+pp/static/char.html
       <div>
+pp/static/char.html
         <div class="brandname">Cohors <span>Rapports de raid</span></div>
+pp/static/char.html
         <div class="tagline">Warcraft Logs — parses de la guilde</div>
+pp/static/char.html
       </div>
+pp/static/char.html
     </a>
+pp/static/char.html
     <div class="userbox">
+pp/static/char.html
       <span class="who" id="who"></span>
+pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
+pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
+pp/static/char.html
     </div>
+pp/static/char.html
   </header>
+pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
+pp/static/char.html
   <p class="sub">Derniers rapports de guilde sur Warcraft Logs. Clique sur un rapport pour voir les boss, les wipes/kills et les parses de chaque joueur.</p>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+pp/static/char.html
       <h2 style="margin:0;">Rapports récents</h2>
+pp/static/char.html
       <span class="spacer"></span>
+pp/static/char.html
       <span class="meta" id="rmeta">Chargement…</span>
+pp/static/char.html
       <button class="ghost" id="refresh" title="Recharger (max 1×/min)">⟳ Actualiser</button>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div id="rlist"><div class="empty">Chargement…</div></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+pp/static/char.html
       <h2 style="margin:0;">📋 Assiduité</h2>
+pp/static/char.html
       <span class="spacer"></span>
+pp/static/char.html
       <span class="meta" id="ameta">Chargement…</span>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div class="evev" id="aeven"></div>
+pp/static/char.html
     <div id="atab"><div class="empty">Chargement…</div></div>
+pp/static/char.html
     <div class="meta" style="margin-top:8px">Soirées loggées sur Warcraft Logs — clique sur une date pour ouvrir le rapport.</div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card hidden" id="dcard">
+pp/static/char.html
     <div class="reph" id="dhead"></div>
+pp/static/char.html
     <div id="dfights"></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <footer>
+pp/static/char.html
     Données : <b>Warcraft Logs</b> (API v2, cache 30 min) · Données de jeu fournies par
+pp/static/char.html
     <b>Blizzard Entertainment</b> · Outil non affilié à Blizzard Entertainment ·
+pp/static/char.html
     <span id="ver">…</span>
+pp/static/char.html
   </footer>
+pp/static/char.html
 </div>
+pp/static/char.html
 
-<script src="/static/nav.js?v=2026.09.152-c28"></script>
-<script src="/static/branding.js?v=2026.09.152-c28"></script>
-<script src="/static/i18n.js?v=2026.09.152-c28"></script>
-<script src="/static/esc.js?v=2026.09.152-c28"></script>
+pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/esc.js?v=2026.09.152-c29"></script>
+pp/static/char.html
 <script>
+pp/static/char.html
 const $ = (s) => document.querySelector(s);
+pp/static/char.html
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+pp/static/char.html
 const dtFmt = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+pp/static/char.html
 const shortDay = (s) => s.slice(8, 10) + "/" + s.slice(5, 7);
+pp/static/char.html
 const durFmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`; };
+pp/static/char.html
 
+pp/static/char.html
 const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+pp/static/char.html
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+pp/static/char.html
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
+pp/static/char.html
 const CLASS_FR = { DeathKnight: "Chevalier de la mort", DemonHunter: "Chasseur de démons", Druid: "Druide",
+pp/static/char.html
   Evoker: "Évocateur", Hunter: "Chasseur", Mage: "Mage", Monk: "Moine", Paladin: "Paladin",
+pp/static/char.html
   Priest: "Prêtre", Rogue: "Voleur", Shaman: "Chaman", Warlock: "Démoniste", Warrior: "Guerrier" };
+pp/static/char.html
 const DIFF = { 1: "LFR", 2: "Flex", 3: "Normal", 4: "Héroïque", 5: "Mythique", 10: "Défi (M+)" };
+pp/static/char.html
 const ROLES = [["tanks", "Tanks"], ["healers", "Soigneurs"], ["dps", "DPS"]];
+pp/static/char.html
 const parseColor = (p) => p >= 100 ? "#e5cc80" : p >= 95 ? "#ff8000" : p >= 75 ? "#a335ee" : p >= 50 ? "#0070dd" : p >= 25 ? "#1eff00" : "#6b6b6b";
+pp/static/char.html
 
+pp/static/char.html
 const jget = async (u) => { const r = await fetch(u);
+pp/static/char.html
   const j = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+pp/static/char.html
 
+pp/static/char.html
 let DETAIL = null;      // { report, rankings }
+pp/static/char.html
 let OPEN_FIGHTS = new Set();
+pp/static/char.html
 
+pp/static/char.html
 async function loadList(refresh = 0) {
+pp/static/char.html
   try {
+pp/static/char.html
     const d = await jget("/api/wcl/reports" + (refresh ? "?refresh=1" : ""));
+pp/static/char.html
     $("#rmeta").textContent = `${d.reports.total ?? "?"} rapports au total · actualisé à l'instant`;
+pp/static/char.html
     const el = $("#rlist");
+pp/static/char.html
     if (!d.reports.data.length) { el.innerHTML = `<div class="empty">Aucun rapport.</div>`; return; }
+pp/static/char.html
     el.innerHTML = d.reports.data.map(r => `
+pp/static/char.html
       <div class="rrow" data-code="${esc(r.code)}">
+pp/static/char.html
         <span class="rdate">${dtFmt(r.startTime)}</span>
+pp/static/char.html
         <span class="rtitle">${esc(r.title || "(sans titre)")}</span>
+pp/static/char.html
         <span class="rz">${esc((r.zone || {}).name || "Zone inconnue")}</span>
+pp/static/char.html
         <span class="spacer"></span>
+pp/static/char.html
         <button class="ghost">Ouvrir</button>
+pp/static/char.html
       </div>`).join("");
+pp/static/char.html
     el.querySelectorAll(".rrow").forEach(row =>
+pp/static/char.html
       row.addEventListener("click", () => openReport(row.dataset.code, row)));
+pp/static/char.html
   } catch (e) {
+pp/static/char.html
     $("#rlist").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
+pp/static/char.html
   }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 async function loadAtt(refresh = 0) {
+pp/static/char.html
   try {
+pp/static/char.html
     const d = await jget("/api/attendance" + (refresh ? "?refresh=1" : ""));
+pp/static/char.html
     renderAtt(d);
+pp/static/char.html
   } catch (e) {
+pp/static/char.html
     $("#atab").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
+pp/static/char.html
   }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function renderAtt(d) {
+pp/static/char.html
   if (d.error) { $("#atab").innerHTML = `<div class="err">${esc(d.error)}</div>`; $("#ameta").textContent = ""; return; }
+pp/static/char.html
   const ev = d.evenings || [];
+pp/static/char.html
   $("#ameta").textContent = `${ev.length} soirées loggées sur les ${d.days} derniers jours`;
+pp/static/char.html
   $("#aeven").innerHTML = ev.map(e => `<button class="evchip" data-code="${esc(e.code)}" title="${esc(e.zone || "Zone inconnue")} · ${e.kills} boss tués">${shortDay(e.day)}</button>`).join("");
+pp/static/char.html
   $("#aeven").querySelectorAll(".evchip").forEach(b => b.addEventListener("click", () => openReport(b.dataset.code)));
+pp/static/char.html
   const rows = d.rows || [];
+pp/static/char.html
   $("#atab").innerHTML = rows.length ? `<table class="attab">
+pp/static/char.html
     <thead><tr><th>#</th><th>Joueur</th><th>Soirs</th><th>Présence</th><th>Dernier raid</th></tr></thead>
+pp/static/char.html
     <tbody>${rows.map((r, i) => `<tr>
+pp/static/char.html
       <td><b>${i + 1}</b></td>
+pp/static/char.html
       <td><a class="aname" style="color:${CLASS_COLORS[r.class_key || r.class] || "var(--fg)"}" href="/char/${esc(r.realm)}/${esc(r.key)}">${esc(r.name)}</a>${r.guest ? ` <span class="meta">· invité</span>` : ""}</td>
+pp/static/char.html
       <td>${r.nights}/${d.total}</td>
+pp/static/char.html
       <td><span class="abar"><i style="width:${Math.max(2, r.pct)}%"></i></span><b>${r.pct} %</b></td>
+pp/static/char.html
       <td class="meta">${shortDay(r.last_day)}</td>
+pp/static/char.html
     </tr>`).join("")}</tbody></table>`
+pp/static/char.html
     : `<div class="empty">Aucune soirée de raid loggée sur la période.</div>`;
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 async function openReport(code, row) {
+pp/static/char.html
   const card = $("#dcard");
+pp/static/char.html
   card.classList.remove("hidden");
+pp/static/char.html
   $("#dhead").innerHTML = `<span class="spin">⏳</span> <span class="meta">Chargement du rapport…</span>`;
+pp/static/char.html
   $("#dfights").innerHTML = "";
+pp/static/char.html
   OPEN_FIGHTS = new Set();
+pp/static/char.html
   try {
+pp/static/char.html
     DETAIL = await jget(`/api/wcl/report/${encodeURIComponent(code)}`);
+pp/static/char.html
     renderDetail();
+pp/static/char.html
     card.scrollIntoView({ block: "start", behavior: "smooth" });
+pp/static/char.html
   } catch (e) {
+pp/static/char.html
     $("#dhead").innerHTML = `<span class="err">Erreur : ${esc(e.message)}</span>`;
+pp/static/char.html
   }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function renderDetail() {
+pp/static/char.html
   const rep = DETAIL.report;
+pp/static/char.html
   const fights = rep.fights || [];
+pp/static/char.html
   const kills = fights.filter(f => f.kill).length;
+pp/static/char.html
   $("#dhead").innerHTML = `
+pp/static/char.html
     <h2 style="margin:0;">${esc(rep.title || "(sans titre)")}</h2>
+pp/static/char.html
     <span class="meta">${esc((rep.zone || {}).name || "")} · ${dtFmt(rep.startTime)}</span>
+pp/static/char.html
     <span class="meta">${fights.length} pulls · <b style="color:var(--ok)">${kills} tué(s)</b></span>
+pp/static/char.html
     <span class="spacer"></span>
+pp/static/char.html
     <a href="https://www.warcraftlogs.com/reports/${esc(rep.code)}" target="_blank" rel="noopener">Ouvrir sur Warcraft Logs ↗</a>`;
+pp/static/char.html
   $("#dfights").innerHTML = fights.map((f, i) => {
+pp/static/char.html
     const pct = Math.round(f.fightPercentage ?? 0);
+pp/static/char.html
     const badge = f.kill
+pp/static/char.html
       ? `<span class="badge b-kill">✅ Tué</span>`
+pp/static/char.html
       : `<span class="badge b-wipe">❌ ${pct} %</span>`;
+pp/static/char.html
     const det = DETAIL.rankings[String(f.id)];
+pp/static/char.html
     return `<div class="frow" data-fid="${f.id}">
+pp/static/char.html
       <span class="fidx">#${i + 1}</span>
+pp/static/char.html
       <span class="fname">${esc(f.name)}</span>
+pp/static/char.html
       ${badge}
+pp/static/char.html
       <span class="fmeta">${DIFF[f.difficulty] || "?"} · ilvl ${f.averageItemLevel ? Math.round(f.averageItemLevel) : "—"} · ${durFmt(f.endTime - f.startTime)} · ${f.size || "?"} joueurs</span>
+pp/static/char.html
       <span class="spacer"></span>
+pp/static/char.html
       ${det ? `<button class="ghost" data-parses>Parses</button>` : ""}
+pp/static/char.html
     </div>`;
+pp/static/char.html
   }).join("");
+pp/static/char.html
   $("#dfights").querySelectorAll("button[data-parses]").forEach(btn =>
+pp/static/char.html
     btn.addEventListener("click", () => toggleParses(btn.closest(".frow"))));
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function toggleParses(frow) {
+pp/static/char.html
   const fid = frow.dataset.fid;
+pp/static/char.html
   const existing = frow.querySelector(".det");
+pp/static/char.html
   if (existing) { existing.remove(); OPEN_FIGHTS.delete(fid); return; }
+pp/static/char.html
   const det = DETAIL.rankings[fid];
+pp/static/char.html
   if (!det) return;
+pp/static/char.html
   OPEN_FIGHTS.add(fid);
+pp/static/char.html
   const parts = [];
+pp/static/char.html
   for (const [key, label] of ROLES) {
+pp/static/char.html
     const role = (det.roles || {})[key];
+pp/static/char.html
     if (!role || !role.characters || !role.characters.length) continue;
+pp/static/char.html
     const chars = [...role.characters].sort((a, b) => b.amount - a.amount);
+pp/static/char.html
     parts.push(`<div class="roleh">${label}</div>` + chars.map(c => {
+pp/static/char.html
       const col = CLASS_COLORS[c.class] || "var(--fg)";
+pp/static/char.html
       return `<div class="prow">
+pp/static/char.html
         <span class="pname" style="color:${col}">${esc(c.name)}</span>
+pp/static/char.html
         <span class="pspec">${esc(CLASS_FR[c.class] || c.class || "")} ${esc(c.spec || "")}</span>
+pp/static/char.html
         <span class="spacer"></span>
+pp/static/char.html
         <span class="pamt">${fmt(c.amount)}</span>
+pp/static/char.html
         <span class="pchip" style="color:${parseColor(c.rankPercent)}" title="parse — bracket ${c.bracketPercent} %">${c.rankPercent ?? "?"}</span>
+pp/static/char.html
       </div>`;
+pp/static/char.html
     }).join(""));
+pp/static/char.html
   }
+pp/static/char.html
   const box = document.createElement("div");
+pp/static/char.html
   box.className = "det";
+pp/static/char.html
   box.innerHTML = parts.length ? parts.join("") : `<span class="meta">Pas de parses pour ce pull.</span>`;
+pp/static/char.html
   frow.appendChild(box);
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 $("#refresh").addEventListener("click", async (ev) => {
+pp/static/char.html
   ev.target.disabled = true;
+pp/static/char.html
   await loadList(1);
+pp/static/char.html
   await loadAtt(1);
+pp/static/char.html
   ev.target.disabled = false;
+pp/static/char.html
 });
+pp/static/char.html
 $("#logout").addEventListener("click", async (ev) => {
+pp/static/char.html
   ev.preventDefault();
+pp/static/char.html
   await fetch("/api/logout", { method: "POST" });
+pp/static/char.html
   location.href = "/login";
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 (async () => {
+pp/static/char.html
   try {
+pp/static/char.html
     const me = await jget("/api/me");
+pp/static/char.html
     $("#who").textContent = me.name || me.email;
+pp/static/char.html
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
+pp/static/char.html
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+pp/static/char.html
   loadList(0);
+pp/static/char.html
   loadAtt(0);
+pp/static/char.html
 })();
+pp/static/char.html
 </script>
+pp/static/char.html
 </body>
+pp/static/char.html
 </html>
+pp/static/char.html

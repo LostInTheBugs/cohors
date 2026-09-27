@@ -1,479 +1,958 @@
 <!DOCTYPE html>
+pp/static/char.html
 <!-- v2026.09.152-c2 -->
+pp/static/char.html
 <html lang="fr">
+pp/static/char.html
 <head>
+pp/static/char.html
 <meta charset="utf-8">
+pp/static/char.html
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+pp/static/char.html
 <title>Cohors — Stuff conseillé</title>
+pp/static/char.html
 <link rel="icon" href="/branding/logo">
+pp/static/char.html
 <link rel="manifest" href="/manifest.webmanifest">
+pp/static/char.html
 <meta name="theme-color" content="#b1002e">
+pp/static/char.html
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+pp/static/char.html
 <meta name="apple-mobile-web-app-capable" content="yes">
+pp/static/char.html
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+pp/static/char.html
 <meta name="apple-mobile-web-app-title" content="Cohors">
+pp/static/char.html
 <style>
+pp/static/char.html
   :root {
+pp/static/char.html
     --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+pp/static/char.html
     --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+pp/static/char.html
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+pp/static/char.html
   }
+pp/static/char.html
   * { box-sizing: border-box; }
+pp/static/char.html
   body { margin: 0; background: var(--bg); color: var(--fg);
+pp/static/char.html
          font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+pp/static/char.html
   .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+pp/static/char.html
   header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+pp/static/char.html
   .brand { display: flex; align-items: center; gap: 12px; }
+pp/static/char.html
   .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+pp/static/char.html
   .brandname span { color: var(--acc2); }
+pp/static/char.html
   .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+pp/static/char.html
   .tagline { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+pp/static/char.html
   .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+pp/static/char.html
   .hlink:hover { text-decoration: underline; }
+pp/static/char.html
   .who { color: var(--mut); font-size: 14px; }
+pp/static/char.html
   nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+pp/static/char.html
   .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+pp/static/char.html
          color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+pp/static/char.html
          border: 1px solid var(--line); background: transparent; }
+pp/static/char.html
   .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+pp/static/char.html
   .sub { color: var(--mut); font-size: 14px; margin: 0 0 22px; }
+pp/static/char.html
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+pp/static/char.html
   label { display: block; font-size: 13px; color: var(--mut); margin: 0 0 6px; }
+pp/static/char.html
   .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
+pp/static/char.html
   .field { display: flex; flex-direction: column; }
+pp/static/char.html
   select { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+pp/static/char.html
            border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 210px; }
+pp/static/char.html
   select:focus { outline: 2px solid var(--acc); }
+pp/static/char.html
   button { background: linear-gradient(135deg, var(--acc), #7d0020); color: #fff; border: 0; border-radius: 10px;
+pp/static/char.html
            padding: 11px 22px; font-size: 15px; font-weight: 600; cursor: pointer; }
+pp/static/char.html
   button:disabled { opacity: .55; cursor: default; }
+pp/static/char.html
   .meta { color: var(--mut); font-size: 13.5px; margin-top: 10px; }
+pp/static/char.html
   .meta b { color: var(--fg); }
+pp/static/char.html
   h2 { font-size: 17px; margin: 0 0 12px; }
+pp/static/char.html
   .msg-ok { color: var(--ok); } .msg-err { color: var(--err); } .msg-warn { color: var(--warn); }
+pp/static/char.html
   #msg { margin-top: 12px; font-size: 14px; min-height: 20px; }
+pp/static/char.html
   .gwrap { overflow-x: auto; }
+pp/static/char.html
   table.gtable { width: 100%; border-collapse: collapse; font-size: 14px; }
+pp/static/char.html
   .gtable th { text-align: left; color: var(--mut); font-weight: 600; font-size: 12.5px;
+pp/static/char.html
                padding: 4px 10px 8px; border-bottom: 1px solid var(--line); }
+pp/static/char.html
   .gtable td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+pp/static/char.html
   .gtable td.gv { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+pp/static/char.html
   .islot { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   .gname { font-weight: 600; }
+pp/static/char.html
   .gname small { color: var(--mut); font-weight: 400; }
+pp/static/char.html
   .gpos { color: var(--ok); font-weight: 700; }
+pp/static/char.html
   .gneg { color: var(--err); font-weight: 600; }
+pp/static/char.html
   .gnil { color: var(--mut); }
+pp/static/char.html
   tr.gbest { background: linear-gradient(90deg, rgba(223,165,90,.12), transparent 70%); }
+pp/static/char.html
   tr.gbest td:first-child { box-shadow: inset 3px 0 0 var(--acc2); }
+pp/static/char.html
   .gsum { color: var(--mut); font-size: 13.5px; margin-top: 12px; }
+pp/static/char.html
   .gsum b { color: var(--acc2); }
+pp/static/char.html
   .pick { color: var(--ok); font-weight: 700; }
+pp/static/char.html
   .stay { color: var(--mut); }
+pp/static/char.html
   .stats { color: var(--mut); font-size: 12.5px; }
+pp/static/char.html
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 26px; padding-top: 14px; }
+pp/static/char.html
   .spin { display: inline-block; animation: spin 1.2s linear infinite; }
+pp/static/char.html
   @keyframes spin { to { transform: rotate(360deg); } }
+pp/static/char.html
   .hidden { display: none !important; }
+pp/static/char.html
   .src { font-size: 12.5px; }
+pp/static/char.html
   .src a { color: var(--acc2); }
+pp/static/char.html
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c28">
+pp/static/char.html
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c29">
+pp/static/char.html
 </head>
+pp/static/char.html
 <body class="wb">
+pp/static/char.html
 <div class="wrap">
+pp/static/char.html
   <header class="topbar">
+pp/static/char.html
     <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+pp/static/char.html
       <img src="/branding/logo" alt="Cohors" class="crest">
+pp/static/char.html
       <div>
+pp/static/char.html
         <div class="brandname">Cohors <span>Stuff conseillé</span></div>
+pp/static/char.html
         <div class="tagline">Avec ce que tu possèdes déjà — que porter, pour quel contenu ?</div>
+pp/static/char.html
       </div>
+pp/static/char.html
     </a>
+pp/static/char.html
     <div class="userbox">
+pp/static/char.html
       <span class="who" id="who"></span>
+pp/static/char.html
       <a class="hlink" href="/settings">⚙️ Paramètres</a>
+pp/static/char.html
       <a class="hlink" href="#" id="logout">Déconnexion</a>
+pp/static/char.html
     </div>
+pp/static/char.html
   </header>
+pp/static/char.html
   <nav class="tabs" id="navmain"></nav>
+pp/static/char.html
 
+pp/static/char.html
   <p class="sub">Choisis un de tes exports /simc (page Simulateur — il contient ton équipement, tes sacs et tes builds), puis un scénario : le site te dit quelles pièces de ce que tu as tu devrais porter, et pourquoi.</p>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>1️⃣ Ton export</h2>
+pp/static/char.html
     <div class="row">
+pp/static/char.html
       <div class="field">
+pp/static/char.html
         <label for="prof">Export enregistré</label>
+pp/static/char.html
         <select id="prof"><option value="">— choisis un export —</option></select>
+pp/static/char.html
       </div>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div class="meta" id="profinfo">Aucun export sélectionné.</div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card">
+pp/static/char.html
     <h2>2️⃣ Ton scénario</h2>
+pp/static/char.html
     <div class="row" style="align-items:center;">
+pp/static/char.html
       <div class="field">
+pp/static/char.html
         <label for="build">Ton build</label>
+pp/static/char.html
         <select id="build"><option value="">Build actuel de l'export</option></select>
+pp/static/char.html
       </div>
+pp/static/char.html
       <div class="field">
+pp/static/char.html
         <label for="content">Contenu</label>
+pp/static/char.html
         <select id="content">
+pp/static/char.html
           <option value="raid">Raid</option>
+pp/static/char.html
           <option value="mplus">Mythique+</option>
+pp/static/char.html
           <option value="delves">Gouffres (delves)</option>
+pp/static/char.html
         </select>
+pp/static/char.html
       </div>
+pp/static/char.html
       <div class="field">
+pp/static/char.html
         <label for="mode">Mode</label>
+pp/static/char.html
         <select id="mode">
+pp/static/char.html
           <option value="cur" selected>Pièces à leur niveau actuel</option>
+pp/static/char.html
           <option value="max">Toutes les pièces au rang d'amélioration max</option>
+pp/static/char.html
           <option value="bis">BIS — les meilleures pièces du guide</option>
+pp/static/char.html
         </select>
+pp/static/char.html
       </div>
+pp/static/char.html
     </div>
+pp/static/char.html
     <div class="field hidden" id="bis-filter-wrap" style="margin-top:12px;">
+pp/static/char.html
       <label>Filtrer le guide BIS sur</label>
+pp/static/char.html
       <div id="bis-filter-checks" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+pp/static/char.html
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+pp/static/char.html
           <input type="checkbox" name="biscontent" value="raid" checked> Raid
+pp/static/char.html
         </label>
+pp/static/char.html
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+pp/static/char.html
           <input type="checkbox" name="biscontent" value="mplus" checked> Mythique+
+pp/static/char.html
         </label>
+pp/static/char.html
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+pp/static/char.html
           <input type="checkbox" name="biscontent" value="delves" checked> Gouffres
+pp/static/char.html
         </label>
+pp/static/char.html
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+pp/static/char.html
           <input type="checkbox" name="biscontent" value="worldboss" checked> Boss mondial
+pp/static/char.html
         </label>
+pp/static/char.html
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;margin:0;cursor:pointer;">
+pp/static/char.html
           <input type="checkbox" name="biscontent" value="craft" checked> Artisanat
+pp/static/char.html
         </label>
+pp/static/char.html
       </div>
+pp/static/char.html
       <span id="bis-filter-hint" style="font-size:12px;color:var(--mut);">Tous les contenus cochés</span>
+pp/static/char.html
     </div>
+pp/static/char.html
     <button id="go" disabled style="margin-top:24px;">🧮 Voir ce que je dois porter</button>
+pp/static/char.html
     <div class="meta">Le build choisi est appliqué au calcul (talents inclus). Pour les soins, les guides donnent la même priorité de stats quel que soit l'arbre héroïque.</div>
+pp/static/char.html
     <div id="msg"></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <div class="card hidden" id="rescard">
+pp/static/char.html
     <h2>3️⃣ Résultat</h2>
+pp/static/char.html
     <div class="meta" id="resmeta"></div>
+pp/static/char.html
     <div class="gwrap"><table class="gtable hidden" id="restable"></table></div>
+pp/static/char.html
     <p class="gsum" id="ressum"></p>
+pp/static/char.html
     <p class="src" id="ressrc"></p>
+pp/static/char.html
     <div id="rescraft"></div>
+pp/static/char.html
   </div>
+pp/static/char.html
 
+pp/static/char.html
   <footer>
+pp/static/char.html
     Références : <a class="hlink" href="https://www.wowhead.com/guide/classes/shaman/restoration/stat-priority-pve-healer" target="_blank" rel="noopener">Wowhead</a> ·
+pp/static/char.html
     <a class="hlink" href="https://www.icy-veins.com/wow/restoration-shaman-pve-healing-stat-priority" target="_blank" rel="noopener">Icy Veins</a> ·
+pp/static/char.html
     <a class="hlink" href="https://www.archon.gg/wow" target="_blank" rel="noopener">Archon</a> ·
+pp/static/char.html
     Moteur : <b>SimulationCraft</b> (image Docker officielle) · Outil non affilié à Blizzard Entertainment · <span id="ver">…</span>
+pp/static/char.html
   </footer>
+pp/static/char.html
 </div>
+pp/static/char.html
 
-<script src="/static/nav.js?v=2026.09.152-c28"></script>
-<script src="/static/branding.js?v=2026.09.152-c28"></script>
-<script src="/static/i18n.js?v=2026.09.152-c28"></script>
-<script src="/static/esc.js?v=2026.09.152-c28"></script>
+pp/static/char.html
+<script src="/static/nav.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/branding.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/i18n.js?v=2026.09.152-c29"></script>
+pp/static/char.html
+<script src="/static/esc.js?v=2026.09.152-c29"></script>
+pp/static/char.html
 <script>
+pp/static/char.html
 const $ = (s) => document.querySelector(s);
+pp/static/char.html
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+pp/static/char.html
 const SLOT_FR = { head: "Tête", neck: "Cou", shoulder: "Épaules", back: "Dos", chest: "Torse",
+pp/static/char.html
   wrist: "Poignets", hands: "Mains", waist: "Taille", legs: "Jambes", feet: "Pieds",
+pp/static/char.html
   finger1: "Anneau 1", finger2: "Anneau 2", trinket1: "Bijou 1", trinket2: "Bijou 2",
+pp/static/char.html
   main_hand: "Arme principale", off_hand: "Main gauche" };
+pp/static/char.html
 const STAT_FR = { crit: "Critique", vers: "Polyvalence", haste: "Hâte", mast: "Maîtrise", int: "Intelligence" };
+pp/static/char.html
 
+pp/static/char.html
 async function jfetch(method, path, body) {
+pp/static/char.html
   const r = await fetch(path, { method, headers: { "Content-Type": "application/json" },
+pp/static/char.html
     body: body === undefined ? undefined : JSON.stringify(body) });
+pp/static/char.html
   if (r.status === 401) { location.href = "/login"; throw new Error("auth"); }
+pp/static/char.html
   const d = await r.json().catch(() => ({}));
+pp/static/char.html
   if (!r.ok) throw new Error(d.detail || "Erreur");
+pp/static/char.html
   return d;
+pp/static/char.html
 }
+pp/static/char.html
 function setMsg(t, cls) { const el = $("#msg"); el.className = cls || ""; el.textContent = t || ""; }
+pp/static/char.html
 
+pp/static/char.html
 // ---- profils
+pp/static/char.html
 let PROFILE = null;
+pp/static/char.html
 async function loadProfiles() {
+pp/static/char.html
   try {
+pp/static/char.html
     const d = await jfetch("GET", "/api/profiles");
+pp/static/char.html
     const sel = $("#prof");
+pp/static/char.html
     const add = (list, prefix) => (list || []).forEach(p => {
+pp/static/char.html
       const o = document.createElement("option");
+pp/static/char.html
       o.value = p.id;
+pp/static/char.html
       o.textContent = (prefix ? prefix + " " : "") + p.name;
+pp/static/char.html
       sel.appendChild(o);
+pp/static/char.html
     });
+pp/static/char.html
     add(d.mine, ""); add(d.shared, "👥");
+pp/static/char.html
     if (!sel.options.length || (d.mine || []).length + (d.shared || []).length === 0) {
+pp/static/char.html
       $("#profinfo").textContent = "Aucun export enregistré : ouvre la page Simulateur, colle ton export /simc, enregistre-le sous un nom, puis reviens ici.";
+pp/static/char.html
     }
+pp/static/char.html
   } catch (e) { $("#profinfo").textContent = String(e.message || e); }
+pp/static/char.html
 }
+pp/static/char.html
 $("#prof").addEventListener("change", async () => {
+pp/static/char.html
   PROFILE = null;
+pp/static/char.html
   const id = $("#prof").value;
+pp/static/char.html
   const info = $("#profinfo"), build = $("#build");
+pp/static/char.html
   build.innerHTML = '<option value="">Build actuel de l\'export</option>';
+pp/static/char.html
   $("#go").disabled = true;
+pp/static/char.html
   if (!id) { info.textContent = "Aucun export sélectionné."; return; }
+pp/static/char.html
   info.textContent = "Analyse de l'export…";
+pp/static/char.html
   try {
+pp/static/char.html
     const d = await jfetch("GET", "/api/stuff/profile/" + id);
+pp/static/char.html
     PROFILE = d;
+pp/static/char.html
     info.innerHTML = `Classe : <b>${esc(d.cls)}</b> · Spé : <b>${esc(d.spec)}</b> · ` +
+pp/static/char.html
       `<b>${d.equipped}</b> pièce(s) équipée(s) · <b>${d.bags}</b> pièce(s) dans les sacs` +
+pp/static/char.html
       (d.loadouts.length ? ` · <b>${d.loadouts.length}</b> build(s) détecté(s)` : "");
+pp/static/char.html
     d.loadouts.forEach(l => {
+pp/static/char.html
       const o = document.createElement("option");
+pp/static/char.html
       o.value = l;
+pp/static/char.html
       o.textContent = l;
+pp/static/char.html
       build.appendChild(o);
+pp/static/char.html
     });
+pp/static/char.html
     $("#go").disabled = false;
+pp/static/char.html
     if (d.heal && !d.prio_known) setMsg("Spé de soin sans priorités répertoriées : les pièces seront classées au niveau d'objet.", "msg-warn");
+pp/static/char.html
     else setMsg("");
+pp/static/char.html
   } catch (e) { info.textContent = String(e.message || e); }
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 // ---- Mode change: show BIS filter checkboxes when BIS selected
+pp/static/char.html
 const BIS_CONTENT_LABELS = { raid: "Raid", mplus: "Mythique+", delves: "Gouffres", worldboss: "Boss mondial", craft: "Artisanat" };
+pp/static/char.html
 $("#mode").addEventListener("change", () => {
+pp/static/char.html
   const isBis = $("#mode").value === "bis";
+pp/static/char.html
   $("#bis-filter-wrap").classList.toggle("hidden", !isBis);
+pp/static/char.html
   if (!isBis) {
+pp/static/char.html
     setMsg("");
+pp/static/char.html
   }
+pp/static/char.html
 });
+pp/static/char.html
 function updateBisFilterHint() {
+pp/static/char.html
   const checked = [...document.querySelectorAll('input[name="biscontent"]:checked')].map(c => c.value);
+pp/static/char.html
   const hint = $("#bis-filter-hint");
+pp/static/char.html
   const labels = checked.map(c => BIS_CONTENT_LABELS[c]);
+pp/static/char.html
   hint.textContent = labels.length ? labels.join(", ") : "Aucun contenu sélectionné";
+pp/static/char.html
 }
+pp/static/char.html
 document.querySelectorAll('input[name="biscontent"]').forEach(cb => cb.addEventListener("change", updateBisFilterHint));
+pp/static/char.html
 updateBisFilterHint();
+pp/static/char.html
 // ---- lancement + suivi
+pp/static/char.html
 $("#go").addEventListener("click", async () => {
+pp/static/char.html
   const id = parseInt($("#prof").value, 10);
+pp/static/char.html
   if (!id) { setMsg("Choisis un export.", "msg-err"); return; }
+pp/static/char.html
   const mode = $("#mode").value;
+pp/static/char.html
   const content = $("#content").value;
+pp/static/char.html
   const isBis = mode === "bis";
+pp/static/char.html
   $("#go").disabled = true;
+pp/static/char.html
   setMsg(isBis ? "Chargement du guide BIS…" : "Calcul en cours…");
+pp/static/char.html
   $("#rescard").classList.add("hidden");
+pp/static/char.html
   try {
+pp/static/char.html
     if (isBis) {
+pp/static/char.html
       // BIS : passer les contenus filtrés (checkboxes)
+pp/static/char.html
       const bisContents = [...document.querySelectorAll('input[name="biscontent"]:checked')].map(c => c.value);
+pp/static/char.html
       if (bisContents.length === 0) { setMsg("Coche au moins un contenu pour le filtre BIS.", "msg-err"); $("#go").disabled = false; return; }
+pp/static/char.html
       setMsg("Chargement du guide BIS…");
+pp/static/char.html
       const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
+pp/static/char.html
         bis: true, bis_content: bisContents });
+pp/static/char.html
       poll(d.id);
+pp/static/char.html
     } else {
+pp/static/char.html
       // mode cur ou max : un seul contenu
+pp/static/char.html
       const d = await jfetch("POST", "/api/stuff", { profile_id: id, loadout: $("#build").value,
+pp/static/char.html
         content: content, mode: mode });
+pp/static/char.html
       poll(d.id);
+pp/static/char.html
     }
+pp/static/char.html
   } catch (e) { setMsg(String(e.message || e), "msg-err"); $("#go").disabled = false; }
+pp/static/char.html
 });
+pp/static/char.html
 
+pp/static/char.html
 async function poll(simId) {
+pp/static/char.html
   try {
+pp/static/char.html
     const d = await jfetch("GET", "/api/sims/" + encodeURIComponent(simId));
+pp/static/char.html
     if (d.status === "queued") { setMsg("⌛ En file d'attente…"); }
+pp/static/char.html
     else if (d.status === "running") { setMsg("⏳ Calcul en cours…"); }
+pp/static/char.html
     else if (d.status === "done") { setMsg(""); $("#go").disabled = false; render(d); return; }
+pp/static/char.html
     else if (d.status === "failed") { setMsg("Échec : " + (d.error || "raison inconnue"), "msg-err"); $("#go").disabled = false; return; }
+pp/static/char.html
     setTimeout(() => poll(simId), 2500);
+pp/static/char.html
   } catch (e) { setMsg(String(e.message || e), "msg-err"); $("#go").disabled = false; }
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function statLine(it) {
+pp/static/char.html
   const parts = [];
+pp/static/char.html
   if (it.int != null) parts.push("Int " + it.int);
+pp/static/char.html
   ["crit", "haste", "mast", "vers"].forEach(k => { if (it[k]) parts.push(STAT_FR[k] + " " + it[k]); });
+pp/static/char.html
   return parts.join(" · ");
+pp/static/char.html
 }
+pp/static/char.html
 function itemCell(it) {
+pp/static/char.html
   if (!it) return '<span class="gnil">— rien —</span>';
+pp/static/char.html
   return `<span class="gname">${esc(it.name)}</span> <small>(${it.ilvl || "?"})</small>` +
+pp/static/char.html
     (statLine(it) ? `<div class="stats">${esc(statLine(it))}</div>` : "");
+pp/static/char.html
 }
+pp/static/char.html
 // Mode BIS + « Artisanat » : meilleures pièces fabricables par emplacement, avec les artisans de la guilde.
+pp/static/char.html
 function renderCrafted(cr, en) {
+pp/static/char.html
   const box = $("#rescraft");
+pp/static/char.html
   const slots = cr.slots || [];
+pp/static/char.html
   const statHint = (cr.stats || []).length
+pp/static/char.html
     ? `Stats secondaires à demander à l'artisan : <b>${cr.stats.map(k => esc(STAT_FR[k] || k)).join(" + ")}</b>.`
+pp/static/char.html
     : "Choisis avec l'artisan les stats secondaires de ta priorité.";
+pp/static/char.html
   if (!slots.length) {
+pp/static/char.html
     box.innerHTML = `<h3>🔨 Meilleures pièces d'artisanat</h3><p class="gnil">Aucune recette d'équipement connue pour l'instant — ` +
+pp/static/char.html
       `la liste se remplit à la prochaine synchronisation des recettes du jeu.</p>`;
+pp/static/char.html
     return;
+pp/static/char.html
   }
+pp/static/char.html
   box.innerHTML = `<h3>🔨 Meilleures pièces d'artisanat</h3>` +
+pp/static/char.html
     `<p class="meta"><span>Recettes de l'extension en cours portables par ta classe${cr.armor ? " (armure : " + esc(en ? cr.armor : (cr.armor_fr || cr.armor)) + ")" : ""}.</span> <span>${statHint}</span></p>` +
+pp/static/char.html
     `<div class="gwrap"><table class="gtable"><tr><th>Emplacement</th><th>Pièce</th><th>Métier</th><th>Artisans de la guilde</th><th>Tu l'as ?</th></tr>` +
+pp/static/char.html
     slots.map(s => s.items.map((it, i) => {
+pp/static/char.html
       const nm = en ? (it.name_en || it.name_fr) : (it.name_fr || it.name_en);
+pp/static/char.html
       const pm = (it.prof_members || []).map(m => esc(m.name) + (m.points ? ` <small class="gnil">(${m.points})</small>` : "")).join(", ");
+pp/static/char.html
       const who = (it.crafters || []).length ? it.crafters.map(esc).join(", ")
+pp/static/char.html
         : pm ? `<span class="gnil">recette connue de personne — ont le métier :</span> ${pm}`
+pp/static/char.html
         : '<span class="gnil">personne</span>';
+pp/static/char.html
       const have = it.equipped ? '<span class="gpos">✅ portée</span>' : it.owned ? '<span class="msg-warn">🎒 dans tes sacs</span>' : '<span class="gnil">—</span>';
+pp/static/char.html
       const more = i === s.items.length - 1 && s.more ? ` <small class="gnil">(+${s.more} autre(s))</small>` : "";
+pp/static/char.html
       return `<tr><td>${i === 0 ? esc(s.slot_fr) : ""}</td>` +
+pp/static/char.html
         `<td><a class="hlink" href="https://www.wowhead.com/item=${it.id}" target="_blank" rel="noopener">${esc(nm)}</a>${more}</td>` +
+pp/static/char.html
         `<td class="islot">${esc(it.prof)}</td><td>${who}</td><td>${have}</td></tr>`;
+pp/static/char.html
     }).join("")).join("") + "</table></div>";
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 function render(d) {
+pp/static/char.html
   const st = d.stuff;
+pp/static/char.html
   const card = $("#rescard"), meta = $("#resmeta"), table = $("#restable"), sum = $("#ressum"), src = $("#ressrc");
+pp/static/char.html
   card.classList.remove("hidden");
+pp/static/char.html
   sum.innerHTML = ""; src.innerHTML = ""; $("#rescraft").innerHTML = "";
+pp/static/char.html
   if (!st) { meta.textContent = "Pas de résultat."; table.classList.add("hidden"); return; }
+pp/static/char.html
   // st.content peut être une chaîne (non-BIS) ou un tableau (BIS)
+pp/static/char.html
   let contentLabel;
+pp/static/char.html
   if (Array.isArray(st.content)) {
+pp/static/char.html
     contentLabel = st.content.map(c => ({ mplus: "Mythique+", raid: "Raid", delves: "Gouffres", worldboss: "Boss mondial", craft: "Artisanat" }[c] || c)).join(" · ");
+pp/static/char.html
   } else {
+pp/static/char.html
     contentLabel = { mplus: "Mythique+", raid: "Raid", delves: "Gouffres", worldboss: "Boss mondial", craft: "Artisanat" }[st.content] || st.content || "BIS";
+pp/static/char.html
   }
+pp/static/char.html
 
+pp/static/char.html
   if (st.mode === "bis") {
+pp/static/char.html
     const en = document.documentElement.lang === "en";
+pp/static/char.html
     const slotFr = st.slot_fr || {};
+pp/static/char.html
     meta.innerHTML = [
+pp/static/char.html
       `<span>Méthode : liste BIS du guide Wowhead (mise à jour du ${esc(st.updated_fr || "?")}) — les meilleures pièces de la saison, comparées à ce que tu portes. Le build et le contenu ne changent pas cette liste.</span>`,
+pp/static/char.html
       st.loadout ? `<span>Build : ${esc(st.loadout)}</span>` : "",
+pp/static/char.html
       `<span>${st.have} pièce(s) déjà en poche sur ${(st.slots || []).length}</span>`
+pp/static/char.html
     ].filter(Boolean).join(" · ");
+pp/static/char.html
     const rows = st.slots || [];
+pp/static/char.html
     table.classList.remove("hidden");
+pp/static/char.html
     table.innerHTML = "<tr><th>Emplacement</th><th>Ce que tu portes</th><th>BIS (guide)</th><th>Provenance</th><th>Tu l'as ?</th></tr>" +
+pp/static/char.html
       rows.map(r => {
+pp/static/char.html
         const cur = r.current;
+pp/static/char.html
         const curCell = cur ? `<span class="gname">${esc(cur.name)}</span> <small>(${cur.ilvl || "?"})</small>` : '<span class="gnil">rien d\'équipé</span>';
+pp/static/char.html
         const nm = en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en);
+pp/static/char.html
         const bisCell = `<a class="hlink" href="https://www.wowhead.com/item=${r.id}" target="_blank" rel="noopener">${esc(nm)}</a>` +
+pp/static/char.html
           (r.max_ilvl ? ` <small class="gnil">(max ${r.max_ilvl})</small>` : "");
+pp/static/char.html
         let have;
+pp/static/char.html
         if (r.equipped) have = '<span class="gpos">✅ portée</span>';
+pp/static/char.html
         else if (r.owned) have = `<span class="msg-warn">🎒 dans tes sacs${r.bag_ilvl ? " (" + r.bag_ilvl + ")" : ""}</span>`;
+pp/static/char.html
         else have = '<span class="gnil">—</span>';
+pp/static/char.html
         return `<tr class="${r.owned || r.equipped ? "" : "gbest"}"><td>${esc(slotFr[r.slot] || r.slot)}</td><td>${curCell}</td>` +
+pp/static/char.html
           `<td>${bisCell}</td><td class="islot">${esc(en ? (r.src_en || r.src_fr) : (r.src_fr || r.src_en))}</td><td>${have}</td></tr>`;
+pp/static/char.html
       }).join("");
+pp/static/char.html
     const missing = rows.filter(r => !r.owned && !r.equipped);
+pp/static/char.html
     if (missing.length) {
+pp/static/char.html
       sum.innerHTML = `Il te manque <b>${missing.length}</b> pièce(s) BIS : ` +
+pp/static/char.html
         missing.map(r => `<span>${esc(slotFr[r.slot] || r.slot)}</span> — ${esc(en ? (r.name_en || r.name_fr) : (r.name_fr || r.name_en))}`).join(", ") + ".";
+pp/static/char.html
     } else {
+pp/static/char.html
       sum.textContent = "Tu as déjà toutes les pièces BIS de la liste — bravo !";
+pp/static/char.html
     }
+pp/static/char.html
     src.innerHTML = st.source ? `Liste : <a href="${esc(st.source)}" target="_blank" rel="noopener">${esc(st.source_fr || st.source)}</a>.` : "";
+pp/static/char.html
     if (st.crafted) renderCrafted(st.crafted, en);
+pp/static/char.html
     if (d.note) setMsg(d.note, "msg-warn");
+pp/static/char.html
     return;
+pp/static/char.html
   }
+pp/static/char.html
 
+pp/static/char.html
   if (st.mode === "heal") {
+pp/static/char.html
     meta.innerHTML = [
+pp/static/char.html
       "<span>Méthode : priorité des stats — SimulationCraft ne simule pas les soins.</span>",
+pp/static/char.html
       st.priority && st.priority.length ? `<span>Priorité : ${st.priority.map(k => STAT_FR[k] || k).join(" &gt; ")}</span>` : "",
+pp/static/char.html
       `<span>Contenu : ${esc(contentLabel)}</span>`,
+pp/static/char.html
       st.loadout ? `<span>Build : ${esc(st.loadout)}</span>` : "",
+pp/static/char.html
       `<span>${st.valid_count} pièce(s) analysée(s) sur ${st.bag_count}</span>`,
+pp/static/char.html
       st.invalid_count ? `<span>${st.invalid_count} écartée(s) : non portables</span>` : "",
+pp/static/char.html
       st.max_rank ? `<span>Rang max : ${st.boosted} pièce(s) au niveau maximum${(st.boost_examples || []).length ? " (ex. " + st.boost_examples.map(esc).join(", ") + ")" : ""}</span>` : "",
+pp/static/char.html
       st.note_fr ? `<span>${esc(st.note_fr)}</span>` : ""
+pp/static/char.html
     ].filter(Boolean).join(" · ");
+pp/static/char.html
     const rows = (st.slots || []).filter(s => s.best || s.current);
+pp/static/char.html
     const swaps = rows.filter(s => s.swap);
+pp/static/char.html
     table.classList.remove("hidden");
+pp/static/char.html
     table.innerHTML = "<tr><th>Emplacement</th><th>Actuellement</th><th>Conseillé</th><th>Pourquoi</th></tr>" +
+pp/static/char.html
       rows.map(s => {
+pp/static/char.html
         let why = "";
+pp/static/char.html
         if (s.swap && s.reason) {
+pp/static/char.html
           if (s.reason.kind === "empty") why = "rien d'équipé";
+pp/static/char.html
           else if (s.reason.kind === "ilvl") why = (s.reason.diff > 0 ? "+" : "") + s.reason.diff + " niveau(x) d'objet";
+pp/static/char.html
           else if (s.reason.kind === "stats") why = "à ilvl égal : meilleur en " + (STAT_FR[s.reason.stat] || s.reason.stat);
+pp/static/char.html
           else why = "meilleur";
+pp/static/char.html
         } else why = "déjà le meilleur de ce que tu as";
+pp/static/char.html
         return `<tr class="${s.swap ? "gbest" : ""}"><td>${esc(s.slot_fr || s.slot)}</td><td>${itemCell(s.current)}</td>` +
+pp/static/char.html
           `<td>${s.swap ? itemCell(s.best) : '<span class="stay">reste tel quel</span>'}</td>` +
+pp/static/char.html
           `<td class="${s.swap ? "pick" : "gnil"}">${s.swap ? "✅ " : ""}${esc(why)}</td></tr>`;
+pp/static/char.html
       }).join("");
+pp/static/char.html
     if (swaps.length) {
+pp/static/char.html
       sum.innerHTML = `À porter : ` + swaps.map(s => `<b>${esc((s.best || {}).name || "?")}</b> (${esc(s.slot_fr || s.slot)})`).join(", ") + ".";
+pp/static/char.html
     } else {
+pp/static/char.html
       sum.textContent = "Rien à changer : ton équipement est déjà le meilleur de ce que tu possèdes pour ce contenu.";
+pp/static/char.html
     }
+pp/static/char.html
     src.innerHTML = st.source
+pp/static/char.html
       ? `Priorité des stats : <a href="${esc(st.source)}" target="_blank" rel="noopener">${esc(st.source_fr || st.source)}</a>.`
+pp/static/char.html
       : "Priorités de stats pas encore répertoriées pour cette spécialisation — classement au niveau d'objet.";
+pp/static/char.html
   } else {
+pp/static/char.html
     meta.innerHTML = [
+pp/static/char.html
       `<span>Méthode : simulations réelles, ${fmt(st.iterations)} itérations — chaque pièce de tes sacs est portée à tour de rôle et comparée à ton équipement actuel.</span>`,
+pp/static/char.html
       st.baseline ? `<span>Dégâts de référence (équipement actuel) : ${fmt(st.baseline)} DPS</span>` : "",
+pp/static/char.html
       `<span>Contenu : ${esc(contentLabel)}</span>`,
+pp/static/char.html
       st.loadout ? `<span>Build : ${esc(st.loadout)}</span>` : "",
+pp/static/char.html
       `<span>${st.valid_count} pièce(s) analysée(s) sur ${st.bag_count}</span>`,
+pp/static/char.html
       st.sim_settings ? `<span>Réglages : ${esc(st.sim_settings)}</span>` : "",
+pp/static/char.html
       st.max_rank ? `<span>Rang max : ${st.boosted} pièce(s) au niveau maximum</span>` : ""
+pp/static/char.html
     ].filter(Boolean).join(" · ");
+pp/static/char.html
     const items = st.items || [];
+pp/static/char.html
     const bySlot = {};
+pp/static/char.html
     items.forEach(it => { if (!bySlot[it.slot] || it.dps > bySlot[it.slot].dps) bySlot[it.slot] = it; });
+pp/static/char.html
     table.classList.remove("hidden");
+pp/static/char.html
     table.innerHTML = "<tr><th>Pièce</th><th>Emplacement</th><th class='gv'>DPS</th><th class='gv'>Gain</th></tr>" +
+pp/static/char.html
       items.map(it => {
+pp/static/char.html
         const best = bySlot[it.slot] === it && (it.gain_pct || 0) > 0;
+pp/static/char.html
         return `<tr class="${best ? "gbest" : ""}"><td>${esc(it.name)}</td><td class="islot">${esc(it.slot_fr || it.slot)}</td>` +
+pp/static/char.html
           `<td class="gv">${fmt(it.dps)}</td>` +
+pp/static/char.html
           `<td class="gv ${it.gain_pct > 0 ? "gpos" : "gnil"}">${it.gain_pct == null ? "—" : (it.gain_pct > 0 ? "+" : "") + fmt(it.gain_pct, 2) + " %"}</td></tr>`;
+pp/static/char.html
       }).join("");
+pp/static/char.html
     const winners = Object.values(bySlot).filter(it => (it.gain_pct || 0) > 0);
+pp/static/char.html
     if (winners.length) {
+pp/static/char.html
       winners.sort((a, b) => b.gain_pct - a.gain_pct);
+pp/static/char.html
       sum.innerHTML = "À porter : " + winners.map(it => `<b>${esc(it.name)}</b> (${esc(it.slot_fr || it.slot)}, +${fmt(it.gain_pct, 2)} %)`).join(", ") + ".";
+pp/static/char.html
     } else {
+pp/static/char.html
       sum.textContent = "Rien ne bat ton équipement actuel — tu portes déjà le meilleur de ce que tu possèdes.";
+pp/static/char.html
     }
+pp/static/char.html
     src.innerHTML = st.report ? `📊 <a href="/reports/${encodeURIComponent(d.id)}/report.html" target="_blank" rel="noopener">Rapport complet de la simulation</a>.` : "";
+pp/static/char.html
   }
+pp/static/char.html
   if (d.note) setMsg(d.note, "msg-warn");
+pp/static/char.html
 }
+pp/static/char.html
 
+pp/static/char.html
 $("#logout").addEventListener("click", async (e) => {
+pp/static/char.html
   e.preventDefault();
+pp/static/char.html
   try { await fetch("/api/logout", { method: "POST" }); } catch (e2) { /* ignoré */ }
+pp/static/char.html
   location.href = "/login";
+pp/static/char.html
 });
+pp/static/char.html
 (async () => {
+pp/static/char.html
   try {
+pp/static/char.html
     const me = await jfetch("GET", "/api/me");
+pp/static/char.html
     $("#who").textContent = me.name || me.email;
+pp/static/char.html
   } catch (e) { location.href = "/login"; return; }
+pp/static/char.html
   try { const h = await jfetch("GET", "/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+pp/static/char.html
   await loadProfiles();
+pp/static/char.html
 })();
+pp/static/char.html
 </script>
+pp/static/char.html
 </body>
+pp/static/char.html
 </html>
+pp/static/char.html
