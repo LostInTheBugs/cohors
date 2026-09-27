@@ -956,7 +956,7 @@ def test_bis_murder_row_is_mythic_plus_only():
     assert [s["id"] for s in M._stuff_bis_filter(blk, ["mplus"])["slots"]] == [1]
 
 
-def test_bnet_professions_keeps_known_recipes_of_latest_tier(monkeypatch):
+def test_bnet_professions_keeps_known_recipes_of_last_two_tiers(monkeypatch):
     payload = {"primaries": [{"profession": {"name": "Leatherworking", "id": 165}, "tiers": [
         {"tier": {"name": "Khaz Algar Leatherworking"}, "skill_points": 100, "max_skill_points": 100,
          "known_recipes": [{"id": 111}]},
@@ -965,7 +965,7 @@ def test_bnet_professions_keeps_known_recipes_of_latest_tier(monkeypatch):
     monkeypatch.setattr(M.bnet, "_get", lambda *a, **k: payload)
     data, _ts = M.bnet.professions("hyjal", "Knownrecipetest", force=True, locale="fr_FR")
     p = data["profs"][0]
-    assert p["known"] == [930001, 930002] and p["points"] == 92      # palier le plus récent seulement
+    assert p["known"] == [111, 930001, 930002] and p["points"] == 92  # 2 derniers paliers ; points du plus récent
 
 
 def test_stuff_best_crafted_uses_known_recipes_and_profession_fallback():
@@ -989,3 +989,66 @@ def test_stuff_best_crafted_uses_known_recipes_and_profession_fallback():
     assert head["crafters"] == ["Lithinie"]                                   # recette connue (API Blizzard)
     assert feet["crafters"] == []                                             # personne ne la connaît…
     assert [m["name"] for m in feet["prof_members"]] == ["Lithinie", "Tanneur", "Arssalag"]  # …repli par points
+
+
+def _seed_known_recipes():
+    with M._db_lock, M._db() as conn:
+        for rid, fr in ((940001, "Flacon connu"), (940002, "Flacon inconnu")):
+            conn.execute("INSERT OR REPLACE INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats,"
+                         " updated, item_en, tier_en, prof_en, mats_en)"
+                         " VALUES (?,'Alchimie','Alchimie de Midnight',0,?,0,1,'[]',0,?,'','','[]')", (rid, fr, fr))
+        data = {"profs": [{"name": "Alchimie", "name_fr": "Alchimie", "tier": "Alchimie de Midnight",
+                           "points": 100, "max": 100, "known": [940001]}]}
+        conn.execute("INSERT OR REPLACE INTO char_professions (realm, name, ts, data) VALUES ('hyjal', 'fiolette', 1, ?)",
+                     (json.dumps(data),))
+
+
+def _unseed_known_recipes():
+    with M._db_lock, M._db() as conn:
+        conn.execute("DELETE FROM game_recipes WHERE id IN (940001, 940002)")
+        conn.execute("DELETE FROM char_professions WHERE name='fiolette'")
+
+
+def test_known_craft_rows_from_blizzard():
+    _seed_known_recipes()
+    try:
+        with M._db_lock, M._db() as conn:
+            rows = [r for r in M._known_craft_rows(conn) if r["item"] in ("Flacon connu", "Flacon inconnu")]
+            mine = M._known_craft_rows(conn, "Fiolette")
+    finally:
+        _unseed_known_recipes()
+    assert rows == [{"crafter": "Fiolette", "profession": "Alchimie", "item": "Flacon connu", "item_id": 0,
+                     "expansion": "Alchimie de Midnight", "exp_rank": 0, "mats": "[]"}]
+    assert [r["item"] for r in mine] == ["Flacon connu"]
+
+
+def test_my_recipes_marks_blizzard_known_and_prep_lists_crafter():
+    _seed_known_recipes()
+    try:
+        c = _admin_client("recipes-admin@test.local", "10.99.60.1")
+        d = c.get("/api/my/recipes", params={"realm": "hyjal", "name": "Fiolette", "prof": "Alchimie"}).json()
+        by = {x["name"]: x for x in d["catalog"]}
+        assert by["Flacon connu"]["known"] is True and by["Flacon connu"]["known_src"] == "blizzard"
+        assert by["Flacon inconnu"]["known"] is False
+        assert d["profs_ts"] == 1.0
+        prep = c.get("/api/prep").json()
+        ent = next(g for g in prep["game"] if g["item"] == "Flacon connu")
+        assert "Fiolette" in ent["crafters"]
+    finally:
+        _unseed_known_recipes()
+
+
+def test_my_recipes_refresh_rereads_blizzard(monkeypatch):
+    payload = {"primaries": [{"profession": {"name": "Alchemy", "id": 171}, "tiers": [
+        {"tier": {"name": "Midnight Alchemy"}, "skill_points": 50, "max_skill_points": 100,
+         "known_recipes": [{"id": 940001}]}]}]}
+    monkeypatch.setattr(M.bnet, "_get", lambda *a, **k: payload)
+    c = _admin_client("recipes-admin2@test.local", "10.99.60.2")
+    r = c.post("/api/my/recipes/refresh", json={"realm": "hyjal", "name": "Rafraichie"})
+    assert r.status_code == 200 and r.json()["ts"] > 0, r.text
+    with M._db_lock, M._db() as conn:
+        row = conn.execute("SELECT data FROM char_professions WHERE realm='hyjal' AND name='rafraichie'").fetchone()
+        conn.execute("DELETE FROM char_professions WHERE name='rafraichie'")
+    assert json.loads(row["data"])["profs"][0]["known"] == [940001]
+    m = _plain_client("recipes-member@test.local", "10.99.60.3")
+    assert m.post("/api/my/recipes/refresh", json={"realm": "hyjal", "name": "Rafraichie"}).status_code == 403

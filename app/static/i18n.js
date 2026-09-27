@@ -721,7 +721,7 @@
  "Et les titres maison : savants fous (simulations), piliers de raid (présences), collectionneurs (montures), cœurs d'or (profils partagés).": "Plus the home-made titles: mad scientists (simulations), raid pillars (attendance), collectors (mounts), golden hearts (shared profiles).",
  "✅ Connues": "✅ Known",
  "⬜ À apprendre": "⬜ To learn",
- "Les listes viennent de l'addon in-game : importe ton export ci-dessous (📥). Les recettes connues alimentent « Qui peut crafter quoi » (préparation de raid). ⭐ = ajoutée à ta wishlist : les recettes marquées partiront vers l'addon (export sur la page 🎯 Ma wishlist).": "These lists come from the in-game add-on: import your export below (📥). Known recipes feed « Who can craft what » (raid prep).",
+ "Tes recettes sont récupérées automatiquement depuis Blizzard (relevé tous les quelques jours, après une déconnexion du jeu) — bouton 🔄 pour relire tout de suite. L'import de l'add-on (📥) reste possible pour une mise à jour immédiate. Les recettes connues alimentent « Qui peut crafter quoi » (préparation de raid) et le stuff conseillé. ⭐ = ajoutée à ta wishlist : les recettes marquées partiront vers l'addon (export sur la page 🎯 Ma wishlist).": "Your recipes are fetched automatically from Blizzard (refreshed every few days, after logging out of the game) — 🔄 to re-read now. Importing the add-on export (📥) is still possible for an immediate update. Known recipes feed « Who can craft what » (raid prep) and gear advice. ⭐ = added to your wishlist: marked recipes go to the add-on (export on the 🎯 My wishlist page).",
  "— Choisir un personnage —": "— Pick a character —",
  "Rechercher une recette…": "Search a recipe…",
  "Choisis un personnage et un métier.": "Pick a character and a trade.",
@@ -732,6 +732,11 @@
  "Toutes les recettes de ce métier sont connues 🎉": "Every recipe for this trade is known 🎉",
  "💾 Enregistrer mes recettes": "💾 Save my recipes",
  "📥 Importer mon export d'addon": "📥 Import my addon export",
+ "📥 Importer mon export d'addon (facultatif)": "📥 Import my addon export (optional)",
+ "🔄 Relire depuis Blizzard": "🔄 Re-read from Blizzard",
+ "Lecture chez Blizzard…": "Reading from Blizzard…",
+ "Recettes relues depuis Blizzard ✓": "Recipes re-read from Blizzard ✓",
+ "Choisis d'abord un personnage.": "Pick a character first.",
  "Enregistrement…": "Saving…",
  "Aucun personnage lié à ton compte — lie-le sur la page Personnages.": "No character linked to your account — link one on the Characters page.",
  "📖 « Mes recettes » (page 🙋 Moi) : chaque joueur importe l'export de l'addon (/cohors recettes) — ses recettes connues et celles qui restent à apprendre s'affichent (lecture seule, la source c'est le jeu).": "📖 « My recipes » (🙋 Me page): every player imports the add-on export (/cohors recettes) — their known and to-learn recipes then show up (read-only, the game is the source).",
@@ -1133,6 +1138,7 @@
   const ATTRS = ["placeholder", "title", "aria-label"];
 
   const RULES = [
+    [/^Relevé Blizzard : /g, "Blizzard data: "],
     // Stuff — listes de contenus (« Raid, Mythique+, Gouffres » / « Raid · Boss mondial »)
     [/^(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat)(?:(?:, | · )(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat))+$/g,
       (m) => m.replace(/Mythique\+/g, "Mythic+").replace(/Gouffres/g, "Delves")

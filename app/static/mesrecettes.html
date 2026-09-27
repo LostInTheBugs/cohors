@@ -119,7 +119,7 @@
 
   <div class="card" id="recettes">
     <h2>📖 Mes recettes</h2>
-    <div class="meta" style="margin:-4px 0 10px">Les listes viennent de l'addon in-game : importe ton export ci-dessous (📥). Les recettes connues alimentent « Qui peut crafter quoi » (préparation de raid). ⭐ = ajoutée à ta wishlist : les recettes marquées partiront vers l'addon (export sur la page 🎯 Ma wishlist).</div>
+    <div class="meta" style="margin:-4px 0 10px">Tes recettes sont récupérées automatiquement depuis Blizzard (relevé tous les quelques jours, après une déconnexion du jeu) — bouton 🔄 pour relire tout de suite. L'import de l'add-on (📥) reste possible pour une mise à jour immédiate. Les recettes connues alimentent « Qui peut crafter quoi » (préparation de raid) et le stuff conseillé. ⭐ = ajoutée à ta wishlist : les recettes marquées partiront vers l'addon (export sur la page 🎯 Ma wishlist).</div>
     <div class="row">
       <select id="rcchar"><option value="">— Choisir un personnage —</option></select>
       <select id="rcprof"></select>
@@ -128,7 +128,9 @@
       <span class="meta" id="rcmsg"></span>
     </div>
     <div class="row" style="margin-top:10px">
-      <button id="rcimp" style="padding:9px 16px;font-size:14px">📥 Importer mon export d'addon</button>
+      <button id="rcref" style="padding:9px 16px;font-size:14px">🔄 Relire depuis Blizzard</button>
+      <span class="meta" id="rcts"></span>
+      <button id="rcimp" style="padding:9px 16px;font-size:14px">📥 Importer mon export d'addon (facultatif)</button>
       <input type="file" id="rcfile" accept=".lua,.txt,.json" class="hidden">
       <span class="spacer"></span>
       <span class="meta">Addon in-game : téléchargement sur la page <a class="hlink" href="/guild">🛡️ Guilde</a> — commande /cohors recettes puis /reload.</span>
@@ -238,6 +240,7 @@ async function rcProfChanged() {
   try {
     const d = await jget(`/api/my/recipes?realm=${encodeURIComponent(realm)}&name=${encodeURIComponent(name)}&prof=${encodeURIComponent(prof)}`);
     RC.catalog = d.catalog || [];
+    $("#rcts").textContent = "Relevé Blizzard : " + ago(d.profs_ts);
     $("#rcgrid").classList.remove("hidden");
     $("#rcq").value = "";
     rcRenderList();
@@ -247,6 +250,20 @@ async function rcProfChanged() {
 $("#rcchar").addEventListener("change", rcCharChanged);
 $("#rcprof").addEventListener("change", rcProfChanged);
 $("#rcq").addEventListener("input", rcRenderList);
+$("#rcref").addEventListener("click", async () => {
+  const [realm, name] = ($("#rcchar").value || "").split("|");
+  if (!realm) { rcMsg("Choisis d'abord un personnage."); return; }
+  const b = $("#rcref"); b.disabled = true; rcMsg("Lecture chez Blizzard…");
+  try {
+    const r = await fetch("/api/my/recipes/refresh", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ realm, name }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || "Erreur");
+    rcMsg("Recettes relues depuis Blizzard ✓", true);
+    await rcCharChanged();
+  } catch (e) { rcMsg(e.message); }
+  b.disabled = false;
+});
 $("#rcimp").addEventListener("click", () => $("#rcfile").click());
 $("#rcfile").addEventListener("change", async () => {
   const f = $("#rcfile").files && $("#rcfile").files[0];

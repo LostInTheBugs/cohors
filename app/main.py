@@ -617,6 +617,7 @@ def _init_db() -> None:
             ("craft_items_v1", "UPDATE game_recipes SET updated = 0"),
             # recettes connues par personnage (API Blizzard) : re-relevé des métiers
             ("known_recipes_v1", "UPDATE char_professions SET ts = 0"),
+            ("known_recipes_v2", "UPDATE char_professions SET ts = 0"),  # + palier précédent
         ):
             if conn.execute("SELECT value FROM meta WHERE key=?", (_key,)).fetchone() is None:
                 conn.execute(_stmt)
@@ -4651,9 +4652,44 @@ def _snap_day(ts: float | None = None) -> str:
         return time.strftime("%Y-%m-%d", time.gmtime(moment))
 
 
-def _prof_store(realm: str, name: str) -> None:
+def _known_craft_rows(conn, crafter: str | None = None) -> list[dict]:
+    """Recettes connues d'après l'API Blizzard (métiers des personnages), au format de craft_recipes.
+
+    Complète les exports de l'add-on : mêmes champs (crafter, profession, item, item_id, expansion,
+    exp_rank, mats), un artisan = le nom du personnage (casse d'affichage).
+    """
+    sql, args = "SELECT name, data FROM char_professions", ()
+    if crafter:
+        sql, args = sql + " WHERE name=?", ((crafter or "").strip().lower(),)
+    want: dict[int, list[str]] = {}
+    for pr in conn.execute(sql, args).fetchall():
+        try:
+            profs = (json.loads(pr["data"]) or {}).get("profs") or []
+        except (ValueError, TypeError):
+            continue
+        who = (pr["name"] or "").strip().title()
+        for p in profs:
+            for rid in p.get("known") or []:
+                want.setdefault(int(rid), []).append(who)
+    if not want:
+        return []
+    rows = []
+    ids = list(want)
+    for i in range(0, len(ids), 500):
+        chunk = ids[i:i + 500]
+        for g in conn.execute(
+                f"SELECT id, prof, tier, exp_rank, item, item_id, mats FROM game_recipes "
+                f"WHERE id IN ({','.join('?' * len(chunk))})", chunk).fetchall():
+            for who in sorted(set(want[int(g["id"])])):
+                rows.append({"crafter": who, "profession": g["prof"], "item": g["item"],
+                             "item_id": g["item_id"] or 0, "expansion": g["tier"] or "",
+                             "exp_rank": g["exp_rank"] or 0, "mats": g["mats"] or "[]"})
+    return rows
+
+
+def _prof_store(realm: str, name: str, force: bool = False) -> None:
     """Enregistre (ou remplace) les métiers d'un personnage."""
-    data, ts = bnet.professions(realm, name, locale="fr_FR")
+    data, ts = bnet.professions(realm, name, force=force, locale="fr_FR")
     with _db_lock, _db() as conn:
         conn.execute(
             "INSERT INTO char_professions (realm, name, ts, data) VALUES (?,?,?,?) "
@@ -5988,7 +6024,8 @@ def api_prep_get(request: Request):
         claims = [dict(r) for r in conn.execute(
             "SELECT mat, qty, user, name FROM prep_claims").fetchall()]
         bank_rows = [dict(r) for r in conn.execute("SELECT mat, qty FROM prep_bank").fetchall()]
-        crafts = [dict(r) for r in conn.execute(
+        # artisans : recettes connues d'après Blizzard, puis exports de l'add-on (prioritaires)
+        crafts = _known_craft_rows(conn) + [dict(r) for r in conn.execute(
             "SELECT crafter, profession, item, item_id, expansion, exp_rank, mats FROM craft_recipes").fetchall()]
         game = [dict(r) for r in conn.execute(
             "SELECT prof, tier, exp_rank, item, item_id, rank_no, mats, "
@@ -6017,7 +6054,7 @@ def api_prep_get(request: Request):
         nm = str(c.get("item") or "").strip()
         if nm:
             e = cand.setdefault(nm.casefold(), {"name": nm, "maison": [], "jeu": [], "artisans": []})
-            e["artisans"] = _m
+            e["artisans"] = _m or e["artisans"]   # une ligne sans compos n'écrase pas une ligne qui en a
     game_best: dict = {}
     for c in game:
         try:
@@ -6088,7 +6125,7 @@ def api_prep_get(request: Request):
                     pass
                 ent["exp"] = c["expansion"] or ""
                 ent["exp_rank"] = c["exp_rank"] or 0
-        if c["crafter"] not in ent["crafters"]:
+        if c["crafter"].casefold() not in {x.casefold() for x in ent["crafters"]}:
             ent["crafters"].append(c["crafter"])
     cat_list = sorted(catalog.values(), key=lambda e: str(e["item"]).casefold())
     exps: dict = {}
@@ -6895,6 +6932,10 @@ def api_my_recipes(request: Request, realm: str = "", name: str = "", prof: str 
                 profs.append({"key": key, "label": ((p.get("name_en") or key) if want_en else key),
                               "points": p.get("points"), "max": p.get("max")})
     known = {str(r["item"]).casefold() for r in known_rows}
+    api_known: set[int] = set()
+    if prows:
+        for p in ((json.loads(prows["data"] or "{}") or {}).get("profs") or []):
+            api_known |= {int(x) for x in (p.get("known") or [])}
     cat = []
     seen_items: set = set()
     for c in catalog:
@@ -6916,13 +6957,43 @@ def api_my_recipes(request: Request, realm: str = "", name: str = "", prof: str 
             "exp": ((c.get("tier_en") or c.get("tier")) if want_en else c.get("tier")) or "",
             "exp_rank": c.get("exp_rank") or 0,
             "mats": mats,
-            "known": item_key in known,
+            "known": item_key in known or int(c["id"]) in api_known,
+            "known_src": "addon" if item_key in known else ("blizzard" if int(c["id"]) in api_known else ""),
         })
     return {"char": {"realm": realm_l, "name": name_s}, "professions": profs,
             "game_profs": [{"key": r["prof"],
                             "label": ((r.get("prof_en") or r["prof"]) if want_en else r["prof"])}
                            for r in game_profs],
-            "prof": prof.strip(), "catalog": cat}
+            "prof": prof.strip(), "catalog": cat,
+            "profs_ts": _prof_ts(realm_l, name_s)}
+
+
+def _prof_ts(realm: str, name: str) -> float:
+    """Date du dernier relevé des métiers d'un personnage (0 = jamais)."""
+    with _db_lock, _db() as conn:
+        row = conn.execute("SELECT ts FROM char_professions WHERE realm=? AND name=?",
+                           (realm.strip().lower(), name.strip().lower())).fetchone()
+    return float(row["ts"] or 0) if row else 0.0
+
+
+class MyRecipesRefresh(BaseModel):
+    realm: str = Field(..., min_length=1, max_length=60)
+    name: str = Field(..., min_length=1, max_length=60)
+
+
+@app.post("/api/my/recipes/refresh")
+def api_my_recipes_refresh(body: MyRecipesRefresh, request: Request):
+    """Relit tout de suite chez Blizzard les métiers (et recettes connues) d'un de MES personnages."""
+    user = _require_user(request)
+    realm_l, name_s = body.realm.strip().lower(), body.name.strip()[:60]
+    _valid_char(realm_l, name_s)
+    if _user_role(user) not in ("officer", "admin") and not _owns_char(user, name_s):
+        raise HTTPException(403, "Ce personnage n'est pas lié à ton compte.")
+    try:
+        _prof_store(realm_l, name_s, force=True)
+    except bnet.BnetError as exc:
+        raise HTTPException(502, f"Blizzard : {exc}") from exc
+    return {"ok": True, "ts": _prof_ts(realm_l, name_s)}
 
 
 @app.post("/api/my/recipes")
