@@ -583,6 +583,16 @@
  "Indisponible": "Unavailable",
  "Aucun talent renseigné": "No talents found",
  "Aucun boss tué": "No boss killed",
+ "Talents actuels (Blizzard)": "Current talents (Blizzard)",
+ "⚠️ Tes talents en jeu ont changé depuis ton export SimC — choisis « Talents actuels (Blizzard) » dans Ton build pour simuler avec.": "⚠️ Your in-game talents changed since your SimC export — pick “Current talents (Blizzard)” in Your build to sim with them.",
+ "🏰 Progression de la guilde": "🏰 Guild progression",
+ "Raids": "Raids",
+ "Donjons": "Dungeons",
+ "Mains seulement": "Mains only",
+ "Boss": "Boss",
+ "Aucun boss tué dans l'extension en cours.": "No boss killed in the current expansion.",
+ "Chargement… (peut prendre quelques secondes)": "Loading… (may take a few seconds)",
+ "API Blizzard — personnages de niveau max du roster. Nombre de membres ayant tué le boss dans chaque difficulté (survole un nombre pour voir les noms).": "Blizzard API — max-level characters from the roster. Number of members who killed the boss in each difficulty (hover a number to see names).",
  "Spé active :": "Active spec:",
  "· Héros :": "· Hero:",
  "✅ Copié": "✅ Copied",
@@ -1154,6 +1164,7 @@
     [/^Relevé Blizzard : /g, "Blizzard data: "],
     // Fiche perso — progression (v2026.09.153)
     [/^Aucun boss tué dans (.+)$/g, "No boss killed in $1"],
+    [/^(.*) · (\d+) membre\(s\) de niveau (\d+|max)$/g, "$1 · $2 member(s) at level $3"],
     // Stuff — listes de contenus (« Raid, Mythique+, Gouffres » / « Raid · Boss mondial »)
     [/^(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat)(?:(?:, | · )(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat))+$/g,
       (m) => m.replace(/Mythique\+/g, "Mythic+").replace(/Gouffres/g, "Delves")

@@ -107,7 +107,7 @@
   .tal code { font-size:11.5px; color:var(--mut); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 1 260px; min-width:0; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.153-c1">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.154">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -145,10 +145,10 @@
 
   <footer>Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment · <span id="ver"></span></footer>
 </div>
-<script src="/static/nav.js?v=2026.09.153-c1"></script>
-<script src="/static/branding.js?v=2026.09.153-c1"></script>
-<script src="/static/i18n.js?v=2026.09.153-c1"></script>
-<script src="/static/esc.js?v=2026.09.153-c1"></script>
+<script src="/static/nav.js?v=2026.09.154"></script>
+<script src="/static/branding.js?v=2026.09.154"></script>
+<script src="/static/i18n.js?v=2026.09.154"></script>
+<script src="/static/esc.js?v=2026.09.154"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
@@ -261,7 +261,7 @@ async function loadChar(realm, name, push) {
   }
 }
 
-// ---- 🏰 Progression raids / donjons + 🌳 talents — API Blizzard (v2026.09.153-c1) ----
+// ---- 🏰 Progression raids / donjons + 🌳 talents — API Blizzard (v2026.09.154) ----
 function progReset() {
   $("#prog").innerHTML = '<div class="empty"><span class="spin">⏳</span> Chargement…</div>';
 }

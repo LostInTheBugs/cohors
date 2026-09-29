@@ -2284,7 +2284,7 @@ def _stuff_max_levels(items: list[dict], conn) -> tuple[int, list[str]]:
 def _stuff_parse_export(txt: str) -> dict:
     """Analyse un export SimC : classe/spé, builds sauvegardés, équipé, pièces des sacs."""
     out = {"cls": "", "name": "", "spec": "", "level": 0, "loadouts": [],
-           "equipped": [], "bags": []}
+           "equipped": [], "bags": [], "server": "", "talents": ""}
     pending = None
     cur_loadout = None
     in_bags = False
@@ -2306,6 +2306,16 @@ def _stuff_parse_export(txt: str) -> dict:
             m = re.match(r"^level=(\d+)", ln)
             if m:
                 out["level"] = int(m.group(1))
+                continue
+        if not out["server"]:
+            m = re.match(r"^server=(\S+)", ln)
+            if m:
+                out["server"] = m.group(1)
+                continue
+        if not out["talents"]:
+            m = re.match(r"^talents=(\S+)", ln)
+            if m:
+                out["talents"] = m.group(1)
                 continue
         m = re.match(r"^#\s*Saved Loadout:\s*(.+?)\s*$", ln)
         if m:
@@ -2568,6 +2578,30 @@ def submit_sim(payload: SimRequest, request: Request):
         return {"id": sim_id, "status": "queued", "cached": False, "position": queue_len + 1, "warnings": warnings}
 
 
+BLIZZ_LOADOUT = "Talents actuels (Blizzard)"
+
+
+def _spec_token(name: str) -> str:
+    """« Beast Mastery » -> « beast_mastery » (nom de spé anglais -> jeton SimC)."""
+    return re.sub(r"[^a-z]+", "_", (name or "").lower()).strip("_")
+
+
+def _blizz_talents_for(parsed: dict) -> str | None:
+    """Code de talents en jeu (API Blizzard) pour la spé de l'export, ou None."""
+    name = (parsed.get("name") or "").strip()
+    realm = (parsed.get("server") or bnet.GUILD_REALM or "").strip().lower().replace("_", "-")
+    if not name or not realm or not parsed.get("spec"):
+        return None
+    try:
+        t, _ts = bnet.talents(realm, name, locale="en_US")   # noms de spé anglais = jetons SimC
+    except bnet.BnetError:
+        return None
+    for lo in t.get("loadouts") or []:
+        if _spec_token(lo.get("spec") or "") == parsed["spec"] and lo.get("code"):
+            return lo["code"]
+    return None
+
+
 @app.get("/api/stuff/profile/{pid}")
 def stuff_profile(pid: int, request: Request):
     """Résumé d'un export : classe/spé, builds détectés, nb de pièces."""
@@ -2577,8 +2611,11 @@ def stuff_profile(pid: int, request: Request):
     if prof is None:
         raise HTTPException(404, "Profil introuvable.")
     parsed = _stuff_parse_export(prof["input"])
+    blizz = _blizz_talents_for(parsed)
+    loadouts = [l["name"] for l in parsed["loadouts"]] + ([BLIZZ_LOADOUT] if blizz else [])
     return {"id": prof["id"], "name": prof["name"], "cls": parsed["cls"], "spec": parsed["spec"],
-            "level": parsed["level"], "loadouts": [l["name"] for l in parsed["loadouts"]],
+            "level": parsed["level"], "loadouts": loadouts,
+            "talents_changed": bool(blizz and parsed["talents"] and blizz != parsed["talents"]),
             "equipped": len(parsed["equipped"]), "bags": len(parsed["bags"]),
             "heal": parsed["spec"] in HEAL_SPECS,
             "prio_known": f'{parsed["cls"]}/{parsed["spec"]}' in STUFF_HEAL_PRIO,
@@ -2652,6 +2689,11 @@ def submit_stuff(payload: StuffRequest, request: Request):
     if not parsed["bags"]:
         raise HTTPException(400, "Cet export ne contient pas les pièces des sacs — réexporte ton personnage avec l'addon (les sacs sont inclus automatiquement).")
     loadout = next((l for l in parsed["loadouts"] if l["name"] == payload.loadout), None)
+    if payload.loadout == BLIZZ_LOADOUT and loadout is None:
+        code = _blizz_talents_for(parsed)
+        if not code:
+            raise HTTPException(400, "Talents Blizzard indisponibles pour ce personnage et cette spé.")
+        loadout = {"name": BLIZZ_LOADOUT, "talents": code}
     if payload.loadout and loadout is None:
         raise HTTPException(400, "Build introuvable dans cet export.")
     ip = _client_ip(request)
@@ -2917,6 +2959,112 @@ def api_char_raids_progress(realm: str, name: str, request: Request, refresh: in
 def api_char_dungeons_progress(realm: str, name: str, request: Request, refresh: int = 0):
     _require_user(request)
     return _bnet_call(bnet.dungeon_progress, realm, name, refresh, locale=_user_locale(request))
+
+
+# ---- Progression de la guilde (v2026.09.154) ----
+_GPROG: dict = {}
+_GPROG_TTL = 900.0
+_gprog_lock = threading.Lock()
+
+
+def _guild_progress_aggregate(results: list, names: dict, mains: set) -> dict:
+    """[(membre roster, progression bnet|None)] -> boss × difficulté × membres, et résumé par membre.
+
+    Blizzard ne liste que les boss tués : l'ordre et les boss manquants viennent du journal (`names`).
+    """
+    order = (names or {}).get("order") or {}
+    enc_names = (names or {}).get("enc") or {}
+    insts: dict = {}
+    diffs: dict = {}
+    members = []
+    expansion = ""
+    for m, prog in results:
+        if not prog:
+            continue
+        expansion = expansion or prog.get("expansion") or ""
+        done: dict = {}
+        for ins in prog.get("instances") or []:
+            iid = ins.get("id")
+            it = insts.setdefault(iid, {"id": iid, "name": ins.get("name") or "?", "total": 0, "bosses": {}})
+            for mo in ins.get("modes") or []:
+                d = mo.get("difficulty") or ""
+                diffs.setdefault(d, mo.get("label") or d)
+                it["total"] = max(it["total"], int(mo.get("total") or 0))
+                done[d] = done.get(d, 0) + int(mo.get("done") or 0)
+                for b in mo.get("bosses") or []:
+                    bb = it["bosses"].setdefault(b.get("id"), {"id": b.get("id"), "name": b.get("name") or "?",
+                                                               "kills": {}})
+                    bb["kills"].setdefault(d, []).append(m["name"])
+        members.append({"name": m["name"], "realm": m.get("realm") or "",
+                        "main": (m["name"] or "").lower() in mains, "done": done})
+    rank = {d: i for i, d in enumerate(bnet.DIFF_ORDER)}
+    out_insts = []
+    for iid, it in insts.items():
+        ids = list((order.get(iid) or order.get(str(iid)) or []))
+        ids += [bid for bid in it["bosses"] if bid not in ids]
+        bosses = [it["bosses"].get(bid) or {"id": bid, "name": enc_names.get(bid) or "?", "kills": {}}
+                  for bid in ids]
+        out_insts.append({"id": iid, "name": it["name"], "total": max(it["total"], len(ids)),
+                          "bosses": bosses})
+    grand = sum(i["total"] for i in out_insts)
+    for mm in members:
+        best = None
+        for d, n in mm["done"].items():
+            if n > 0 and (best is None or rank.get(d, 99) > rank.get(best, 99)):
+                best = d
+        mm["best"] = ({"difficulty": best, "label": diffs.get(best, best), "done": mm["done"][best],
+                       "total": grand} if best else None)
+    members.sort(key=lambda x: (-(rank.get((x["best"] or {}).get("difficulty"), -1)),
+                                -((x["best"] or {}).get("done") or 0), x["name"].lower()))
+    diff_list = [{"difficulty": d, "label": diffs[d]}
+                 for d in sorted(diffs, key=lambda d: rank.get(d, 99)) if d]
+    return {"expansion": expansion, "diffs": diff_list, "instances": out_insts, "members": members}
+
+
+def _guild_progress(kind: str, locale: str, force: bool = False) -> dict:
+    """Agrège la progression des membres de niveau max du roster (cache 15 min)."""
+    key = f"{kind}/{locale}"
+    with _gprog_lock:
+        hit = _GPROG.get(key)
+    if hit and not force and time.time() - hit["ts"] < _GPROG_TTL:
+        return hit["data"]
+    roster, _ts = bnet.roster()
+    mem = [m for m in roster.get("members") or [] if m.get("name")]
+    top = max((int(m.get("level") or 0) for m in mem), default=0)
+    mem = [m for m in mem if int(m.get("level") or 0) == top]
+    with _db_lock, _db() as conn:
+        mains = {str(r["name"] or "").lower()
+                 for r in conn.execute("SELECT name FROM char_links WHERE is_main=1").fetchall()}
+    fn = bnet.raid_progress if kind == "raid" else bnet.dungeon_progress
+
+    def one(m):
+        try:
+            return m, fn(m.get("realm") or bnet.GUILD_REALM, m["name"], locale=locale)[0]
+        except bnet.BnetError:
+            return m, None
+
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(one, mem))
+    # donjons : Blizzard ne suit que le dernier boss -> pas de liste de boss du journal
+    names = bnet.journal_names(locale) if kind == "raid" else {}
+    data = _guild_progress_aggregate(results, names, mains)
+    data.update({"kind": kind, "level": top, "scanned": len(mem), "fetched_at": time.time()})
+    with _gprog_lock:
+        _GPROG[key] = {"ts": time.time(), "data": data}
+    return data
+
+
+@app.get("/api/guild/progress")
+def api_guild_progress(request: Request, kind: str = "raid", refresh: int = 0):
+    """Progression de la guilde (membres de niveau max) : boss × difficulté, meilleure progression par membre."""
+    _require_user(request)
+    if kind not in ("raid", "dungeon"):
+        raise HTTPException(400, "kind doit valoir raid ou dungeon.")
+    try:
+        return _guild_progress(kind, _user_locale(request), force=bool(refresh))
+    except bnet.BnetError as exc:
+        raise HTTPException(exc.status if exc.status in (400, 404) else 502, str(exc))
 
 
 @app.get("/api/char/{realm}/{name}/equipment")

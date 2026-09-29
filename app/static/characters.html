@@ -82,6 +82,7 @@
   .lv, .il, .vu { color: var(--mut); font-size: 13.5px; white-space: nowrap; }
   .il b { color: var(--fg); font-variant-numeric: tabular-nums; }
   .chip { display: inline-block; min-width: 34px; text-align: center; }
+  td.pg { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--mut); }
   .detrow td { background: #16202f; padding: 12px 16px 16px; }
   .det-top { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; font-size: 13.5px; }
   .det-top .spec { font-weight: 700; }
@@ -104,7 +105,7 @@
   .extras { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 4px; }
   .xchip { border:1px solid var(--line); border-radius:999px; padding:3px 12px; font-size:12.5px; background:var(--card2,#182130); }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.153-c1">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.154">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -158,9 +159,9 @@
     <div class="tscroll" id="tscroll">
       <table>
         <thead>
-          <tr><th>Rang</th><th>Nom</th><th>Niv.</th><th>iLvl</th><th>Vu</th><th></th></tr>
+          <tr><th>Rang</th><th>Nom</th><th>Niv.</th><th>iLvl</th><th title="Meilleure difficulté de raid de l'extension en cours : boss tués / total">Raid</th><th>Vu</th><th></th></tr>
         </thead>
-        <tbody id="tbody"><tr><td colspan="6"><div class="empty">Chargement…</div></td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="7"><div class="empty">Chargement…</div></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -172,10 +173,10 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.153-c1"></script>
-<script src="/static/branding.js?v=2026.09.153-c1"></script>
-<script src="/static/i18n.js?v=2026.09.153-c1"></script>
-<script src="/static/esc.js?v=2026.09.153-c1"></script>
+<script src="/static/nav.js?v=2026.09.154"></script>
+<script src="/static/branding.js?v=2026.09.154"></script>
+<script src="/static/i18n.js?v=2026.09.154"></script>
+<script src="/static/esc.js?v=2026.09.154"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
@@ -227,6 +228,7 @@ function renderRoster(data) {
       <td class="cname"><a href="${armory}" target="_blank" rel="noopener">${esc(m.name)}</a></td>
       <td class="lv">${m.level || "—"}</td>
       <td class="il"><span class="chip" data-il>…</span></td>
+      <td class="pg" data-pg>${m.level === GPROG_LEVEL ? "…" : "—"}</td>
       <td class="vu" data-vu>—</td>
       <td><button class="ghost" data-det>Détails</button> <a class="ghost" href="/char/${esc(m.realm)}/${esc(m.name.toLowerCase())}">Fiche</a></td>
     </tr>`;
@@ -237,6 +239,27 @@ function renderRoster(data) {
     b.addEventListener("click", () => toggleDetail(b.closest("tr"))));
   applyFilters();
   applyMyMarkers();
+  applyProg();
+}
+
+// ---- Progression raid (v2026.09.154) : meilleure difficulté par membre de niveau max
+let GPROG = null, GPROG_LEVEL = 90;
+const DIFF_SHORT = { LFR: "LFR", NORMAL: "N", HEROIC: "H", MYTHIC: "M", MYTHIC_KEYSTONE: "M+" };
+async function loadProg() {
+  try { GPROG = await jget("/api/guild/progress?kind=raid"); GPROG_LEVEL = GPROG.level || GPROG_LEVEL; }
+  catch (e) { GPROG = { members: [] }; }
+  applyProg();
+}
+function applyProg() {
+  if (!GPROG) return;
+  const by = new Map((GPROG.members || []).map(m => [`${m.realm}|${m.name.toLowerCase()}`, m]));
+  document.querySelectorAll("tr.crow").forEach(tr => {
+    const td = tr.querySelector("[data-pg]");
+    if (!td) return;
+    const m = by.get(tr.dataset.key), b = m && m.best;
+    td.textContent = b ? `${b.done}/${b.total} ${DIFF_SHORT[b.difficulty] || b.label}` : "—";
+    td.title = b ? b.label : "";
+  });
 }
 
 // ---- Vu dernièrement (relevé du jour)
@@ -327,7 +350,7 @@ async function toggleDetail(tr) {
   const [realm, name] = tr.dataset.key.split("|");
   const det = document.createElement("tr");
   det.className = "detrow";
-  det.innerHTML = `<td colspan="6"><div class="empty"><span class="spin">⏳</span> Chargement de l'équipement…</div></td>`;
+  det.innerHTML = `<td colspan="7"><div class="empty"><span class="spin">⏳</span> Chargement de l'équipement…</div></td>`;
   tr.after(det);
   try {
     const s = SUMS.get(tr.dataset.key) || await jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/summary`);
@@ -365,7 +388,7 @@ async function load(refresh = 0) {
     const data = await jget("/api/roster" + (refresh ? "?refresh=1" : ""));
     renderRoster(data);
   } catch (e) {
-    $("#tbody").innerHTML = `<tr><td colspan="6"><div class="err">Erreur de chargement du roster : ${esc(e.message)}</div></td></tr>`;
+    $("#tbody").innerHTML = `<tr><td colspan="7"><div class="err">Erreur de chargement du roster : ${esc(e.message)}</div></td></tr>`;
   }
 }
 
@@ -441,7 +464,7 @@ function bindLinkBtn(btn, lname) {
     $("#who").textContent = me.name || me.email;
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
-  load(0); loadMyChars(); loadAvail(24);
+  load(0); loadMyChars(); loadAvail(24); loadProg();
 })();
 </script>
 </body>

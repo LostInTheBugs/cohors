@@ -713,7 +713,8 @@ def journal_names(locale: str | None = None) -> dict:
     """Noms traduits des instances et des boss de l'extension en cours, d'après le journal.
 
     /encounters/* renvoie les noms en anglais quelle que soit la locale demandée : on les
-    remplace par ceux du journal. {"inst": {id: nom}, "enc": {id: nom}} ; cache 24 h.
+    remplace par ceux du journal. {"inst": {id: nom}, "enc": {id: nom}, "order": {inst_id: [enc_id…]}} ;
+    cache 24 h.
     """
     loc = _loc(locale)
     with _lock:
@@ -721,7 +722,7 @@ def journal_names(locale: str | None = None) -> dict:
     if hit and time.time() - hit["ts"] < _NAMES_TTL:
         return hit["data"]
     cur = current_expansion(loc)
-    data: dict = {"inst": {}, "enc": {}}
+    data: dict = {"inst": {}, "enc": {}, "order": {}}
     ns = {"namespace": f"static-{REGION}", "locale": loc}
     ok = bool(cur.get("instances"))
     for iid in cur.get("instances") or []:
@@ -735,6 +736,7 @@ def journal_names(locale: str | None = None) -> dict:
         for e in ins.get("encounters") or []:
             if e.get("id") and e.get("name"):
                 data["enc"][int(e["id"])] = e["name"]
+                data["order"].setdefault(int(iid), []).append(int(e["id"]))
     if ok:
         with _lock:
             _names[loc] = {"ts": time.time(), "data": data}
