@@ -574,6 +574,19 @@
  "Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment": "Character profile — Battle.net API (30 min cache) · Game data provided by Blizzard Entertainment · Not affiliated with Blizzard Entertainment",
  "Personnage introuvable sur ce royaume.": "Character not found on this realm.",
  "📈 Évolution": "📈 Evolution",
+ "🏰 Progression & talents": "🏰 Progression & talents",
+ "🏰 Raids": "🏰 Raids",
+ "🗝️ Donjons": "🗝️ Dungeons",
+ "🌳 Talents": "🌳 Talents",
+ "Raid": "Raid",
+ "Donjon": "Dungeon",
+ "Indisponible": "Unavailable",
+ "Aucun talent renseigné": "No talents found",
+ "Aucun boss tué": "No boss killed",
+ "Spé active :": "Active spec:",
+ "· Héros :": "· Hero:",
+ "✅ Copié": "✅ Copied",
+ "❌ Échec de la copie": "❌ Copy failed",
  "Chaque jour, l'app enregistre l'état du personnage (équipement, niveau, collections). Historique conservé 30 jours (règle Blizzard).": "Every day the app records the character state (gear, level, collections). History is kept for 30 days (Blizzard API rule).",
  "Les relevés quotidiens démarrent — le premier d'aujourd'hui est enregistré. Reviens demain pour voir l'évolution.": "Daily snapshots are starting — today's is being recorded. Come back tomorrow to see the progress.",
  "Du": "From",
@@ -1139,6 +1152,8 @@
 
   const RULES = [
     [/^Relevé Blizzard : /g, "Blizzard data: "],
+    // Fiche perso — progression (v2026.09.153)
+    [/^Aucun boss tué dans (.+)$/g, "No boss killed in $1"],
     // Stuff — listes de contenus (« Raid, Mythique+, Gouffres » / « Raid · Boss mondial »)
     [/^(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat)(?:(?:, | · )(?:Raid|Mythique\+|Gouffres|Boss mondial|Artisanat))+$/g,
       (m) => m.replace(/Mythique\+/g, "Mythic+").replace(/Gouffres/g, "Delves")

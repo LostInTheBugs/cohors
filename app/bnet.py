@@ -660,3 +660,144 @@ def item(item_id: int, locale: str | None = None) -> dict:
     }
     _store(key, data)
     return data
+
+
+# ---------------------------------------------------------------------------
+# Progression (raids / donjons) et talents d'un personnage — v2026.09.153
+# ---------------------------------------------------------------------------
+DIFF_ORDER = ["LFR", "NORMAL", "HEROIC", "MYTHIC", "MYTHIC_KEYSTONE"]
+DIFF_LABELS = {
+    "fr": {"LFR": "Outil de raids", "NORMAL": "Normal", "HEROIC": "Héroïque",
+           "MYTHIC": "Mythique", "MYTHIC_KEYSTONE": "Mythique+"},
+    "en": {"LFR": "Raid Finder", "NORMAL": "Normal", "HEROIC": "Heroic",
+           "MYTHIC": "Mythic", "MYTHIC_KEYSTONE": "Mythic+"},
+}
+
+
+def current_expansion(locale: str | None = None) -> dict:
+    """Extension en cours d'après le journal : {"id", "name"}, ou {} si indisponible.
+
+    Même règle que journal_raids() : la plus récente des extensions qui a des raids
+    (les ids de /encounters/* sont ceux du journal). Ne jamais se fier à l'ordre de la
+    liste `expansions` renvoyée pour un personnage : il n'est pas chronologique.
+    """
+    loc = _loc(locale)
+    key = f"journal_cur_exp_{loc}"
+    hit = _cached(key, False)
+    if hit:
+        return hit["data"]
+    ns = {"namespace": f"static-{REGION}", "locale": loc}
+    data: dict = {}
+    try:
+        idx = _get("/data/wow/journal-expansion/index", dict(ns))
+        tiers = sorted([t for t in (idx.get("tiers") or []) if t.get("id")],
+                       key=lambda t: int(t["id"]), reverse=True)
+        for tier in tiers[:3]:
+            det = _get(f"/data/wow/journal-expansion/{tier['id']}", dict(ns))
+            if det.get("raids"):
+                data = {"id": int(tier["id"]), "name": tier.get("name") or det.get("name") or ""}
+                break
+    except BnetError:
+        return {}          # pas mis en cache : on réessaiera au prochain appel
+    _store(key, data)
+    return data
+
+
+def parse_encounters(raw: dict, cur_id, locale: str | None = None, cur_name: str = "") -> dict:
+    """Réponse /encounters/{raids|dungeons} -> progression de l'extension `cur_id` uniquement."""
+    labels = DIFF_LABELS["en" if _loc(locale).startswith("en") else "fr"]
+    out: dict = {"expansion": cur_name, "instances": []}
+    if cur_id is None:
+        return out
+    exp = next((e for e in (raw.get("expansions") or [])
+                if str((e.get("expansion") or {}).get("id")) == str(cur_id)), None)
+    if not exp:
+        return out
+    out["expansion"] = (exp.get("expansion") or {}).get("name") or cur_name
+    for ins in exp.get("instances") or []:
+        meta = ins.get("instance") or {}
+        modes = []
+        for m in ins.get("modes") or []:
+            diff = m.get("difficulty") or {}
+            dtype = str(diff.get("type") or "")
+            prog = m.get("progress") or {}
+            bosses = []
+            for enc in prog.get("encounters") or []:
+                em = enc.get("encounter") or {}
+                ts = enc.get("last_kill_timestamp")
+                bosses.append({"id": em.get("id"), "name": em.get("name") or "?",
+                               "kills": int(enc.get("completed_count") or 0),
+                               "last_kill": int(ts) // 1000 if ts else None})
+            modes.append({"difficulty": dtype, "label": labels.get(dtype) or diff.get("name") or dtype,
+                          "done": int(prog.get("completed_count") or 0),
+                          "total": int(prog.get("total_count") or 0),
+                          "bosses": bosses})
+        modes.sort(key=lambda x: DIFF_ORDER.index(x["difficulty"])
+                   if x["difficulty"] in DIFF_ORDER else len(DIFF_ORDER))
+        out["instances"].append({"id": meta.get("id"), "name": meta.get("name") or "?", "modes": modes})
+    return out
+
+
+def _encounters(kind: str, realm: str, name: str, force: bool, locale: str | None) -> tuple[dict, float]:
+    loc = _loc(locale)
+    realm, name = realm.lower(), name.lower()
+    key = f"enc_{kind}/{loc}/{realm}/{name}"
+    hit = _cached(key, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    cur = current_expansion(loc)
+    base = f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}"
+    try:
+        raw = _get(f"{base}/encounters/{kind}", {"namespace": f"profile-{REGION}", "locale": loc})
+    except BnetError as exc:
+        if exc.status == 404:
+            raise
+        return {"expansion": cur.get("name", ""), "instances": []}, time.time()
+    data = parse_encounters(raw, cur.get("id"), loc, cur.get("name", ""))
+    return data, _store(key, data)
+
+
+def raid_progress(realm: str, name: str, force: bool = False, locale: str | None = None) -> tuple[dict, float]:
+    """Boss de raid tués par difficulté, extension en cours."""
+    return _encounters("raids", realm, name, force, locale)
+
+
+def dungeon_progress(realm: str, name: str, force: bool = False, locale: str | None = None) -> tuple[dict, float]:
+    """Donjons terminés par difficulté, extension en cours."""
+    return _encounters("dungeons", realm, name, force, locale)
+
+
+def parse_talents(raw: dict) -> dict:
+    """Réponse /specializations -> spé active, arbre de héros, code de talents par spé."""
+    act = raw.get("active_specialization") or {}
+    hero = raw.get("active_hero_talent_tree") or {}
+    loadouts = []
+    for sp in raw.get("specializations") or []:
+        spec = sp.get("specialization") or {}
+        for lo in sp.get("loadouts") or []:
+            code = lo.get("talent_loadout_code")
+            if code:
+                loadouts.append({"spec": spec.get("name") or "", "spec_id": spec.get("id"),
+                                 "active": bool(lo.get("is_active")), "code": code, "name": None})
+    loadouts.sort(key=lambda lo: (lo["spec_id"] != act.get("id"), not lo["active"]))
+    return {"active_spec": act.get("name") or "", "active_spec_id": act.get("id"),
+            "hero_tree": hero.get("name") or None, "loadouts": loadouts}
+
+
+def talents(realm: str, name: str, force: bool = False, locale: str | None = None) -> tuple[dict, float]:
+    """Talents actuels (codes d'import) du personnage."""
+    loc = _loc(locale)
+    realm, name = realm.lower(), name.lower()
+    key = f"talents/{loc}/{realm}/{name}"
+    hit = _cached(key, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    base = f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}"
+    try:
+        raw = _get(f"{base}/specializations", {"namespace": f"profile-{REGION}", "locale": loc})
+    except BnetError as exc:
+        if exc.status == 404:
+            raise
+        return {"active_spec": "", "active_spec_id": None, "hero_tree": None, "loadouts": []}, time.time()
+    data = parse_talents(raw)
+    return data, _store(key, data)
