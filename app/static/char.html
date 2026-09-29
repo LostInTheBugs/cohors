@@ -94,9 +94,20 @@
   .stufftab td:first-child { color:var(--mut); font-size:12.5px; white-space:nowrap; }
   .gli { color:var(--mut); font-size:12px; margin-left:5px; font-variant-numeric:tabular-nums; }
   .evtab .wcl { color:var(--acc2); font-size:11px; }
+  .ptab { width:100%; border-collapse:collapse; font-size:13.5px; margin-bottom:6px; }
+  .ptab th { text-align:left; color:var(--mut); font-size:12px; font-weight:600; padding:5px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .ptab td { padding:5px 8px; border-top:1px solid var(--line); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .ptab tr.prow { cursor:pointer; }
+  .ptab tr.prow:hover td { background:rgba(255,255,255,.03); }
+  .ptab td.full { color:var(--ok); font-weight:600; }
+  .ptab tr.pdet td { white-space:normal; color:var(--mut); font-size:12.5px; }
+  .ptab .bl { display:inline-block; margin:2px 10px 2px 0; }
+  .ptab .bl.k { color:var(--fg); }
+  .tal { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0; }
+  .tal code { font-size:11.5px; color:var(--mut); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 1 260px; min-width:0; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.153">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -123,16 +134,21 @@
   </div>
 
   <div class="card">
+    <h2>🏰 Progression &amp; talents</h2>
+    <div id="prog"><div class="empty"><span class="spin">⏳</span> Chargement…</div></div>
+  </div>
+
+  <div class="card">
     <h2>📈 Évolution <span class="meta" id="evo-count"></span></h2>
     <div id="evo"><div class="empty"><span class="spin">⏳</span> Chargement…</div></div>
   </div>
 
   <footer>Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment · <span id="ver"></span></footer>
 </div>
-<script src="/static/nav.js?v=2026.09.152-c30"></script>
-<script src="/static/branding.js?v=2026.09.152-c30"></script>
-<script src="/static/i18n.js?v=2026.09.152-c30"></script>
-<script src="/static/esc.js?v=2026.09.152-c30"></script>
+<script src="/static/nav.js?v=2026.09.153"></script>
+<script src="/static/branding.js?v=2026.09.153"></script>
+<script src="/static/i18n.js?v=2026.09.153"></script>
+<script src="/static/esc.js?v=2026.09.153"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
@@ -225,6 +241,7 @@ function render(s, g, x) {
 async function loadChar(realm, name, push) {
   $("#content").innerHTML = '<div class="empty"><span class="spin">⏳</span> Chargement de la fiche…</div>';
   evoReset();
+  progReset();
   REALM = realm.toLowerCase(); NAME = name.toLowerCase();
   markCur();
   try {
@@ -236,10 +253,78 @@ async function loadChar(realm, name, push) {
     render(s, g, x);
     document.title = `Cohors — ${s.name || name}`;
     loadEvo(realm, name);
+    loadProg(realm, name);
     if (push) history.replaceState(null, "", charUrl(realm, name));
   } catch (e) {
     $("#content").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
+    $("#prog").innerHTML = "";
   }
+}
+
+// ---- 🏰 Progression raids / donjons + 🌳 talents — API Blizzard (v2026.09.153) ----
+function progReset() {
+  $("#prog").innerHTML = '<div class="empty"><span class="spin">⏳</span> Chargement…</div>';
+}
+
+const DIFF_ORDER = ["LFR", "NORMAL", "HEROIC", "MYTHIC", "MYTHIC_KEYSTONE"];
+const dayFr = (ts) => ts ? new Date(ts * 1000).toLocaleDateString("fr-FR") : "";
+
+function progTable(p, kind) {
+  if (!p) return '<div class="empty">Indisponible</div>';
+  const inst = p.instances || [];
+  if (!inst.length) return `<div class="empty">Aucun boss tué dans ${esc(p.expansion || "l'extension en cours")}</div>`;
+  const diffs = [];
+  for (const i of inst) for (const m of (i.modes || []))
+    if (!diffs.some(d => d.difficulty === m.difficulty)) diffs.push({ difficulty: m.difficulty, label: m.label });
+  const rank = (d) => { const k = DIFF_ORDER.indexOf(d.difficulty); return k < 0 ? 99 : k; };
+  diffs.sort((a, b) => rank(a) - rank(b));
+  const rows = inst.map((i, n) => {
+    const cells = diffs.map(d => {
+      const m = (i.modes || []).find(x => x.difficulty === d.difficulty);
+      if (!m) return '<td class="meta">—</td>';
+      return `<td class="${m.total && m.done >= m.total ? "full" : ""}">${m.done}/${m.total}</td>`;
+    }).join("");
+    // Blizzard ne liste que les boss déjà tués (les autres sont absents de la réponse).
+    const det = (i.modes || []).filter(m => (m.bosses || []).length).map(m => `<div><b>${esc(m.label)}</b> : `
+      + m.bosses.map(b => `<span class="bl k" title="${esc(dayFr(b.last_kill))}">✅ ${esc(b.name)}`
+      + (b.kills > 1 ? ` <span class="meta">×${b.kills}</span>` : "") + "</span>").join("") + "</div>").join("")
+      || '<span class="meta">Aucun boss tué</span>';
+    return `<tr class="prow" data-det="pdet-${kind}-${n}"><td>${esc(i.name)}</td>${cells}</tr>
+      <tr class="pdet hidden" id="pdet-${kind}-${n}"><td colspan="${diffs.length + 1}">${det}</td></tr>`;
+  }).join("");
+  return `<div style="overflow-x:auto"><table class="ptab"><thead><tr><th>${kind === "r" ? "Raid" : "Donjon"}</th>`
+    + diffs.map(d => `<th>${esc(d.label)}</th>`).join("") + `</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function talentsBlock(t) {
+  if (!t) return '<div class="empty">Indisponible</div>';
+  const los = t.loadouts || [];
+  if (!los.length) return '<div class="empty">Aucun talent renseigné</div>';
+  const head = `<div class="meta">Spé active : <b>${esc(t.active_spec || "—")}</b>`
+    + (t.hero_tree ? ` · Héros : <b>${esc(t.hero_tree)}</b>` : "") + "</div>";
+  return head + los.map(lo => `<div class="tal"><span class="tag">${esc(lo.spec)}</span>`
+    + `<code title="${esc(lo.code)}">${esc(lo.code)}</code>`
+    + `<button class="btn tcopy" type="button" data-code="${esc(lo.code)}">📋 Copier</button></div>`).join("");
+}
+
+async function loadProg(realm, name) {
+  const u = (p) => `/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/${p}`;
+  const [r, d, t] = await Promise.all([
+    jget(u("raids-progress")).catch(() => null),
+    jget(u("dungeons-progress")).catch(() => null),
+    jget(u("talents")).catch(() => null),
+  ]);
+  if (REALM !== realm.toLowerCase() || NAME !== name.toLowerCase()) return;   // autre perso choisi entre-temps
+  const exp = (p) => p && p.expansion ? ` <span class="meta">— ${esc(p.expansion)}</span>` : "";
+  $("#prog").innerHTML = `<h3 class="sect">🏰 Raids${exp(r)}</h3>${progTable(r, "r")}`
+    + `<h3 class="sect">🗝️ Donjons${exp(d)}</h3>${progTable(d, "d")}`
+    + `<h3 class="sect">🌳 Talents</h3>${talentsBlock(t)}`;
+  document.querySelectorAll("#prog tr.prow").forEach(tr =>
+    tr.addEventListener("click", () => document.getElementById(tr.dataset.det).classList.toggle("hidden")));
+  document.querySelectorAll("#prog .tcopy").forEach(b => b.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(b.dataset.code); b.textContent = "✅ Copié"; }
+    catch (e) { b.textContent = "❌ Échec de la copie"; }
+  }));
 }
 
 // ---- 📈 Évolution : relevés quotidiens (v2026.09.054) ----

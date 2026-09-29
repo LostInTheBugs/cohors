@@ -1052,3 +1052,91 @@ def test_my_recipes_refresh_rereads_blizzard(monkeypatch):
     assert json.loads(row["data"])["profs"][0]["known"] == [940001]
     m = _plain_client("recipes-member@test.local", "10.99.60.3")
     assert m.post("/api/my/recipes/refresh", json={"realm": "hyjal", "name": "Rafraichie"}).status_code == 403
+
+
+# ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
+def _enc_payload():
+    def exp(eid, name, inst):
+        return {"expansion": {"id": eid, "name": name}, "instances": inst}
+    cur_inst = [{"instance": {"id": 1300, "name": "Flèche du Vide"}, "modes": [
+        {"difficulty": {"type": "MYTHIC", "name": "Mythique"}, "status": {"type": "IN_PROGRESS"},
+         "progress": {"completed_count": 1, "total_count": 2, "encounters": [
+             {"encounter": {"id": 1, "name": "Boss A"}, "completed_count": 2, "last_kill_timestamp": 1790000000000}]}},
+        {"difficulty": {"type": "LFR", "name": "Raids"}, "status": {"type": "COMPLETE"},
+         "progress": {"completed_count": 2, "total_count": 2, "encounters": [
+             {"encounter": {"id": 1, "name": "Boss A"}, "completed_count": 1, "last_kill_timestamp": 1789000000000},
+             {"encounter": {"id": 2, "name": "Boss B"}, "completed_count": 1, "last_kill_timestamp": 1789000500000}]}},
+        {"difficulty": {"type": "HEROIC", "name": "Héroïque"}, "status": {"type": "IN_PROGRESS"},
+         "progress": {"completed_count": 0, "total_count": 2, "encounters": []}}]}]
+    old_inst = [{"instance": {"id": 1273, "name": "Nerub-ar Palace"}, "modes": []}]
+    # extension courante AU MILIEU : l'ordre de la liste ne doit pas compter
+    return {"expansions": [exp(503, "Dragonflight", old_inst), exp(600, "Midnight", cur_inst),
+                           exp(514, "The War Within", old_inst)]}
+
+
+def test_parse_encounters_keeps_current_expansion_only():
+    out = M.bnet.parse_encounters(_enc_payload(), 600, "fr_FR", "Midnight")
+    assert out["expansion"] == "Midnight"
+    assert [i["name"] for i in out["instances"]] == ["Flèche du Vide"]
+    modes = out["instances"][0]["modes"]
+    assert [m["difficulty"] for m in modes] == ["LFR", "HEROIC", "MYTHIC"]          # ordre des difficultés
+    assert modes[0]["label"] == "Outil de raids"                                    # pas « Raids » de Blizzard
+    assert (modes[0]["done"], modes[0]["total"]) == (2, 2)
+    assert modes[2]["bosses"][0] == {"id": 1, "name": "Boss A", "kills": 2, "last_kill": 1790000000}  # ms -> s
+    en = M.bnet.parse_encounters(_enc_payload(), 600, "en_US")
+    assert en["instances"][0]["modes"][0]["label"] == "Raid Finder"
+
+
+def test_parse_encounters_nothing_in_current_expansion():
+    out = M.bnet.parse_encounters(_enc_payload(), 700, "fr_FR", "Extension future")
+    assert out == {"expansion": "Extension future", "instances": []}
+    assert M.bnet.parse_encounters(_enc_payload(), None, "fr_FR")["instances"] == []
+
+
+def test_raid_progress_uses_journal_expansion(monkeypatch):
+    monkeypatch.setattr(M.bnet, "current_expansion", lambda loc=None: {"id": 600, "name": "Midnight"})
+    monkeypatch.setattr(M.bnet, "_get", lambda *a, **k: _enc_payload())
+    data, _ts = M.bnet.raid_progress("hyjal", "Progtest", force=True, locale="fr_FR")
+    assert data["expansion"] == "Midnight" and data["instances"][0]["id"] == 1300
+
+
+def test_encounters_api_error_gives_empty_progress(monkeypatch):
+    monkeypatch.setattr(M.bnet, "current_expansion", lambda loc=None: {"id": 600, "name": "Midnight"})
+
+    def boom(*a, **k):
+        raise M.bnet.BnetError(500, "Erreur de l'API Battle.net.")
+    monkeypatch.setattr(M.bnet, "_get", boom)
+    data, _ts = M.bnet.dungeon_progress("hyjal", "Progtesterr", force=True, locale="fr_FR")
+    assert data == {"expansion": "Midnight", "instances": []}
+
+
+def test_parse_talents_active_spec_and_codes():
+    raw = {"active_specialization": {"id": 264, "name": "Restauration"},
+           "active_hero_talent_tree": {"id": 56, "name": "Long-voyant"},
+           "specializations": [
+               {"specialization": {"id": 263, "name": "Amélioration"},
+                "loadouts": [{"is_active": True, "talent_loadout_code": "CcQAAA", "selected_class_talents": [{"id": 1}]}]},
+               {"specialization": {"id": 264, "name": "Restauration"},
+                "loadouts": [{"is_active": True, "talent_loadout_code": "CgQBBB"}]},
+               {"specialization": {"id": 262, "name": "Élémentaire"}, "loadouts": []}]}
+    t = M.bnet.parse_talents(raw)
+    assert (t["active_spec"], t["active_spec_id"], t["hero_tree"]) == ("Restauration", 264, "Long-voyant")
+    assert [lo["code"] for lo in t["loadouts"]] == ["CgQBBB", "CcQAAA"]              # spé active d'abord
+    assert "selected_class_talents" not in t["loadouts"][1]
+
+
+def test_char_progress_routes(monkeypatch):
+    monkeypatch.setattr(M.bnet, "current_expansion", lambda loc=None: {"id": 600, "name": "Midnight"})
+    monkeypatch.setattr(M.bnet, "_get", lambda path, *a, **k:
+                        {"active_specialization": {"id": 1, "name": "X"}, "specializations": []}
+                        if path.endswith("/specializations") else _enc_payload())
+    anon = TestClient(M.app)
+    assert anon.get("/api/char/hyjal/progroute/talents").status_code == 401
+    _make_user("progroute@test.local")
+    c = TestClient(M.app)
+    assert c.post("/api/login", json={"email": "progroute@test.local", "password": "test-pw-123"},
+                  headers={"X-Forwarded-For": "10.99.7.1"}).status_code == 200
+    for p in ("talents", "raids-progress", "dungeons-progress"):
+        r = c.get(f"/api/char/hyjal/progroute/{p}?refresh=1")
+        assert r.status_code == 200, (p, r.text)
+    assert r.json()["instances"][0]["name"] == "Flèche du Vide"

@@ -2901,6 +2901,24 @@ def api_char_extras(realm: str, name: str, request: Request, refresh: int = 0):
     return _bnet_call(bnet.extras, realm, name, refresh, locale=_user_locale(request))
 
 
+@app.get("/api/char/{realm}/{name}/talents")
+def api_char_talents(realm: str, name: str, request: Request, refresh: int = 0):
+    _require_user(request)
+    return _bnet_call(bnet.talents, realm, name, refresh, locale=_user_locale(request))
+
+
+@app.get("/api/char/{realm}/{name}/raids-progress")
+def api_char_raids_progress(realm: str, name: str, request: Request, refresh: int = 0):
+    _require_user(request)
+    return _bnet_call(bnet.raid_progress, realm, name, refresh, locale=_user_locale(request))
+
+
+@app.get("/api/char/{realm}/{name}/dungeons-progress")
+def api_char_dungeons_progress(realm: str, name: str, request: Request, refresh: int = 0):
+    _require_user(request)
+    return _bnet_call(bnet.dungeon_progress, realm, name, refresh, locale=_user_locale(request))
+
+
 @app.get("/api/char/{realm}/{name}/equipment")
 def api_char_equipment(realm: str, name: str, request: Request, refresh: int = 0):
     _require_user(request)
