@@ -94,9 +94,20 @@
   .stufftab td:first-child { color:var(--mut); font-size:12.5px; white-space:nowrap; }
   .gli { color:var(--mut); font-size:12px; margin-left:5px; font-variant-numeric:tabular-nums; }
   .evtab .wcl { color:var(--acc2); font-size:11px; }
+  .encwrap { overflow-x:auto; }
+  .entab { width:100%; border-collapse:collapse; font-size:13.5px; }
+  .entab th { text-align:left; color:#b9a37a; font-size:12px; font-weight:600; padding:6px 10px;
+              border-bottom:1px solid var(--line); white-space:nowrap; }
+  .entab td { padding:6px 10px; border-top:1px solid var(--line); white-space:nowrap;
+              font-variant-numeric:tabular-nums; }
+  .tag.enc-cur { background:var(--acc); color:#fff; border-color:transparent; }
+  .tag.clear-time { color:var(--ok); }
+  .tag.first { color:var(--acc2); }
+  .tag.rank { color:var(--acc2); }
+  .tag.affix { color:var(--mut); font-size:11px; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c30">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.152-c31">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -129,10 +140,10 @@
 
   <footer>Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment · <span id="ver"></span></footer>
 </div>
-<script src="/static/nav.js?v=2026.09.152-c30"></script>
-<script src="/static/branding.js?v=2026.09.152-c30"></script>
-<script src="/static/i18n.js?v=2026.09.152-c30"></script>
-<script src="/static/esc.js?v=2026.09.152-c30"></script>
+<script src="/static/nav.js?v=2026.09.152-c31"></script>
+<script src="/static/branding.js?v=2026.09.152-c31"></script>
+<script src="/static/i18n.js?v=2026.09.152-c31"></script>
+<script src="/static/esc.js?v=2026.09.152-c31"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
@@ -181,7 +192,7 @@ function markCur() {
     a.classList.toggle("cur", (a.dataset.sw || "") === key(REALM, NAME)));
 }
 
-function render(s, g, x) {
+function render(s, g, x, j) {
   const cclass = CLASS_COLORS[s.class_key] || CLASS_COLORS[s.class] || "var(--fg)";
   const head = `<h2 class="hname"><span style="color:${cclass}">${esc(s.name || NAME)}</span>
     <span class="meta">Niveau <b>${s.level != null ? esc(s.level) : "—"}</b> · ${esc(cap(s.realm || REALM))}</span></h2>`;
@@ -219,7 +230,120 @@ function render(s, g, x) {
   const gnote = nlow
     ? `<div class="meta" style="margin-top:6px">🔧 ${nlow} emplacement${nlow > 1 ? "s" : ""} faible${nlow > 1 ? "s" : ""} <span style="opacity:.85">— à améliorer en priorité</span></div>`
     : "";
-  $("#content").innerHTML = head + dettop + ex + `<h3 class="sect">🛡️ Équipement porté</h3><div class="gear">${items}</div>` + gnote;
+  const encHtml = renderEncounters(j);
+  $("#content").innerHTML = head + dettop + ex + `<h3 class="sect">🛡️ Équipement porté</h3><div class="gear">${items}</div>` + gnote + encHtml;
+}
+
+function renderEncounters(j) {
+  if (!j || (!j.expansions?.length && !j.raids?.length && !j.dungeons?.length)) return "";
+  const curExpId = curJournalExpId(j);
+  const curExp = (j.expansions || []).find(e => e.id === curExpId);
+  const curExpName = curExp ? esc(curExp.name) : "";
+
+  const encParts = [];
+
+  // --- Raids ---
+  if (j.raids?.length) {
+    const rows = j.raids.map(e => {
+      const isCur = e.id === curExpId;
+      const tag = isCur ? '<span class="tag enc-cur">courante</span>' : '';
+      const bosses = e.bosses || [];
+      const clearTime = bosses.length
+        ? bosses.reduce((sum, b) => sum + (b.time || 0), 0)
+        : null;
+      const timeStr = clearTime ? `${fmtTimeMs(clearTime)}` : "—";
+      const firstStr = bosses.length ? fmtTimeMs(bosses[0].time || 0) : "—";
+      const rank = bosses.length ? bosses[0].rank || "—" : "—";
+      return `<tr>
+        <td>${esc(e.name)} ${tag}</td>
+        <td>${bosses.length} / ${(e.bosses_total || bosses.length)}</td>
+        <td class="clear-time">${timeStr}</td>
+        <td class="first">${firstStr}</td>
+        <td class="rank">${rank}</td>
+      </tr>`;
+    }).join("");
+    encParts.push(`<h3 class="sect">⚔️ Raids (${curExpName})</h3>
+      <div class="encwrap"><table class="entab"><thead><tr>
+        <th>Instance</th><th>Boss</th><th>Temps clair.</th><th>1er kill</th><th>Premier rang</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`);
+  }
+
+  // --- Donjons ---
+  if (j.dungeons?.length) {
+    const rows = j.dungeons.map(e => {
+      const isCur = e.id === curExpId;
+      const tag = isCur ? '<span class="tag enc-cur">courante</span>' : '';
+      const affixes = (e.affixes || []).map(a => `<span class="tag affix">${esc(a)}</span>`).join(" ");
+      return `<tr>
+        <td>${esc(e.name)} ${tag}</td>
+        <td>${e.completed ? '✅' : '❌'}</td>
+        <td>${e.time ? fmtTimeMs(e.time) : '—'}</td>
+        <td>${e.rating ? Math.round(e.rating) : '—'}</td>
+        <td>${e.mythic_level ? 'Mythique+' : '—'}</td>
+        <td>${affixes}</td>
+      </tr>`;
+    }).join("");
+    encParts.push(`<h3 class="sect">🏰 Donjons (${curExpName})</h3>
+      <div class="encwrap"><table class="entab"><thead><tr>
+        <th>Donjon</th><th>Complété</th><th>Temps</th><th>Note</th><th>Mythique+</th><th>Affixes</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`);
+  }
+
+  // --- Classement PvP ---
+  if (j.pvp?.length) {
+    const rows = j.pvp.map(e => {
+      return `<tr>
+        <td>${esc(e.queue_name || "")}</td>
+        <td>${e.index || "—"}</td>
+        <td>${e.rating || "—"}</td>
+        <td>${e.top ? Math.round(e.rating * 0.05) : "—"}</td>
+      </tr>`;
+    }).join("");
+    encParts.push(`<h3 class="sect">⚔️ Classement PvP</h3>
+      <div class="encwrap"><table class="entab"><thead><tr>
+        <th>File</th><th>Index</th><th>Rating</th><th>Top</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`);
+  }
+
+  // --- Mythic+ Season Scoring ---
+  if (j.scoring?.length) {
+    const rows = j.scoring.map(e => {
+      const isCur = e.id === curExpId;
+      const tag = isCur ? '<span class="tag enc-cur">courante</span>' : '';
+      return `<tr>
+        <td>${esc(e.name)} ${tag}</td>
+        <td>${e.global_rating ? Math.round(e.global_rating) : "—"}</td>
+        <td>${e.global_percentage ? Math.round(e.global_percentage) + "%" : "—"}</td>
+        <td>${e.best_runs?.length ? e.best_runs.length : "—"}</td>
+      </tr>`;
+    }).join("");
+    encParts.push(`<h3 class="sect">📊 Classement Mythique+ (${curExpName})</h3>
+      <div class="encwrap"><table class="entab"><thead><tr>
+        <th>Saison</th><th>Note</th><th>Top</th><th>Meilleurs runs</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`);
+  }
+
+  return encParts.length
+    ? `<h3 class="sect">📜 Progression des encounters</h3><div class="card" style="margin:8px 0">${encParts.join("")}</div>`
+    : "";
+}
+
+function fmtTimeMs(ms) {
+  if (ms == null || ms === 0) return "—";
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    : `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+function curJournalExpId(j) {
+  if (!j || !j.expansions || !j.expansions.length) return null;
+  const curTime = j.expanded_at || j.last_crawled || 0;
+  return j.expansions.find(e => e.id === curTime)
+    ? j.expansions.find(e => e.id === curTime).id
+    : j.expansions[0]?.id || null;
 }
 
 async function loadChar(realm, name, push) {
@@ -228,12 +352,13 @@ async function loadChar(realm, name, push) {
   REALM = realm.toLowerCase(); NAME = name.toLowerCase();
   markCur();
   try {
-    const [s, g, x] = await Promise.all([
+    const [s, g, x, j] = await Promise.all([
       jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/summary`),
       jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/equipment`),
       jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/extras`).catch(() => null),
+      jget(`/api/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}/journal`).catch(() => null),
     ]);
-    render(s, g, x);
+    render(s, g, x, j);
     document.title = `Cohors — ${s.name || name}`;
     loadEvo(realm, name);
     if (push) history.replaceState(null, "", charUrl(realm, name));

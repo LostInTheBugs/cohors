@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.152-c31 - 2026-09-29
+
+### Added
+- **Journal de personnage — progression encounters.** Nouvel endpoint
+  `GET /api/char/<realm>/<name>/journal` qui renvoie les raids, donjons,
+  classement PvP et scoring Mythique+ depuis l'API Battle.net. La page
+  `char.html` affiche une section « Progression des encounters » avec les
+  tables d'instances, les temps de clear, les affixes de Mythique+, et les
+  notes de saison. L'extension en cours est choisie via l'id courant du
+  journal (`expanded_at` / `last_crawled`), jamais le dernier élément du
+  tableau `expansions`. Les temps sont exprimés en millisecondes.
+
 ## 2026.09.152-c30 - 2026-09-28
 
 ### Fixed

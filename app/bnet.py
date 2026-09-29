@@ -660,3 +660,21 @@ def item(item_id: int, locale: str | None = None) -> dict:
     }
     _store(key, data)
     return data
+
+
+def character_journal(realm: str, name: str, force: bool = False, locale: str | None = None) -> tuple[dict, float]:
+    """Journal de personnage (raids, donjons, classements)."""
+    loc = _loc(locale)
+    realm, name = realm.lower(), name.lower()
+    key = f"journal/{loc}/{realm}/{name}"
+    hit = _cached(key, force)
+    if hit:
+        return hit["data"], hit["ts"]
+    raw = _get(
+        f"/profile/wow/character/{urllib.parse.quote(realm)}/{urllib.parse.quote(name)}/journal",
+        {"namespace": f"profile-{REGION}", "locale": loc},
+    )
+    data: dict = {}
+    for section in ("expansions", "dungeons", "raids", "pvp", "scoring"):
+        data[section] = raw.get(section) or []
+    return data, _store(key, data)

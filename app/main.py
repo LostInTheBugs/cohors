@@ -2901,6 +2901,12 @@ def api_char_extras(realm: str, name: str, request: Request, refresh: int = 0):
     return _bnet_call(bnet.extras, realm, name, refresh, locale=_user_locale(request))
 
 
+@app.get("/api/char/{realm}/{name}/journal")
+def api_char_journal(realm: str, name: str, request: Request, refresh: int = 0):
+    _require_user(request)
+    return _bnet_call(bnet.character_journal, realm, name, refresh, locale=_user_locale(request))
+
+
 @app.get("/api/char/{realm}/{name}/equipment")
 def api_char_equipment(realm: str, name: str, request: Request, refresh: int = 0):
     _require_user(request)
