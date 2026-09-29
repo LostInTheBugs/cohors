@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.153-c1 - 2026-09-29
+
+### Fixed
+- Fiche personnage, progression : noms des raids, donjons et boss en français (l'API Blizzard des rencontres les renvoie en anglais ; ils sont repris du journal du jeu, cache 24 h).
+- Donjons : une colonne sans nom apparaissait (mode sans difficulté renvoyé par Blizzard) ; ce mode est ignoré.
+
 ## 2026.09.153 - 2026-09-29
 
 ### Added

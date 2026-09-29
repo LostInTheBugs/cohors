@@ -695,7 +695,9 @@ def current_expansion(locale: str | None = None) -> dict:
         for tier in tiers[:3]:
             det = _get(f"/data/wow/journal-expansion/{tier['id']}", dict(ns))
             if det.get("raids"):
-                data = {"id": int(tier["id"]), "name": tier.get("name") or det.get("name") or ""}
+                data = {"id": int(tier["id"]), "name": tier.get("name") or det.get("name") or "",
+                        "instances": [int(x["id"]) for x in (det.get("raids") or []) + (det.get("dungeons") or [])
+                                      if x.get("id")]}
                 break
     except BnetError:
         return {}          # pas mis en cache : on réessaiera au prochain appel
@@ -703,9 +705,48 @@ def current_expansion(locale: str | None = None) -> dict:
     return data
 
 
-def parse_encounters(raw: dict, cur_id, locale: str | None = None, cur_name: str = "") -> dict:
+_NAMES_TTL = 86400.0
+_names: dict = {}
+
+
+def journal_names(locale: str | None = None) -> dict:
+    """Noms traduits des instances et des boss de l'extension en cours, d'après le journal.
+
+    /encounters/* renvoie les noms en anglais quelle que soit la locale demandée : on les
+    remplace par ceux du journal. {"inst": {id: nom}, "enc": {id: nom}} ; cache 24 h.
+    """
+    loc = _loc(locale)
+    with _lock:
+        hit = _names.get(loc)
+    if hit and time.time() - hit["ts"] < _NAMES_TTL:
+        return hit["data"]
+    cur = current_expansion(loc)
+    data: dict = {"inst": {}, "enc": {}}
+    ns = {"namespace": f"static-{REGION}", "locale": loc}
+    ok = bool(cur.get("instances"))
+    for iid in cur.get("instances") or []:
+        try:
+            ins = _get(f"/data/wow/journal-instance/{iid}", dict(ns))
+        except BnetError:
+            ok = False
+            continue
+        if ins.get("name"):
+            data["inst"][int(iid)] = ins["name"]
+        for e in ins.get("encounters") or []:
+            if e.get("id") and e.get("name"):
+                data["enc"][int(e["id"])] = e["name"]
+    if ok:
+        with _lock:
+            _names[loc] = {"ts": time.time(), "data": data}
+    return data
+
+
+def parse_encounters(raw: dict, cur_id, locale: str | None = None, cur_name: str = "",
+                     names: dict | None = None) -> dict:
     """Réponse /encounters/{raids|dungeons} -> progression de l'extension `cur_id` uniquement."""
     labels = DIFF_LABELS["en" if _loc(locale).startswith("en") else "fr"]
+    inst_names = (names or {}).get("inst") or {}
+    enc_names = (names or {}).get("enc") or {}
     out: dict = {"expansion": cur_name, "instances": []}
     if cur_id is None:
         return out
@@ -720,12 +761,15 @@ def parse_encounters(raw: dict, cur_id, locale: str | None = None, cur_name: str
         for m in ins.get("modes") or []:
             diff = m.get("difficulty") or {}
             dtype = str(diff.get("type") or "")
+            if not dtype:
+                continue      # mode sans difficulté (doublon renvoyé pour les donjons) : ignoré
             prog = m.get("progress") or {}
             bosses = []
             for enc in prog.get("encounters") or []:
                 em = enc.get("encounter") or {}
                 ts = enc.get("last_kill_timestamp")
-                bosses.append({"id": em.get("id"), "name": em.get("name") or "?",
+                bosses.append({"id": em.get("id"),
+                               "name": enc_names.get(_int(em.get("id"))) or em.get("name") or "?",
                                "kills": int(enc.get("completed_count") or 0),
                                "last_kill": int(ts) // 1000 if ts else None})
             modes.append({"difficulty": dtype, "label": labels.get(dtype) or diff.get("name") or dtype,
@@ -734,8 +778,17 @@ def parse_encounters(raw: dict, cur_id, locale: str | None = None, cur_name: str
                           "bosses": bosses})
         modes.sort(key=lambda x: DIFF_ORDER.index(x["difficulty"])
                    if x["difficulty"] in DIFF_ORDER else len(DIFF_ORDER))
-        out["instances"].append({"id": meta.get("id"), "name": meta.get("name") or "?", "modes": modes})
+        out["instances"].append({"id": meta.get("id"),
+                                 "name": inst_names.get(_int(meta.get("id"))) or meta.get("name") or "?",
+                                 "modes": modes})
     return out
+
+
+def _int(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
 
 
 def _encounters(kind: str, realm: str, name: str, force: bool, locale: str | None) -> tuple[dict, float]:
@@ -753,7 +806,7 @@ def _encounters(kind: str, realm: str, name: str, force: bool, locale: str | Non
         if exc.status == 404:
             raise
         return {"expansion": cur.get("name", ""), "instances": []}, time.time()
-    data = parse_encounters(raw, cur.get("id"), loc, cur.get("name", ""))
+    data = parse_encounters(raw, cur.get("id"), loc, cur.get("name", ""), journal_names(loc))
     return data, _store(key, data)
 
 
