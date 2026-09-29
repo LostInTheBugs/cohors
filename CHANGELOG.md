@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.153 - 2026-09-29
+
+### Added
+- Fiche personnage : carte « 🏰 Progression & talents » depuis l'API Blizzard — boss de raid tués et donjons terminés par difficulté pour l'extension en cours (détail des boss au clic), spé active, arbre de héros et code de talents de chaque spé (bouton Copier).
+- API : `GET /api/char/{realm}/{name}/talents`, `/raids-progress`, `/dungeons-progress` (cache 30 min). L'extension en cours est prise dans le journal du jeu, pas dans l'ordre des extensions renvoyé pour le personnage.
+
 ## 2026.09.152-c30 - 2026-09-28
 
 ### Fixed
