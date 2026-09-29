@@ -1140,3 +1140,28 @@ def test_char_progress_routes(monkeypatch):
         r = c.get(f"/api/char/hyjal/progroute/{p}?refresh=1")
         assert r.status_code == 200, (p, r.text)
     assert r.json()["instances"][0]["name"] == "Flèche du Vide"
+
+
+def test_parse_encounters_localized_names_and_empty_mode():
+    """v2026.09.153-c1 : noms FR du journal (Blizzard renvoie l'anglais) ; mode sans difficulté ignoré."""
+    raw = _enc_payload()
+    raw["expansions"][1]["instances"][0]["modes"].append(
+        {"difficulty": {}, "progress": {"completed_count": 1, "total_count": 1, "encounters": []}})
+    names = {"inst": {1300: "Flèche du Vide (FR)"}, "enc": {1: "Boss A (FR)"}}
+    out = M.bnet.parse_encounters(raw, 600, "fr_FR", "Midnight", names)
+    ins = out["instances"][0]
+    assert ins["name"] == "Flèche du Vide (FR)"
+    assert [m["difficulty"] for m in ins["modes"]] == ["LFR", "HEROIC", "MYTHIC"]
+    assert ins["modes"][0]["bosses"][0]["name"] == "Boss A (FR)"
+    assert ins["modes"][0]["bosses"][1]["name"] == "Boss B"                  # pas dans le journal : nom Blizzard
+
+
+def test_journal_names_from_current_expansion(monkeypatch):
+    monkeypatch.setattr(M.bnet, "current_expansion",
+                        lambda loc=None: {"id": 600, "name": "Midnight", "instances": [1300]})
+    monkeypatch.setattr(M.bnet, "_get", lambda path, *a, **k:
+                        {"name": "Flèche du Vide", "encounters": [{"id": 1, "name": "Boss A FR"}]})
+    M.bnet._names.clear()
+    n = M.bnet.journal_names("fr_FR")
+    assert n == {"inst": {1300: "Flèche du Vide"}, "enc": {1: "Boss A FR"}}
+    M.bnet._names.clear()
