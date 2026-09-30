@@ -127,3 +127,22 @@ def test_html_no_stray_path_lines():
     for p in sorted((ROOT / "app/static").glob("*.html")):
         for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
             assert not bad.match(line), f"{p.name}:{n}: ligne parasite {line!r}"
+
+
+def test_help_items_all_translated():
+    """Chaque puce de la page Aide a sa traduction anglaise (clé texte, ou clé « <li>…</li> » si balises)."""
+    import html as _html
+    src = (ROOT / "app/static/i18n.js").read_text(encoding="utf-8")
+    i = src.index("const DICT = ")
+    d, _ = json.JSONDecoder().raw_decode(src[i + len("const DICT = "):])
+    norm = lambda s: re.sub(r"\s+", " ", s.replace(" ", " ")).strip()  # noqa: E731
+    html_keys = {norm(k[4:-5].replace("&amp;", "&").replace("&nbsp;", " "))
+                 for k in d if k.startswith("<li>") and k.endswith("</li>")}
+    page = (ROOT / "app/static/help.html").read_text(encoding="utf-8")
+    missing = []
+    for li in re.findall(r"<li>(.*?)</li>", page, re.S):
+        ok = (norm(li.replace("&amp;", "&").replace("&nbsp;", " ")) in html_keys) if "<" in li \
+            else (norm(_html.unescape(li)) in d)
+        if not ok:
+            missing.append(li[:70])
+    assert not missing, missing

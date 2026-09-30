@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.155 - 2026-09-30
+
+### Changed
+- Page 📖 Aide mise à jour et réorganisée dans l'ordre du menu : chaque section indique où trouver la page (📍 Menu › Page, lien direct). Nouveautés documentées : progression de la guilde (Rapports), colonne Raid du roster, carte Progression & talents de la fiche, talents Blizzard, filtre BIS et meilleures pièces d'artisanat du Stuff conseillé, recettes lues sur Blizzard (addon facultatif).
+- Nouvelle section 🛠️ Administration (invitations, première configuration, SMTP, synchronisations, clés API, guilde, mises à jour, sauvegarde) — ces réglages étaient mélangés à la section Stuff conseillé.
+
+### Fixed
+- Aide en anglais : 8 puces n'avaient pas de traduction et une traduction du Top Stuff contenait du texte français. Un test vérifie désormais que chaque puce de l'Aide est traduite.
+
 ## 2026.09.154 - 2026-09-29
 
 ### Added
