@@ -47,7 +47,7 @@
   .where a { color:var(--acc2); text-decoration:none; font-weight:600; }
   .where a:hover { text-decoration:underline; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.155">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.155-c1">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -161,6 +161,7 @@
       <li>Choisis un personnage, colle les liens Wowhead des pièces convoitées, et lance : chaque pièce est chiffrée en DPS. Le bouton ⭐ l'ajoute en prioritaire : les pièces prioritaires (ou qui ressortent BIS dans ton Top Stuff) passent en tête de ta wishlist et sont signalées ⭐ sur les dates de raid.</li>
       <li>Utilise-le avant un raid pour savoir quoi demander en loot.</li>
       <li>Le bouton 🎯 ajoute une pièce à ta <b>wishlist</b> (« 🎯 Ma wishlist ») : tu vois quels personnages la possèdent déjà, où la trouver (raid, donjon/MM+) et, si ça se fabrique, les compos, qui a le métier dans la guilde et qui a déclaré la recette ; et si tu as le métier, le site te dit si tu peux la fabriquer ou s'il te manque la recette — et tu peux simuler les gains de DPS. Les pièces prioritaires (⭐) passent en tête de la liste.</li>
+      <li>📤 Sur la page 🎯 Ma wishlist, la carte « <b>Export pour l'addon</b> » donne un texte à copier dans l'addon Cohors (fenêtre Cohors → bouton « Wishlist », ou <i>/cohors wishlist</i>) : en entrant dans une instance, l'addon te signale les boss qui donnent un objet — ou une recette — de ta wishlist.</li>
     </ul>
   </section>
 
@@ -260,6 +261,7 @@
       <li>🎧 Page « Vocal » : le panneau vocal s'ouvre à gauche (salons TeamSpeak, micro) et reste en place pendant que tu navigues dans l'app. Le pseudo se règle dans ⚙️ Paramètres.</li>
       <li>📦 Le client portable Windows (préconfiguré avec l'adresse et le mot de passe) se télécharge depuis la page 🎧 Vocal — réservé aux membres connectés.</li>
       <li>🎵 Page « Musique » (officiers/admins) : lecteur du bot TeamSpeak — lancer, pause, volume, bibliothèque, liens et envoi de mp3.</li>
+      <li>✏️ Administrateurs : le bouton « <b>Modifier cette page</b> » en bas de 🛡️ Infos &amp; liens permet de changer la présentation de la guilde, les liens Discord et TeamSpeak et le reste de la page — un champ laissé vide est simplement masqué.</li>
     </ul>
   </section>
 
@@ -316,6 +318,7 @@
       <li>L'addon Cohors s'installe dans le dossier AddOns de World of Warcraft ; le zip se télécharge depuis la page 🛡️ Guilde (« ⬇️ Télécharger l'addon »).</li>
       <li>🗓️ Officiers : en jeu, /cohors → « Exporter » lit le calendrier de guilde (raids et réponses) ; colle la chaîne dans la page Calendrier, ou importe le fichier Cohors.lua.</li>
       <li>📚 Artisans (facultatif) : /cohors recettes (ou le bouton 📚) liste les recettes connues de tes métiers ; importe l'export dans 🙋 Moi → 📖 Mes recettes pour une mise à jour immédiate — sinon elles arrivent toutes seules depuis Blizzard.</li>
+      <li>🎯 Wishlist : colle l'export de 🙋 Moi → 🎯 Ma wishlist dans l'addon (bouton « Wishlist » ou <i>/cohors wishlist</i>) — en instance, l'addon t'avertit des boss qui ont une pièce ou une recette de ta liste.</li>
     </ul>
   </section>
 
@@ -373,9 +376,9 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.09.155"></script>
-<script src="/static/branding.js?v=2026.09.155"></script>
-<script src="/static/i18n.js?v=2026.09.155"></script>
+<script src="/static/nav.js?v=2026.09.155-c1"></script>
+<script src="/static/branding.js?v=2026.09.155-c1"></script>
+<script src="/static/i18n.js?v=2026.09.155-c1"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 (async () => {

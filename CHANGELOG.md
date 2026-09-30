@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.155-c1 - 2026-09-30
+
+### Fixed
+- Aide : deux fonctions manquaient — l'export de la wishlist vers l'addon (alerte des boss en instance, sections Top Stuff et Addon) et le bouton « ✏️ Modifier cette page » de 🛡️ Infos & liens (administrateurs).
+
 ## 2026.09.155 - 2026-09-30
 
 ### Changed
