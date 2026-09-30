@@ -1163,5 +1163,86 @@ def test_journal_names_from_current_expansion(monkeypatch):
                         {"name": "Flèche du Vide", "encounters": [{"id": 1, "name": "Boss A FR"}]})
     M.bnet._names.clear()
     n = M.bnet.journal_names("fr_FR")
-    assert n == {"inst": {1300: "Flèche du Vide"}, "enc": {1: "Boss A FR"}}
+    assert n == {"inst": {1300: "Flèche du Vide"}, "enc": {1: "Boss A FR"}, "order": {1300: [1]}}
     M.bnet._names.clear()
+
+
+# ---- v2026.09.154 : progression de la guilde + talents Blizzard dans le stuff ----
+def _prog(insts):
+    return {"expansion": "Midnight", "instances": insts}
+
+
+def _mode(d, label, done, total, bosses):
+    return {"difficulty": d, "label": label, "done": done, "total": total,
+            "bosses": [{"id": b, "name": f"B{b}", "kills": 1, "last_kill": 1} for b in bosses]}
+
+
+def test_guild_progress_aggregate():
+    raid = lambda modes: {"id": 10, "name": "Flèche du Vide", "modes": modes}  # noqa: E731
+    results = [
+        ({"name": "Alpha", "realm": "hyjal"}, _prog([raid([_mode("NORMAL", "Normal", 3, 3, [1, 2, 3]),
+                                                           _mode("HEROIC", "Héroïque", 1, 3, [1])])])),
+        ({"name": "Beta", "realm": "hyjal"}, _prog([raid([_mode("NORMAL", "Normal", 2, 3, [1, 2])])])),
+        ({"name": "Gamma", "realm": "hyjal"}, None),                          # erreur API : ignoré
+    ]
+    names = {"order": {10: [1, 2, 3, 4]}, "enc": {4: "Boss quatre"}}
+    out = M._guild_progress_aggregate(results, names, {"beta"})
+    assert out["expansion"] == "Midnight"
+    assert [d["difficulty"] for d in out["diffs"]] == ["NORMAL", "HEROIC"]
+    inst = out["instances"][0]
+    assert inst["total"] == 4 and [b["id"] for b in inst["bosses"]] == [1, 2, 3, 4]   # ordre du journal
+    assert inst["bosses"][0]["kills"] == {"NORMAL": ["Alpha", "Beta"], "HEROIC": ["Alpha"]}
+    assert inst["bosses"][3] == {"id": 4, "name": "Boss quatre", "kills": {}}          # jamais tué
+    a, b = out["members"]
+    assert a["name"] == "Alpha" and a["best"] == {"difficulty": "HEROIC", "label": "Héroïque", "done": 1, "total": 4}
+    assert b["main"] is True and b["best"]["difficulty"] == "NORMAL" and b["best"]["done"] == 2
+
+
+def test_guild_progress_route(monkeypatch):
+    monkeypatch.setattr(M.bnet, "roster", lambda force=False: ({"members": [
+        {"name": "Alpha", "level": 90, "realm": "hyjal", "rank": 1},
+        {"name": "Reroll", "level": 12, "realm": "hyjal", "rank": 5}]}, 0.0))
+    seen = []
+
+    def fake(realm, name, force=False, locale=None):
+        seen.append(name)
+        return _prog([{"id": 10, "name": "Flèche du Vide", "modes": [_mode("NORMAL", "Normal", 1, 1, [1])]}]), 0.0
+    monkeypatch.setattr(M.bnet, "raid_progress", fake)
+    monkeypatch.setattr(M.bnet, "journal_names", lambda loc=None: {})
+    M._GPROG.clear()
+    _make_user("gprog@test.local")
+    c = TestClient(M.app)
+    assert c.post("/api/login", json={"email": "gprog@test.local", "password": "test-pw-123"},
+                  headers={"X-Forwarded-For": "10.99.8.1"}).status_code == 200
+    r = c.get("/api/guild/progress?kind=raid")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert seen == ["Alpha"] and d["level"] == 90 and d["scanned"] == 1               # niveau max uniquement
+    assert d["members"][0]["best"]["done"] == 1
+    assert c.get("/api/guild/progress?kind=pvp").status_code == 400
+    M._GPROG.clear()
+
+
+def test_stuff_parse_export_server_and_talents():
+    r = M._stuff_parse_export('shaman="Chamoisdort"\nlevel=90\nserver=hyjal\nspec=restoration\ntalents=CgQABC\n')
+    assert (r["server"], r["talents"], r["spec"]) == ("hyjal", "CgQABC", "restoration")
+
+
+def test_blizz_talents_loadout_in_stuff(monkeypatch):
+    monkeypatch.setattr(M.bnet, "talents", lambda realm, name, force=False, locale=None: ({
+        "active_spec": "Restoration", "active_spec_id": 264, "hero_tree": None, "loadouts": [
+            {"spec": "Enhancement", "spec_id": 263, "active": True, "code": "CcQENH", "name": None},
+            {"spec": "Restoration", "spec_id": 264, "active": True, "code": "CgQNEW", "name": None}]}, 0.0))
+    parsed = M._stuff_parse_export('shaman="Chamoisdort"\nserver=hyjal\nspec=restoration\ntalents=CgQOLD\n')
+    assert M._blizz_talents_for(parsed) == "CgQNEW"                                    # spé de l'export
+    assert M._spec_token("Beast Mastery") == "beast_mastery"
+    _make_user("blizztal@test.local")
+    c = TestClient(M.app)
+    assert c.post("/api/login", json={"email": "blizztal@test.local", "password": "test-pw-123"},
+                  headers={"X-Forwarded-For": "10.99.9.1"}).status_code == 200
+    export = 'shaman="Chamoisdort"\nlevel=90\nserver=hyjal\nspec=restoration\ntalents=CgQOLD\n'
+    pid = c.post("/api/profiles", json={"name": "Profil talents", "input": export}).json()["id"]
+    d = c.get(f"/api/stuff/profile/{pid}").json()
+    assert d["loadouts"][-1] == M.BLIZZ_LOADOUT and d["talents_changed"] is True
+    sim = M._stuff_sim_input({"_raw": export}, [], {"name": M.BLIZZ_LOADOUT, "talents": "CgQNEW"})[0]
+    assert "talents=CgQNEW" in sim and "CgQOLD" not in sim

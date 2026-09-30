@@ -82,6 +82,11 @@
             padding: 3px 10px; font-size: 12.5px; border-radius: 8px; cursor: pointer; }
   .evchip:hover { border-color: var(--acc2); color: var(--acc2); }
   table.attab { width: 100%; border-collapse: collapse; }
+  button.gpk.on { border-color: var(--acc2); color: var(--acc2); }
+  .gpt td.n { text-align: center; font-variant-numeric: tabular-nums; cursor: default; }
+  .gpt th.n { text-align: center; }
+  .gpt td.z { color: var(--mut); opacity: .5; }
+  .gpt tr.gi td { font-weight: 700; color: var(--acc2); padding-top: 12px; }
   table.attab th, table.attab td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13.5px; }
   table.attab th { color: var(--mut); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; }
   .attab .abar { display: inline-block; width: 90px; height: 7px; border-radius: 4px; background: var(--line);
@@ -95,7 +100,7 @@
   .hidden { display: none !important; }
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 24px; padding-top: 14px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.09.153-c1">
+<link rel="stylesheet" href="/static/theme.css?v=2026.09.154">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -115,6 +120,19 @@
   </header>
   <nav class="tabs" id="navmain"></nav>
   <p class="sub">Derniers rapports de guilde sur Warcraft Logs. Clique sur un rapport pour voir les boss, les wipes/kills et les parses de chaque joueur.</p>
+
+  <div class="card">
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+      <h2 style="margin:0;">🏰 Progression de la guilde</h2>
+      <button class="ghost gpk" data-kind="raid">Raids</button>
+      <button class="ghost gpk" data-kind="dungeon">Donjons</button>
+      <label class="meta"><input type="checkbox" id="gpmains"> Mains seulement</label>
+      <span class="spacer"></span>
+      <span class="meta" id="gpmeta">Chargement…</span>
+    </div>
+    <div id="gptab"><div class="empty">Chargement…</div></div>
+    <div class="meta" style="margin-top:8px">API Blizzard — personnages de niveau max du roster. Nombre de membres ayant tué le boss dans chaque difficulté (survole un nombre pour voir les noms).</div>
+  </div>
 
   <div class="card">
     <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
@@ -149,10 +167,10 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.09.153-c1"></script>
-<script src="/static/branding.js?v=2026.09.153-c1"></script>
-<script src="/static/i18n.js?v=2026.09.153-c1"></script>
-<script src="/static/esc.js?v=2026.09.153-c1"></script>
+<script src="/static/nav.js?v=2026.09.154"></script>
+<script src="/static/branding.js?v=2026.09.154"></script>
+<script src="/static/i18n.js?v=2026.09.154"></script>
+<script src="/static/esc.js?v=2026.09.154"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
@@ -299,6 +317,38 @@ function toggleParses(frow) {
   frow.appendChild(box);
 }
 
+// ---- 🏰 Progression de la guilde (v2026.09.154) — API Blizzard
+let GP = null, GPKIND = "raid";
+async function loadGP(kind) {
+  GPKIND = kind || GPKIND;
+  document.querySelectorAll(".gpk").forEach(b => b.classList.toggle("on", b.dataset.kind === GPKIND));
+  $("#gpmeta").textContent = "Chargement… (peut prendre quelques secondes)";
+  $("#gptab").innerHTML = '<div class="empty">Chargement…</div>';
+  try { GP = await jget(`/api/guild/progress?kind=${GPKIND}`); renderGP(); }
+  catch (e) { $("#gptab").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`; $("#gpmeta").textContent = ""; }
+}
+function renderGP() {
+  const d = GP;
+  if (!d) return;
+  const mainsOnly = $("#gpmains").checked;
+  const keep = new Set((d.members || []).filter(m => !mainsOnly || m.main).map(m => m.name));
+  $("#gpmeta").textContent = `${d.expansion || ""} · ${keep.size} membre(s) de niveau ${d.level || "max"}`;
+  if (!(d.instances || []).length) { $("#gptab").innerHTML = '<div class="empty">Aucun boss tué dans l\'extension en cours.</div>'; return; }
+  const diffs = d.diffs || [];
+  const head = `<tr><th>${GPKIND === "raid" ? "Boss" : "Donjon"}</th>` + diffs.map(x => `<th class="n">${esc(x.label)}</th>`).join("") + "</tr>";
+  const cell = (bs, df) => {
+    const who = [...new Set(bs.flatMap(b => (b.kills || {})[df] || []))].filter(n => keep.has(n));
+    return who.length ? `<td class="n" title="${esc(who.join(", "))}">${who.length}</td>` : '<td class="n z">0</td>';
+  };
+  const rows = d.instances.map(i => (GPKIND === "raid"
+      ? `<tr class="gi"><td colspan="${diffs.length + 1}">${esc(i.name)}</td></tr>`
+        + i.bosses.map(b => `<tr><td>${esc(b.name)}</td>${diffs.map(x => cell([b], x.difficulty)).join("")}</tr>`).join("")
+      : `<tr><td>${esc(i.name)}</td>${diffs.map(x => cell(i.bosses, x.difficulty)).join("")}</tr>`)).join("");
+  $("#gptab").innerHTML = `<div style="overflow-x:auto"><table class="attab gpt"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+}
+document.querySelectorAll(".gpk").forEach(b => b.addEventListener("click", () => loadGP(b.dataset.kind)));
+$("#gpmains").addEventListener("change", renderGP);
+
 $("#refresh").addEventListener("click", async (ev) => {
   ev.target.disabled = true;
   await loadList(1);
@@ -317,6 +367,7 @@ $("#logout").addEventListener("click", async (ev) => {
     $("#who").textContent = me.name || me.email;
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  loadGP("raid");
   loadList(0);
   loadAtt(0);
 })();

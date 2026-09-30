@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.154 - 2026-09-29
+
+### Added
+- Raids : carte « 🏰 Progression de la guilde » (API Blizzard) — pour chaque boss de l'extension en cours, nombre de membres de niveau max l'ayant tué par difficulté (noms au survol), bascule Raids / Donjons, filtre « Mains seulement ». `GET /api/guild/progress?kind=raid|dungeon` (cache 15 min).
+- Roster : colonne « Raid » — meilleure difficulté de chaque membre de niveau max (ex. `9/21 H`).
+- Stuff conseillé : build « Talents actuels (Blizzard) » (talents en jeu de la spé de l'export) et avertissement quand les talents en jeu diffèrent de ceux de l'export SimC.
+
 ## 2026.09.153-c1 - 2026-09-29
 
 ### Fixed
