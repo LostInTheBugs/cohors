@@ -3,7 +3,8 @@
 Accounts: invitation-only registration (admin-generated links), login sessions
 (signed random token in an HttpOnly cookie), admin panel (invites + users).
 Simulations run in the official SimulationCraft Docker image via
-`worker/simrun.py` (the app container mounts the host Docker socket).
+`worker/simworker.py` — the app drops restricted jobs to the worker; the worker
+(the sole component that mounts `/var/run/docker.sock`) launches the SimulationCraft containers.
 
 v2026.09.003: accounts + admin.
 """
