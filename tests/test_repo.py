@@ -121,6 +121,18 @@ def test_html_v_param_matches_version():
             assert ref == expected, f"{p.name}: {ref} ≠ {expected}"
 
 
+def test_app_version_and_service_worker_match_root():
+    """app/VERSION et le CACHE de sw.js doivent tous deux correspondre à VERSION racine."""
+    root_v = (ROOT / "VERSION").read_text().strip()
+    app_v = (ROOT / "app/VERSION").read_text().strip()
+    assert app_v == root_v, f"app/VERSION ({app_v}) ≠ VERSION ({root_v})"
+    sw = (ROOT / "app/static/sw.js").read_text(encoding="utf-8")
+    m = re.search(r'const CACHE = "cohors-v([^"]+)"', sw)
+    assert m, "nom du CACHE introuvable dans sw.js"
+    sw_ver = m.group(1)
+    assert sw_ver == root_v, f"sw.js CACHE ({sw_ver}) ≠ VERSION ({root_v})"
+
+
 def test_html_no_stray_path_lines():
     """Aucune ligne ne contient seulement un chemin de fichier (régression c29 : `pp/static/char.html` inséré partout)."""
     bad = re.compile(r"^\s*[\w./-]*static/[\w.-]+\.(html|js|css)\s*$")
