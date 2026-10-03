@@ -422,6 +422,13 @@ def _init_db() -> None:
             " updated_by TEXT NOT NULL DEFAULT '')")
         if "last_recap" not in bcols:
             conn.execute("ALTER TABLE bot_config ADD COLUMN last_recap REAL NOT NULL DEFAULT 0")
+        # v2026.10.001 — hash session tokens (SHA-256) in place.
+        scols = [r["name"] for r in conn.execute("PRAGMA table_info(sessions)").fetchall()]
+        if "hashed" not in scols:
+            conn.execute("ALTER TABLE sessions ADD COLUMN hashed INTEGER NOT NULL DEFAULT 0")
+        for row in conn.execute("SELECT token FROM sessions WHERE hashed = 0").fetchall():
+            raw = row["token"]
+            conn.execute("UPDATE sessions SET token=?, hashed=1 WHERE token=?", (_session_key(raw), raw))
         # v2026.09.064 — import du calendrier in-game (addon Cohors).
         conn.execute(
             """
@@ -658,13 +665,18 @@ def _bootstrap_admin() -> None:
 # ---------------------------------------------------------------------------
 # Auth helpers
 # ---------------------------------------------------------------------------
+def _session_key(token: str) -> str:
+    """Return SHA-256 hex digest of *token*."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 def _new_session(conn: sqlite3.Connection, user_id: int) -> str:
     now = time.time()
     token = secrets.token_urlsafe(32)
     conn.execute("DELETE FROM sessions WHERE expires < ?", (now,))
     conn.execute(
-        "INSERT INTO sessions (token, user_id, created, last_seen, expires) VALUES (?,?,?,?,?)",
-        (token, user_id, now, now, now + SESSION_DAYS * 86400),
+        "INSERT INTO sessions (token, user_id, created, last_seen, expires, hashed) VALUES (?,?,?,?,?,1)",
+        (_session_key(token), user_id, now, now, now + SESSION_DAYS * 86400),
     )
     return token
 
@@ -681,10 +693,10 @@ def _get_session_user(request: Request) -> sqlite3.Row | None:
     with _db_lock, _db() as conn:
         row = conn.execute(
             "SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token=? AND s.expires > ?",
-            (token, time.time()),
+            (_session_key(token), time.time()),
         ).fetchone()
         if row is not None:
-            conn.execute("UPDATE sessions SET last_seen=? WHERE token=?", (time.time(), token))
+            conn.execute("UPDATE sessions SET last_seen=? WHERE token=?", (time.time(), _session_key(token)))
     if row is not None and not row["active"]:
         return None
     return row
@@ -1722,7 +1734,7 @@ def logout(request: Request, response: Response):
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         with _db_lock, _db() as conn:
-            conn.execute("DELETE FROM sessions WHERE token=?", (token,))
+            conn.execute("DELETE FROM sessions WHERE token=?", (_session_key(token),))
     response.delete_cookie(SESSION_COOKIE, path="/", domain=COOKIE_DOMAIN)
     return {"ok": True}
 
@@ -8001,7 +8013,7 @@ def change_my_password(payload: PasswordChangeRequest, request: Request):
     token = request.cookies.get(SESSION_COOKIE) or ""
     with _db_lock, _db() as conn:
         conn.execute("UPDATE users SET pwd=? WHERE id=?", (_hash_password(payload.new), user["id"]))
-        conn.execute("DELETE FROM sessions WHERE user_id=? AND token != ?", (user["id"], token))
+        conn.execute("DELETE FROM sessions WHERE user_id=? AND token != ?", (user["id"], _session_key(token)))
     return {"ok": True}
 
 
