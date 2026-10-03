@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.09.155-c2 - 2026-10-03
+
+### Fixed
+- Docs: corrected two stale references saying the app mounts the Docker socket — only the worker does.
+
 ## 2026.09.155-c1 - 2026-09-30
 
 ### Fixed

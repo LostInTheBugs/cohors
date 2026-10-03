@@ -61,5 +61,5 @@ CI runs it on every push and pull request.
 
 Please report anything sensitive privately (open a minimal issue asking for a contact, or
 reach the maintainer on GitHub) rather than filing a public issue with exploit details.
-Reminder for self-hosters: the app mounts the Docker socket to launch SimulationCraft
+Reminder for self-hosters: the worker (not the app) mounts the Docker socket to launch SimulationCraft
 containers — see the security note in the README.
