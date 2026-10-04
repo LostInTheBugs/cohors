@@ -54,7 +54,8 @@ def test_session_hashed_in_db():
 
     # En base, le token stocké est le hash
     with M._db_lock, M._db() as conn:
-        row = conn.execute("SELECT token, hashed FROM sessions WHERE user_id=?", (1,)).fetchone()
+        user = conn.execute("SELECT id FROM users WHERE email=?", ("hashed@test.local",)).fetchone()
+        row = conn.execute("SELECT token, hashed FROM sessions WHERE user_id=?", (user["id"],)).fetchone()
     assert row is not None
     assert row["token"] == _session_key(raw_token)
     assert row["token"] != raw_token  # Le stocké ≠ le brut
@@ -67,13 +68,15 @@ def test_session_hashed_in_db():
 def test_migration_plain_session():
     """Insère un token en clair (hashed=0), puis migration : le cookie correspond authentifie."""
     _make_user("migrate@test.local", is_admin=0)
-    raw_token = "plain-token-from-old-instance"
 
     with M._db_lock, M._db() as conn:
+        user = conn.execute("SELECT id FROM users WHERE email=?", ("migrate@test.local",)).fetchone()
+        user_id = user["id"]
+        raw_token = "plain-token-from-old-instance"
         conn.execute(
             "INSERT INTO sessions (token, user_id, created, last_seen, expires, hashed)"
             " VALUES (?,?,?,?,?,0)",
-            (raw_token, 1, time.time(), time.time(), time.time() + 86400))
+            (raw_token, user_id, time.time(), time.time(), time.time() + 86400))
 
     # La migration s'exécute au _init_db
     M._init_db()
@@ -85,9 +88,14 @@ def test_migration_plain_session():
     assert row["token"] == expected_hash
     assert row["hashed"] == 1
 
-    # Vérifions que le GET /api/health (route publique) passe toujours
+    # Un client avec le cookie cohors_session=raw-token doit obtenir 200 sur une route protégée
     c = TestClient(M.app)
-    assert c.get("/api/health").status_code == 200
+    c.cookies.set("cohors_session", raw_token, domain="")
+    assert c.get("/api/me").status_code == 200
+
+    # Un client sans cookie doit obtenir 401
+    c2 = TestClient(M.app)
+    assert c2.get("/api/me").status_code == 401
 
 
 def test_migration_idempotent():

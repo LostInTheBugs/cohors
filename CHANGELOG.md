@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## 2026.10.001
+## 2026.10.001 - 2026-10-04
 
 ### Security
 - Session tokens are stored hashed (SHA-256); existing sessions are migrated in place — nobody is signed out.
