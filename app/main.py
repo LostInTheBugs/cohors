@@ -630,6 +630,18 @@ def _init_db() -> None:
             if conn.execute("SELECT value FROM meta WHERE key=?", (_key,)).fetchone() is None:
                 conn.execute(_stmt)
                 conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (_key, str(int(time.time()))))
+        # v2026.10.002 — migration des secrets en clair vers enc:v1:
+        # api_keys.client_secret
+        for row in conn.execute("SELECT provider, client_secret FROM api_keys WHERE client_secret != '' AND client_secret NOT LIKE 'enc:v1:%'").fetchall():
+            conn.execute("UPDATE api_keys SET client_secret=? WHERE provider=?", (secretbox.encrypt(row["client_secret"]), row["provider"]))
+        # bot_config.token
+        row = conn.execute("SELECT token FROM bot_config WHERE id=1 AND token != '' AND token NOT LIKE 'enc:v1:%'").fetchone()
+        if row:
+            conn.execute("UPDATE bot_config SET token=? WHERE id=1", (secretbox.encrypt(row["token"]),))
+        # mail_config.value WHERE key='password'
+        row = conn.execute("SELECT value FROM mail_config WHERE key='password' AND value != '' AND value NOT LIKE 'enc:v1:%'").fetchone()
+        if row:
+            conn.execute("UPDATE mail_config SET value=? WHERE key='password'", (secretbox.encrypt(row["value"]),))
 
 
 def _reject_blocked_profile(text: str) -> None:
@@ -7391,14 +7403,21 @@ def admin_mail_get(request: Request):
     env_ok = bool(os.environ.get("SMTP_HOST", "").strip() and os.environ.get("SMTP_USER", "").strip())
     src = "admin" if (rows.get("host") and rows.get("user")) else ("env" if env_ok else "")
     pw = rows.get("password") or ""
+    # undecryptable: lire la valeur brute en base
+    with _db_lock, _db() as conn:
+        raw_pw_row = conn.execute("SELECT value FROM mail_config WHERE key='password'").fetchone()
+        undecryptable_pw = bool(raw_pw_row) and secretbox.undecryptable(raw_pw_row["value"])
+    # password est exclu de config pour ne pas l'exposer en clair
+    cfg = {k: rows.get(k, "") for k in MAIL_KEYS if k != "password"}
     return {
-        "config": {k: rows.get(k, "") for k in MAIL_KEYS},
+        "config": cfg,
         "password_hint": ("•" * 6 + pw[-4:]) if len(pw) >= 4 else ("•" * len(pw) if pw else ""),
         "configured": cfg is not None,
         "source": src,
         "env_available": env_ok,
         "effective": {"host": (cfg or {}).get("host", ""), "port": (cfg or {}).get("port", ""),
                       "mode": (cfg or {}).get("mode", ""), "sender": (cfg or {}).get("sender", "")},
+        "undecryptable": undecryptable_pw,
     }
 
 
@@ -7781,9 +7800,15 @@ def admin_api_keys_get(request: Request):
     _require_admin(request)
     rows = _api_keys_rows()
     out = []
+    # raw values for undecryptable check
+    raw_map: dict[str, str] = {}
+    with _db_lock, _db() as conn:
+        for r in conn.execute("SELECT provider, client_secret FROM api_keys").fetchall():
+            raw_map[r["provider"]] = r["client_secret"]
     for prov, meta in API_PROVIDERS.items():
         cid, secret, source = _api_effective(prov)
         row = rows.get(prov)
+        raw_cs = raw_map.get(prov)
         out.append({
             "provider": prov,
             "label": meta["label"],
@@ -7796,6 +7821,7 @@ def admin_api_keys_get(request: Request):
             "updated": (row["updated"] if row else 0),
             "env_available": bool((os.environ.get(f"{'BNET' if prov == 'bnet' else 'WCL'}_CLIENT_ID", "").strip()
                                    and os.environ.get(f"{'BNET' if prov == 'bnet' else 'WCL'}_CLIENT_SECRET", "").strip())),
+            "undecryptable": bool(raw_cs) and secretbox.undecryptable(raw_cs),
         })
     return {"providers": out}
 
@@ -7867,7 +7893,13 @@ def admin_bot_get(request: Request):
         "updated": cfg["updated"],
         "invite_url": discord_bot.invite_url(cfg["app_id"]) if (cfg["app_id"] or "").strip() else "",
         "status": "unconfigured",
+        "undecryptable": False,
     }
+    # undecryptable: lire la valeur brute en base
+    with _db_lock, _db() as conn:
+        raw_token = conn.execute("SELECT token FROM bot_config WHERE id=1").fetchone()
+        if raw_token:
+            out["undecryptable"] = secretbox.undecryptable(raw_token["token"])
     if token:
         try:
             who = discord_bot.me(token)
@@ -7903,7 +7935,7 @@ def admin_bot_save(payload: BotConfigRequest, request: Request):
             discord_bot.me(payload.token.strip())
         except discord_bot.DiscordError as exc:
             raise HTTPException(400, f"Token refusé par Discord — {exc}")
-        updates["token"] = secretbox.encrypt(payload.token.strip())
+        updates["token"] = payload.token.strip()
     _bot_save(updates)
     return {"ok": True}
 
