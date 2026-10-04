@@ -353,3 +353,54 @@ def test_undecryptable_and_no_leak_in_responses(monkeypatch) -> None:
     assert "enc:v1:" not in str(data), "enc:v1: prefix leaked in mail response with wrong key"
 
     shutil.rmtree(data_dir, ignore_errors=True)
+
+
+def test_secret_key_not_in_backup(monkeypatch) -> None:
+    """Test 6 — secret.key is not included in the archive produced by _build_backup()."""
+    import io
+    import gzip
+    import tarfile
+    import shutil
+
+    data_dir = _data_dir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    secretbox.reset_box()
+    M._init_db()
+
+    # Trigger key creation via _load_key
+    from pathlib import Path
+    key_path = Path(data_dir) / "secret.key"
+    secretbox._load_key(key_path.parent)
+    assert key_path.exists(), "secret.key should exist"
+
+    # Call _build_backup (returns (bytes, filename))
+    tar_bytes, tar_name = M._build_backup()
+
+    # Open the tar.gz and check contents
+    with gzip.GzipFile(fileobj=io.BytesIO(tar_bytes)) as gz:
+        with tarfile.open(fileobj=gz) as tf:
+            names = tf.getnames()
+
+    assert "secret.key" not in names, "secret.key should NOT be in the backup archive"
+
+    shutil.rmtree(data_dir, ignore_errors=True)
+
+
+def test_secret_key_permissions(monkeypatch) -> None:
+    """Test 7 — secret.key is created with permissions 0o600."""
+    import shutil
+
+    data_dir = _data_dir()
+    monkeypatch.setenv("DATA_DIR", str(data_dir))
+    secretbox.reset_box()
+    M._init_db()
+
+    # Trigger key creation via _load_key
+    key_path = Path(data_dir) / "secret.key"
+    secretbox._load_key(key_path.parent)
+    assert key_path.exists(), "secret.key should exist"
+
+    mode = key_path.stat().st_mode & 0o777
+    assert mode == 0o600, f"secret.key permissions should be 0o600, got 0o{mode:o}"
+
+    shutil.rmtree(data_dir, ignore_errors=True)

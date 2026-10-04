@@ -1184,7 +1184,8 @@
  "Choisis avec l'artisan les stats secondaires de ta priorité.": "Pick the secondary stats of your priority with the crafter.",
  "Aucune recette d'équipement connue pour l'instant — la liste se remplit à la prochaine synchronisation des recettes du jeu.": "No gear recipe known yet — the list fills in at the next game-recipe sync.",
  "recette connue de personne — ont le métier :": "recipe known by nobody — have the profession:",
- "Valeur illisible avec la clé de cette instance — ressaisis-la.": "Unreadable value with this instance's key — re-enter it."
+ "Valeur illisible avec la clé de cette instance — ressaisis-la.": "Unreadable value with this instance's key — re-enter it.",
+  "Les clés API, le token Discord et le mot de passe SMTP sont chiffrés avec la clé de cette instance (secret.key ou COHORS_SECRET_KEY). Pour restaurer sur une autre instance, recopie cette clé ou ressaisis-les.": "API keys, Discord token and SMTP password are encrypted with this instance's key (secret.key or COHORS_SECRET_KEY). To restore on another instance, copy this key or re-enter them."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1574,5 +1575,4 @@
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply);
   else apply();
-  window.t = tr;
 })();

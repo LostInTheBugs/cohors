@@ -1194,6 +1194,10 @@ def _snapshot_db_to(dest: Path) -> None:
 
 def _build_backup() -> tuple[bytes, str]:
     """Archive .tar.gz : manifest + base + fichiers d'identité. Retourne (octets, nom)."""
+    # secret.key is intentionally excluded: it encrypts API secrets, the bot token and
+    # the SMTP password with this instance's key. If restored on another instance,
+    # those secrets must be re-entered with the new instance's key (COHORS_SECRET_KEY
+    # or DATA_DIR/secret.key).
     import io
     import tarfile
     import tempfile
@@ -1245,6 +1249,7 @@ def _extract_backup(data: bytes, dest: Path) -> tuple[dict, Path, list]:
     Rien n'est appliqué ici : chemins contrôlés (pas de « .. » ni d'absolu), manifest + base
     exigés, integrity_check + tables vitales présentes. Une archive douteuse → 400 explicite.
     """
+    
     import io
     import tarfile
 
