@@ -1249,7 +1249,6 @@ def _extract_backup(data: bytes, dest: Path) -> tuple[dict, Path, list]:
     Rien n'est appliqué ici : chemins contrôlés (pas de « .. » ni d'absolu), manifest + base
     exigés, integrity_check + tables vitales présentes. Une archive douteuse → 400 explicite.
     """
-    
     import io
     import tarfile
 
