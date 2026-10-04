@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.simclient import run_sim  # soumet au worker de simulation (socket Unix, sans docker.sock ici)
 import httpx
 
-from app import bnet, discord_bot, mailer, wcl
+from app import bnet, discord_bot, mailer, secretbox, wcl
 from app.security import check_profile, hash_password as _hash_password, real_client_ip, verify_password as _verify_password
 
 logger = logging.getLogger(__name__)
@@ -630,6 +630,18 @@ def _init_db() -> None:
             if conn.execute("SELECT value FROM meta WHERE key=?", (_key,)).fetchone() is None:
                 conn.execute(_stmt)
                 conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (_key, str(int(time.time()))))
+        # v2026.10.002 — migration des secrets en clair vers enc:v1:
+        # api_keys.client_secret
+        for row in conn.execute("SELECT provider, client_secret FROM api_keys WHERE client_secret != '' AND client_secret NOT LIKE 'enc:v1:%'").fetchall():
+            conn.execute("UPDATE api_keys SET client_secret=? WHERE provider=?", (secretbox.encrypt(row["client_secret"]), row["provider"]))
+        # bot_config.token
+        row = conn.execute("SELECT token FROM bot_config WHERE id=1 AND token != '' AND token NOT LIKE 'enc:v1:%'").fetchone()
+        if row:
+            conn.execute("UPDATE bot_config SET token=? WHERE id=1", (secretbox.encrypt(row["token"]),))
+        # mail_config.value WHERE key='password'
+        row = conn.execute("SELECT value FROM mail_config WHERE key='password' AND value != '' AND value NOT LIKE 'enc:v1:%'").fetchone()
+        if row:
+            conn.execute("UPDATE mail_config SET value=? WHERE key='password'", (secretbox.encrypt(row["value"]),))
 
 
 def _reject_blocked_profile(text: str) -> None:
@@ -1182,6 +1194,10 @@ def _snapshot_db_to(dest: Path) -> None:
 
 def _build_backup() -> tuple[bytes, str]:
     """Archive .tar.gz : manifest + base + fichiers d'identité. Retourne (octets, nom)."""
+    # secret.key is intentionally excluded: it encrypts API secrets, the bot token and
+    # the SMTP password with this instance's key. If restored on another instance,
+    # those secrets must be re-entered with the new instance's key (COHORS_SECRET_KEY
+    # or DATA_DIR/secret.key).
     import io
     import tarfile
     import tempfile
@@ -5667,7 +5683,11 @@ MAIL_KEYS = ("host", "port", "mode", "user", "password", "sender", "helo")
 
 def _mail_rows() -> dict:
     with _db_lock, _db() as conn:
-        return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM mail_config").fetchall()}
+        rows = {r["key"]: r["value"] for r in conn.execute("SELECT * FROM mail_config").fetchall()}
+    pw = rows.get("password")
+    if pw:
+        rows["password"] = secretbox.decrypt(pw)
+    return rows
 
 
 def _apply_mail_config() -> None:
@@ -5691,7 +5711,10 @@ def _brand_identity() -> dict:
 
 def _api_keys_rows() -> dict:
     with _db_lock, _db() as conn:
-        return {r["provider"]: r for r in conn.execute("SELECT * FROM api_keys").fetchall()}
+        rows = {r["provider"]: dict(r) for r in conn.execute("SELECT * FROM api_keys").fetchall()}
+    for prov, row in rows.items():
+        row["client_secret"] = secretbox.decrypt(row.get("client_secret") or "")
+    return rows
 
 
 def _apply_api_keys() -> None:
@@ -5722,14 +5745,21 @@ def _mask(value: str, keep: int = 4) -> str:
     return ("•" * 6 + v[-keep:]) if len(v) > keep else "•" * 6
 
 
-def _bot_config() -> sqlite3.Row | None:
+def _bot_config() -> dict | None:
     with _db_lock, _db() as conn:
-        return conn.execute("SELECT * FROM bot_config WHERE id=1").fetchone()
+        row = conn.execute("SELECT * FROM bot_config WHERE id=1").fetchone()
+    if row is None:
+        return None
+    out = dict(row)
+    out["token"] = secretbox.decrypt(out.get("token") or "")
+    return out
 
 
 def _bot_save(updates: dict) -> None:
     if not updates:
         return
+    if "token" in updates:
+        updates["token"] = secretbox.encrypt(updates["token"])
     sets = ", ".join(f"{k}=?" for k in updates)
     with _db_lock, _db() as conn:
         conn.execute(f"UPDATE bot_config SET {sets}, updated=? WHERE id=1", (*updates.values(), time.time()))
@@ -7377,14 +7407,21 @@ def admin_mail_get(request: Request):
     env_ok = bool(os.environ.get("SMTP_HOST", "").strip() and os.environ.get("SMTP_USER", "").strip())
     src = "admin" if (rows.get("host") and rows.get("user")) else ("env" if env_ok else "")
     pw = rows.get("password") or ""
+    # undecryptable: lire la valeur brute en base
+    with _db_lock, _db() as conn:
+        raw_pw_row = conn.execute("SELECT value FROM mail_config WHERE key='password'").fetchone()
+        undecryptable_pw = bool(raw_pw_row) and secretbox.undecryptable(raw_pw_row["value"])
+    # password est exclu de config pour ne pas l'exposer en clair
+    public_cfg = {k: rows.get(k, "") for k in MAIL_KEYS if k != "password"}
     return {
-        "config": {k: rows.get(k, "") for k in MAIL_KEYS},
+        "config": public_cfg,
         "password_hint": ("•" * 6 + pw[-4:]) if len(pw) >= 4 else ("•" * len(pw) if pw else ""),
         "configured": cfg is not None,
         "source": src,
         "env_available": env_ok,
         "effective": {"host": (cfg or {}).get("host", ""), "port": (cfg or {}).get("port", ""),
                       "mode": (cfg or {}).get("mode", ""), "sender": (cfg or {}).get("sender", "")},
+        "undecryptable": undecryptable_pw,
     }
 
 
@@ -7427,8 +7464,9 @@ def admin_mail_save(payload: MailConfigRequest, request: Request):
     rows["mode"] = mode
     with _db_lock, _db() as conn:
         for k, v in rows.items():
+            val = secretbox.encrypt(v) if k == "password" else v
             conn.execute("INSERT OR REPLACE INTO mail_config (key, value, updated) VALUES (?,?,?)",
-                         (k, v, time.time()))
+                         (k, val, time.time()))
     _apply_mail_config()
     return {"ok": True, "test": res["detail"]}
 
@@ -7711,8 +7749,9 @@ def api_setup_status(request: Request):
         ).fetchone()["c"]
         n_users = conn.execute("SELECT COUNT(*) AS c FROM users WHERE active=1").fetchone()["c"]
         n_invites = conn.execute("SELECT COUNT(*) AS c FROM invites WHERE used IS NULL").fetchone()["c"]
-        bot = conn.execute("SELECT token FROM bot_config WHERE id=1").fetchone()
         brand = dict(_brand_row(conn))
+    cfg = _bot_config()
+    bot = cfg
     g = _guild_effective()
     bnet_id, bnet_secret, _s1 = _api_effective("bnet")
     wcl_id, wcl_secret, _s2 = _api_effective("wcl")
@@ -7765,9 +7804,15 @@ def admin_api_keys_get(request: Request):
     _require_admin(request)
     rows = _api_keys_rows()
     out = []
+    # raw values for undecryptable check
+    raw_map: dict[str, str] = {}
+    with _db_lock, _db() as conn:
+        for r in conn.execute("SELECT provider, client_secret FROM api_keys").fetchall():
+            raw_map[r["provider"]] = r["client_secret"]
     for prov, meta in API_PROVIDERS.items():
         cid, secret, source = _api_effective(prov)
         row = rows.get(prov)
+        raw_cs = raw_map.get(prov)
         out.append({
             "provider": prov,
             "label": meta["label"],
@@ -7780,6 +7825,7 @@ def admin_api_keys_get(request: Request):
             "updated": (row["updated"] if row else 0),
             "env_available": bool((os.environ.get(f"{'BNET' if prov == 'bnet' else 'WCL'}_CLIENT_ID", "").strip()
                                    and os.environ.get(f"{'BNET' if prov == 'bnet' else 'WCL'}_CLIENT_SECRET", "").strip())),
+            "undecryptable": bool(raw_cs) and secretbox.undecryptable(raw_cs),
         })
     return {"providers": out}
 
@@ -7808,7 +7854,7 @@ def admin_api_keys_save(payload: ApiKeyRequest, request: Request):
         raise HTTPException(400, "Rien à enregistrer (champs vides).")
     with _db_lock, _db() as conn:
         conn.execute("INSERT OR REPLACE INTO api_keys (provider, client_id, client_secret, updated) VALUES (?,?,?,?)",
-                     (prov, new_id, new_secret, time.time()))
+                     (prov, new_id, secretbox.encrypt(new_secret), time.time()))
     _apply_api_keys()
     return {"ok": True}
 
@@ -7851,7 +7897,13 @@ def admin_bot_get(request: Request):
         "updated": cfg["updated"],
         "invite_url": discord_bot.invite_url(cfg["app_id"]) if (cfg["app_id"] or "").strip() else "",
         "status": "unconfigured",
+        "undecryptable": False,
     }
+    # undecryptable: lire la valeur brute en base
+    with _db_lock, _db() as conn:
+        raw_token = conn.execute("SELECT token FROM bot_config WHERE id=1").fetchone()
+        if raw_token:
+            out["undecryptable"] = secretbox.undecryptable(raw_token["token"])
     if token:
         try:
             who = discord_bot.me(token)

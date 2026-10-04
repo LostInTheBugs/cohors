@@ -304,6 +304,7 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
   the `reports/` directory). You can also back it up with the app stopped (`docker compose stop`
   → copy the directory → `docker compose start`). The database is the only irreplaceable part;
   reports can be re-run.
+- **Secret key (`DATA_DIR/secret.key`)**: API keys, the Discord bot token and the SMTP password are encrypted at rest with this key. It is not included in app backups. Back it up separately and keep it safe — losing it means you must re-enter those three secrets to restore on a new instance.
 - Updating: `git pull` then `docker compose up -d --build`. Database migrations run
   automatically and idempotently at startup — no manual step, no data loss.
 - **In the app (self-hosted instances)**: **Settings → Administration → Updates** compares the

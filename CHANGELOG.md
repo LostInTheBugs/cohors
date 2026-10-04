@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.002 - 2026-10-04
+
+### Security
+
+- Encrypt secrets at rest: API keys, bot token and SMTP password are now stored in the database as Fernet-encrypted values prefixed with `enc:v1:`. A new `secret.key` file (permissions `0o600`) or the `COHORS_SECRET_KEY` env var holds the symmetric key. Existing plaintext secrets are encrypted on first startup.
+- Exclude `secret.key` from app backups: the key is intentionally not archived. Back it up separately — losing it means re-entering the three secrets on a new instance.
+- Warn in settings UI when a secret cannot be decrypted (wrong key, corrupted data) so users know to re-enter it.
+- Add `COHORS_SECRET_KEY` to `.env.example` and `deploy/.env.example` with generation instructions.
+- Document the secret key in README.md.
+
 ## 2026.10.001 - 2026-10-04
 
 ### Security

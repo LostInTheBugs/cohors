@@ -1246,3 +1246,35 @@ def test_blizz_talents_loadout_in_stuff(monkeypatch):
     assert d["loadouts"][-1] == M.BLIZZ_LOADOUT and d["talents_changed"] is True
     sim = M._stuff_sim_input({"_raw": export}, [], {"name": M.BLIZZ_LOADOUT, "talents": "CgQNEW"})[0]
     assert "talents=CgQNEW" in sim and "CgQOLD" not in sim
+
+
+# --- B.5 Regression: admin_mail_get configured status ---
+def test_mail_get_unconfigured(monkeypatch):
+    """Sans SMTP ni en base, GET /api/admin/mail renvoie configured: false."""
+    # Clear env vars
+    monkeypatch.delenv("SMTP_HOST", raising=False)
+    monkeypatch.delenv("SMTP_USER", raising=False)
+    monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+    # Need admin auth for /api/admin/mail
+    c = _admin_client("mailtest@test.local", "10.99.50.1")
+    resp = c.get("/api/admin/mail")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["configured"] is False
+
+def test_mail_get_env_configured(monkeypatch):
+    """Avec SMTP_HOST et SMTP_USER posés, configured: true, source: env."""
+    monkeypatch.setenv("SMTP_HOST", "env.smtp.exemple.fr")
+    monkeypatch.setenv("SMTP_USER", "envuser@exemple.fr")
+    monkeypatch.delenv("SMTP_PASSWORD", raising=False)
+    # Ensure no DB mail config
+    with M._db() as conn:
+        conn.execute("DELETE FROM mail_config")
+        conn.commit()
+    c = _admin_client("mailtest2@test.local", "10.99.50.2")
+    resp = c.get("/api/admin/mail")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["configured"] is True
+    assert data["source"] == "env"
+    assert data["effective"]["host"] == "env.smtp.exemple.fr"
