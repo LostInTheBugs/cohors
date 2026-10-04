@@ -1183,7 +1183,8 @@
  "Main gauche": "Off-hand",
  "Choisis avec l'artisan les stats secondaires de ta priorité.": "Pick the secondary stats of your priority with the crafter.",
  "Aucune recette d'équipement connue pour l'instant — la liste se remplit à la prochaine synchronisation des recettes du jeu.": "No gear recipe known yet — the list fills in at the next game-recipe sync.",
- "recette connue de personne — ont le métier :": "recipe known by nobody — have the profession:"
+ "recette connue de personne — ont le métier :": "recipe known by nobody — have the profession:",
+ "Valeur illisible avec la clé de cette instance — ressaisis-la.": "Unreadable value with this instance's key — re-enter it."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
@@ -1573,4 +1574,5 @@
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply);
   else apply();
+  window.t = tr;
 })();

@@ -7408,9 +7408,9 @@ def admin_mail_get(request: Request):
         raw_pw_row = conn.execute("SELECT value FROM mail_config WHERE key='password'").fetchone()
         undecryptable_pw = bool(raw_pw_row) and secretbox.undecryptable(raw_pw_row["value"])
     # password est exclu de config pour ne pas l'exposer en clair
-    cfg = {k: rows.get(k, "") for k in MAIL_KEYS if k != "password"}
+    public_cfg = {k: rows.get(k, "") for k in MAIL_KEYS if k != "password"}
     return {
-        "config": cfg,
+        "config": public_cfg,
         "password_hint": ("•" * 6 + pw[-4:]) if len(pw) >= 4 else ("•" * len(pw) if pw else ""),
         "configured": cfg is not None,
         "source": src,

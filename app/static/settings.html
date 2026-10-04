@@ -254,6 +254,7 @@
         </div>
         <div class="row" style="margin-top:12px">
           <input type="text" id="bot-token" placeholder="Token du bot" style="min-width:320px">
+          <span id="undecryptable-warn-bot" class="hidden" style="color:var(--err);font-size:12.5px;margin-left:8px"></span>
           <button id="bot-save">💾 Enregistrer</button>
           <button class="small ghost" id="bot-test">📨 Message de test</button>
           <button class="small ghost" id="bot-recap">📰 Tester le récap</button>
@@ -425,7 +426,7 @@
         </div>
         <div class="row" style="flex-wrap:wrap; margin-top:8px">
           <label class="fld">Identifiant <input type="text" id="m-user" placeholder="notifications@exemple.fr" style="min-width:230px" autocomplete="off"></label>
-          <label class="fld">Mot de passe <input type="password" id="m-password" placeholder="•••• (vide = inchangé)" style="min-width:200px" autocomplete="off"></label>
+          <label class="fld">Mot de passe <input type="password" id="m-password" placeholder="•••• (vide = inchangé)" style="min-width:200px" autocomplete="off"><span id="undecryptable-warn-mail" class="hidden" style="color:var(--err);font-size:12.5px;margin-left:8px"></span></label>
         </div>
         <div class="row" style="flex-wrap:wrap; margin-top:8px">
           <label class="fld">Expéditeur <input type="text" id="m-sender" placeholder="défaut : l'identifiant" style="min-width:230px" autocomplete="off"></label>
@@ -790,6 +791,8 @@ async function loadBot() {
   if (d.last_error) bits.push(`<span style="color:var(--err)">⚠ ${esc(d.last_error)}</span>`);
   if (d.status_error) bits.push(`<span style="color:var(--err)">${esc(d.status_error)}</span>`);
   $("#bot-info").innerHTML = bits.join("<br>");
+  const warnBot = $("#undecryptable-warn-bot");
+  if (d.undecryptable) { warnBot.classList.remove("hidden"); warnBot.textContent = t("valeur_illisible"); } else { warnBot.classList.add("hidden"); }
   const bx = $("#bot-invite-box");
   if (d.invite_url) {
     bx.classList.remove("hidden");
@@ -844,6 +847,8 @@ async function loadMail() {
   }
   if (!c.mode) $("#m-mode").value = "starttls";
   if (!c.port) $("#m-port").value = 587;
+  const warnEl = $("#undecryptable-warn-mail");
+  if (d.undecryptable) { warnEl.classList.remove("hidden"); warnEl.textContent = t("valeur_illisible"); } else { warnEl.classList.add("hidden"); }
   const badge = $("#mail-badge");
   if (d.configured && d.source === "admin") { badge.textContent = "🟢 Configurée (ici)"; badge.className = "badge b-used"; }
   else if (d.configured && d.source === "env") { badge.textContent = "🟢 Configurée (serveur)"; badge.className = "badge b-used"; }
@@ -1046,6 +1051,7 @@ async function loadApiKeys() {
       <div class="row">
         <input type="text" id="k-${p.provider}-id" placeholder="${p.id_hint ? "Client ID actuel : " + esc(p.id_hint) : "Client ID"}" style="min-width:270px">
         <input type="password" id="k-${p.provider}-secret" autocomplete="off" placeholder="${p.configured ? "Secret : " + esc(p.secret_hint || "••••") + " (vide = inchangé)" : "Client Secret"}" style="min-width:270px">
+        <span class="undecryptable-warn-provider hidden" style="color:var(--err);font-size:12.5px;margin-left:8px" data-provider="${p.provider}"></span>
       </div>
       <div class="row" style="margin-top:9px">
         <button class="small" data-kapi-save="${p.provider}">💾 Enregistrer</button>
@@ -1055,6 +1061,12 @@ async function loadApiKeys() {
       </div>
     </div>`;
   }).join("");
+  // Show undecryptable warnings for each provider
+  box.querySelectorAll(".undecryptable-warn-provider").forEach(el => {
+    const prov = el.dataset.provider;
+    const p = (d.providers || []).find(v => v.provider === prov);
+    if (p && p.undecryptable) { el.classList.remove("hidden"); el.textContent = t("valeur_illisible"); }
+  });
   box.querySelectorAll("[data-kapi-save]").forEach(b => b.addEventListener("click", () => saveApiKey(b.dataset.kapiSave)));
   box.querySelectorAll("[data-kapi-test]").forEach(b => b.addEventListener("click", () => testApiKey(b.dataset.kapiTest)));
   box.querySelectorAll("[data-kapi-clear]").forEach(b => b.addEventListener("click", async () => {
