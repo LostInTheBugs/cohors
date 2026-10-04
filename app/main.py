@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.simclient import run_sim  # soumet au worker de simulation (socket Unix, sans docker.sock ici)
 import httpx
 
-from app import bnet, discord_bot, mailer, wcl
+from app import bnet, discord_bot, mailer, secretbox, wcl
 from app.security import check_profile, hash_password as _hash_password, real_client_ip, verify_password as _verify_password
 
 logger = logging.getLogger(__name__)
@@ -5667,7 +5667,11 @@ MAIL_KEYS = ("host", "port", "mode", "user", "password", "sender", "helo")
 
 def _mail_rows() -> dict:
     with _db_lock, _db() as conn:
-        return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM mail_config").fetchall()}
+        rows = {r["key"]: r["value"] for r in conn.execute("SELECT * FROM mail_config").fetchall()}
+    pw = rows.get("password")
+    if pw:
+        rows["password"] = secretbox.decrypt(pw)
+    return rows
 
 
 def _apply_mail_config() -> None:
@@ -5691,7 +5695,10 @@ def _brand_identity() -> dict:
 
 def _api_keys_rows() -> dict:
     with _db_lock, _db() as conn:
-        return {r["provider"]: r for r in conn.execute("SELECT * FROM api_keys").fetchall()}
+        rows = {r["provider"]: dict(r) for r in conn.execute("SELECT * FROM api_keys").fetchall()}
+    for prov, row in rows.items():
+        row["client_secret"] = secretbox.decrypt(row.get("client_secret") or "")
+    return rows
 
 
 def _apply_api_keys() -> None:
@@ -5722,14 +5729,21 @@ def _mask(value: str, keep: int = 4) -> str:
     return ("•" * 6 + v[-keep:]) if len(v) > keep else "•" * 6
 
 
-def _bot_config() -> sqlite3.Row | None:
+def _bot_config() -> dict | None:
     with _db_lock, _db() as conn:
-        return conn.execute("SELECT * FROM bot_config WHERE id=1").fetchone()
+        row = conn.execute("SELECT * FROM bot_config WHERE id=1").fetchone()
+    if row is None:
+        return None
+    out = dict(row)
+    out["token"] = secretbox.decrypt(out.get("token") or "")
+    return out
 
 
 def _bot_save(updates: dict) -> None:
     if not updates:
         return
+    if "token" in updates:
+        updates["token"] = secretbox.encrypt(updates["token"])
     sets = ", ".join(f"{k}=?" for k in updates)
     with _db_lock, _db() as conn:
         conn.execute(f"UPDATE bot_config SET {sets}, updated=? WHERE id=1", (*updates.values(), time.time()))
@@ -7427,8 +7441,9 @@ def admin_mail_save(payload: MailConfigRequest, request: Request):
     rows["mode"] = mode
     with _db_lock, _db() as conn:
         for k, v in rows.items():
+            val = secretbox.encrypt(v) if k == "password" else v
             conn.execute("INSERT OR REPLACE INTO mail_config (key, value, updated) VALUES (?,?,?)",
-                         (k, v, time.time()))
+                         (k, val, time.time()))
     _apply_mail_config()
     return {"ok": True, "test": res["detail"]}
 
@@ -7711,8 +7726,9 @@ def api_setup_status(request: Request):
         ).fetchone()["c"]
         n_users = conn.execute("SELECT COUNT(*) AS c FROM users WHERE active=1").fetchone()["c"]
         n_invites = conn.execute("SELECT COUNT(*) AS c FROM invites WHERE used IS NULL").fetchone()["c"]
-        bot = conn.execute("SELECT token FROM bot_config WHERE id=1").fetchone()
         brand = dict(_brand_row(conn))
+    cfg = _bot_config()
+    bot = cfg
     g = _guild_effective()
     bnet_id, bnet_secret, _s1 = _api_effective("bnet")
     wcl_id, wcl_secret, _s2 = _api_effective("wcl")
@@ -7808,7 +7824,7 @@ def admin_api_keys_save(payload: ApiKeyRequest, request: Request):
         raise HTTPException(400, "Rien à enregistrer (champs vides).")
     with _db_lock, _db() as conn:
         conn.execute("INSERT OR REPLACE INTO api_keys (provider, client_id, client_secret, updated) VALUES (?,?,?,?)",
-                     (prov, new_id, new_secret, time.time()))
+                     (prov, new_id, secretbox.encrypt(new_secret), time.time()))
     _apply_api_keys()
     return {"ok": True}
 
@@ -7887,7 +7903,7 @@ def admin_bot_save(payload: BotConfigRequest, request: Request):
             discord_bot.me(payload.token.strip())
         except discord_bot.DiscordError as exc:
             raise HTTPException(400, f"Token refusé par Discord — {exc}")
-        updates["token"] = payload.token.strip()
+        updates["token"] = secretbox.encrypt(payload.token.strip())
     _bot_save(updates)
     return {"ok": True}
 

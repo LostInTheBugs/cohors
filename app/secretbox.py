@@ -37,7 +37,10 @@ def _get_box(data_dir: Path) -> Fernet:
         return _box
     if _cache_key is None:
         _cache_key = _load_key(data_dir)
-    _box = Fernet(_cache_key)
+    try:
+        _box = Fernet(_cache_key)
+    except ValueError:
+        raise RuntimeError("COHORS_SECRET_KEY / secret.key is not a valid Fernet key")
     return _box
 
 
