@@ -22,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 FILES = [
-    "app/main.py",
+    "app/core/config.py",
     "worker/simrun.py",
     "docker-compose.yml",
     "deploy/docker-compose.yml",

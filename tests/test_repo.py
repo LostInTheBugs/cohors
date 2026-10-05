@@ -164,9 +164,9 @@ def test_simc_image_pinned_and_consistent():
     """Les quatre valeurs par défaut de l'image SimC sont identiques, pas de :latest,
     et aucun « simc:latest » ne subsiste ailleurs dans le dépôt."""
     # Extraire les valeurs par défaut de chaque fichier
-    main_py = (ROOT / "app/main.py").read_text(encoding="utf-8")
+    main_py = (ROOT / "app/core/config.py").read_text(encoding="utf-8")
     m = re.search(r'SIMC_IMAGE\s*=\s*os\.environ\.get\([^,]+,\s*"([^"]+)"\)', main_py)
-    assert m, "SIMC_IMAGE introuvable dans app/main.py"
+    assert m, "SIMC_IMAGE introuvable dans app/core/config.py"
     app_default = m.group(1)
 
     simrun = (ROOT / "worker/simrun.py").read_text(encoding="utf-8")
@@ -191,7 +191,7 @@ def test_simc_image_pinned_and_consistent():
     assert len(set(defaults)) == 1, f"incohérence: {set(defaults)}"
 
     # Aucune ne doit se terminer par :latest
-    assert not app_default.endswith(":latest"), "app/main.py utilise encore :latest"
+    assert not app_default.endswith(":latest"), "app/core/config.py utilise encore :latest"
     assert app_default != "simulationcraftorg/simc:latest"
 
     # Aucun résidu simc:latest (sauf CHANGELOG.md)
@@ -297,7 +297,7 @@ def test_bump_simc_replaces_tag_and_checks_consistency():
             # On vérifie surtout que le nouveau tag est là
 
         # main.py doit compiler
-        main_text = (tmpdir / "app/main.py").read_text(encoding="utf-8")
+        main_text = (tmpdir / "app/core/config.py").read_text(encoding="utf-8")
         compile(main_text, "main.py", "exec")
     finally:
         tmp.cleanup()
@@ -324,7 +324,7 @@ def test_bump_simc_inconsistent_tags_exits():
             dst.write_text((real_root / rel).read_text(encoding="utf-8"))
 
         # Modifier un seul fichier pour avoir un tag différent
-        main_dst = tmpdir / "app/main.py"
+        main_dst = tmpdir / "app/core/config.py"
         main_dst.write_text(
             main_dst.read_text().replace(
                 "1210-2026-10-04-2d54d82",
