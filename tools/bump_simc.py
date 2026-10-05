@@ -2,8 +2,8 @@
 """Update the pinned SimulationCraft image tag to the latest dated build.
 
 Usage:
-    python3 tools/bump-simc.py            # apply changes
-    python3 tools/bump-simc.py --dry-run  # preview only
+    python3 tools/bump_simc.py            # apply changes
+    python3 tools/bump_simc.py --dry-run  # preview only
 
 Requires: Python 3.11+, internet access to Docker Hub.
 """
@@ -11,18 +11,15 @@ Requires: Python 3.11+, internet access to Docker Hub.
 import argparse
 import json
 import re
+import shutil
 import sys
+import tempfile
 import urllib.request
+from pathlib import Path
 
-# --- constants ----------------------------------------------------------
+# --- path handling --------------------------------------------------------
 
-DOCKERHUB_URL = (
-    "https://hub.docker.com/v2/repositories/"
-    "simulationcraftorg/simc/tags?page_size=50&ordering=last_updated"
-)
-
-# Regex that matches the tag format: YYYY-MM-DD-sha
-TAG_RE = re.compile(r"^\d+-\d{4}-\d{2}-\d{2}-[0-9a-f]+$")
+ROOT = Path(__file__).resolve().parent.parent
 
 FILES = [
     "app/main.py",
@@ -32,6 +29,15 @@ FILES = [
 ]
 
 # --- helpers -------------------------------------------------------------
+
+DOCKERHUB_URL = (
+    "https://hub.docker.com/v2/repositories/"
+    "simulationcraftorg/simc/tags?page_size=50&ordering=last_updated"
+)
+
+TAG_RE = re.compile(r"^\d+-\d{4}-\d{2}-\d{2}-[0-9a-f]+$")
+SIMC_TAG_RE = re.compile(r"simulationcraftorg/simc:([A-Za-z0-9._-]+)")
+
 
 def fetch_latest_tag() -> str:
     r"""Return the latest tag matching ^\d+-\d{4}-\d{2}-\d{2}-[0-9a-f]+$."""
@@ -48,14 +54,49 @@ def fetch_latest_tag() -> str:
     sys.exit(1)
 
 
-def replace_tag(old: str, new: str) -> None:
-    for path in FILES:
-        full = f"tools/{path}" if not path.startswith("/") else path
-        with open(full, "r") as f:
-            content = f.read()
-        content = content.replace(old, new)
-        with open(full, "w") as f:
-            f.write(content)
+def _extract_tag(path: Path) -> str | None:
+    """Return the first SIMC_IMAGE tag found in *path*, or None."""
+    text = path.read_text(encoding="utf-8")
+    m = SIMC_TAG_RE.search(text)
+    return m.group(1) if m else None
+
+
+def _check_consistency() -> tuple[str, list[str]]:
+    """Check that all FILES contain the same tag.
+
+    Returns (common_tag, list_of_files_that_differ).
+    Raises SystemExit(1) with diagnostics if tags differ.
+    """
+    tags: dict[str, list[str]] = {}
+    for rel in FILES:
+        fp = ROOT / rel
+        tag = _extract_tag(fp)
+        if tag is None:
+            print(f"no SIMC_IMAGE found in {rel}", file=sys.stderr)
+            sys.exit(1)
+        tags.setdefault(tag, []).append(rel)
+
+    if len(tags) != 1:
+        parts = []
+        for tag, files in tags.items():
+            parts.append(f"  {tag!r} → {', '.join(files)}")
+        print("SIMC_IMAGE tags differ across files:", file=sys.stderr)
+        print("\n".join(parts), file=sys.stderr)
+        sys.exit(1)
+
+    return next(iter(tags)), []
+
+
+def _replace_in_file(rel: str, old: str, new: str) -> None:
+    fp = ROOT / rel
+    text = fp.read_text(encoding="utf-8")
+    text = text.replace(old, new)
+    fp.write_text(text, encoding="utf-8")
+
+
+def _apply(old: str, new: str) -> None:
+    for rel in FILES:
+        _replace_in_file(rel, old, new)
 
 
 # --- main ----------------------------------------------------------------
@@ -70,32 +111,17 @@ def main() -> None:
     args = parser.parse_args()
 
     latest = fetch_latest_tag()
-
-    # Find the current pinned tag (first match in any file)
-    old = None
-    for path in FILES:
-        with open(path, "r") as f:
-            for line in f:
-                m = re.search(r"simulationcraftorg/simc:(\S+)", line)
-                if m:
-                    old = m.group(1)
-                    break
-        if old:
-            break
-
-    if old is None:
-        print("Could not find current SIMC_IMAGE tag", file=sys.stderr)
-        sys.exit(1)
+    old, _ = _check_consistency()
 
     if old == latest:
         print("already up to date")
         return
 
     if args.dry_run:
-        print(f"would replace {old} → {latest}")
+        print(f"{old} → {latest}")
         return
 
-    replace_tag(old, latest)
+    _apply(old, latest)
     print(f"{old} → {latest}")
 
 

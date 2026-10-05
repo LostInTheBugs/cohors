@@ -333,10 +333,7 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
   download the requested release tarball and rebuild.
   Without the timer, the 🔎 check still works and the request simply waits (the panel says the
   updater is not installed).
-- The engine image updates on its own schedule: `docker pull simulationcraftorg/simc`, or pin
-  a dated tag through `SIMC_IMAGE` for reproducible results. The worker pre-pulls the pinned
-  build on start. Run `python3 tools/bump-simc.py` to update the pin to the latest dated
-  tag from Docker Hub.
+- Each Cohors release pins a dated SimulationCraft build. The worker pre-pulls it on start; set SIMC_IMAGE to override it. Maintainers update the pin with `python3 tools/bump_simc.py` (`--dry-run` to preview).
 
 ## Version
 

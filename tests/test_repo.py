@@ -246,3 +246,98 @@ def test_bump_simc_picks_correct_tag():
 
         latest = bump.fetch_latest_tag()
         assert latest == "1210-2026-10-04-2d54d82"
+
+
+def test_bump_simc_replaces_tag_and_checks_consistency():
+    """main() remplace le tag dans les quatre fichiers après vérification de cohérence."""
+    from unittest import mock
+    import json
+    import tools.bump_simc as bump
+    import sys
+    import tempfile
+    import textwrap
+    from pathlib import Path
+
+    # --- fixture: copie de l'arborescence dans un dossier temporaire --------
+    tmp = tempfile.TemporaryDirectory()
+    tmpdir = Path(tmp.name)
+    for rel in bump.FILES:
+        dst = tmpdir / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text((bump.ROOT / rel).read_text(encoding="utf-8"))
+
+    try:
+        # --- patch ROOT vers le temporaire ----------------------------------
+        with mock.patch.object(bump, "ROOT", tmpdir):
+            # --- mock fetch_latest_tag ----------------------------------------
+            new_tag = "1210-2099-01-01-abcdef0"
+            fake_json = json.dumps({
+                "results": [
+                    {"name": new_tag, "last_updated": "2099-01-01T12:00:00Z"},
+                    {"name": "latest", "last_updated": "2099-01-02T00:00:00Z"},
+                ]
+            }).encode()
+
+            with mock.patch("urllib.request.urlopen") as mock_urlopen:
+                mock_urlopen.return_value.__enter__ = lambda s: s
+                mock_urlopen.return_value.__exit__ = lambda s, *a: None
+                mock_urlopen.return_value.read.return_value = fake_json
+
+                # --- patch ROOT de main() vers le temporaire ------------------
+                sys.argv = ["bump_simc"]  # pas --dry-run
+                bump.main()
+
+        # --- vérifications --------------------------------------------------
+        old_tag = "1210-2026-10-04-2d54d82"
+        for rel in bump.FILES:
+            text = (tmpdir / rel).read_text(encoding="utf-8")
+            assert new_tag in text, f"{rel}: nouveau tag manquant"
+            # L'ancien tag doit aussi apparaître (commentaire ou autre)
+            # car seul le SIMC_IMAGE est remplacé
+            # On vérifie surtout que le nouveau tag est là
+
+        # main.py doit compiler
+        main_text = (tmpdir / "app/main.py").read_text(encoding="utf-8")
+        compile(main_text, "main.py", "exec")
+    finally:
+        tmp.cleanup()
+
+
+def test_bump_simc_inconsistent_tags_exits():
+    """Si un fichier a un tag différent, le script quitte avec code 1."""
+    from unittest import mock
+    import tempfile
+    import sys
+    from pathlib import Path
+
+    tmp = tempfile.TemporaryDirectory()
+    tmpdir = Path(tmp.name)
+    try:
+        import tools.bump_simc as bump
+
+        # Sauvegarder le vrai ROOT AVANT tout patch
+        real_root = bump.ROOT
+        # Copie les quatre fichiers dans le temporaire avec la même arborescence
+        for rel in bump.FILES:
+            dst = tmpdir / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_text((real_root / rel).read_text(encoding="utf-8"))
+
+        # Modifier un seul fichier pour avoir un tag différent
+        main_dst = tmpdir / "app/main.py"
+        main_dst.write_text(
+            main_dst.read_text().replace(
+                "1210-2026-10-04-2d54d82",
+                "1210-2020-01-01-0000000"
+            )
+        )
+
+        # Patch ROOT pour que _check_consistency pointe vers tmpdir
+        with mock.patch.object(bump, "ROOT", tmpdir):
+            try:
+                bump._check_consistency()
+                assert False, "devait lever SystemExit(1)"
+            except SystemExit as e:
+                assert e.code == 1
+    finally:
+        tmp.cleanup()
