@@ -240,6 +240,15 @@ class Handler(socketserver.StreamRequestHandler):
             pass
 
 
+def prepull_image() -> None:
+    """Pré-téléchargement de l'image SimC en arrière-plan (ne bloque pas le démarrage)."""
+    try:
+        subprocess.run(["docker", "pull", IMAGE], check=True, capture_output=True, timeout=900)
+        print(f"SimC image ready: {IMAGE}", flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print(f"SimC image pull failed: {exc}", file=sys.stderr, flush=True)
+
+
 def main() -> int:
     sock = Path(SOCK_PATH)
     sock.parent.mkdir(parents=True, exist_ok=True)
@@ -264,14 +273,7 @@ def main() -> int:
               flush=True)
 
     # Pré-téléchargement de l'image SimC en arrière-plan (ne bloque pas le démarrage).
-    def _prepull():
-        try:
-            subprocess.run(["docker", "pull", IMAGE], check=True, capture_output=True, timeout=300)
-            print(f"SimC image ready: {IMAGE}", flush=True)
-        except Exception as exc:  # noqa: BLE001
-            print(f"SimC image pull failed: {exc}", file=sys.stderr, flush=True)
-
-    threading.Thread(target=_prepull, daemon=True).start()
+    threading.Thread(target=prepull_image, daemon=True).start()
 
     server = socketserver.ThreadingUnixStreamServer(str(sock), Handler)
     server.daemon_threads = True

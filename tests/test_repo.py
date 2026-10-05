@@ -194,45 +194,31 @@ def test_simc_image_pinned_and_consistent():
     assert not app_default.endswith(":latest"), "app/main.py utilise encore :latest"
     assert app_default != "simulationcraftorg/simc:latest"
 
-    # Aucun résidu simc:latest (sauf CHANGELOG.md et les briefs)
+    # Aucun résidu simc:latest (sauf CHANGELOG.md)
     import subprocess
     result = subprocess.run(
-        ["grep", "-rn", "--exclude=test_repo.py", "--exclude=BRIEF-SIMC.md",
-         "--exclude=hermes-cohors-simc-pin.md", "--exclude=README.md",
-         "--exclude=.env.example", "simc:latest",
-         "--exclude-dir=.git", "--exclude=CHANGELOG.md", "--exclude-dir=__pycache__",
-         "."],
+        ["git", "grep", "-n", "simc:latest", ".",
+         ":!CHANGELOG.md", ":!tests/test_repo.py"],
         cwd=str(ROOT), capture_output=True, text=True
     )
-    assert result.returncode != 0, f"simc:latest trouvé : {result.stdout}"
+    assert result.returncode != 0, f"simc:latest trouvé :\n{result.stdout}"
 
 
 def test_simworker_prepull_command():
-    """La fonction main() de simworker lance un docker pull en arrière-plan avec la bonne commande."""
+    """prepull_image() lance docker pull avec la bonne commande (IMAGE, pas de tag en dur),
+    et un échec ne remonte pas d'exception."""
     from unittest import mock
-    from worker.simworker import main
+    from worker.simworker import prepull_image
+    import worker.simrun
 
-    with mock.patch("worker.simworker.subprocess.run") as mock_run, \
-         mock.patch("worker.simworker.Path") as mock_path, \
-         mock.patch("worker.simworker.os"), \
-         mock.patch("worker.simworker.socketserver.ThreadingUnixStreamServer") as mock_server, \
-         mock.patch("worker.simworker.cleanup_orphans", return_value=[]), \
-         mock.patch("worker.simworker.purge_job_dirs", return_value=0):
+    # Test 1 — commande correcte
+    with mock.patch("worker.simworker.subprocess.run") as mock_run:
+        prepull_image()
+        mock_run.assert_called_once_with(
+            ["docker", "pull", worker.simrun.IMAGE],
+            check=True, capture_output=True, timeout=900
+        )
 
-        # Mock du socket pour éviter les erreurs de bind
-        mock_sock = mock.MagicMock()
-        mock_sock.parent = mock.MagicMock()
-        mock_path.return_value = mock_sock
-
-        main()
-
-        # Le serveur doit être lancé (serve_forever appelé)
-        mock_server.return_value.serve_forever.assert_called()
-
-        # subprocess.run doit avoir été appelé avec ["docker", "pull", IMAGE]
-        docker_pull_calls = [
-            call for call in mock_run.call_args_list
-            if isinstance(call.args[0], list) and call.args[0][0] == "docker" and call.args[0][1] == "pull"
-        ]
-        assert len(docker_pull_calls) == 1, f"1 appel docker pull attendu, trouvé {len(docker_pull_calls)}"
-        assert docker_pull_calls[0].args[0] == ["docker", "pull", "simulationcraftorg/simc:1210-2026-10-04-2d54d82"]
+    # Test 2 — exception ne remonte pas
+    with mock.patch("worker.simworker.subprocess.run", side_effect=RuntimeError("no docker")):
+        prepull_image()  # ne doit pas lever
