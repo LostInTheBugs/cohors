@@ -202,7 +202,7 @@ Most settings can also be edited in the app by an admin — `.env` values are th
 | `SIM_MEM` | `4g` | Memory cap per simulation container |
 | `SIM_PIDS` | `512` | Process cap per simulation container |
 | `SIM_CPUS` | all cores | CPU cap per simulation container (e.g. `4` on a shared host) |
-| `SIMC_IMAGE` | `simulationcraftorg/simc:latest` | SimulationCraft engine image |
+| `SIMC_IMAGE` | `dated tag pinned per release` | SimulationCraft engine image (override the pin if needed) |
 | `ADMIN_EMAIL` | — | First admin login (created at startup if no admin exists) |
 | `ADMIN_PASSWORD` | — | First admin password (same condition) |
 | `PUBLIC_BASE_URL` | — | Public base URL used to build invitation links |
@@ -334,11 +334,13 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
   Without the timer, the 🔎 check still works and the request simply waits (the panel says the
   updater is not installed).
 - The engine image updates on its own schedule: `docker pull simulationcraftorg/simc`, or pin
-  a dated tag through `SIMC_IMAGE` for reproducible results.
+  a dated tag through `SIMC_IMAGE` for reproducible results. The worker pre-pulls the pinned
+  build on start. Run `python3 tools/bump-simc.py` to update the pin to the latest dated
+  tag from Docker Hub.
 
 ## Version
 
-Current version: `2026.09.151` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Current version: `2026.10.003` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
 Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.149` is the 149th build of September 2026;
 corrections add a `-cN` suffix (`2026.09.149-c2`).
 

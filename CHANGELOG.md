@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.003 - 2026-10-05
+
+### Changed
+
+- SimulationCraft engine pinned to a dated build (`1210-2026-10-04-2d54d82`) instead of
+  `latest`, which was never refreshed once pulled. The worker pre-pulls it on start;
+  `tools/bump-simc.py` updates the pin.
+
 ## 2026.10.002 - 2026-10-04
 
 ### Security

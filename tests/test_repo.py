@@ -222,3 +222,27 @@ def test_simworker_prepull_command():
     # Test 2 — exception ne remonte pas
     with mock.patch("worker.simworker.subprocess.run", side_effect=RuntimeError("no docker")):
         prepull_image()  # ne doit pas lever
+
+
+def test_bump_simc_picks_correct_tag():
+    """bump-simc.py choisit le bon tag (plus récent = premier dans la liste triée par last_updated)."""
+    from unittest import mock
+    import json
+    import tools.bump_simc as bump
+
+    fake_json = json.dumps({
+        "results": [
+            {"name": "1210-2026-10-04-2d54d82", "last_updated": "2026-10-04T12:00:00Z"},
+            {"name": "1209-2026-09-20-aa11bb22", "last_updated": "2026-09-20T10:00:00Z"},
+            {"name": "latest", "last_updated": "2026-10-05T00:00:00Z"},
+            {"name": "1208-2026-08-15-cc33dd44", "last_updated": "2026-08-15T08:00:00Z"},
+        ]
+    }).encode()
+
+    with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        mock_urlopen.return_value.__enter__ = lambda s: s
+        mock_urlopen.return_value.__exit__ = lambda s, *a: None
+        mock_urlopen.return_value.read.return_value = fake_json
+
+        latest = bump.fetch_latest_tag()
+        assert latest == "1210-2026-10-04-2d54d82"
