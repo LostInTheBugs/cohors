@@ -51,7 +51,7 @@ BRAND_DIR = DATA_DIR / "branding"
 DB_PATH = DATA_DIR / "wow.sqlite"
 REPORTS_DIR = DATA_DIR / "reports"
 
-SIMC_IMAGE = os.environ.get("SIMC_IMAGE", "simulationcraftorg/simc:latest")
+SIMC_IMAGE = os.environ.get("SIMC_IMAGE", "simulationcraftorg/simc:1210-2026-10-04-2d54d82")
 SIM_TIMEOUT = int(os.environ.get("SIM_TIMEOUT", "900"))
 QUEUE_MAX = int(os.environ.get("QUEUE_MAX", "20"))
 PER_IP_ACTIVE = int(os.environ.get("PER_IP_ACTIVE", "3"))

@@ -158,3 +158,186 @@ def test_help_items_all_translated():
         if not ok:
             missing.append(li[:70])
     assert not missing, missing
+
+
+def test_simc_image_pinned_and_consistent():
+    """Les quatre valeurs par défaut de l'image SimC sont identiques, pas de :latest,
+    et aucun « simc:latest » ne subsiste ailleurs dans le dépôt."""
+    # Extraire les valeurs par défaut de chaque fichier
+    main_py = (ROOT / "app/main.py").read_text(encoding="utf-8")
+    m = re.search(r'SIMC_IMAGE\s*=\s*os\.environ\.get\([^,]+,\s*"([^"]+)"\)', main_py)
+    assert m, "SIMC_IMAGE introuvable dans app/main.py"
+    app_default = m.group(1)
+
+    simrun = (ROOT / "worker/simrun.py").read_text(encoding="utf-8")
+    m2 = re.search(r'^IMAGE\s*=\s*os\.environ\.get\([^,]+,\s*"([^"]+)"\)', simrun, re.M)
+    assert m2, "IMAGE introuvable dans worker/simrun.py"
+    simrun_default = m2.group(1)
+
+    # docker-compose.yml
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    m3 = re.search(r'SIMC_IMAGE=\$\{SIMC_IMAGE:-([^}]+)\}', compose)
+    assert m3, "SIMC_IMAGE non trouvé dans docker-compose.yml"
+    compose_default = m3.group(1)
+
+    # deploy/docker-compose.yml
+    deploy = (ROOT / "deploy/docker-compose.yml").read_text(encoding="utf-8")
+    m4 = re.search(r'SIMC_IMAGE=\$\{SIMC_IMAGE:-([^}]+)\}', deploy)
+    assert m4, "SIMC_IMAGE non trouvé dans deploy/docker-compose.yml"
+    deploy_default = m4.group(1)
+
+    # Les quatre doivent être identiques
+    defaults = [app_default, simrun_default, compose_default, deploy_default]
+    assert len(set(defaults)) == 1, f"incohérence: {set(defaults)}"
+
+    # Aucune ne doit se terminer par :latest
+    assert not app_default.endswith(":latest"), "app/main.py utilise encore :latest"
+    assert app_default != "simulationcraftorg/simc:latest"
+
+    # Aucun résidu simc:latest (sauf CHANGELOG.md)
+    import subprocess
+    result = subprocess.run(
+        ["git", "grep", "-n", "simc:latest", ".",
+         ":!CHANGELOG.md", ":!tests/test_repo.py"],
+        cwd=str(ROOT), capture_output=True, text=True
+    )
+    assert result.returncode != 0, f"simc:latest trouvé :\n{result.stdout}"
+
+
+def test_simworker_prepull_command():
+    """prepull_image() lance docker pull avec la bonne commande (IMAGE, pas de tag en dur),
+    et un échec ne remonte pas d'exception."""
+    from unittest import mock
+    from worker.simworker import prepull_image
+    import worker.simrun
+
+    # Test 1 — commande correcte
+    with mock.patch("worker.simworker.subprocess.run") as mock_run:
+        prepull_image()
+        mock_run.assert_called_once_with(
+            ["docker", "pull", worker.simrun.IMAGE],
+            check=True, capture_output=True, timeout=900
+        )
+
+    # Test 2 — exception ne remonte pas
+    with mock.patch("worker.simworker.subprocess.run", side_effect=RuntimeError("no docker")):
+        prepull_image()  # ne doit pas lever
+
+
+def test_bump_simc_picks_correct_tag():
+    """bump-simc.py choisit le bon tag (plus récent = premier dans la liste triée par last_updated)."""
+    from unittest import mock
+    import json
+    import tools.bump_simc as bump
+
+    fake_json = json.dumps({
+        "results": [
+            {"name": "1210-2026-10-04-2d54d82", "last_updated": "2026-10-04T12:00:00Z"},
+            {"name": "1209-2026-09-20-aa11bb22", "last_updated": "2026-09-20T10:00:00Z"},
+            {"name": "latest", "last_updated": "2026-10-05T00:00:00Z"},
+            {"name": "1208-2026-08-15-cc33dd44", "last_updated": "2026-08-15T08:00:00Z"},
+        ]
+    }).encode()
+
+    with mock.patch("urllib.request.urlopen") as mock_urlopen:
+        mock_urlopen.return_value.__enter__ = lambda s: s
+        mock_urlopen.return_value.__exit__ = lambda s, *a: None
+        mock_urlopen.return_value.read.return_value = fake_json
+
+        latest = bump.fetch_latest_tag()
+        assert latest == "1210-2026-10-04-2d54d82"
+
+
+def test_bump_simc_replaces_tag_and_checks_consistency():
+    """main() remplace le tag dans les quatre fichiers après vérification de cohérence."""
+    from unittest import mock
+    import json
+    import tools.bump_simc as bump
+    import sys
+    import tempfile
+    import textwrap
+    from pathlib import Path
+
+    # --- fixture: copie de l'arborescence dans un dossier temporaire --------
+    tmp = tempfile.TemporaryDirectory()
+    tmpdir = Path(tmp.name)
+    for rel in bump.FILES:
+        dst = tmpdir / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text((bump.ROOT / rel).read_text(encoding="utf-8"))
+
+    try:
+        # --- patch ROOT vers le temporaire ----------------------------------
+        with mock.patch.object(bump, "ROOT", tmpdir):
+            # --- mock fetch_latest_tag ----------------------------------------
+            new_tag = "1210-2099-01-01-abcdef0"
+            fake_json = json.dumps({
+                "results": [
+                    {"name": new_tag, "last_updated": "2099-01-01T12:00:00Z"},
+                    {"name": "latest", "last_updated": "2099-01-02T00:00:00Z"},
+                ]
+            }).encode()
+
+            with mock.patch("urllib.request.urlopen") as mock_urlopen:
+                mock_urlopen.return_value.__enter__ = lambda s: s
+                mock_urlopen.return_value.__exit__ = lambda s, *a: None
+                mock_urlopen.return_value.read.return_value = fake_json
+
+                # --- patch ROOT de main() vers le temporaire ------------------
+                sys.argv = ["bump_simc"]  # pas --dry-run
+                bump.main()
+
+        # --- vérifications --------------------------------------------------
+        old_tag = "1210-2026-10-04-2d54d82"
+        for rel in bump.FILES:
+            text = (tmpdir / rel).read_text(encoding="utf-8")
+            assert new_tag in text, f"{rel}: nouveau tag manquant"
+            # L'ancien tag doit aussi apparaître (commentaire ou autre)
+            # car seul le SIMC_IMAGE est remplacé
+            # On vérifie surtout que le nouveau tag est là
+
+        # main.py doit compiler
+        main_text = (tmpdir / "app/main.py").read_text(encoding="utf-8")
+        compile(main_text, "main.py", "exec")
+    finally:
+        tmp.cleanup()
+
+
+def test_bump_simc_inconsistent_tags_exits():
+    """Si un fichier a un tag différent, le script quitte avec code 1."""
+    from unittest import mock
+    import tempfile
+    import sys
+    from pathlib import Path
+
+    tmp = tempfile.TemporaryDirectory()
+    tmpdir = Path(tmp.name)
+    try:
+        import tools.bump_simc as bump
+
+        # Sauvegarder le vrai ROOT AVANT tout patch
+        real_root = bump.ROOT
+        # Copie les quatre fichiers dans le temporaire avec la même arborescence
+        for rel in bump.FILES:
+            dst = tmpdir / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_text((real_root / rel).read_text(encoding="utf-8"))
+
+        # Modifier un seul fichier pour avoir un tag différent
+        main_dst = tmpdir / "app/main.py"
+        main_dst.write_text(
+            main_dst.read_text().replace(
+                "1210-2026-10-04-2d54d82",
+                "1210-2020-01-01-0000000"
+            )
+        )
+
+        # Patch ROOT pour que _check_consistency pointe vers tmpdir
+        with mock.patch.object(bump, "ROOT", tmpdir):
+            try:
+                bump._check_consistency()
+                assert False, "devait lever SystemExit(1)"
+            except SystemExit as e:
+                assert e.code == 1
+    finally:
+        tmp.cleanup()

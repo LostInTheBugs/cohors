@@ -27,7 +27,7 @@ services:
       - SIM_JOBS_DIR=${DATA_DIR:?set DATA_DIR in .env (see .env.example)}/sim-jobs
       - SIMWORKER_APP_UID=${APP_UID:-1000}
       - SIMWORKER_APP_GID=${APP_GID:-10001}   # même GID que l'app (socket Unix)
-      - SIMC_IMAGE=${SIMC_IMAGE:-simulationcraftorg/simc:latest}
+      - SIMC_IMAGE=${SIMC_IMAGE:-simulationcraftorg/simc:1210-2026-10-04-2d54d82}
       - SIM_MEM=${SIM_MEM:-4g}
       - SIM_PIDS=${SIM_PIDS:-512}
       - SIM_CPUS=${SIM_CPUS:-}

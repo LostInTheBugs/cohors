@@ -54,6 +54,8 @@ CI runs it on every push and pull request.
 
 - Keep each PR focused; describe the user-visible effect.
 - Run `python -m pytest -q` and `node tools/lint-js.mjs` before submitting.
+- Before a release, run `python3 tools/bump_simc.py` to follow game patches
+  and update the pinned SimulationCraft engine tag.
 - Note behavior changes in `CHANGELOG.md` (an "Unreleased" section is fine).
 - Screenshots help a lot for UI changes.
 
