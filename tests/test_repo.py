@@ -158,3 +158,81 @@ def test_help_items_all_translated():
         if not ok:
             missing.append(li[:70])
     assert not missing, missing
+
+
+def test_simc_image_pinned_and_consistent():
+    """Les quatre valeurs par défaut de l'image SimC sont identiques, pas de :latest,
+    et aucun « simc:latest » ne subsiste ailleurs dans le dépôt."""
+    # Extraire les valeurs par défaut de chaque fichier
+    main_py = (ROOT / "app/main.py").read_text(encoding="utf-8")
+    m = re.search(r'SIMC_IMAGE\s*=\s*os\.environ\.get\([^,]+,\s*"([^"]+)"\)', main_py)
+    assert m, "SIMC_IMAGE introuvable dans app/main.py"
+    app_default = m.group(1)
+
+    simrun = (ROOT / "worker/simrun.py").read_text(encoding="utf-8")
+    m2 = re.search(r'^IMAGE\s*=\s*os\.environ\.get\([^,]+,\s*"([^"]+)"\)', simrun, re.M)
+    assert m2, "IMAGE introuvable dans worker/simrun.py"
+    simrun_default = m2.group(1)
+
+    # docker-compose.yml
+    compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    m3 = re.search(r'SIMC_IMAGE=\$\{SIMC_IMAGE:-([^}]+)\}', compose)
+    assert m3, "SIMC_IMAGE non trouvé dans docker-compose.yml"
+    compose_default = m3.group(1)
+
+    # deploy/docker-compose.yml
+    deploy = (ROOT / "deploy/docker-compose.yml").read_text(encoding="utf-8")
+    m4 = re.search(r'SIMC_IMAGE=\$\{SIMC_IMAGE:-([^}]+)\}', deploy)
+    assert m4, "SIMC_IMAGE non trouvé dans deploy/docker-compose.yml"
+    deploy_default = m4.group(1)
+
+    # Les quatre doivent être identiques
+    defaults = [app_default, simrun_default, compose_default, deploy_default]
+    assert len(set(defaults)) == 1, f"incohérence: {set(defaults)}"
+
+    # Aucune ne doit se terminer par :latest
+    assert not app_default.endswith(":latest"), "app/main.py utilise encore :latest"
+    assert app_default != "simulationcraftorg/simc:latest"
+
+    # Aucun résidu simc:latest (sauf CHANGELOG.md et les briefs)
+    import subprocess
+    result = subprocess.run(
+        ["grep", "-rn", "--exclude=test_repo.py", "--exclude=BRIEF-SIMC.md",
+         "--exclude=hermes-cohors-simc-pin.md", "--exclude=README.md",
+         "--exclude=.env.example", "simc:latest",
+         "--exclude-dir=.git", "--exclude=CHANGELOG.md", "--exclude-dir=__pycache__",
+         "."],
+        cwd=str(ROOT), capture_output=True, text=True
+    )
+    assert result.returncode != 0, f"simc:latest trouvé : {result.stdout}"
+
+
+def test_simworker_prepull_command():
+    """La fonction main() de simworker lance un docker pull en arrière-plan avec la bonne commande."""
+    from unittest import mock
+    from worker.simworker import main
+
+    with mock.patch("worker.simworker.subprocess.run") as mock_run, \
+         mock.patch("worker.simworker.Path") as mock_path, \
+         mock.patch("worker.simworker.os"), \
+         mock.patch("worker.simworker.socketserver.ThreadingUnixStreamServer") as mock_server, \
+         mock.patch("worker.simworker.cleanup_orphans", return_value=[]), \
+         mock.patch("worker.simworker.purge_job_dirs", return_value=0):
+
+        # Mock du socket pour éviter les erreurs de bind
+        mock_sock = mock.MagicMock()
+        mock_sock.parent = mock.MagicMock()
+        mock_path.return_value = mock_sock
+
+        main()
+
+        # Le serveur doit être lancé (serve_forever appelé)
+        mock_server.return_value.serve_forever.assert_called()
+
+        # subprocess.run doit avoir été appelé avec ["docker", "pull", IMAGE]
+        docker_pull_calls = [
+            call for call in mock_run.call_args_list
+            if isinstance(call.args[0], list) and call.args[0][0] == "docker" and call.args[0][1] == "pull"
+        ]
+        assert len(docker_pull_calls) == 1, f"1 appel docker pull attendu, trouvé {len(docker_pull_calls)}"
+        assert docker_pull_calls[0].args[0] == ["docker", "pull", "simulationcraftorg/simc:1210-2026-10-04-2d54d82"]

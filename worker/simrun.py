@@ -20,7 +20,7 @@ Examples:
   python3 simrun.py --profile ~/export.simc --iterations 10000
 
 Environment:
-  SIMC_IMAGE   override the image tag (default: simulationcraftorg/simc:latest)
+  SIMC_IMAGE   override the image tag (default: simulationcraftorg/simc:1210-2026-10-04-2d54d82)
   SIM_MEM      memory cap per simulation container (default: 4g)
   SIM_PIDS     process cap per simulation container (default: 512)
   SIM_CPUS     CPU cap per simulation container, e.g. "4" (default: all cores)
@@ -48,7 +48,7 @@ import tempfile
 import time
 from pathlib import Path
 
-IMAGE = os.environ.get("SIMC_IMAGE", "simulationcraftorg/simc:latest")
+IMAGE = os.environ.get("SIMC_IMAGE", "simulationcraftorg/simc:1210-2026-10-04-2d54d82")
 SIM_MEM = os.environ.get("SIM_MEM", "4g")
 SIM_PIDS = os.environ.get("SIM_PIDS", "512")
 SIM_CPUS = os.environ.get("SIM_CPUS", "").strip()
