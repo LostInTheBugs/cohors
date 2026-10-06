@@ -260,6 +260,7 @@ account (invitation endpoints accept officers).
 
 ```
 app/main.py               FastAPI app (auth, admin, sim queue, pages, APIs)
+app/core/                 Shared config, SQLite helper, sessions and role guards
 app/security.py           Password hashing (scrypt) + XFF handling (profile guard re-exported)
 app/simclient.py          Simulation worker client (Unix socket)
 app/bnet.py               Battle.net API client (roster, characters, items)

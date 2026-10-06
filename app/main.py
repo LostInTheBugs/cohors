@@ -44,60 +44,18 @@ from app.security import check_profile, hash_password as _hash_password, real_cl
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Configuration, database and auth helpers live in app/core (re-exported here).
 # ---------------------------------------------------------------------------
-DATA_DIR = Path(os.environ.get("DATA_DIR", "./data"))
-BRAND_DIR = DATA_DIR / "branding"
-DB_PATH = DATA_DIR / "wow.sqlite"
-REPORTS_DIR = DATA_DIR / "reports"
+from app.core.config import (
+    DATA_DIR, BRAND_DIR, DB_PATH, REPORTS_DIR, SIMC_IMAGE, SIM_TIMEOUT, QUEUE_MAX, PER_IP_ACTIVE,
+    PER_IP_COOLDOWN_S, PER_USER_ACTIVE, ITER_CHOICES, DEFAULT_ITERATIONS, MAX_INPUT_CHARS,
+    SESSION_COOKIE, SESSION_DAYS, INVITE_TTL_DAYS, PUBLIC_BASE_URL, COOKIE_SECURE, COOKIE_DOMAIN,
+    BOT_POLL_S, SNAP_POLL_S, SNAP_REFRESH_MIN, SNAP_KEEP_DAYS, SNAP_REFRESH_MIN_OTHER,
+    SNAP_MAX_PER_TICK, PROF_REFRESH_DAYS, VERSION, STATIC_DIR,
+)
+from app.core.db import _db, _db_lock  # noqa: F401
 
-SIMC_IMAGE = os.environ.get("SIMC_IMAGE", "simulationcraftorg/simc:1210-2026-10-04-2d54d82")
-SIM_TIMEOUT = int(os.environ.get("SIM_TIMEOUT", "900"))
-QUEUE_MAX = int(os.environ.get("QUEUE_MAX", "20"))
-PER_IP_ACTIVE = int(os.environ.get("PER_IP_ACTIVE", "3"))
-PER_IP_COOLDOWN_S = int(os.environ.get("PER_IP_COOLDOWN_S", "15"))
-PER_USER_ACTIVE = int(os.environ.get("PER_USER_ACTIVE", "3"))
-ITER_CHOICES = (1000, 5000, 10000, 25000, 50000)
-DEFAULT_ITERATIONS = 10000
-MAX_INPUT_CHARS = 200_000
-
-SESSION_COOKIE = "cohors_session"
-SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
-INVITE_TTL_DAYS = int(os.environ.get("INVITE_TTL_DAYS", "7"))
-PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
-COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1") not in ("0", "false", "no", "")
-COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN", "").strip() or None
-BOT_POLL_S = int(os.environ.get("BOT_POLL_S", "300"))  # intervalle du bot Discord (secondes)
-# Relevés quotidiens (évolution des personnages liés) — v2026.09.054.
-# TTL max 30 jours : Blizzard Developer API ToU §18 (« retain data ... no longer than 30 days »).
-SNAP_POLL_S = float(os.environ.get("SNAPSHOT_POLL_S", "900"))       # tick de la boucle (s)
-SNAP_REFRESH_MIN = float(os.environ.get("SNAPSHOT_REFRESH_MIN", "360"))  # re-relevé si dernier > 6 h
-SNAP_KEEP_DAYS = min(30, max(2, int(os.environ.get("SNAPSHOT_KEEP_DAYS", "30"))))
-SNAP_REFRESH_MIN_OTHER = float(os.environ.get("SNAPSHOT_REFRESH_MIN_OTHER", "1200"))  # roster : 20 h
-SNAP_MAX_PER_TICK = int(os.environ.get("SNAPSHOT_MAX_PER_TICK", "60"))  # borne le temps du passage
-PROF_REFRESH_DAYS = float(os.environ.get("PROFESSIONS_REFRESH_DAYS", "7"))  # métiers : 7 j
-
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-
-_version_file = Path(__file__).resolve().parent.parent / "VERSION"
-VERSION = _version_file.read_text().strip() if _version_file.exists() else os.environ.get("APP_VERSION", "dev")
-
-_db_lock = threading.Lock()
-STATIC_DIR = Path(__file__).resolve().parent / "static"
 _login_attempts: dict[str, list[float]] = defaultdict(list)
-
-
-@contextmanager
-def _db():
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    try:
-        yield conn
-        conn.commit()
-    finally:
-        conn.close()
 
 
 def _init_db() -> None:
@@ -674,102 +632,10 @@ def _bootstrap_admin() -> None:
             print("[bootstrap] aucun admin et ADMIN_EMAIL/ADMIN_PASSWORD absents — /admin inaccessible")
 
 
-# ---------------------------------------------------------------------------
-# Auth helpers
-# ---------------------------------------------------------------------------
-def _session_key(token: str) -> str:
-    """Return SHA-256 hex digest of *token*."""
-    return hashlib.sha256(token.encode()).hexdigest()
-
-
-def _new_session(conn: sqlite3.Connection, user_id: int) -> str:
-    now = time.time()
-    token = secrets.token_urlsafe(32)
-    conn.execute("DELETE FROM sessions WHERE expires < ?", (now,))
-    conn.execute(
-        "INSERT INTO sessions (token, user_id, created, last_seen, expires, hashed) VALUES (?,?,?,?,?,1)",
-        (_session_key(token), user_id, now, now, now + SESSION_DAYS * 86400),
-    )
-    return token
-
-
-def _set_session_cookie(response: Response, token: str) -> None:
-    response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_DAYS * 86400, httponly=True,
-                        samesite="lax", secure=COOKIE_SECURE, path="/", domain=COOKIE_DOMAIN)
-
-
-def _get_session_user(request: Request) -> sqlite3.Row | None:
-    token = request.cookies.get(SESSION_COOKIE)
-    if not token:
-        return None
-    with _db_lock, _db() as conn:
-        row = conn.execute(
-            "SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token=? AND s.expires > ?",
-            (_session_key(token), time.time()),
-        ).fetchone()
-        if row is not None:
-            conn.execute("UPDATE sessions SET last_seen=? WHERE token=?", (time.time(), _session_key(token)))
-    if row is not None and not row["active"]:
-        return None
-    return row
-
-
-def _require_user(request: Request) -> sqlite3.Row:
-    user = _get_session_user(request)
-    if user is None:
-        raise HTTPException(401, "Connexion requise")
-    return user
-
-
-def _user_role(user: sqlite3.Row) -> str:
-    """Rôle effectif du compte (tolérant aux bases sans colonne role)."""
-    try:
-        role = (user["role"] or "").strip()
-    except (IndexError, KeyError):
-        role = ""
-    if role in ("member", "officer", "admin"):
-        return role
-    return "admin" if user["is_admin"] else "member"
-
-
-def _user_lang(user: sqlite3.Row) -> str:
-    """Langue préférée du compte (« fr » / « en », sinon vide = auto)."""
-    try:
-        lang = (user["lang"] or "").strip()
-    except (IndexError, KeyError):
-        lang = ""
-    return lang if lang in ("fr", "en") else ""
-
-
-def _user_locale(request: Request) -> str:
-    """Locale des données de jeu selon la langue du compte (« en » → en_US, sinon fr_FR)."""
-    user = _get_session_user(request)
-    return "en_US" if (user is not None and _user_lang(user) == "en") else "fr_FR"
-
-
-def _owns_char(user: sqlite3.Row, name: str) -> bool:
-    """Le personnage (par nom, insensible à la casse) est-il lié au compte ?"""
-    with _db_lock, _db() as conn:
-        row = conn.execute(
-            "SELECT 1 AS x FROM char_links WHERE user_email=? AND name=?",
-            (user["email"], (name or "").lower()),
-        ).fetchone()
-    return row is not None
-
-
-def _require_admin(request: Request) -> sqlite3.Row:
-    user = _require_user(request)
-    if _user_role(user) != "admin":
-        raise HTTPException(403, "Réservé à l'administrateur")
-    return user
-
-
-def _require_officer(request: Request) -> sqlite3.Row:
-    """Officier ou administrateur."""
-    user = _require_user(request)
-    if _user_role(user) not in ("officer", "admin"):
-        raise HTTPException(403, "Réservé aux officiers et administrateurs")
-    return user
+from app.core.auth import (
+    _session_key, _new_session, _set_session_cookie, _get_session_user, _require_user, _user_role,
+    _user_lang, _user_locale, _owns_char, _require_admin, _require_officer,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -8413,12 +8279,6 @@ def _sb_call(method: str, path: str, body=None, timeout: float = 20.0):
     except httpx.HTTPError as exc:
         raise HTTPException(502, f"Bot musique injoignable ({exc.__class__.__name__}).")
 
-
-def _require_officer(request: Request):
-    user = _require_user(request)
-    if _user_role(user) not in ("admin", "officer"):
-        raise HTTPException(403, "Réservé aux officiers et aux administrateurs.")
-    return user
 
 
 def _music_payload(j: dict) -> dict:
