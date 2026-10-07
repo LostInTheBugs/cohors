@@ -4786,19 +4786,6 @@ def api_char_snapdiff(realm: str, name: str, request: Request):
 # ---------------------------------------------------------------------------
 # Bot Discord (annonces de guilde)
 # ---------------------------------------------------------------------------
-class ApiKeyRequest(BaseModel):
-    """Clés d'un fournisseur : secret vide = inchangé ; clear=True = retour à l'environnement."""
-
-    provider: str = Field(..., max_length=20)
-    client_id: str | None = Field(None, max_length=200)
-    client_secret: str = Field("", max_length=400)
-    clear: bool = False
-
-
-class ApiKeyTestRequest(BaseModel):
-    provider: str = Field(..., max_length=20)
-
-
 class GcalImportRequest(BaseModel):
     payload: str = Field("", max_length=2_000_000)
 
@@ -4879,16 +4866,8 @@ def _gcal_parse(text: str) -> dict:
 # ---------------------------------------------------------------------------
 # Clés API (Battle.net, Warcraft Logs) — renseignées depuis l'administration
 # ---------------------------------------------------------------------------
-API_PROVIDERS = {
-    "bnet": {"label": "Battle.net (Blizzard)",
-             "help_url": "https://develop.battle.net/access/clients",
-             "help_fr": "Portail développeurs Blizzard → Clients API → « Create Client » (type Client Credentials).",
-             "module": "bnet"},
-    "wcl": {"label": "Warcraft Logs",
-            "help_url": "https://www.warcraftlogs.com/api/clients",
-            "help_fr": "Warcraft Logs → ton profil → API Clients → « Create Client » (Client Credentials).",
-            "module": "wcl"},
-}
+# app/services/api_keys.py
+from app.services.api_keys import _api_effective, _api_keys_rows, _apply_api_keys  # noqa: E402,F401
 
 
 # ---------------------------------------------------------------------------
@@ -5122,58 +5101,8 @@ def _snap_tick_job() -> None:
 # ---------------------------------------------------------------------------
 # E-mail (SMTP) — réglages de l'administration ; prioritaires sur l'environnement
 # ---------------------------------------------------------------------------
-MAIL_KEYS = ("host", "port", "mode", "user", "password", "sender", "helo")
-
-
-def _mail_rows() -> dict:
-    with _db_lock, _db() as conn:
-        rows = {r["key"]: r["value"] for r in conn.execute("SELECT * FROM mail_config").fetchall()}
-    pw = rows.get("password")
-    if pw:
-        rows["password"] = secretbox.decrypt(pw)
-    return rows
-
-
-def _apply_mail_config() -> None:
-    """Applique les réglages SMTP enregistrés (sinon retour aux variables d'environnement)."""
-    rows = _mail_rows()
-    mailer.set_config(rows if rows.get("host") and rows.get("user") else None)
-
-
-def _api_keys_rows() -> dict:
-    with _db_lock, _db() as conn:
-        rows = {r["provider"]: dict(r) for r in conn.execute("SELECT * FROM api_keys").fetchall()}
-    for prov, row in rows.items():
-        row["client_secret"] = secretbox.decrypt(row.get("client_secret") or "")
-    return rows
-
-
-def _apply_api_keys() -> None:
-    """Recopie les clés stockées vers les clients (prioritaires sur l'environnement)."""
-    rows = _api_keys_rows()
-    for prov, mod in (("bnet", bnet), ("wcl", wcl)):
-        row = rows.get(prov)
-        mod.set_credentials(row["client_id"] if row else None,
-                            row["client_secret"] if row else None)
-
-
-def _api_effective(prov: str) -> tuple[str, str, str]:
-    """(client_id, secret, source) effectifs pour un fournisseur — source : admin / env / aucune."""
-    rows = _api_keys_rows()
-    row = rows.get(prov)
-    if row and (row["client_id"] or row["client_secret"]):
-        return (row["client_id"], row["client_secret"], "admin")
-    cid, secret = (bnet.credentials() if prov == "bnet" else wcl.credentials())
-    if cid or secret:
-        return (cid, secret, "env")
-    return ("", "", "")
-
-
-def _mask(value: str, keep: int = 4) -> str:
-    v = (value or "").strip()
-    if not v:
-        return ""
-    return ("•" * 6 + v[-keep:]) if len(v) > keep else "•" * 6
+# app/services/mail_settings.py
+from app.services.mail_settings import _apply_mail_config, _mail_rows  # noqa: E402,F401
 
 
 # Réglages du bot Discord — app/services/bot.py
@@ -6814,100 +6743,10 @@ def api_gcal_relance(event_id: int, request: Request):
     return {"ok": True, "count": len(waiting)}
 
 
-@app.get("/api/admin/mail")
-def admin_mail_get(request: Request):
-    _require_admin(request)
-    rows = _mail_rows()
-    cfg = mailer._config()
-    env_ok = bool(os.environ.get("SMTP_HOST", "").strip() and os.environ.get("SMTP_USER", "").strip())
-    src = "admin" if (rows.get("host") and rows.get("user")) else ("env" if env_ok else "")
-    pw = rows.get("password") or ""
-    # undecryptable: lire la valeur brute en base
-    with _db_lock, _db() as conn:
-        raw_pw_row = conn.execute("SELECT value FROM mail_config WHERE key='password'").fetchone()
-        undecryptable_pw = bool(raw_pw_row) and secretbox.undecryptable(raw_pw_row["value"])
-    # password est exclu de config pour ne pas l'exposer en clair
-    public_cfg = {k: rows.get(k, "") for k in MAIL_KEYS if k != "password"}
-    return {
-        "config": public_cfg,
-        "password_hint": ("•" * 6 + pw[-4:]) if len(pw) >= 4 else ("•" * len(pw) if pw else ""),
-        "configured": cfg is not None,
-        "source": src,
-        "env_available": env_ok,
-        "effective": {"host": (cfg or {}).get("host", ""), "port": (cfg or {}).get("port", ""),
-                      "mode": (cfg or {}).get("mode", ""), "sender": (cfg or {}).get("sender", "")},
-        "undecryptable": undecryptable_pw,
-    }
+# E-mail (SMTP), administration — app/routers/admin_mail.py
+from app.routers import admin_mail as _admin_mail_router  # noqa: E402
 
-
-class MailConfigRequest(BaseModel):
-    values: dict[str, str] = {}
-    clear: bool = False
-
-
-@app.post("/api/admin/mail")
-def admin_mail_save(payload: MailConfigRequest, request: Request):
-    _require_admin(request)
-    if payload.clear:
-        with _db_lock, _db() as conn:
-            conn.execute("DELETE FROM mail_config")
-        _apply_mail_config()
-        return {"ok": True, "cleared": True}
-    values = {k: str(v).strip() for k, v in (payload.values or {}).items() if k in MAIL_KEYS}
-    if not values:
-        raise HTTPException(400, "Aucune valeur à enregistrer.")
-    rows = dict(_mail_rows())
-    if values.get("password", None) == "":
-        values.pop("password")  # mot de passe vide = inchangé
-    rows.update(values)
-    if not (rows.get("host") and rows.get("user")):
-        raise HTTPException(400, "Serveur et identifiant sont obligatoires.")
-    try:
-        port = int(rows.get("port") or 587)
-    except (TypeError, ValueError):
-        raise HTTPException(400, "Port invalide.")
-    if not (1 <= port <= 65535):
-        raise HTTPException(400, "Port entre 1 et 65535.")
-    mode = (rows.get("mode") or "starttls").lower()
-    if mode not in ("starttls", "ssl", "none"):
-        raise HTTPException(400, "Mode de sécurité inconnu.")
-    res = mailer.check(rows.get("host", ""), port, mode, rows.get("user", ""),
-                       rows.get("password", ""), rows.get("sender", ""), rows.get("helo", ""))
-    if not res["ok"]:
-        raise HTTPException(400, f"SMTP — {res['detail']}")
-    rows["port"] = str(port)
-    rows["mode"] = mode
-    with _db_lock, _db() as conn:
-        for k, v in rows.items():
-            val = secretbox.encrypt(v) if k == "password" else v
-            conn.execute("INSERT OR REPLACE INTO mail_config (key, value, updated) VALUES (?,?,?)",
-                         (k, val, time.time()))
-    _apply_mail_config()
-    return {"ok": True, "test": res["detail"]}
-
-
-class MailTestRequest(BaseModel):
-    to: str = Field(..., max_length=200)
-
-
-@app.post("/api/admin/mail/test")
-def admin_mail_test(payload: MailTestRequest, request: Request):
-    _require_admin(request)
-    to = payload.to.strip()
-    if "@" not in to or " " in to or len(to) < 6:
-        raise HTTPException(400, "Adresse e-mail invalide.")
-    ident = _brand_identity()
-    title = (ident["short_name"] or ident["guild_name"]).strip()
-    try:
-        mailer.send_mail(to, f"Test — {title}",
-                         f"Ceci est un e-mail de test envoyé depuis {title} "
-                         f"({ident['base_url'] or 'le site'}).\n\n"
-                         "Si tu reçois ce message, la configuration SMTP fonctionne.",
-                         f"<p>Ceci est un e-mail de test envoyé depuis <b>{title}</b>.</p>"
-                         "<p>Si tu reçois ce message, la configuration SMTP fonctionne.</p>")
-    except mailer.MailError as exc:
-        return {"ok": False, "detail": str(exc)}
-    return {"ok": True, "detail": f"E-mail de test envoyé à {to}."}
+app.include_router(_admin_mail_router.router)
 
 
 # ---------------------------------------------------------------------------
@@ -7214,79 +7053,10 @@ def api_setup_status(request: Request):
             "optional_total": sum(1 for s in steps if s["optional"])}
 
 
-@app.get("/api/admin/api-keys")
-def admin_api_keys_get(request: Request):
-    _require_admin(request)
-    rows = _api_keys_rows()
-    out = []
-    # raw values for undecryptable check
-    raw_map: dict[str, str] = {}
-    with _db_lock, _db() as conn:
-        for r in conn.execute("SELECT provider, client_secret FROM api_keys").fetchall():
-            raw_map[r["provider"]] = r["client_secret"]
-    for prov, meta in API_PROVIDERS.items():
-        cid, secret, source = _api_effective(prov)
-        row = rows.get(prov)
-        raw_cs = raw_map.get(prov)
-        out.append({
-            "provider": prov,
-            "label": meta["label"],
-            "help_url": meta["help_url"],
-            "help_fr": meta["help_fr"],
-            "configured": bool(cid and secret),
-            "source": source,  # admin | env | ""
-            "id_hint": (cid[:8] + "…" + cid[-4:]) if len(cid) > 14 else cid,
-            "secret_hint": _mask(secret),
-            "updated": (row["updated"] if row else 0),
-            "env_available": bool((os.environ.get(f"{'BNET' if prov == 'bnet' else 'WCL'}_CLIENT_ID", "").strip()
-                                   and os.environ.get(f"{'BNET' if prov == 'bnet' else 'WCL'}_CLIENT_SECRET", "").strip())),
-            "undecryptable": bool(raw_cs) and secretbox.undecryptable(raw_cs),
-        })
-    return {"providers": out}
+# Clés API, administration — app/routers/admin_api_keys.py
+from app.routers import admin_api_keys as _admin_api_keys_router  # noqa: E402
 
-
-@app.post("/api/admin/api-keys")
-def admin_api_keys_save(payload: ApiKeyRequest, request: Request):
-    _require_admin(request)
-    prov = payload.provider.strip().lower()
-    if prov not in API_PROVIDERS:
-        raise HTTPException(400, "Fournisseur inconnu.")
-    mod = bnet if prov == "bnet" else wcl
-    if payload.clear:
-        with _db_lock, _db() as conn:
-            conn.execute("DELETE FROM api_keys WHERE provider=?", (prov,))
-        _apply_api_keys()
-        return {"ok": True, "cleared": True}
-    cid, secret, _src = _api_effective(prov)
-    new_id = (payload.client_id or "").strip() or cid
-    new_secret = payload.client_secret.strip() or secret
-    if not new_id or not new_secret:
-        raise HTTPException(400, "Client ID et secret sont requis (le secret existant est conservé si le champ est vide).")
-    res = mod.check(new_id, new_secret)
-    if not res.get("ok"):
-        raise HTTPException(400, f'{API_PROVIDERS[prov]["label"]} — {res.get("detail")}')
-    if not (payload.client_id or "").strip() and not payload.client_secret.strip():
-        raise HTTPException(400, "Rien à enregistrer (champs vides).")
-    with _db_lock, _db() as conn:
-        conn.execute("INSERT OR REPLACE INTO api_keys (provider, client_id, client_secret, updated) VALUES (?,?,?,?)",
-                     (prov, new_id, secretbox.encrypt(new_secret), time.time()))
-    _apply_api_keys()
-    return {"ok": True}
-
-
-@app.post("/api/admin/api-keys/test")
-def admin_api_keys_test(payload: ApiKeyTestRequest, request: Request):
-    _require_admin(request)
-    prov = payload.provider.strip().lower()
-    if prov not in API_PROVIDERS:
-        raise HTTPException(400, "Fournisseur inconnu.")
-    cid, secret, source = _api_effective(prov)
-    if not cid or not secret:
-        return {"ok": False, "detail": "Aucune clé configurée.", "source": source}
-    mod = bnet if prov == "bnet" else wcl
-    res = mod.check(cid, secret)
-    res["source"] = source
-    return res
+app.include_router(_admin_api_keys_router.router)
 
 
 # Bot Discord (administration) — app/routers/admin_bot.py ; le récap hebdo reste ici pour l'instant.
