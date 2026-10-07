@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.005 - 2026-10-07
+
+### Changed
+
+- Internal: `app/main.py` split continues. The raid calendar (`/api/raids…`), the guild
+  dashboard (`/api/dashboard`) and My characters (`/api/me/chars…`, `/api/mains`) now live
+  in `app/routers/`. No user-visible change.
+
 ## 2026.10.004 - 2026-10-07
 
 ### Changed
