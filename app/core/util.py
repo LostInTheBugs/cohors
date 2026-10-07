@@ -1,6 +1,8 @@
 """Cohors — small pure helpers shared by several routers."""
 from __future__ import annotations
 
+import re
+
 
 def _int_any(v) -> int:
     """Entier depuis un nombre ou une chaîne (y compris hexadécimal « 0x… » écrit par le client WoW)."""
@@ -13,3 +15,6 @@ def _int_any(v) -> int:
         return int(v if v is not None else 0)
     except (TypeError, ValueError):
         return 0
+
+
+ITEM_REF_RE = re.compile(r"(?<!\d)(\d{4,7})(?!\d)")
