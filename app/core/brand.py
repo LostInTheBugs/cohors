@@ -27,3 +27,20 @@ def _brand_identity() -> dict:
     except sqlite3.Error:
         pass
     return {"guild_name": name, "short_name": short, "base_url": PUBLIC_BASE_URL}
+
+
+_IMG_SIGS = ((b"\x89PNG\r\n\x1a\n", "png", "image/png"),
+             (b"\xff\xd8\xff", "jpg", "image/jpeg"),
+             (b"GIF87a", "gif", "image/gif"),
+             (b"GIF89a", "gif", "image/gif"),
+             (b"RIFF", "webp", "image/webp"))
+
+
+def _img_type(raw: bytes):
+    """(extension, type MIME) d'après la signature du fichier, sinon ('', '')."""
+    for sig, ext, mime in _IMG_SIGS:
+        if raw.startswith(sig):
+            if sig == b"RIFF" and raw[8:12] != b"WEBP":
+                continue
+            return ext, mime
+    return "", ""
