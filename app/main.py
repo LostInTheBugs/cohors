@@ -49,8 +49,7 @@ from app.core.config import (
     DATA_DIR, BRAND_DIR, REPORTS_DIR, SIMC_IMAGE, SIM_TIMEOUT, QUEUE_MAX, PER_IP_ACTIVE,
     PER_IP_COOLDOWN_S, PER_USER_ACTIVE, ITER_CHOICES, DEFAULT_ITERATIONS, MAX_INPUT_CHARS,
     SESSION_COOKIE, SESSION_DAYS, PUBLIC_BASE_URL, COOKIE_SECURE, COOKIE_DOMAIN,
-    BOT_POLL_S, SNAP_POLL_S, SNAP_REFRESH_MIN, SNAP_KEEP_DAYS, SNAP_REFRESH_MIN_OTHER,
-    SNAP_MAX_PER_TICK, PROF_REFRESH_DAYS, VERSION, STATIC_DIR,
+    SNAP_KEEP_DAYS, VERSION, STATIC_DIR,
 )
 from app.core.db import _db, _db_lock  # noqa: F401
 from app.core.util import _int_any  # noqa: F401
@@ -4042,219 +4041,15 @@ from app.services.api_keys import _api_effective, _api_keys_rows, _apply_api_key
 # ---------------------------------------------------------------------------
 # Jobs de synchronisation — réglages (administration) + état du dernier passage
 # ---------------------------------------------------------------------------
-JOB_DEFAULTS = {
-    # relevés des personnages (char_snapshots) + métiers
-    "snap_enabled": "1",
-    "snap_interval_min": str(max(1, int(SNAP_POLL_S // 60))),
-    "snap_linked_h": str(max(1, int(SNAP_REFRESH_MIN // 60))),
-    "snap_roster_h": str(max(1, int(SNAP_REFRESH_MIN_OTHER // 60))),
-    "snap_max_tick": str(SNAP_MAX_PER_TICK),
-    "snap_keep_days": str(SNAP_KEEP_DAYS),
-    "prof_days": str(max(1, int(PROF_REFRESH_DAYS))),
-    # bot Discord (rapports + mouvements de guilde)
-    "bot_interval_min": str(max(1, BOT_POLL_S // 60)),
-}
+# Réglages et état des tâches de fond — app/services/jobs.py
+from app.services.jobs import (  # noqa: E402,F401
+    JOB_BOUNDS, JOB_DEFAULTS, _job_conf, _job_int, _job_status_rows, _job_status_set,
+)
+
+
 # bornes de saisie (min, max) par réglage
-JOB_BOUNDS = {
-    "snap_interval_min": (1, 1440), "snap_linked_h": (1, 168), "snap_roster_h": (1, 720),
-    "snap_max_tick": (1, 500), "snap_keep_days": (2, 30), "prof_days": (1, 60),
-    "bot_interval_min": (1, 1440),
-}
-
-
-def _job_rows() -> dict:
-    with _db_lock, _db() as conn:
-        return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM job_config").fetchall()}
-
-
-def _job_conf(key: str) -> str:
-    """Réglage effectif : valeur de l'administration, sinon défaut (constante d'environnement)."""
-    return _job_rows().get(key) or JOB_DEFAULTS.get(key, "")
-
-
-def _job_int(key: str) -> int:
-    try:
-        return int(float(_job_conf(key)))
-    except (TypeError, ValueError):
-        return int(float(JOB_DEFAULTS.get(key, "0") or 0))
-
-
-def _job_status_set(slug: str, detail: str = "", error: str = "") -> None:
-    with _db_lock, _db() as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO job_status (slug, last_run, detail, error) VALUES (?,?,?,?)",
-            (slug, time.time(), detail[:200], error[:200]))
-
-
-# ---------------------------------------------------------------- mises à jour (v2026.09.151)
-# L'app ne peut PAS redémarrer ses conteneurs (elle n'a ni socket Docker ni privilèges, et c'est
-# un choix de sécurité assumé). Elle vérifie donc les versions (lecture GitHub) et DÉPOSE une
-# demande dans DATA_DIR ; un petit service de l'hôte (deploy/apply-update.py + timer systemd)
-# l'applique. L'app affiche le battement de cœur et le dernier résultat de cet applicateur.
-UPD_REPO = "LostInTheBugs/cohors"
-UPD_CHECK_VALUES = (0, 6, 12, 24, 48, 168)          # heures entre deux vérifications (0 = jamais)
-UPD_DEFAULTS = {"upd_check_h": "24", "upd_apply_auto": "0"}
-_UPD_REQUEST = DATA_DIR / "update-request.json"
-_UPD_APPLIER = DATA_DIR / "update-applier.json"
-
-
-def _upd_rows() -> dict:
-    with _db_lock, _db() as conn:
-        return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM update_config").fetchall()}
-
-
-def _upd_conf(key: str) -> str:
-    return _upd_rows().get(key) or UPD_DEFAULTS.get(key, "")
-
-
-def _upd_set(updates: dict) -> None:
-    with _db_lock, _db() as conn:
-        for key, value in updates.items():
-            conn.execute(
-                "INSERT OR REPLACE INTO update_config (key, value, updated) VALUES (?,?,?)",
-                (str(key), str(value), time.time()))
-
-
-def _upd_vtuple(version: str) -> tuple:
-    """« 2026.09.150-c3 » → ((2026, 9, 150), 3) — comparer des versions du dépôt entre elles."""
-    base, _, corr = str(version or "").strip().partition("-c")
-    parts = []
-    for piece in base.split("."):
-        try:
-            parts.append(int(piece))
-        except ValueError:
-            parts.append(0)
-    while len(parts) < 3:
-        parts.append(0)
-    try:
-        corr_i = int(corr) if corr else 0
-    except ValueError:
-        corr_i = 0
-    return (tuple(parts[:3]), corr_i)
-
-
-def _upd_latest_release() -> dict:
-    """Dernière release publiée du dépôt (réseau — un seul appel, anonyme)."""
-    import urllib.request
-    req = urllib.request.Request(
-        f"https://api.github.com/repos/{UPD_REPO}/releases/latest",
-        headers={"User-Agent": f"Cohors/{VERSION}", "Accept": "application/vnd.github+json"})
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-    tag = str(data.get("tag_name") or "").strip()
-    if not tag:
-        raise ValueError("release sans étiquette de version")
-    return {"version": tag,
-            "published_at": str(data.get("published_at") or ""),
-            "url": str(data.get("html_url") or f"https://github.com/{UPD_REPO}/releases/tag/{tag}")}
-
-
-def _upd_read_json(path: Path) -> dict:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
-        return {}
-
-
-def _upd_sims_busy() -> bool:
-    """Ne jamais demander un redémarrage pendant une simulation (elle serait coupée)."""
-    try:
-        with _db_lock, _db() as conn:
-            row = conn.execute(
-                "SELECT COUNT(*) AS n FROM sims WHERE status IN ('queued','running')").fetchone()
-        return int(row["n"] or 0) > 0
-    except sqlite3.Error:
-        return True
-
-
-def _upd_state() -> dict:
-    rows = _upd_rows()
-    latest_v = str(rows.get("upd_latest") or "")
-    req = _upd_read_json(_UPD_REQUEST)
-    app = _upd_read_json(_UPD_APPLIER)
-    available = bool(latest_v) and _upd_vtuple(latest_v) > _upd_vtuple(VERSION)
-    try:
-        check_h = int(float(_upd_conf("upd_check_h")))
-    except (TypeError, ValueError):
-        check_h = 24
-    seen = float(app.get("seen_at") or 0)
-    return {
-        "current": VERSION,
-        "latest": ({"version": latest_v,
-                    "published_at": str(rows.get("upd_latest_at") or ""),
-                    "url": str(rows.get("upd_latest_url") or "")} if latest_v else None),
-        "available": available,
-        "check": {"last_at": float(rows.get("upd_checked") or 0),
-                  "error": str(rows.get("upd_error") or "")},
-        "request": ({"version": str(req.get("version") or ""),
-                     "requested_at": float(req.get("at") or 0),
-                     "by": str(req.get("by") or "")} if req.get("version") else None),
-        "applier": {"installed": seen > 0,
-                    "seen_at": seen,
-                    "applied": str(app.get("applied") or ""),
-                    "applied_at": float(app.get("at") or 0),
-                    "result": str(app.get("result") or ""),
-                    "running": str(app.get("running") or ""),
-                    "running_at": float(app.get("running_at") or 0)},
-        "settings": {"upd_check_h": check_h,
-                     "upd_apply_auto": _upd_conf("upd_apply_auto") == "1"},
-        "sims_busy": _upd_sims_busy(),
-    }
-
-
-def _upd_run_check() -> dict:
-    now = time.time()
-    try:
-        rel = _upd_latest_release()
-        _upd_set({"upd_latest": rel["version"], "upd_latest_at": rel["published_at"],
-                  "upd_latest_url": rel["url"], "upd_checked": now, "upd_error": ""})
-    except Exception as exc:  # noqa: BLE001 — réseau/API : on note l'échec, rien ne casse
-        _upd_set({"upd_checked": now, "upd_error": f"{type(exc).__name__} : {exc}"[:200]})
-    return _upd_state()
-
-
-def _upd_request_write(version: str, by: str) -> None:
-    _UPD_REQUEST.write_text(
-        json.dumps({"version": version, "at": time.time(), "by": by}, ensure_ascii=False),
-        encoding="utf-8")
-
-
-def _upd_tick() -> None:
-    """Cadence de vérification + application automatique (appelé par la boucle de fond)."""
-    try:
-        check_h = int(float(_upd_conf("upd_check_h")))
-    except (TypeError, ValueError):
-        check_h = 24
-    st = _upd_state()
-    due = check_h > 0 and (st["check"]["last_at"] == 0
-                           or time.time() - st["check"]["last_at"] >= check_h * 3600)
-    if due:
-        st = _upd_run_check()
-        if st["latest"]:
-            _job_status_set("update", detail=f"vérification OK — dernière {st['latest']['version']}")
-    if st["available"] and st["settings"]["upd_apply_auto"] and not st["request"]:
-        if _upd_sims_busy():
-            _job_status_set("update", detail="mise à jour en attente — simulation en cours")
-            return
-        _upd_request_write(st["latest"]["version"], "application automatique")
-        _job_status_set("update", detail=f"mise à jour {st['latest']['version']} demandée (automatique)")
-
-
-def _update_loop() -> None:
-    time.sleep(45)
-    while True:
-        try:
-            _upd_tick()
-        except Exception as exc:  # noqa: BLE001
-            print(f"[updates] {exc}")
-        time.sleep(600)
-
-
-def _job_status_rows() -> dict:
-    with _db_lock, _db() as conn:
-        return {r["slug"]: {"last_run": r["last_run"], "detail": r["detail"], "error": r["error"]}
-                for r in conn.execute("SELECT * FROM job_status").fetchall()}
+# Mises à jour — app/services/updates.py
+from app.services.updates import _update_loop  # noqa: E402
 
 
 def _snap_tick_job() -> None:
@@ -6024,69 +5819,10 @@ def admin_guild_test(payload: GuildTestRequest, request: Request):
             "wcl": wcl.guild_lookup(final["wcl_name"], final["realm"], final["wcl_region"])}
 
 
-class UpdateSettings(BaseModel):
-    values: dict[str, str] = {}
+# Mises à jour, administration — app/routers/admin_updates.py
+from app.routers import admin_updates as _admin_updates_router  # noqa: E402
 
-
-@app.get("/api/admin/updates")
-def api_admin_updates(request: Request):
-    """État des mises à jour : version installée, dernière release connue, demande, applicateur."""
-    _require_admin(request)
-    return {"ok": True, "state": _upd_state()}
-
-
-@app.post("/api/admin/updates")
-def api_admin_updates_save(payload: UpdateSettings, request: Request):
-    """Réglages : cadence de vérification et application automatique."""
-    _require_admin(request)
-    clean = {}
-    for key, value in (payload.values or {}).items():
-        if key == "upd_check_h":
-            try:
-                hours = int(float(str(value)))
-            except (TypeError, ValueError):
-                raise HTTPException(400, "Cadence de vérification invalide")
-            if hours not in UPD_CHECK_VALUES:
-                raise HTTPException(400, "Cadence de vérification hors bornes")
-            clean[key] = str(hours)
-        elif key == "upd_apply_auto":
-            if str(value) not in ("0", "1"):
-                raise HTTPException(400, "Application automatique : 0 ou 1 attendu")
-            clean[key] = str(value)
-    if clean:
-        _upd_set(clean)
-    return {"ok": True, "state": _upd_state()}
-
-
-@app.post("/api/admin/updates/check")
-def api_admin_updates_check(request: Request):
-    """Vérifie tout de suite la dernière release (un appel réseau)."""
-    _require_admin(request)
-    return {"ok": True, "state": _upd_run_check()}
-
-
-@app.post("/api/admin/updates/apply")
-def api_admin_updates_apply(request: Request):
-    """Dépose une demande de mise à jour ; l'applicateur de l'hôte l'applique (jamais le conteneur)."""
-    user = _require_admin(request)
-    st = _upd_state()
-    if not st["latest"]:
-        raise HTTPException(400, "Vérifie d'abord les mises à jour disponibles")
-    if not st["available"]:
-        raise HTTPException(400, f"Déjà à jour ({VERSION})")
-    _upd_request_write(st["latest"]["version"], str(user["email"]))
-    return {"ok": True, "state": _upd_state()}
-
-
-@app.delete("/api/admin/updates/request")
-def api_admin_updates_cancel(request: Request):
-    """Annule une demande de mise à jour en attente."""
-    _require_admin(request)
-    try:
-        _UPD_REQUEST.unlink()
-    except FileNotFoundError:
-        pass
-    return {"ok": True, "state": _upd_state()}
+app.include_router(_admin_updates_router.router)
 
 
 @app.get("/api/admin/jobs")
