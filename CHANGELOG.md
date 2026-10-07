@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.004 - 2026-10-07
+
+### Changed
+
+- Internal: `app/main.py` split begins. Configuration, the SQLite helper, sessions and role
+  guards now live in `app/core/`; the account settings routes (`/settings`, `/api/me/settings`,
+  `/api/me/password`) live in `app/routers/account.py`. No user-visible change.
+
 ## 2026.10.003 - 2026-10-05
 
 ### Changed
