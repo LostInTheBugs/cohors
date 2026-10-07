@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.007 - 2026-10-07
+
+### Changed
+
+- Internal: `app/main.py` split continues. API keys and SMTP settings now live in
+  `app/services/` and `app/routers/admin_api_keys.py` / `admin_mail.py`; backup and restore in
+  `app/routers/admin_backup.py`; the database schema and migrations in `app/core/schema.py`;
+  guild settings in `app/services/guild_settings.py`. No user-visible change.
+
 ## 2026.10.006 - 2026-10-07
 
 ### Changed
