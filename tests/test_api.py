@@ -15,6 +15,7 @@ os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="cohors-test-")
 os.environ["COOKIE_SECURE"] = "0"
 
 import app.main as M  # noqa: E402
+from app.services import updates as UPD  # noqa: E402  (code des mises à jour)
 from fastapi.testclient import TestClient  # noqa: E402
 
 client = TestClient(M.app)
@@ -459,7 +460,7 @@ def test_admin_updates_check_apply_cancel(monkeypatch):
     c = _admin_client("upd-admin2@test.local", "10.99.40.3")
     newer = {"version": "2099.01.001", "published_at": "2099-01-01T00:00:00Z",
              "url": "https://example.invalid/release"}
-    monkeypatch.setattr(M, "_upd_latest_release", lambda: newer)
+    monkeypatch.setattr(UPD, "_upd_latest_release", lambda: newer)
 
     r = c.post("/api/admin/updates/check")
     st = r.json()["state"]
@@ -470,29 +471,29 @@ def test_admin_updates_check_apply_cancel(monkeypatch):
     r = c.post("/api/admin/updates/apply")
     assert r.status_code == 200
     assert r.json()["state"]["request"]["version"] == "2099.01.001"
-    payload = json.loads(M._UPD_REQUEST.read_text(encoding="utf-8"))
+    payload = json.loads(UPD._UPD_REQUEST.read_text(encoding="utf-8"))
     assert payload["version"] == "2099.01.001"
 
     # annuler
     assert c.delete("/api/admin/updates/request").status_code == 200
-    assert not M._UPD_REQUEST.exists()
+    assert not UPD._UPD_REQUEST.exists()
 
     # une erreur réseau est enregistrée, sans casser l'endpoint
     def boom():
         raise OSError("réseau indisponible")
-    monkeypatch.setattr(M, "_upd_latest_release", boom)
+    monkeypatch.setattr(UPD, "_upd_latest_release", boom)
     st = c.post("/api/admin/updates/check").json()["state"]
     assert "réseau indisponible" in st["check"]["error"]
 
     # à jour → appliquer refuse
-    monkeypatch.setattr(M, "_upd_latest_release",
+    monkeypatch.setattr(UPD, "_upd_latest_release",
                         lambda: {"version": M.VERSION, "published_at": "", "url": ""})
     c.post("/api/admin/updates/check")
     assert c.post("/api/admin/updates/apply").status_code == 400
 
 
 def test_upd_vtuple_orders_versions():
-    vt = M._upd_vtuple
+    vt = UPD._upd_vtuple
     assert vt("2026.09.150") < vt("2026.09.151")
     assert vt("2026.09.149") < vt("2026.09.149-c1") < vt("2026.09.149-c3") < vt("2026.09.150")
     assert vt("2026.10.001") > vt("2026.09.199")
@@ -501,23 +502,23 @@ def test_upd_vtuple_orders_versions():
 def test_upd_tick_auto_apply_respects_sims(monkeypatch):
     c = _admin_client("upd-admin3@test.local", "10.99.40.4")
     c.post("/api/admin/updates", json={"values": {"upd_check_h": "0", "upd_apply_auto": "1"}})
-    monkeypatch.setattr(M, "_upd_latest_release",
+    monkeypatch.setattr(UPD, "_upd_latest_release",
                         lambda: {"version": "2099.02.002", "published_at": "", "url": ""})
-    M._upd_run_check()
+    UPD._upd_run_check()
     # une simulation en cours → la demande attend
     with M._db_lock, M._db() as conn:
         conn.execute("INSERT OR REPLACE INTO sims (id, created, ip, iterations, status,"
                      " input_hash, input_file, user_email)"
                      " VALUES ('upd-sim', ?, '10.0.0.1', 1, 'running', 'h', 'f', 'upd-admin3@test.local')",
                      (time.time(),))
-    M._upd_tick()
-    assert not M._UPD_REQUEST.exists()
+    UPD._upd_tick()
+    assert not UPD._UPD_REQUEST.exists()
     # simulation terminée → la demande part toute seule
     with M._db_lock, M._db() as conn:
         conn.execute("UPDATE sims SET status='done' WHERE id='upd-sim'")
-    M._upd_tick()
-    assert M._UPD_REQUEST.exists()
-    M._UPD_REQUEST.unlink()
+    UPD._upd_tick()
+    assert UPD._UPD_REQUEST.exists()
+    UPD._UPD_REQUEST.unlink()
     c.post("/api/admin/updates", json={"values": {"upd_apply_auto": "0"}})
 
 
