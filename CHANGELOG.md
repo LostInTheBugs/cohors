@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.008 - 2026-10-07
+
+### Changed
+
+- Internal: `app/main.py` split continues. The update panel and its background check now live
+  in `app/services/updates.py` and `app/routers/admin_updates.py`; background-job settings in
+  `app/services/jobs.py`; the wishlist in `app/routers/wishlist.py` with
+  `app/services/wishlist.py` and the loot-table sync in `app/services/loot.py`.
+  No user-visible change.
+
 ## 2026.10.007 - 2026-10-07
 
 ### Changed
