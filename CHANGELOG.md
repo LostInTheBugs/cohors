@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.006 - 2026-10-07
+
+### Changed
+
+- Internal: `app/main.py` split continues. Discord bot settings now live in
+  `app/services/bot.py` and `app/routers/admin_bot.py`; the admin accounts and invitations
+  routes in `app/routers/admin_users.py`; the guild identity helper in `app/core/brand.py`.
+  No user-visible change.
+
 ## 2026.10.005 - 2026-10-07
 
 ### Changed
