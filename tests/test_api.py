@@ -272,7 +272,8 @@ def _rebuild_archive(archive, overrides):
 def test_restore_rejects_decompression_bomb(monkeypatch):
     """Revue 20/09 : le plafond porte sur la taille DÉCOMPRESSÉE, pas sur le .tar.gz."""
     c = _admin_client("adminbomb@test.local", "10.99.11.1")
-    monkeypatch.setattr(M, "BACKUP_MAX_UNPACKED_MB", 1)
+    from app.routers import admin_backup  # le plafond vit avec la route de restauration
+    monkeypatch.setattr(admin_backup, "BACKUP_MAX_UNPACKED_MB", 1)
     big = b"\x00" * (1024 * 1024 + 512)
     arc = _tar_bytes({"manifest.json": b'{"app": "Cohors", "version": "1.0.0"}',
                       "wow.sqlite": b"x", "big.bin": big})
