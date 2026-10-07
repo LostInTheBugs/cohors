@@ -54,6 +54,7 @@ from app.core.config import (
     SNAP_MAX_PER_TICK, PROF_REFRESH_DAYS, VERSION, STATIC_DIR,
 )
 from app.core.db import _db, _db_lock  # noqa: F401
+from app.core.util import _int_any  # noqa: F401
 
 _login_attempts: dict[str, list[float]] = defaultdict(list)
 
@@ -4459,150 +4460,19 @@ app.include_router(_calendar_router.router)
 
 
 # ---------------------------------------------------------------------------
-# Tableau de bord (activité de la guilde)
+# Tableau de bord (activité de la guilde) — app/routers/dashboard.py
 # ---------------------------------------------------------------------------
-@app.get("/api/dashboard")
-def api_dashboard(request: Request):
-    _require_user(request)
-    with _db_lock, _db() as conn:
-        rows = conn.execute(
-            "SELECT kind, member, created FROM guild_events ORDER BY created DESC, id DESC LIMIT 15"
-        ).fetchall()
-        gcal = conn.execute("SELECT ts, player, data FROM gcal_import WHERE id=1").fetchone()
-    out: dict = {"events": [dict(r) for r in rows], "members": None, "next_raid": None}
-    try:
-        data, ts = bnet.roster()
-        out["members"] = {"count": len(data.get("members") or []), "fetched": ts}
-    except bnet.BnetError:
-        pass
-    # prochain raid d'apres le calendrier in-game importe (addon Cohors)
-    try:
-        if gcal is not None:
-            evs = (json.loads(gcal["data"]) or {}).get("events") or []
-            now = time.time()
-            upcoming = [e for e in evs if float(e.get("ts") or 0) > now - 3600]
-            upcoming.sort(key=lambda e: float(e.get("ts") or 0))
-            pick = next((e for e in upcoming if _int_any(e.get("type")) == 0), None)
-            if pick is None and upcoming:
-                pick = upcoming[0]
-            if pick is not None:
-                inv = pick.get("inv") or []
-                ok = sum(1 for i in inv if _int_any(i.get("s")) in (1, 3))
-                maybe = sum(1 for i in inv if _int_any(i.get("s")) == 8)
-                no = sum(1 for i in inv if _int_any(i.get("s")) == 2)
-                out["next_raid"] = {
-                    "title": str(pick.get("title") or "Raid"),
-                    "date": str(pick.get("date") or ""),
-                    "ts": float(pick.get("ts") or 0),
-                    "ok": ok, "maybe": maybe, "no": no, "wait": len(inv) - ok - maybe - no,
-                    "imported_at": gcal["ts"], "player": gcal["player"] or "",
-                }
-    except (ValueError, TypeError):
-        pass
-    return out
+from app.routers import dashboard as _dashboard_router  # noqa: E402
+
+app.include_router(_dashboard_router.router)
 
 
 # ---------------------------------------------------------------------------
-# Mes personnages (liaison compte ↔ personnages de guilde)
+# Mes personnages (liaison compte ↔ personnages de guilde) — app/routers/characters.py
 # ---------------------------------------------------------------------------
-class CharLinkRequest(BaseModel):
-    name: str = Field(..., min_length=2, max_length=40)
-    main: bool = False
+from app.routers import characters as _characters_router  # noqa: E402
 
-
-@app.get("/api/me/chars")
-def my_chars(request: Request):
-    user = _require_user(request)
-    with _db_lock, _db() as conn:
-        rows = conn.execute(
-            "SELECT id, realm, name, display, is_main, created FROM char_links WHERE user_email=? ORDER BY is_main DESC, display",
-            (user["email"],),
-        ).fetchall()
-    return {"chars": [dict(r) for r in rows]}
-
-
-@app.get("/api/mains")
-def api_mains(request: Request):
-    """Tous les personnages liés de la guilde, regroupés par compte/main (sans e-mails)."""
-    _require_user(request)
-    with _db_lock, _db() as conn:
-        rows = [dict(r) for r in conn.execute(
-            "SELECT c.user_email, c.realm, c.name, c.display, c.is_main, COALESCE(u.name, '') AS user_name "
-            "FROM char_links c LEFT JOIN users u ON u.email = c.user_email "
-            "ORDER BY c.is_main DESC, c.name COLLATE NOCASE"
-        ).fetchall()]
-    groups: dict = {}
-    for r in rows:
-        g = groups.setdefault(r["user_email"], {"user": r["user_name"] or "(compte)", "chars": []})
-        g["chars"].append({"realm": r["realm"], "name": r["name"],
-                           "display": r["display"] or r["name"], "main": bool(r["is_main"])})
-    out = list(groups.values())
-    for g in out:
-        g["chars"].sort(key=lambda c: (not c["main"], (c["display"] or "").lower()))
-    out.sort(key=lambda g: ((not any(c["main"] for c in g["chars"])), g["user"].lower()))
-    return {"ok": True, "accounts": out, "total_accounts": len(out), "total_chars": len(rows)}
-
-
-@app.post("/api/me/chars")
-def link_char(payload: CharLinkRequest, request: Request):
-    user = _require_user(request)
-    name = payload.name.strip()
-    try:
-        data, _ts = bnet.roster()
-    except bnet.BnetError as exc:
-        raise HTTPException(502, f"Roster indisponible : {exc}")
-    hit = next((m for m in (data.get("members") or []) if (m.get("name") or "").lower() == name.lower()), None)
-    if hit is None:
-        raise HTTPException(404, "Personnage introuvable dans le roster de la guilde — vérifie l'orthographe.")
-    realm = (hit.get("realm") or bnet.GUILD_REALM).lower()
-    display = hit.get("name") or name
-    lname = display.lower()
-    with _db_lock, _db() as conn:
-        dup = conn.execute(
-            "SELECT id FROM char_links WHERE user_email=? AND realm=? AND name=?",
-            (user["email"], realm, lname),
-        ).fetchone()
-        if dup is not None:
-            raise HTTPException(400, "Ce personnage est déjà lié à ton compte.")
-        taken = conn.execute(
-            "SELECT id FROM char_links WHERE realm=? AND name=? AND user_email != ? LIMIT 1",
-            (realm, lname, user["email"]),
-        ).fetchone() is not None
-        first_char = conn.execute(
-            "SELECT COUNT(*) AS c FROM char_links WHERE user_email=?", (user["email"],)
-        ).fetchone()["c"] == 0
-        set_main = bool(payload.main) or first_char
-        if set_main:
-            conn.execute("UPDATE char_links SET is_main=0 WHERE user_email=?", (user["email"],))
-        cur = conn.execute(
-            "INSERT INTO char_links (user_email, realm, name, display, is_main, created) VALUES (?,?,?,?,?,?)",
-            (user["email"], realm, lname, display, 1 if set_main else 0, time.time()),
-        )
-        cid = int(cur.lastrowid or 0)
-    return {"id": cid, "ok": True, "taken": taken, "display": display}
-
-
-@app.delete("/api/me/chars/{cid}")
-def unlink_char(cid: int, request: Request):
-    user = _require_user(request)
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT * FROM char_links WHERE id=?", (cid,)).fetchone()
-        if r is None or (r["user_email"] != user["email"] and not user["is_admin"]):
-            raise HTTPException(404, "Personnage non lié à ton compte.")
-        conn.execute("DELETE FROM char_links WHERE id=?", (cid,))
-    return {"ok": True}
-
-
-@app.post("/api/me/chars/{cid}/main")
-def set_main_char(cid: int, request: Request):
-    user = _require_user(request)
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT * FROM char_links WHERE id=?", (cid,)).fetchone()
-        if r is None or r["user_email"] != user["email"]:
-            raise HTTPException(404, "Personnage non lié à ton compte.")
-        conn.execute("UPDATE char_links SET is_main=0 WHERE user_email=?", (user["email"],))
-        conn.execute("UPDATE char_links SET is_main=1 WHERE id=?", (cid,))
-    return {"ok": True}
+app.include_router(_characters_router.router)
 
 
 # ---------------------------------------------------------------------------
@@ -5151,19 +5021,6 @@ def _lua_unescape(t: str) -> str:
             out.append(nxt)
             i += 2
     return "".join(out)
-
-
-def _int_any(v) -> int:
-    """Entier depuis un nombre ou une chaîne (y compris hexadécimal « 0x… » écrit par le client WoW)."""
-    try:
-        if isinstance(v, str):
-            s = v.strip()
-            if s.lower().startswith("0x"):
-                return int(s, 16)
-            return int(float(s))
-        return int(v if v is not None else 0)
-    except (TypeError, ValueError):
-        return 0
 
 
 def _gcal_parse(text: str) -> dict:
