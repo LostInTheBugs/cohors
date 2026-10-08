@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.010 - 2026-10-08
+
+### Changed
+
+- Internal: `app/main.py` split continues. The Mythic+ board now lives in
+  `app/routers/mplus.py`; the in-game calendar (addon import, officer targets, Discord
+  reminders) in `app/routers/gcal.py`. No user-visible change.
+
 ## 2026.10.009 - 2026-10-08
 
 ### Changed
