@@ -77,3 +77,17 @@ _CHARNAME_RE = re.compile(r"^[A-Za-z\u00c0-\u00ff][A-Za-z\u00c0-\u00ff'\-]{1,23}
 def _valid_char(realm: str, name: str) -> None:
     if not _REALM_RE.match(realm.lower()) or not _CHARNAME_RE.match(name):
         raise HTTPException(400, "Nom de personnage ou royaume invalide.")
+
+
+# Clés de classe anglaises (couleurs côté front) ↔ libellés Blizzard localisés (données stockées).
+CLASS_KEY_FR = {
+    "Chevalier de la mort": "DeathKnight", "Chasseur de démons": "DemonHunter", "Druide": "Druid",
+    "Évocateur": "Evoker", "Chasseur": "Hunter", "Mage": "Mage", "Moine": "Monk", "Paladin": "Paladin",
+    "Prêtre": "Priest", "Voleur": "Rogue", "Chaman": "Shaman", "Démoniste": "Warlock", "Guerrier": "Warrior",
+}
+
+
+def _pick(d: dict, key: str, want_en: bool):
+    """Valeur d'un relevé dans la langue demandée (version EN si dispo, sinon FR)."""
+    v = d.get(key)
+    return (d.get(key + "_en") or v) if want_en else v
