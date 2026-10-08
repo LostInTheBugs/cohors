@@ -5,6 +5,8 @@ import re
 import time
 from datetime import datetime
 
+from fastapi import HTTPException
+
 
 def _int_any(v) -> int:
     """Entier depuis un nombre ou une chaîne (y compris hexadécimal « 0x… » écrit par le client WoW)."""
@@ -66,3 +68,12 @@ def _lua_unescape(t: str) -> str:
             out.append(nxt)
             i += 2
     return "".join(out)
+
+
+_REALM_RE = re.compile(r"^[a-z0-9-]{2,40}$")
+_CHARNAME_RE = re.compile(r"^[A-Za-z\u00c0-\u00ff][A-Za-z\u00c0-\u00ff'\-]{1,23}$")
+
+
+def _valid_char(realm: str, name: str) -> None:
+    if not _REALM_RE.match(realm.lower()) or not _CHARNAME_RE.match(name):
+        raise HTTPException(400, "Nom de personnage ou royaume invalide.")

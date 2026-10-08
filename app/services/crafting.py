@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import json
 
+from app import bnet
+from app.core.db import _db, _db_lock
+
 
 def _known_craft_rows(conn, crafter: str | None = None) -> list[dict]:
     """Recettes connues d'après l'API Blizzard (métiers des personnages), au format de craft_recipes.
@@ -37,3 +40,17 @@ def _known_craft_rows(conn, crafter: str | None = None) -> list[dict]:
                              "item_id": g["item_id"] or 0, "expansion": g["tier"] or "",
                              "exp_rank": g["exp_rank"] or 0, "mats": g["mats"] or "[]"})
     return rows
+
+
+PROF_EN = {v: k for k, v in bnet.PROF_FR.items()}  # libellé FR → nom anglais (API)
+
+
+def _prof_store(realm: str, name: str, force: bool = False) -> None:
+    """Enregistre (ou remplace) les métiers d'un personnage."""
+    data, ts = bnet.professions(realm, name, force=force, locale="fr_FR")
+    with _db_lock, _db() as conn:
+        conn.execute(
+            "INSERT INTO char_professions (realm, name, ts, data) VALUES (?,?,?,?) "
+            "ON CONFLICT(realm, name) DO UPDATE SET ts=excluded.ts, data=excluded.data",
+            (realm.lower(), name.lower(), ts, json.dumps(data, ensure_ascii=False)),
+        )
