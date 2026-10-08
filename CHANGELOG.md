@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.009 - 2026-10-08
+
+### Changed
+
+- Internal: `app/main.py` split continues. The raid prep workshop now lives in
+  `app/routers/prep.py` with `app/services/game_recipes.py` and `app/services/crafting.py`;
+  the "Moi" space (M+ alerts, notifications, my recipes, unavailability) in
+  `app/routers/me.py` with `app/services/mplus.py`. No user-visible change.
+
 ## 2026.10.008 - 2026-10-07
 
 ### Changed
