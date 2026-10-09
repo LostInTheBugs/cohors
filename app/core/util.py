@@ -7,6 +7,8 @@ from datetime import datetime
 
 from fastapi import HTTPException
 
+from app.security import check_profile
+
 
 def _int_any(v) -> int:
     """Entier depuis un nombre ou une chaîne (y compris hexadécimal « 0x… » écrit par le client WoW)."""
@@ -91,3 +93,11 @@ def _pick(d: dict, key: str, want_en: bool):
     """Valeur d'un relevé dans la langue demandée (version EN si dispo, sinon FR)."""
     v = d.get(key)
     return (d.get(key + "_en") or v) if want_en else v
+
+
+def _reject_blocked_profile(text: str) -> None:
+    """Refuse les profils contenant des directives à effet fichier (SimC les honore)."""
+    blocked = check_profile(text)
+    if blocked:
+        raise HTTPException(400, f"Ligne « {blocked}= » non autorisée dans un profil — colle uniquement"
+                                 " ton export /simc (cette option touche aux fichiers du moteur).")
