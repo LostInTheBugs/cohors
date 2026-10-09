@@ -26,7 +26,7 @@ from urllib.parse import quote, unquote
 
 import httpx
 import websockets
-from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 # Configuration, database and auth helpers live in app/core (re-exported here).
 # ---------------------------------------------------------------------------
 from app.core.config import (
-    DATA_DIR, BRAND_DIR, SIMC_IMAGE,
+    DATA_DIR, SIMC_IMAGE,
     SESSION_COOKIE, SESSION_DAYS, PUBLIC_BASE_URL, COOKIE_SECURE, COOKIE_DOMAIN,
     VERSION, STATIC_DIR,
 )
@@ -79,23 +79,14 @@ def _bootstrap_admin() -> None:
 
 from app.core.auth import (
     _session_key, _new_session, _set_session_cookie, _get_session_user, _require_user, _user_role,
-    _user_lang, _require_admin, _require_officer,
+    _user_lang, _require_officer,
 )
 
 
 # ---------------------------------------------------------------------------
 # Identité de la guilde (v2026.09.111) — logo, nom et fond personnalisables.
 # ---------------------------------------------------------------------------
-from app.core.brand import _img_type  # noqa: E402
-
-
-_IMG_MIMES = {"png": "image/png", "jpg": "image/jpeg", "gif": "image/gif", "webp": "image/webp"}
-
-
 from app.core.brand import _brand_identity, _brand_row  # noqa: E402,F401  (app/core/brand.py)
-
-
-from app.core.brand import _brand_files  # noqa: E402  (app/core/brand.py)
 
 
 from app.core.auth import _client_ip  # noqa: E402  (app/core/auth.py)
@@ -142,90 +133,10 @@ from app.routers.admin_backup import _build_backup, _swap_file  # noqa: E402,F40
 app.include_router(_admin_backup_router.router)
 
 
-@app.get("/api/branding")
-def api_branding(request: Request):
-    """Identité publique (page de connexion incluse) : noms, logo et fond effectifs."""
-    with _db_lock, _db() as conn:
-        row = _brand_row(conn)
-    d = dict(row)
-    files = _brand_files()
-    short = (d.get("guild_short") or "Cohors").strip()[:24] or "Cohors"
-    name = (d.get("guild_name") or "").strip()[:60]
-    v = int(d.get("updated") or 0)
-    return {
-        "name": name, "short": short,
-        "logo": "/branding/logo?v=" + str(v),
-        "bg": ("/branding/bg?v=" + str(v)) if "bg" in files else "",
-        "bg_color": (d.get("bg_color") or "").strip(),
-        "custom_logo": "logo" in files, "custom_bg": "bg" in files,
-        "raw": {"name": d.get("guild_name") or "", "short": d.get("guild_short") or "",
-                "color": d.get("bg_color") or ""},
-    }
+# Identité de la guilde (noms, logo, fond) et son administration — app/routers/branding.py
+from app.routers import branding as _branding_router  # noqa: E402
 
-
-@app.get("/branding/logo")
-def branding_logo():
-    p = _brand_files().get("logo")
-    if p is not None:
-        return FileResponse(p, media_type=_IMG_MIMES.get(p.suffix.lower().lstrip("."), "image/png"),
-                            headers={"Cache-Control": "no-cache"})
-    return FileResponse(STATIC_DIR / "logo.png", media_type="image/png",
-                        headers={"Cache-Control": "no-cache"})
-
-
-@app.get("/branding/bg")
-def branding_bg():
-    p = _brand_files().get("bg")
-    if p is None:
-        raise HTTPException(404, "Pas de fond personnalisé")
-    return FileResponse(p, media_type=_IMG_MIMES.get(p.suffix.lower().lstrip("."), "image/png"),
-                        headers={"Cache-Control": "no-cache"})
-
-
-@app.post("/api/admin/branding")
-async def api_admin_branding(
-        request: Request,
-        guild_name: str = Form(""), guild_short: str = Form(""), bg_color: str = Form(""),
-        reset_logo: int = Form(0), reset_bg: int = Form(0), reset_color: int = Form(0),
-        reset_names: int = Form(0), reset_all: int = Form(0),
-        logo: UploadFile = File(None), bg: UploadFile = File(None)):
-    """Met à jour l'identité de la guilde (administrateur)."""
-    user = _require_admin(request)
-    if reset_all:
-        reset_logo = reset_bg = reset_color = reset_names = 1
-    gn = guild_name.strip()[:60]
-    gs = guild_short.strip()[:24]
-    col = bg_color.strip().lower()
-    if col and not re.match(r"^#([0-9a-f]{3}|[0-9a-f]{6})$", col):
-        raise HTTPException(400, "Couleur de fond invalide (ex. #0b0f17).")
-    BRAND_DIR.mkdir(parents=True, exist_ok=True)
-    for uf, key in ((logo, "logo"), (bg, "bg")):
-        if uf is None:
-            continue
-        raw = await uf.read()
-        if not raw:
-            continue
-        if len(raw) > 2 * 1024 * 1024:
-            raise HTTPException(413, "Image trop lourde (2 Mo max).")
-        ext, _mime = _img_type(raw)
-        if not ext:
-            raise HTTPException(400, "Format d'image non reconnu (PNG, JPEG, GIF ou WebP).")
-        for old in BRAND_DIR.glob(key + ".*"):
-            old.unlink(missing_ok=True)
-        (BRAND_DIR / f"{key}.{ext}").write_bytes(raw)
-    if reset_logo:
-        for old in BRAND_DIR.glob("logo.*"):
-            old.unlink(missing_ok=True)
-    if reset_bg:
-        for old in BRAND_DIR.glob("bg.*"):
-            old.unlink(missing_ok=True)
-    with _db_lock, _db() as conn:
-        _brand_row(conn)
-        conn.execute(
-            "UPDATE branding SET guild_name=?, guild_short=?, bg_color=?, updated=?, updated_by=? WHERE id=1",
-            ("" if reset_names else gn, "" if reset_names else gs,
-             "" if reset_color else col, time.time(), user["email"]))
-    return {"ok": True}
+app.include_router(_branding_router.router)
 
 
 # ---------------------------------------------------------------------------
@@ -564,49 +475,10 @@ app.include_router(_attendance_router.router)
 # ---------------------------------------------------------------------------
 # Wishlist (pièces à obtenir + gains)
 # ---------------------------------------------------------------------------
-@app.api_route("/manifest.webmanifest", methods=["GET", "HEAD"])
-def pwa_manifest(request: Request):
-    """Manifeste PWA dynamique : nom, nom court et icône suivent l'identité de la guilde."""
-    short, name = "Cohors", ""
-    try:
-        with _db_lock, _db() as conn:
-            row = _brand_row(conn)
-        short = (row["guild_short"] or "Cohors").strip()[:24] or "Cohors"
-        name = (row["guild_name"] or "").strip()[:60]
-    except sqlite3.Error:
-        pass
-    icons = []
-    if _brand_files().get("logo"):
-        icons.append({"src": "/branding/logo", "sizes": "any", "type": "image/png", "purpose": "any"})
-    icons += [
-        {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-        {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-        {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
-    ]
-    man = {
-        "name": f"{short} — {name}" if name else "Cohors — Compagnon de guilde",
-        "short_name": short,
-        "description": "Compagnon de guilde World of Warcraft — simulations, roster, raids, artisanat et suivi.",
-        "lang": "fr",
-        "start_url": "/dashboard",
-        "scope": "/",
-        "display": "standalone",
-        "background_color": "#0b0f17",
-        "theme_color": "#b1002e",
-        "icons": icons,
-    }
-    return Response(json.dumps(man, ensure_ascii=False), media_type="application/manifest+json")
+# PWA : manifeste, service worker, page hors-ligne — app/routers/pwa.py
+from app.routers import pwa as _pwa_router  # noqa: E402
 
-
-@app.api_route("/sw.js", methods=["GET", "HEAD"])
-def pwa_sw(request: Request):
-    return FileResponse(STATIC_DIR / "sw.js", media_type="application/javascript",
-                        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
-
-
-@app.api_route("/offline.html", methods=["GET", "HEAD"])
-def pwa_offline(request: Request):
-    return FileResponse(STATIC_DIR / "offline.html")
+app.include_router(_pwa_router.router)
 
 
 @app.api_route("/voice", methods=["GET", "HEAD"])
@@ -729,23 +601,10 @@ from app.services.bot import _bot_config, _bot_save  # noqa: E402,F401
 from app.services.bot_loop import _bot_loop  # noqa: E402
 
 
-@app.get("/api/addon")
-def api_addon(request: Request):
-    """Addon WoW « Cohors » (zip) — collecte le calendrier de guilde en jeu."""
-    _require_user(request)
-    import io as _io
-    import zipfile as _zip
-    src = Path(__file__).resolve().parent.parent / "addon" / "Cohors"
-    if not src.is_dir():
-        raise HTTPException(404, "Addon introuvable sur le serveur.")
-    buf = _io.BytesIO()
-    with _zip.ZipFile(buf, "w", _zip.ZIP_DEFLATED) as z:
-        for fp in sorted(src.glob("*")):
-            if fp.is_file():
-                z.write(fp, f"Cohors/{fp.name}")
-    buf.seek(0)
-    return Response(buf.read(), media_type="application/zip",
-                    headers={"Content-Disposition": 'attachment; filename="Cohors-addon.zip"'})
+# Addon WoW « Cohors » (zip) — app/routers/addon.py
+from app.routers import addon as _addon_router  # noqa: E402
+
+app.include_router(_addon_router.router)
 
 
 # ---------------------------------------------------------------------------
