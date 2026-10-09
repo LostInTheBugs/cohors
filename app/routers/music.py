@@ -271,9 +271,8 @@ def music_media(token: str, name: str):
     return FileResponse(path, media_type="audio/mpeg")
 
 
-@router.get("/api/music/channels")
-def music_channels(request: Request):
-    _require_officer(request)
+def _music_channel_list() -> list[dict]:
+    """Salons TeamSpeak vus par le bot : id, nom, chemin « parent/salon » et présence d'un mot de passe."""
     r = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/channels")
     try:
         raw = r.json()
@@ -285,6 +284,13 @@ def music_channels(request: Request):
         parent = c.get("parent") or 0
         path = (by_id.get(parent, "") + "/" + c.get("name", "")) if parent else c.get("name", "")
         out.append({"id": c.get("id"), "name": c.get("name", ""), "path": path, "hasPassword": bool(c.get("pw"))})
+    return out
+
+
+@router.get("/api/music/channels")
+def music_channels(request: Request):
+    _require_officer(request)
+    out = _music_channel_list()
     out.sort(key=lambda x: (x["path"] or "").lower())
     return {"ok": True, "channels": out}
 
@@ -314,17 +320,7 @@ def music_bot_set(payload: MusicBotConfig, request: Request):
             raise HTTPException(400, "Nom du bot invalide.")
         patch["nick"] = nick
     if payload.channel is not None:
-        rc = _sb_call("GET", f"/api/v1/bot/i/{SINUSBOT_INSTANCE}/channels")
-        try:
-            raw = rc.json()
-        except Exception:  # noqa: BLE001
-            raise HTTPException(502, "Liste des salons illisible.")
-        by_id = {c.get("id"): c.get("name", "") for c in raw}
-        valid = {}
-        for c in raw:
-            parent = c.get("parent") or 0
-            path = (by_id.get(parent, "") + "/" + c.get("name", "")) if parent else c.get("name", "")
-            valid[path] = bool(c.get("pw"))
+        valid = {c["path"]: c["hasPassword"] for c in _music_channel_list()}
         want = payload.channel.strip()
         if want not in valid:
             raise HTTPException(400, "Salon inconnu.")
