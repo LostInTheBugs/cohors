@@ -493,6 +493,26 @@ def test_admin_updates_check_apply_cancel(monkeypatch):
     assert c.post("/api/admin/updates/apply").status_code == 400
 
 
+def test_upd_manual_check_updates_jobs_status(monkeypatch):
+    """Le bouton « Vérifier » rafraîchit aussi la ligne « Mises à jour » de la page Jobs (succès et échec)."""
+    c = _admin_client("upd-admin4@test.local", "10.99.40.5")
+    with M._db_lock, M._db() as conn:
+        conn.execute("DELETE FROM job_status WHERE slug='update'")
+    monkeypatch.setattr(UPD, "_upd_latest_release",
+                        lambda: {"version": "2099.03.003", "published_at": "", "url": ""})
+    assert c.post("/api/admin/updates/check").status_code == 200
+    job = c.get("/api/admin/jobs").json()["status"]["update"]
+    assert job["detail"] == "vérification OK — dernière 2099.03.003" and job["error"] == ""
+    assert time.time() - job["last_run"] < 60
+
+    def boom():
+        raise OSError("réseau indisponible")
+    monkeypatch.setattr(UPD, "_upd_latest_release", boom)
+    assert c.post("/api/admin/updates/check").status_code == 200
+    job = c.get("/api/admin/jobs").json()["status"]["update"]
+    assert "réseau indisponible" in job["error"]
+
+
 def test_upd_vtuple_orders_versions():
     vt = UPD._upd_vtuple
     assert vt("2026.09.150") < vt("2026.09.151")

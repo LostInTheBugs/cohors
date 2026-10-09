@@ -129,13 +129,20 @@ def _upd_state() -> dict:
 
 
 def _upd_run_check() -> dict:
+    """Vérifie la dernière release (cadence automatique ou bouton « Vérifier »).
+
+    Met aussi à jour la ligne « Mises à jour » de la page Jobs, quel que soit le déclencheur.
+    """
     now = time.time()
     try:
         rel = _upd_latest_release()
         _upd_set({"upd_latest": rel["version"], "upd_latest_at": rel["published_at"],
                   "upd_latest_url": rel["url"], "upd_checked": now, "upd_error": ""})
+        _job_status_set("update", detail=f"vérification OK — dernière {rel['version']}")
     except Exception as exc:  # noqa: BLE001 — réseau/API : on note l'échec, rien ne casse
-        _upd_set({"upd_checked": now, "upd_error": f"{type(exc).__name__} : {exc}"[:200]})
+        err = f"{type(exc).__name__} : {exc}"[:200]
+        _upd_set({"upd_checked": now, "upd_error": err})
+        _job_status_set("update", error=err)
     return _upd_state()
 
 
@@ -156,8 +163,6 @@ def _upd_tick() -> None:
                            or time.time() - st["check"]["last_at"] >= check_h * 3600)
     if due:
         st = _upd_run_check()
-        if st["latest"]:
-            _job_status_set("update", detail=f"vérification OK — dernière {st['latest']['version']}")
     if st["available"] and st["settings"]["upd_apply_auto"] and not st["request"]:
         if _upd_sims_busy():
             _job_status_set("update", detail="mise à jour en attente — simulation en cours")
