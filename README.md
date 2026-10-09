@@ -338,7 +338,7 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
 
 ## Version
 
-Current version: `2026.10.016` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Current version: `2026.10.017` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
 Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.149` is the 149th build of September 2026;
 corrections add a `-cN` suffix (`2026.09.149-c2`).
 
