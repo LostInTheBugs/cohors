@@ -337,3 +337,13 @@ def _snap_summary(day: str, ts: float, d: dict, want_en: bool = False) -> dict:
             "ilvl": d.get("ilvl"), "ilvl_avg": d.get("ilvl_avg"),
             "achv": d.get("achv"), "mounts": d.get("mounts"), "pets": d.get("pets"),
             "mplus": d.get("mplus"), "src": d.get("src")}
+
+
+def _snap_tick_job() -> None:
+    """Passage des relevés déclenché depuis l'administration."""
+    try:
+        res = _snap_tick()
+        _job_status_set("snapshots", detail=f'{res.get("snapped", 0)} relevé(s), '
+                                            f'{res.get("profs", 0)} métier(s)')
+    except Exception as exc:  # noqa: BLE001
+        _job_status_set("snapshots", error=str(exc))

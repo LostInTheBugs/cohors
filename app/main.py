@@ -95,18 +95,7 @@ _IMG_MIMES = {"png": "image/png", "jpg": "image/jpeg", "gif": "image/gif", "webp
 from app.core.brand import _brand_identity, _brand_row  # noqa: E402,F401  (app/core/brand.py)
 
 
-def _brand_files() -> dict:
-    """Fichiers personnalisés présents : {'logo': Path, 'bg': Path}."""
-    out: dict = {}
-    if BRAND_DIR.is_dir():
-        for p in sorted(BRAND_DIR.iterdir()):
-            if not p.is_file():
-                continue
-            if p.name.startswith("logo."):
-                out["logo"] = p
-            elif p.name.startswith("bg."):
-                out["bg"] = p
-    return out
+from app.core.brand import _brand_files  # noqa: E402  (app/core/brand.py)
 
 
 from app.core.auth import _client_ip  # noqa: E402  (app/core/auth.py)
@@ -689,7 +678,7 @@ from app.core.util import _lua_unescape, _snap_day  # noqa: E402,F401
 
 
 from app.services.crafting import _known_craft_rows  # noqa: E402  (tests)
-from app.services.snapshots import _snap_loop, _snap_tick  # noqa: E402  (démarrage, jobs d'administration)
+from app.services.snapshots import _snap_loop  # noqa: E402  (démarrage)
 from app.routers import snapshots as _snapshots_router  # noqa: E402
 
 app.include_router(_snapshots_router.router)
@@ -723,16 +712,6 @@ from app.services.jobs import (  # noqa: E402,F401
 # bornes de saisie (min, max) par réglage
 # Mises à jour — app/services/updates.py
 from app.services.updates import _update_loop  # noqa: E402
-
-
-def _snap_tick_job() -> None:
-    """Passage des relevés déclenché depuis l'administration."""
-    try:
-        res = _snap_tick()
-        _job_status_set("snapshots", detail=f'{res.get("snapped", 0)} relevé(s), '
-                                            f'{res.get("profs", 0)} métier(s)')
-    except Exception as exc:  # noqa: BLE001
-        _job_status_set("snapshots", error=str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -804,109 +783,13 @@ app.include_router(_admin_mail_router.router)
 
 
 # ---------------------------------------------------------------------------
-# Guilde (royaume, région, Warcraft Logs) — réglages de l'administration
+# Guilde (royaume, région, Warcraft Logs) — réglages de l'administration — app/routers/admin_guild.py
 # ---------------------------------------------------------------------------
-GUILD_KEYS = ("region", "realm", "slug", "locale", "wcl_region", "wcl_name")
-GUILD_BNET_REGIONS = ("eu", "us", "kr", "tw")
-GUILD_WCL_REGIONS = ("EU", "US", "KR", "TW", "CN")
-GUILD_LOCALES = ("en_US", "es_MX", "pt_BR", "en_GB", "es_ES", "fr_FR", "ru_RU",
-                 "de_DE", "it_IT", "ko_KR", "zh_TW", "zh_CN")
-_GUILD_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,48}$")
-
-
 # app/services/guild_settings.py
 from app.services.guild_settings import _apply_guild_config, _guild_effective, _guild_rows  # noqa: E402,F401
+from app.routers import admin_guild as _admin_guild_router  # noqa: E402
 
-
-def _guild_normalize(values: dict) -> dict:
-    """Normalise puis valide les valeurs fournies (400 avec motif si invalide)."""
-    clean: dict = {}
-    if values.get("region"):
-        region = str(values["region"]).strip().lower()
-        if region not in GUILD_BNET_REGIONS:
-            raise HTTPException(400, "Région Battle.net inconnue (au choix : eu, us, kr, tw).")
-        clean["region"] = region
-    if values.get("wcl_region"):
-        wcl_region = str(values["wcl_region"]).strip().upper()
-        if wcl_region not in GUILD_WCL_REGIONS:
-            raise HTTPException(400, "Région Warcraft Logs inconnue (au choix : EU, US, KR, TW, CN).")
-        clean["wcl_region"] = wcl_region
-    if values.get("locale"):
-        locale = str(values["locale"]).strip()
-        if locale not in GUILD_LOCALES:
-            raise HTTPException(400, "Langue de données inconnue (ex. fr_FR, en_US, de_DE).")
-        clean["locale"] = locale
-    for key, label in (("realm", "royaume"), ("slug", "slug de guilde")):
-        if values.get(key):
-            val = str(values[key]).strip().lower()
-            if not _GUILD_SLUG_RE.match(val):
-                raise HTTPException(400, f"Le {label} doit être un slug en minuscules (ex. hyjal, ma-guilde).")
-            clean[key] = val
-    if values.get("wcl_name"):
-        name = str(values["wcl_name"]).strip()
-        if len(name) > 60:
-            raise HTTPException(400, "Nom Warcraft Logs trop long (60 caractères maximum).")
-        clean["wcl_name"] = name
-    return clean
-
-
-class GuildConfigRequest(BaseModel):
-    values: dict[str, str] = {}
-    clear: bool = False
-
-
-class GuildTestRequest(BaseModel):
-    values: dict[str, str] = {}
-
-
-@app.get("/api/admin/guild")
-def admin_guild_get(request: Request):
-    _require_admin(request)
-    rows = _guild_rows()
-    return {"config": _guild_effective(),
-            "source": {k: ("admin" if rows.get(k) else "env") for k in GUILD_KEYS}}
-
-
-@app.post("/api/admin/guild")
-def admin_guild_save(payload: GuildConfigRequest, request: Request):
-    _require_admin(request)
-    if payload.clear:
-        with _db_lock, _db() as conn:
-            conn.execute("DELETE FROM guild_config")
-        _apply_guild_config()
-        return {"ok": True, "cleared": True}
-    values = {k: str(v).strip() for k, v in (payload.values or {}).items() if k in GUILD_KEYS}
-    if not values:
-        raise HTTPException(400, "Aucune valeur à enregistrer.")
-    clean = _guild_normalize(values)
-    with _db_lock, _db() as conn:
-        for key in values:
-            value = clean.get(key, "")
-            if value:
-                conn.execute("INSERT OR REPLACE INTO guild_config (key, value, updated) VALUES (?,?,?)",
-                             (key, value, time.time()))
-            else:
-                conn.execute("DELETE FROM guild_config WHERE key=?", (key,))
-    _apply_guild_config()
-    return {"ok": True, "config": _guild_effective()}
-
-
-@app.post("/api/admin/guild/test")
-def admin_guild_test(payload: GuildTestRequest, request: Request):
-    """Contrôle (des valeurs saisies, sinon de celles en vigueur) sur les deux services."""
-    _require_admin(request)
-    eff = _guild_effective()
-    overrides = {k: str(v).strip() for k, v in (payload.values or {}).items()
-                 if k in GUILD_KEYS and str(v).strip()}
-    values = {k: overrides.get(k) or eff.get(k, "") for k in GUILD_KEYS}
-    try:
-        clean = _guild_normalize(values)
-    except HTTPException as exc:
-        detail = str(exc.detail)
-        return {"bnet": {"ok": False, "detail": detail}, "wcl": {"ok": False, "detail": detail}}
-    final = {**values, **clean}
-    return {"bnet": bnet.guild_lookup(final["realm"], final["slug"], final["region"]),
-            "wcl": wcl.guild_lookup(final["wcl_name"], final["realm"], final["wcl_region"])}
+app.include_router(_admin_guild_router.router)
 
 
 # Mises à jour, administration — app/routers/admin_updates.py
@@ -915,121 +798,18 @@ from app.routers import admin_updates as _admin_updates_router  # noqa: E402
 app.include_router(_admin_updates_router.router)
 
 
-@app.get("/api/admin/jobs")
-def admin_jobs_get(request: Request):
-    _require_admin(request)
-    return {"config": {k: _job_conf(k) for k in JOB_DEFAULTS},
-            "bounds": JOB_BOUNDS,
-            "defaults": JOB_DEFAULTS,
-            "status": _job_status_rows()}
+# Tâches de fond, administration (réglages, état, relevés à la demande) — app/routers/admin_jobs.py
+from app.routers import admin_jobs as _admin_jobs_router  # noqa: E402
 
-
-class JobConfigRequest(BaseModel):
-    values: dict[str, str] = {}
-
-
-@app.post("/api/admin/jobs")
-def admin_jobs_save(payload: JobConfigRequest, request: Request):
-    _require_admin(request)
-    saved = {}
-    for key, value in (payload.values or {}).items():
-        if key not in JOB_DEFAULTS:
-            continue
-        val = str(value).strip()
-        if key.endswith("_enabled"):
-            saved[key] = "1" if val in ("1", "true", "on", "yes") else "0"
-            continue
-        try:
-            num = int(float(val))
-        except (TypeError, ValueError):
-            raise HTTPException(400, f"Valeur invalide pour {key}.")
-        lo, hi = JOB_BOUNDS.get(key, (1, 100000))
-        if not (lo <= num <= hi):
-            raise HTTPException(400, f"{key} doit être entre {lo} et {hi}.")
-        saved[key] = str(num)
-    if saved:
-        with _db_lock, _db() as conn:
-            for k, v in saved.items():
-                conn.execute("INSERT OR REPLACE INTO job_config (key, value, updated) VALUES (?,?,?)",
-                             (k, v, time.time()))
-    return {"ok": True, "saved": saved}
-
-
-class JobRunRequest(BaseModel):
-    slug: str = Field(..., max_length=30)
-
-
-@app.post("/api/admin/jobs/run")
-def admin_jobs_run(payload: JobRunRequest, request: Request):
-    _require_admin(request)
-    slug = payload.slug.strip().lower()
-    if slug == "snapshots":
-        threading.Thread(target=_snap_tick_job, daemon=True, name="snap-manual").start()
-        return {"ok": True, "started": True}
-    raise HTTPException(400, "Ce job ne peut pas être lancé à la demande.")
+app.include_router(_admin_jobs_router.router)
 
 
 # ---------------------------------------------------------------------------
-# Première configuration (v2026.09.146) — checklist d'installation sur /start
+# Première configuration (v2026.09.146) — checklist d'installation sur /start — app/routers/setup.py
 # ---------------------------------------------------------------------------
-@app.get("/api/setup/status")
-def api_setup_status(request: Request):
-    """État des étapes de mise en route de la guilde (réservé aux administrateurs)."""
-    _require_admin(request)
-    with _db_lock, _db() as conn:
-        n_admins = conn.execute(
-            "SELECT COUNT(*) AS c FROM users WHERE active=1 AND (is_admin=1 OR role='admin')"
-        ).fetchone()["c"]
-        n_users = conn.execute("SELECT COUNT(*) AS c FROM users WHERE active=1").fetchone()["c"]
-        n_invites = conn.execute("SELECT COUNT(*) AS c FROM invites WHERE used IS NULL").fetchone()["c"]
-        brand = dict(_brand_row(conn))
-    cfg = _bot_config()
-    bot = cfg
-    g = _guild_effective()
-    bnet_id, bnet_secret, _s1 = _api_effective("bnet")
-    wcl_id, wcl_secret, _s2 = _api_effective("wcl")
-    mail_host = (_mail_rows().get("host") or os.environ.get("SMTP_HOST", "")).strip()
-    guild_txt = " · ".join(x for x in (str(g.get("realm") or ""), str(g.get("slug") or "")) if x)
-    brand_name = (brand.get("guild_name") or "").strip()
-    members_txt = f"{n_users} membre" + ("s" if n_users > 1 else "")
-    if n_invites:
-        members_txt += f" · {n_invites} invitation" + ("s" if n_invites > 1 else "") + " en attente"
-    steps = [
-        {"key": "admin", "label": "Compte administrateur", "done": n_admins > 0, "optional": False,
-         "hint": "Créé au premier démarrage avec ADMIN_EMAIL / ADMIN_PASSWORD.", "detail": "",
-         "href": "/settings#comptes"},
-        {"key": "guild", "label": "Guilde du serveur", "done": bool(g.get("realm") and g.get("slug")),
-         "optional": False,
-         "hint": "Royaume, région, slug Battle.net et nom Warcraft Logs — bouton 🔎 Vérifier.",
-         "detail": guild_txt, "href": "/settings#guilde"},
-        {"key": "bnet", "label": "Clés API Battle.net", "done": bool(bnet_id and bnet_secret),
-         "optional": False,
-         "hint": "Portail développeurs Blizzard → Clients API (roster et fiches de personnages).",
-         "detail": "", "href": "/settings#api"},
-        {"key": "wcl", "label": "Clés API Warcraft Logs", "done": bool(wcl_id and wcl_secret),
-         "optional": False,
-         "hint": "Warcraft Logs → API Clients (page Rapports).", "detail": "", "href": "/settings#api"},
-        {"key": "identity", "label": "Identité du site", "done": bool(brand_name or "logo" in _brand_files()),
-         "optional": False,
-         "hint": "Nom de guilde, nom court, logo et fond.", "detail": brand_name,
-         "href": "/settings#identite"},
-        {"key": "smtp", "label": "✉️ E-mail (SMTP)", "done": bool(mail_host), "optional": True,
-         "hint": "Optionnel — pour envoyer les invitations par e-mail.", "detail": mail_host,
-         "href": "/settings#mail"},
-        {"key": "discord", "label": "Bot Discord",
-         "done": bool(bot and (bot["token"] or "").strip()), "optional": True,
-         "hint": "Optionnel — jeton du bot pour les annonces de rapports et de mouvements.", "detail": "",
-         "href": "/settings#bot"},
-        {"key": "members", "label": "Premiers membres", "done": n_users > 1 or n_invites > 0,
-         "optional": False,
-         "hint": "Crée une invitation, envoie le lien, ils s'inscrivent eux-mêmes.", "detail": members_txt,
-         "href": "/settings#invitations"},
-    ]
-    required = [s for s in steps if not s["optional"]]
-    return {"steps": steps, "done": sum(1 for s in steps if s["done"]), "total": len(steps),
-            "required_done": sum(1 for s in required if s["done"]), "required_total": len(required),
-            "optional_done": sum(1 for s in steps if s["optional"] and s["done"]),
-            "optional_total": sum(1 for s in steps if s["optional"])}
+from app.routers import setup as _setup_router  # noqa: E402
+
+app.include_router(_setup_router.router)
 
 
 # Clés API, administration — app/routers/admin_api_keys.py

@@ -4,7 +4,7 @@ from __future__ import annotations
 import sqlite3
 import time
 
-from app.core.config import PUBLIC_BASE_URL
+from app.core.config import BRAND_DIR, PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
 
 
@@ -44,3 +44,17 @@ def _img_type(raw: bytes):
                 continue
             return ext, mime
     return "", ""
+
+
+def _brand_files() -> dict:
+    """Fichiers personnalisés présents : {'logo': Path, 'bg': Path}."""
+    out: dict = {}
+    if BRAND_DIR.is_dir():
+        for p in sorted(BRAND_DIR.iterdir()):
+            if not p.is_file():
+                continue
+            if p.name.startswith("logo."):
+                out["logo"] = p
+            elif p.name.startswith("bg."):
+                out["bg"] = p
+    return out
