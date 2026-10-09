@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.012 - 2026-10-09
+
+### Changed
+
+- Internal: `app/main.py` split continues. The simulation engine (queue, worker, SimC
+  crash fallback, per-kind runners) now lives in `app/services/sims.py`; the simulation,
+  "Stuff conseillé" and report routes in `app/routers/sims.py`; saved profiles and group
+  simulations in `app/routers/profiles.py`. No user-visible change.
+
 ## 2026.10.011 - 2026-10-09
 
 ### Changed
