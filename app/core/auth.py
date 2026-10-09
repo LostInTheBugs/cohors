@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import secrets
 import sqlite3
 import time
@@ -10,6 +11,7 @@ from fastapi import HTTPException, Request, Response
 
 from app.core.config import COOKIE_DOMAIN, COOKIE_SECURE, SESSION_COOKIE, SESSION_DAYS
 from app.core.db import _db, _db_lock
+from app.security import real_client_ip
 
 
 def _session_key(token: str) -> str:
@@ -105,3 +107,14 @@ def _require_officer(request: Request) -> sqlite3.Row:
     if _user_role(user) not in ("officer", "admin"):
         raise HTTPException(403, "Réservé aux officiers et administrateurs")
     return user
+
+
+def _client_ip(request: Request) -> str:
+    # Voir app/security.py:real_client_ip — on lit l'IP à TRUSTED_PROXY_HOPS positions de la fin
+    # d'X-Forwarded-For (défaut 1 : notre proxy) ; le reste est fourni par le client et forgeable.
+    try:
+        hops = max(1, int(os.environ.get("TRUSTED_PROXY_HOPS", "1")))
+    except ValueError:
+        hops = 1
+    return real_client_ip(request.headers.get("x-forwarded-for"),
+                          request.client.host if request.client else None, hops=hops)

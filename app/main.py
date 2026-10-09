@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import asyncio
-import hashlib
 import hmac
 import json
 import os
@@ -20,7 +19,6 @@ import re
 import sqlite3
 import threading
 import time
-import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
@@ -32,12 +30,12 @@ import websockets
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field
 
 import httpx
 
 from app import bnet, discord_bot, mailer, wcl
-from app.security import check_profile, hash_password as _hash_password, real_client_ip, verify_password as _verify_password
+from app.security import hash_password as _hash_password, verify_password as _verify_password
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +43,7 @@ logger = logging.getLogger(__name__)
 # Configuration, database and auth helpers live in app/core (re-exported here).
 # ---------------------------------------------------------------------------
 from app.core.config import (
-    DATA_DIR, BRAND_DIR, REPORTS_DIR, SIMC_IMAGE, QUEUE_MAX, PER_IP_ACTIVE,
-    PER_IP_COOLDOWN_S, PER_USER_ACTIVE, ITER_CHOICES, DEFAULT_ITERATIONS, MAX_INPUT_CHARS,
+    DATA_DIR, BRAND_DIR, SIMC_IMAGE,
     SESSION_COOKIE, SESSION_DAYS, PUBLIC_BASE_URL, COOKIE_SECURE, COOKIE_DOMAIN,
     SNAP_KEEP_DAYS, VERSION, STATIC_DIR,
 )
@@ -57,14 +54,6 @@ _login_attempts: dict[str, list[float]] = defaultdict(list)
 
 
 from app.core.schema import _init_db  # noqa: E402  (app/core/schema.py)
-
-
-def _reject_blocked_profile(text: str) -> None:
-    """Refuse les profils contenant des directives à effet fichier (SimC les honore)."""
-    blocked = check_profile(text)
-    if blocked:
-        raise HTTPException(400, f"Ligne « {blocked}= » non autorisée dans un profil — colle uniquement"
-                                 " ton export /simc (cette option touche aux fichiers du moteur).")
 
 
 # Hachage des mots de passe (scrypt) et garde-fous des profils SimulationCraft :
@@ -121,15 +110,7 @@ def _brand_files() -> dict:
     return out
 
 
-def _client_ip(request: Request) -> str:
-    # Voir app/security.py:real_client_ip — on lit l'IP à TRUSTED_PROXY_HOPS positions de la fin
-    # d'X-Forwarded-For (défaut 1 : notre proxy) ; le reste est fourni par le client et forgeable.
-    try:
-        hops = max(1, int(os.environ.get("TRUSTED_PROXY_HOPS", "1")))
-    except ValueError:
-        hops = 1
-    return real_client_ip(request.headers.get("x-forwarded-for"),
-                          request.client.host if request.client else None, hops=hops)
+from app.core.auth import _client_ip  # noqa: E402  (app/core/auth.py)
 
 
 # ---------------------------------------------------------------------------
@@ -548,437 +529,16 @@ def register(payload: RegisterRequest, request: Request, response: Response):
 
 
 # ---------------------------------------------------------------------------
-# Sim API
+# Sim API — app/routers/sims.py
 # ---------------------------------------------------------------------------
-GEAR_MAX_ITEMS = 15
-from app.core.util import ITEM_REF_RE  # noqa: E402
-
-
-def _build_gear_input(profile_text: str, items_text: str, locale: str | None = None) -> tuple[str, list[str]]:
-    """Ajoute les profilesets « Top Stuff » au profil — renvoie (input, avertissements)."""
-    refs: list[int] = []
-    seen: set[int] = set()
-    for m in ITEM_REF_RE.finditer(items_text or ""):
-        iid = int(m.group(1))
-        if iid not in seen:
-            seen.add(iid)
-            refs.append(iid)
-    if not refs:
-        raise HTTPException(400, "Indique au moins une pièce (lien Wowhead ou identifiant).")
-    warnings: list[str] = []
-    if len(refs) > GEAR_MAX_ITEMS:
-        warnings.append(f"{len(refs) - GEAR_MAX_ITEMS} pièce(s) ignorée(s) — maximum {GEAR_MAX_ITEMS} par comparaison.")
-        refs = refs[:GEAR_MAX_ITEMS]
-    lines: list[str] = []
-    for iid in refs:
-        try:
-            it = bnet.item(iid, locale=locale)
-        except bnet.BnetError as exc:
-            warnings.append(f"{iid} : pièce ignorée ({exc}).")
-            continue
-        slots = bnet.INV_TO_SLOTS.get(it["inv_type"])
-        if not slots:
-            warnings.append(f"{it['name']} : emplacement non géré ({it['inv_type_fr'] or it['inv_type'] or '?'}).")
-            continue
-        clean = it["name"].replace('"', "'")[:48]
-        for slot in slots:
-            lines.append(f'profileset."{clean} · {bnet.slot_label(slot, locale)} [{slot}:{iid}]"={slot}=,id={iid}')
-    if not lines:
-        raise HTTPException(400, "Aucune pièce exploitable parmi celles fournies.")
-    return profile_text + "\n\n" + "\n".join(lines) + "\n", warnings
-
-
-# « Stuff conseillé » (export SimC, guide BIS, artisanat, classement) — app/services/stuff.py
+# « Stuff conseillé » : réexportés pour les tests (code dans app/services/stuff.py)
 from app.services.stuff import (  # noqa: E402,F401
-    BIS_CONTENT_MAP, BIS_CONTENTS, HEAL_SPECS, STUFF_CONTENTS, STUFF_HEAL_PRIO, STUFF_ITERATIONS, STUFF_SLOTS,
-    _stuff_best_crafted, _stuff_bis_filter, _stuff_bis_list, _stuff_parse_export, _stuff_sim_input,
+    BIS_CONTENT_MAP, _stuff_best_crafted, _stuff_bis_filter, _stuff_parse_export, _stuff_sim_input,
 )
+from app.routers import sims as _sims_router  # noqa: E402
+from app.routers.sims import BLIZZ_LOADOUT, _blizz_talents_for, _spec_token  # noqa: E402,F401  (tests)
 
-
-class SimRequest(BaseModel):
-    input: str = Field(..., min_length=30, max_length=MAX_INPUT_CHARS)
-    iterations: int = DEFAULT_ITERATIONS
-    label: str = ""
-    kind: str = "dps"
-    items: str = Field("", max_length=2000)
-
-
-@app.post("/api/sim")
-def submit_sim(payload: SimRequest, request: Request):
-    user = _require_user(request)
-    if payload.iterations not in ITER_CHOICES:
-        raise HTTPException(400, f"Valeurs d'itérations acceptées : {', '.join(map(str, ITER_CHOICES))}")
-    kind = payload.kind if payload.kind in ("dps", "weights", "gear") else None
-    if kind is None:
-        raise HTTPException(400, "Type de simulation invalide.")
-    text = payload.input.replace("\r\n", "\n").strip()
-    label = payload.label.strip()[:60]
-    warnings: list[str] = []
-    if kind == "gear":
-        text, warnings = _build_gear_input(text, payload.items, locale=_user_locale(request))
-    _reject_blocked_profile(text)
-    ip = _client_ip(request)
-    now = time.time()
-
-    with _db_lock, _db() as conn:
-        active = conn.execute(
-            "SELECT COUNT(*) AS c FROM sims WHERE ip=? AND status IN ('queued','running')", (ip,)
-        ).fetchone()["c"]
-        if active >= PER_IP_ACTIVE:
-            raise HTTPException(429, f"Tu as déjà {active} simulation(s) en attente — patiente un peu.")
-        user_active = conn.execute(
-            "SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')", (user["email"],)
-        ).fetchone()["c"]
-        if user_active >= PER_USER_ACTIVE:
-            raise HTTPException(429, f"Tu as déjà {user_active} simulation(s) en attente — patiente un peu.")
-        last_ts = conn.execute("SELECT MAX(created) AS m FROM sims WHERE ip=?", (ip,)).fetchone()["m"]
-        if last_ts and now - last_ts < PER_IP_COOLDOWN_S:
-            wait = int(PER_IP_COOLDOWN_S - (now - last_ts)) + 1
-            raise HTTPException(429, f"Doucement ! Réessaie dans {wait} s.")
-        queue_len = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status IN ('queued','running')").fetchone()["c"]
-        if queue_len >= QUEUE_MAX:
-            raise HTTPException(503, "La file est pleine, réessaie dans quelques minutes.")
-
-        input_hash = hashlib.sha256(f"{kind}\n{payload.iterations}\n{text}".encode()).hexdigest()
-        cached = conn.execute(
-            "SELECT * FROM sims WHERE input_hash=? AND status='done' ORDER BY finished DESC LIMIT 1", (input_hash,)
-        ).fetchone()
-
-        sim_id = uuid.uuid4().hex[:20]
-        sim_dir = REPORTS_DIR / sim_id
-        sim_dir.mkdir(parents=True, exist_ok=True)
-        input_file = sim_dir / "input.simc"
-        input_file.write_text(text)
-
-        if cached:
-            conn.execute(
-                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, cached_from,
-                                     dps, dps_error_pct, wall_s, report_html, report_json, started, finished,
-                                     user_email, user_name, kind, weights)
-                   VALUES (?,?,?,?,?, 'done', ?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), cached["id"],
-                 cached["dps"], cached["dps_error_pct"], cached["wall_s"], cached["report_html"], cached["report_json"],
-                 now, now, user["email"], user["name"], kind, cached["weights"]),
-            )
-            return {"id": sim_id, "status": "done", "cached": True, "warnings": warnings}
-
-        conn.execute(
-            """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, user_email, user_name, kind)
-               VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, ?)""",
-            (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"], kind),
-        )
-        return {"id": sim_id, "status": "queued", "cached": False, "position": queue_len + 1, "warnings": warnings}
-
-
-BLIZZ_LOADOUT = "Talents actuels (Blizzard)"
-
-
-def _spec_token(name: str) -> str:
-    """« Beast Mastery » -> « beast_mastery » (nom de spé anglais -> jeton SimC)."""
-    return re.sub(r"[^a-z]+", "_", (name or "").lower()).strip("_")
-
-
-def _blizz_talents_for(parsed: dict) -> str | None:
-    """Code de talents en jeu (API Blizzard) pour la spé de l'export, ou None."""
-    name = (parsed.get("name") or "").strip()
-    realm = (parsed.get("server") or bnet.GUILD_REALM or "").strip().lower().replace("_", "-")
-    if not name or not realm or not parsed.get("spec"):
-        return None
-    try:
-        t, _ts = bnet.talents(realm, name, locale="en_US")   # noms de spé anglais = jetons SimC
-    except bnet.BnetError:
-        return None
-    for lo in t.get("loadouts") or []:
-        if _spec_token(lo.get("spec") or "") == parsed["spec"] and lo.get("code"):
-            return lo["code"]
-    return None
-
-
-@app.get("/api/stuff/profile/{pid}")
-def stuff_profile(pid: int, request: Request):
-    """Résumé d'un export : classe/spé, builds détectés, nb de pièces."""
-    _require_user(request)
-    with _db_lock, _db() as conn:
-        prof = conn.execute("SELECT id, name, input FROM profiles WHERE id=?", (pid,)).fetchone()
-    if prof is None:
-        raise HTTPException(404, "Profil introuvable.")
-    parsed = _stuff_parse_export(prof["input"])
-    blizz = _blizz_talents_for(parsed)
-    loadouts = [l["name"] for l in parsed["loadouts"]] + ([BLIZZ_LOADOUT] if blizz else [])
-    return {"id": prof["id"], "name": prof["name"], "cls": parsed["cls"], "spec": parsed["spec"],
-            "level": parsed["level"], "loadouts": loadouts,
-            "talents_changed": bool(blizz and parsed["talents"] and blizz != parsed["talents"]),
-            "equipped": len(parsed["equipped"]), "bags": len(parsed["bags"]),
-            "heal": parsed["spec"] in HEAL_SPECS,
-            "prio_known": f'{parsed["cls"]}/{parsed["spec"]}' in STUFF_HEAL_PRIO,
-            "prio_note": (STUFF_HEAL_PRIO.get(f'{parsed["cls"]}/{parsed["spec"]}') or {}).get("note_fr", "")}
-
-
-class StuffRequest(BaseModel):
-    profile_id: int
-    loadout: str = ""
-    content: str = "raid"                # raid | mplus | delves
-    mode: str = "cur"                    # cur | max | bis
-    bis: bool = False                    # si vrai, lance le guide BIS
-    bis_content: list[str] = Field(default_factory=list, max_length=10)  # contenus filtrés quand mode=bis
-    max_rank: bool = False               # compat : équivaut à mode="max" (obsolète)
-
-    @field_validator("bis_content")
-    @classmethod
-    def _validate_bis_content(cls, v: list[str]) -> list[str]:
-        """Valider les valeurs de bis_content : inconnu → 400, dédoublonner, max 5."""
-        if not v:
-            return v
-        # Dédoublonner tout en préservant l'ordre
-        seen: set[str] = set()
-        unique: list[str] = []
-        for item in v:
-            if item not in seen:
-                seen.add(item)
-                unique.append(item)
-        # Limite de taille
-        if len(unique) > 5:
-            raise ValueError("bis_content ne doit pas dépasser 5 valeurs.")
-        # Chaque valeur doit être dans BIS_CONTENTS
-        invalid = [c for c in unique if c not in BIS_CONTENTS]
-        if invalid:
-            raise ValueError(f"Valeur(s) inconnue(s) dans bis_content : {invalid}")
-        return unique
-
-    @model_validator(mode="before")
-    @classmethod
-    def _normalize(cls, v: dict) -> dict:
-        """Normaliser mode/max_rank et valider mode connu."""
-        if not isinstance(v, dict):
-            return v
-        # max_rank=True sans mode → mode="max" (avant de vérifier le mode)
-        if "mode" not in v and v.get("max_rank"):
-            v["mode"] = "max"
-            v["max_rank"] = True
-        else:
-            mode = v.get("mode", "cur")
-            if mode in ("cur", "max"):
-                v["mode"] = mode
-                v["max_rank"] = mode == "max"
-            elif mode == "bis":
-                v["mode"] = "bis"
-                v["bis"] = True
-            else:
-                v["mode"] = "cur"
-                v["max_rank"] = False
-        return v
-
-
-@app.post("/api/stuff")
-def submit_stuff(payload: StuffRequest, request: Request):
-    """« Stuff conseillé » : que porter, avec ce qu'on possède, pour un ou plusieurs contenus."""
-    user = _require_user(request)
-    with _db_lock, _db() as conn:
-        prof = conn.execute("SELECT id, name, input FROM profiles WHERE id=?", (payload.profile_id,)).fetchone()
-    if prof is None:
-        raise HTTPException(404, "Profil introuvable.")
-    parsed = _stuff_parse_export(prof["input"])
-    if not parsed["bags"]:
-        raise HTTPException(400, "Cet export ne contient pas les pièces des sacs — réexporte ton personnage avec l'addon (les sacs sont inclus automatiquement).")
-    loadout = next((l for l in parsed["loadouts"] if l["name"] == payload.loadout), None)
-    if payload.loadout == BLIZZ_LOADOUT and loadout is None:
-        code = _blizz_talents_for(parsed)
-        if not code:
-            raise HTTPException(400, "Talents Blizzard indisponibles pour ce personnage et cette spé.")
-        loadout = {"name": BLIZZ_LOADOUT, "talents": code}
-    if payload.loadout and loadout is None:
-        raise HTTPException(400, "Build introuvable dans cet export.")
-    ip = _client_ip(request)
-    now = time.time()
-
-    # Valider les contenus
-    if payload.bis:
-        # BIS : validation de bis_content (liste) — réutilisée plus bas
-        sim_contents = []
-    else:
-        # Non-BIS : payload.content est une chaîne unique
-        if payload.content not in STUFF_CONTENTS:
-            raise HTTPException(400, f"Contenu invalide : {payload.content}")
-        sim_contents = [payload.content]
-
-    with _db_lock, _db() as conn:
-        active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
-                              (user["email"],)).fetchone()["c"]
-
-    # BIS : une seule simulation combinée (tous les contenus cochés fusionnés)
-    if payload.bis:
-        if active >= PER_USER_ACTIVE:
-            raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
-        if _stuff_bis_list(parsed["cls"], parsed["spec"]) is None:
-            raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
-        bis_contents = payload.bis_content if payload.bis_content else ["raid"]
-        valid_bis = [c for c in bis_contents if c in BIS_CONTENTS]
-        sim_id = uuid.uuid4().hex[:20]
-        sim_dir = REPORTS_DIR / sim_id
-        sim_dir.mkdir(parents=True, exist_ok=True)
-        input_file = sim_dir / "input.simc"
-        input_file.write_text("")
-        label_parts = [f'{prof["name"]} · BIS']
-        for c in valid_bis:
-            label_parts.append(BIS_CONTENTS[c]["label_fr"])
-        label = " / ".join(label_parts) + \
-                (f' · {loadout["name"]}' if loadout else "")
-        plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
-                "spec": parsed["spec"], "loadout": loadout or {}, "content": valid_bis,
-                "mode": "bis", "max_rank": False, "bis": True}
-        with _db_lock, _db() as conn:
-            conn.execute(
-                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
-                                     user_email, user_name, kind, plan)
-                   VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
-                (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
-                 user["email"], user["name"], json.dumps(plan)))
-        return {"id": sim_id, "status": "queued", "sim_ids": [sim_id],
-                "heal": parsed["spec"] in HEAL_SPECS,
-                "loadouts": [l["name"] for l in parsed["loadouts"]]}
-
-    # Non-BIS (mode cur ou max) : simuler le contenu sélectionné
-    if not sim_contents:
-        raise HTTPException(400, "Aucun contenu valide sélectionné.")
-    sim_ids = []
-    for c in sim_contents:
-        with _db_lock, _db() as conn:
-            active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
-                                  (user["email"],)).fetchone()["c"]
-            if active >= PER_USER_ACTIVE:
-                raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
-            sim_id = uuid.uuid4().hex[:20]
-            sim_dir = REPORTS_DIR / sim_id
-            sim_dir.mkdir(parents=True, exist_ok=True)
-            input_file = sim_dir / "input.simc"
-            input_file.write_text("")
-            plan = {"profile_id": prof["id"], "profile_name": prof["name"], "cls": parsed["cls"],
-                    "spec": parsed["spec"], "loadout": loadout or {}, "content": c,
-                    "mode": payload.mode, "max_rank": payload.max_rank}
-            label = f'{prof["name"]} · {STUFF_CONTENTS[c]["label_fr"]}' + \
-                    ("" if payload.mode != "max" else " · rang max") + \
-                    (f' · {loadout["name"]}' if loadout else "")
-            conn.execute(
-                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
-                                     user_email, user_name, kind, plan)
-                   VALUES (?,?,?,?,?, 'queued', ?, ?, ?, ?, 'stuff', ?)""",
-                (sim_id, now, ip, label[:60], STUFF_ITERATIONS, f"stuff:{sim_id}", str(input_file),
-                 user["email"], user["name"], json.dumps(plan)))
-            sim_ids.append(sim_id)
-
-    return {"id": sim_ids[0] if sim_ids else None, "status": "queued", "sim_ids": sim_ids,
-            "heal": parsed["spec"] in HEAL_SPECS,
-            "loadouts": [l["name"] for l in parsed["loadouts"]]}
-
-
-def _parse_weights_json(raw: str | None) -> list | None:
-    if not raw:
-        return None
-    try:
-        return json.loads(raw)
-    except Exception:  # noqa: BLE001
-        return None
-
-
-def _public_row(r: sqlite3.Row) -> dict:
-    return {
-        "id": r["id"],
-        "created": r["created"],
-        "label": r["label"],
-        "user_name": r["user_name"],
-        "iterations": r["iterations"],
-        "status": r["status"],
-        "cached": bool(r["cached_from"]),
-        "dps": r["dps"],
-        "dps_error_pct": r["dps_error_pct"],
-        "wall_s": r["wall_s"],
-        "has_report": r["status"] == "done" and bool(r["report_html"]),
-        "error": (r["error"] or "")[:300] if r["status"] == "failed" else None,
-        "note": ((r["error"] or "")[:300] or None) if r["status"] == "done" else None,
-        "kind": (r["kind"] or "dps"),
-        "weights": _parse_weights_json(r["weights"]) if r["kind"] == "weights" else None,
-        "gear": _parse_weights_json(r["gear"]) if r["kind"] == "gear" else None,
-        "group": _parse_weights_json(r["gear"]) if r["kind"] == "group" else None,
-    }
-
-
-@app.get("/api/sims")
-def list_sims(request: Request):
-    _require_user(request)
-    with _db_lock, _db() as conn:
-        rows = conn.execute("SELECT * FROM sims ORDER BY created DESC LIMIT 50").fetchall()
-    return {"sims": [_public_row(r) for r in rows], "version": VERSION}
-
-
-@app.get("/api/sims/{sim_id}")
-def get_sim(sim_id: str, request: Request):
-    _require_user(request)
-    loc = _user_locale(request)
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT * FROM sims WHERE id=?", (sim_id,)).fetchone()
-    if r is None:
-        raise HTTPException(404, "Simulation inconnue")
-    d = _public_row(r)
-    d["cached_from"] = r["cached_from"]
-    if r["kind"] == "gear" and d.get("gear"):
-        base = r["dps"] or 0.0
-        enriched = []
-        for g in d["gear"]:
-            m = re.search(r"\[(\w+):(\d+)\]$", g.get("name") or "")
-            slot, item_id = (m.group(1), int(m.group(2))) if m else (None, None)
-            label = re.sub(r"\s*\[[^\]]*\]\s*$", "", g.get("name") or "")
-            info = {}
-            if item_id:
-                try:
-                    info = bnet.item(item_id, locale=loc)
-                except bnet.BnetError:
-                    info = {}
-            dps = float(g.get("dps") or 0.0)
-            enriched.append({
-                "label": label,
-                "slot": slot,
-                "slot_fr": bnet.slot_label(slot, loc),
-                "item_id": item_id,
-                "name": info.get("name") or label,
-                "icon": info.get("icon"),
-                "quality": info.get("quality") or "COMMON",
-                "dps": dps,
-                "err_pct": round(100 * (float(g.get("err") or 0.0)) / dps, 2) if dps else None,
-                "delta": (dps - base) if base else None,
-                "delta_pct": round(100 * (dps - base) / base, 2) if base else None,
-            })
-        enriched.sort(key=lambda e: e["dps"], reverse=True)
-        d["gear"] = enriched
-        d["gear_base_dps"] = base
-    if r["kind"] == "stuff":
-        st = _parse_weights_json(r["gear"])
-        if st:
-            for e in st.get("slots") or []:
-                e["slot_fr"] = bnet.slot_label(e.get("slot"), loc)
-            for e in st.get("items") or []:
-                e["slot_fr"] = bnet.slot_label(e.get("slot"), loc)
-        d["stuff"] = st
-        if st and st.get("mode") == "bis":
-            d["stuff"]["slot_fr"] = {k: bnet.slot_label(k, loc) for k in STUFF_SLOTS}
-    return d
-
-
-@app.get("/reports/{sim_id}/report.html")
-def report_html(sim_id: str):
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT report_html FROM sims WHERE id=?", (sim_id,)).fetchone()
-    if r is None or not r["report_html"] or not Path(r["report_html"]).exists():
-        raise HTTPException(404, "Rapport introuvable")
-    return FileResponse(r["report_html"], media_type="text/html")
-
-
-@app.get("/reports/{sim_id}/report.json")
-def report_json(sim_id: str):
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT report_json FROM sims WHERE id=?", (sim_id,)).fetchone()
-    if r is None or not r["report_json"] or not Path(r["report_json"]).exists():
-        raise HTTPException(404, "Rapport introuvable")
-    return FileResponse(r["report_json"], media_type="application/json")
+app.include_router(_sims_router.router)
 
 
 # ---------------------------------------------------------------------------
@@ -1221,246 +781,11 @@ def api_compare(request: Request, chars: str = "", refresh: int = 0):
 
 
 # ---------------------------------------------------------------------------
-# Profils de simulation (exports /simc sauvegardés, partageables guilde)
+# Profils de simulation (exports /simc sauvegardés, partageables guilde) — app/routers/profiles.py
 # ---------------------------------------------------------------------------
-MAX_PROFILES = 20
+from app.routers import profiles as _profiles_router  # noqa: E402
 
-
-class ProfileRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=60)
-    input: str = Field(..., min_length=30, max_length=MAX_INPUT_CHARS)
-    shared: bool = False
-
-
-class ProfilePatch(BaseModel):
-    name: str | None = Field(None, max_length=60)
-    input: str | None = Field(None, min_length=30, max_length=MAX_INPUT_CHARS)
-    shared: bool | None = None
-
-
-def _profile_public(r: sqlite3.Row, mine: bool) -> dict:
-    return {
-        "id": r["id"],
-        "name": r["name"],
-        "user_name": r["user_name"],
-        "shared": bool(r["shared"]),
-        "updated": r["updated"],
-        "size": len(r["input"] or ""),
-        "mine": mine,
-    }
-
-
-@app.get("/api/profiles")
-def list_profiles(request: Request):
-    user = _require_user(request)
-    with _db_lock, _db() as conn:
-        mine = conn.execute(
-            "SELECT * FROM profiles WHERE user_email=? ORDER BY updated DESC LIMIT 100", (user["email"],)
-        ).fetchall()
-        shared = conn.execute(
-            "SELECT * FROM profiles WHERE shared=1 AND user_email<>? ORDER BY updated DESC LIMIT 100", (user["email"],)
-        ).fetchall()
-    return {"mine": [_profile_public(r, True) for r in mine], "shared": [_profile_public(r, False) for r in shared]}
-
-
-@app.get("/api/profiles/{pid}")
-def get_profile(pid: int, request: Request):
-    user = _require_user(request)
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT * FROM profiles WHERE id=?", (pid,)).fetchone()
-    if r is None:
-        raise HTTPException(404, "Profil inconnu.")
-    mine = r["user_email"] == user["email"]
-    if not mine and not r["shared"]:
-        raise HTTPException(403, "Ce profil n'est pas partagé.")
-    d = _profile_public(r, mine)
-    d["input"] = r["input"]
-    return d
-
-
-@app.post("/api/profiles")
-def create_profile(payload: ProfileRequest, request: Request):
-    user = _require_user(request)
-    name = payload.name.strip()
-    if not name:
-        raise HTTPException(400, "Nom de profil requis.")
-    text = payload.input.replace("\r\n", "\n").strip()
-    _reject_blocked_profile(text)
-    now = time.time()
-    with _db_lock, _db() as conn:
-        count = conn.execute("SELECT COUNT(*) AS c FROM profiles WHERE user_email=?", (user["email"],)).fetchone()["c"]
-        if count >= MAX_PROFILES:
-            raise HTTPException(400, f"Limite de {MAX_PROFILES} profils atteinte — supprime-en un d'abord.")
-        cur = conn.execute(
-            "INSERT INTO profiles (user_email, user_name, name, input, shared, created, updated) VALUES (?,?,?,?,?,?,?)",
-            (user["email"], user["name"], name, text, 1 if payload.shared else 0, now, now),
-        )
-        pid = int(cur.lastrowid or 0)
-    return {"id": pid, "ok": True}
-
-
-@app.patch("/api/profiles/{pid}")
-def update_profile(pid: int, payload: ProfilePatch, request: Request):
-    user = _require_user(request)
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT * FROM profiles WHERE id=?", (pid,)).fetchone()
-        if r is None:
-            raise HTTPException(404, "Profil inconnu.")
-        if r["user_email"] != user["email"]:
-            raise HTTPException(403, "Ce profil n'est pas à toi.")
-        name = payload.name.strip() if payload.name is not None else r["name"]
-        if not name:
-            raise HTTPException(400, "Nom de profil requis.")
-        text = payload.input.replace("\r\n", "\n").strip() if payload.input is not None else r["input"]
-        if payload.input is not None:
-            _reject_blocked_profile(text)
-        shared = (1 if payload.shared else 0) if payload.shared is not None else r["shared"]
-        conn.execute(
-            "UPDATE profiles SET name=?, input=?, shared=?, updated=? WHERE id=?",
-            (name, text, shared, time.time(), pid),
-        )
-    return {"ok": True}
-
-
-@app.delete("/api/profiles/{pid}")
-def delete_profile(pid: int, request: Request):
-    user = _require_user(request)
-    with _db_lock, _db() as conn:
-        r = conn.execute("SELECT * FROM profiles WHERE id=?", (pid,)).fetchone()
-        if r is None:
-            raise HTTPException(404, "Profil inconnu.")
-        if r["user_email"] != user["email"] and not user["is_admin"]:
-            raise HTTPException(403, "Ce profil n'est pas à toi.")
-        conn.execute("DELETE FROM profiles WHERE id=?", (pid,))
-    return {"ok": True}
-
-
-# ---------------------------------------------------------------------------
-# Sim de groupe (profils /simc combinés en une seule simulation multi-acteurs)
-# ---------------------------------------------------------------------------
-_ACTOR_RE = re.compile(r'^[a-z_]+="[^"]+"\s*$')
-
-
-def _profile_actor(text: str) -> str | None:
-    """Nom du personnage (1re ligne acteur hors commentaires) d'un export /simc, ou None."""
-    for ln in (text or "").replace("\r\n", "\n").splitlines():
-        st = ln.strip()
-        if not st or st.startswith("#"):
-            continue
-        if _ACTOR_RE.match(st):
-            return st.split('"')[1]
-        return None
-    return None
-
-
-def _build_group_input(rows: list) -> tuple[str, list[str]]:
-    """Combine N exports /simc en un seul fichier multi-acteurs (sim de groupe)."""
-    warnings: list[str] = []
-    blocks: list[str] = []
-    seen: set[str] = set()
-    for r in rows:
-        text = (r["input"] or "").replace("\r\n", "\n")
-        actor = _profile_actor(text)
-        if not actor:
-            warnings.append(f"{r['name']} : format /simc non reconnu — ignoré.")
-            continue
-        if actor.lower() in seen:
-            warnings.append(f"{r['name']} : {actor} est déjà inclus — doublon ignoré.")
-            continue
-        seen.add(actor.lower())
-        lines: list[str] = []
-        started = False
-        for ln in text.splitlines():
-            st = ln.strip()
-            if not started:
-                if _ACTOR_RE.match(st):
-                    started = True
-                else:
-                    continue
-            lines.append(ln.rstrip())
-        blocks.append("\n".join(lines))
-    if not blocks:
-        raise HTTPException(400, "Aucun profil exploitable dans la sélection.")
-    header = (
-        "# Sim de groupe — exports /simc combinés\n"
-        "fight_style=Patchwerk\n"
-        "max_time=300\n"
-        "calculate_scale_factors=0\n"
-    )
-    return header + "\n".join(blocks) + "\n", warnings
-
-
-class GroupSimRequest(BaseModel):
-    ids: list[int]
-    iterations: int = 5000
-    label: str = ""
-
-
-@app.post("/api/group/sim")
-def submit_group_sim(payload: GroupSimRequest, request: Request):
-    user = _require_user(request)
-    ids = [int(i) for i in payload.ids][:40]
-    if len(ids) < 2:
-        raise HTTPException(400, "Sélectionne au moins 2 profils.")
-    if payload.iterations not in ITER_CHOICES:
-        raise HTTPException(400, f"Valeurs d'itérations acceptées : {', '.join(map(str, ITER_CHOICES))}")
-    ip = _client_ip(request)
-    now = time.time()
-    with _db_lock, _db() as conn:
-        ph = ",".join("?" * len(ids))
-        rows = conn.execute(f"SELECT * FROM profiles WHERE id IN ({ph})", ids).fetchall()
-        allowed = [r for r in rows if r["user_email"] == user["email"] or r["shared"]]
-        if len(allowed) != len(rows):
-            raise HTTPException(403, "Un des profils n'est pas accessible.")
-        active = conn.execute(
-            "SELECT COUNT(*) AS c FROM sims WHERE ip=? AND status IN ('queued','running')", (ip,)
-        ).fetchone()["c"]
-        if active >= PER_IP_ACTIVE:
-            raise HTTPException(429, f"Tu as déjà {active} simulation(s) en attente — patiente un peu.")
-        user_active = conn.execute(
-            "SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
-            (user["email"],),
-        ).fetchone()["c"]
-        if user_active >= PER_USER_ACTIVE:
-            raise HTTPException(429, f"Tu as déjà {user_active} simulation(s) en attente — patiente un peu.")
-        last_ts = conn.execute("SELECT MAX(created) AS m FROM sims WHERE ip=?", (ip,)).fetchone()["m"]
-        if last_ts and now - last_ts < PER_IP_COOLDOWN_S:
-            wait = int(PER_IP_COOLDOWN_S - (now - last_ts)) + 1
-            raise HTTPException(429, f"Doucement ! Réessaie dans {wait} s.")
-        queue_len = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status IN ('queued','running')").fetchone()["c"]
-        if queue_len >= QUEUE_MAX:
-            raise HTTPException(503, "La file est pleine, réessaie dans quelques minutes.")
-        text, warnings = _build_group_input(allowed)
-        if len(text) > MAX_INPUT_CHARS:
-            raise HTTPException(400, "Profils trop volumineux pour une sim combinée — retire quelques profils.")
-        _reject_blocked_profile(text)
-        input_hash = hashlib.sha256(f"group\n{payload.iterations}\n{text}".encode()).hexdigest()
-        cached = conn.execute(
-            "SELECT * FROM sims WHERE input_hash=? AND status='done' ORDER BY finished DESC LIMIT 1", (input_hash,)
-        ).fetchone()
-        sim_id = uuid.uuid4().hex[:20]
-        sim_dir = REPORTS_DIR / sim_id
-        sim_dir.mkdir(parents=True, exist_ok=True)
-        input_file = sim_dir / "input.simc"
-        input_file.write_text(text)
-        label = payload.label.strip()[:60] or f"Sim de groupe ({len(allowed)} profils)"
-        if cached:
-            conn.execute(
-                """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, cached_from,
-                                     dps, dps_error_pct, wall_s, report_html, report_json, started, finished,
-                                     user_email, user_name, kind, gear)
-                   VALUES (?,?,?,?,?, 'done', ?,?,?,?,?,?,?,?,?,?,?,?,'group',?)""",
-                (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), cached["id"],
-                 None, None, cached["wall_s"], cached["report_html"], cached["report_json"],
-                 now, now, user["email"], user["name"], cached["gear"]),
-            )
-            return {"id": sim_id, "status": "done", "cached": True, "warnings": warnings, "count": len(allowed)}
-        conn.execute(
-            "INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, user_email, user_name, kind) "
-            "VALUES (?,?,?,?,?, 'queued', ?,?,?,?, 'group')",
-            (sim_id, now, ip, label, payload.iterations, input_hash, str(input_file), user["email"], user["name"]),
-        )
-    return {"id": sim_id, "status": "queued", "position": queue_len + 1, "warnings": warnings, "count": len(allowed)}
+app.include_router(_profiles_router.router)
 
 
 # ---------------------------------------------------------------------------
