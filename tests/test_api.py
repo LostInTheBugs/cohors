@@ -16,6 +16,7 @@ os.environ["COOKIE_SECURE"] = "0"
 
 import app.main as M  # noqa: E402
 from app.services import updates as UPD  # noqa: E402  (code des mises à jour)
+from app.services import sims as SIMS  # noqa: E402  (moteur de simulation)
 from fastapi.testclient import TestClient  # noqa: E402
 
 client = TestClient(M.app)
@@ -821,10 +822,10 @@ def _fake_run_sim(calls, crash_single_thread=False):
 
 def test_crash_fallback_retries_single_thread_and_keeps_item(tmp_path, monkeypatch):
     calls = []
-    monkeypatch.setattr(M, "run_sim", _fake_run_sim(calls))
+    monkeypatch.setattr(SIMS, "run_sim", _fake_run_sim(calls))
     p = tmp_path / "input.simc"
     p.write_text(_CRASH_PROFILE)
-    res, note = M._sim_with_crash_fallback(p, 1000, ["calculate_scale_factors=1"], 60, tmp_path)
+    res, note = SIMS._sim_with_crash_fallback(p, 1000, ["calculate_scale_factors=1"], 60, tmp_path)
     assert res["ok"] and res["dps"] == 42000.0
     assert "un seul cœur" in note and "Réceptacle rituel" in note
     assert "id=270162" in p.read_text()                      # l'objet reste dans la sim
@@ -833,10 +834,10 @@ def test_crash_fallback_retries_single_thread_and_keeps_item(tmp_path, monkeypat
 
 def test_crash_fallback_strips_item_as_last_resort(tmp_path, monkeypatch):
     calls = []
-    monkeypatch.setattr(M, "run_sim", _fake_run_sim(calls, crash_single_thread=True))
+    monkeypatch.setattr(SIMS, "run_sim", _fake_run_sim(calls, crash_single_thread=True))
     p = tmp_path / "input.simc"
     p.write_text(_CRASH_PROFILE)
-    res, note = M._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
+    res, note = SIMS._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
     assert res["ok"]
     assert note.startswith("Sim lancée SANS Réceptacle rituel")
     assert "id=270162" not in p.read_text()
@@ -845,16 +846,16 @@ def test_crash_fallback_strips_item_as_last_resort(tmp_path, monkeypatch):
 
 def test_crash_fallback_no_retry_without_known_item_or_segfault(tmp_path, monkeypatch):
     calls = []
-    monkeypatch.setattr(M, "run_sim", lambda **kw: calls.append(kw.get("extra")) or {"ok": False, "rc": 139})
+    monkeypatch.setattr(SIMS, "run_sim", lambda **kw: calls.append(kw.get("extra")) or {"ok": False, "rc": 139})
     p = tmp_path / "input.simc"
     p.write_text('shaman="X"\nlevel=90\nspec=restoration\ntrinket1=,id=1234\n')
-    res, note = M._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
+    res, note = SIMS._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
     assert not res["ok"] and note is None and len(calls) == 1   # objet inconnu : pas de relance
 
     calls.clear()
-    monkeypatch.setattr(M, "run_sim", lambda **kw: calls.append(kw.get("extra")) or {"ok": False, "rc": 1})
+    monkeypatch.setattr(SIMS, "run_sim", lambda **kw: calls.append(kw.get("extra")) or {"ok": False, "rc": 1})
     p.write_text(_CRASH_PROFILE)
-    res, note = M._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
+    res, note = SIMS._sim_with_crash_fallback(p, 1000, None, 60, tmp_path)
     assert not res["ok"] and note is None and len(calls) == 1   # autre erreur que 139 : pas de relance
 
 
