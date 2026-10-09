@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.011 - 2026-10-09
+
+### Changed
+
+- Internal: `app/main.py` split continues. Raid attendance now lives in
+  `app/routers/attendance.py` (the "Moi" overview joins `app/routers/me.py`); the
+  "Stuff conseillé" helpers — SimC export parsing, embedded BIS guide, crafted gear,
+  item stats and ranking — in `app/services/stuff.py`. No user-visible change.
+
 ## 2026.10.010 - 2026-10-08
 
 ### Changed
