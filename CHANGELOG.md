@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.014 - 2026-10-09
+
+### Changed
+
+- Internal: `app/main.py` split continues. Daily character snapshots (capture, alerts,
+  WCL backfill, sync loop) now live in `app/services/snapshots.py` with their routes in
+  `app/routers/snapshots.py`; the Discord bot loop and weekly recap in
+  `app/services/bot_loop.py` (the on-demand recap route joins `app/routers/admin_bot.py`);
+  the progression ranking in `app/services/progression.py`. No user-visible change.
+
 ## 2026.10.013 - 2026-10-09
 
 ### Changed
