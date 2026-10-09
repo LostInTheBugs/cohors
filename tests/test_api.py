@@ -692,10 +692,10 @@ def test_bis_json_all_src_fr_in_bis_content_map():
 
 
 def test_bis_json_no_duplicate_keys():
-    """Aucune clé en double dans BIS_CONTENT_MAP de main.py — vérifié via ast."""
+    """Aucune clé en double dans BIS_CONTENT_MAP (app/services/stuff.py) — vérifié via ast."""
     import ast as _ast
     from pathlib import Path as _Path
-    main_file = _Path(__file__).resolve().parents[1] / "app" / "main.py"
+    main_file = _Path(__file__).resolve().parents[1] / "app" / "services" / "stuff.py"
     tree = _ast.parse(main_file.read_text(encoding="utf-8"))
     bis_map = None
     for node in _ast.walk(tree):
@@ -704,7 +704,7 @@ def test_bis_json_no_duplicate_keys():
                 if isinstance(target, _ast.Name) and target.id == "BIS_CONTENT_MAP":
                     bis_map = node
                     break
-    assert bis_map is not None, "BIS_CONTENT_MAP introuvable dans main.py"
+    assert bis_map is not None, "BIS_CONTENT_MAP introuvable dans app/services/stuff.py"
     value = bis_map.value
     assert isinstance(value, _ast.Dict), f"BIS_CONTENT_MAP n'est pas un dict : {type(value)}"
     keys = [k.value if isinstance(k, _ast.Constant) else None for k in value.keys]
