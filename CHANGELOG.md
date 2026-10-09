@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.015 - 2026-10-09
+
+### Changed
+
+- Internal: `app/main.py` split continues — it is now essentially the entry point (startup,
+  sign-in and registration, HTML pages, middlewares, router wiring). Moved out in this release:
+  guild, background-job and first-run admin (`app/routers/admin_guild.py`, `admin_jobs.py`,
+  `setup.py`); branding, PWA and addon download (`app/routers/branding.py`, `pwa.py`,
+  `addon.py`); music / SinusBot (`app/routers/music.py`); the voice portal
+  (`app/routers/voice.py`). No user-visible change.
+
 ## 2026.10.014 - 2026-10-09
 
 ### Changed
