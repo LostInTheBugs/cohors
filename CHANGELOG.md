@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.013 - 2026-10-09
+
+### Changed
+
+- Internal: `app/main.py` split continues. Battle.net and Warcraft Logs data (roster,
+  character sheets, guild progress, raid reports, comparator) now live in
+  `app/routers/bnet_wcl.py`; the guild pages (guild info, leaderboards, progression,
+  recently seen, crafting directory, fun awards) in `app/routers/guild.py`.
+  No user-visible change.
+
 ## 2026.10.012 - 2026-10-09
 
 ### Changed
