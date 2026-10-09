@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.016 - 2026-10-09
+
+### Fixed
+
+- Admin → Jobs: the "Mises à jour" row now reflects every update check, including the
+  "Vérifier" button of the update panel, and shows failed checks as errors. It used to
+  follow only the automatic daily check and could show a days-old version.
+
 ## 2026.10.015 - 2026-10-09
 
 ### Changed
