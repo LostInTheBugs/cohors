@@ -1,9 +1,7 @@
-"""Cohors — admin: Discord bot settings, server/channel discovery and test message.
-
-The weekly recap route (POST /api/admin/bot/recap) still lives in app/main.py: it needs the
-guild progression helpers, which have not been extracted yet.
-"""
+"""Cohors — admin: Discord bot settings, server/channel discovery, test message and weekly recap on demand."""
 from __future__ import annotations
+
+import time
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -12,6 +10,7 @@ from app import discord_bot, secretbox
 from app.core.auth import _require_admin
 from app.core.db import _db, _db_lock
 from app.services.bot import _bot_config, _bot_save
+from app.services.bot_loop import _weekly_recap_embed
 
 router = APIRouter()
 
@@ -146,4 +145,23 @@ def admin_bot_test(request: Request):
     except discord_bot.DiscordError as exc:
         raise HTTPException(502, str(exc))
     _bot_save({"last_message": "message de test envoyé"})
+    return {"ok": True}
+
+
+@router.post("/api/admin/bot/recap")
+def admin_bot_recap(request: Request):
+    """Envoie le récap hebdo à la demande (admin)."""
+    _require_admin(request)
+    cfg = _bot_config()
+    token, channel = (cfg["token"] or "").strip(), (cfg["channel_id"] or "").strip()
+    if not token or not channel:
+        raise HTTPException(400, "Bot Discord non configuré.")
+    emb = _weekly_recap_embed()
+    if emb is None:
+        raise HTTPException(400, "Rien à résumer pour le moment.")
+    try:
+        discord_bot.send(token, channel, embeds=[emb])
+    except discord_bot.DiscordError as exc:
+        raise HTTPException(400, f"Discord — {exc}")
+    _bot_save({"last_recap": time.time()})
     return {"ok": True}
