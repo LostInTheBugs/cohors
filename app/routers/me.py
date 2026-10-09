@@ -1,4 +1,4 @@
-"""Cohors — "Moi" space: Mythic+ key alerts, notifications, my recipes, my unavailability periods."""
+"""Cohors — "Moi" space: overview, Mythic+ key alerts, notifications, my recipes, my unavailability periods."""
 from __future__ import annotations
 
 import json
@@ -12,6 +12,7 @@ from app import bnet
 from app.core.auth import _owns_char, _require_user, _user_locale, _user_role
 from app.core.db import _db, _db_lock
 from app.core.util import _valid_char
+from app.routers.attendance import api_attendance
 from app.services.crafting import PROF_EN, _prof_store
 from app.services.mplus import _dungeon_key
 from app.services.wishlist import _recipe_wish_key
@@ -287,3 +288,45 @@ def api_my_unavail_del(uid: int, request: Request):
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM unavails WHERE id=? AND email=?", (uid, user["email"]))
     return {"ok": True}
+
+
+@router.get("/api/me/overview")
+def api_me_overview(request: Request):
+    """Page 🙋 Moi : mes personnages + stats rapides (ilvl, présence, recettes) et mes clés."""
+    user = _require_user(request)
+    locale = _user_locale(request)
+    with _db_lock, _db() as conn:
+        links = [dict(r) for r in conn.execute(
+            "SELECT id, realm, name, display, is_main FROM char_links WHERE user_email=? "
+            "ORDER BY is_main DESC, display COLLATE NOCASE", (user["email"],)).fetchall()]
+        craft = {(r["c"] or ""): r["n"] for r in conn.execute(
+            "SELECT lower(crafter) AS c, COUNT(*) AS n FROM craft_recipes GROUP BY lower(crafter)").fetchall()}
+        post = conn.execute("SELECT keys FROM mplus_posts WHERE user=?", (user["email"],)).fetchone()
+    try:
+        my_keys = json.loads(post["keys"]) if post else []
+    except (ValueError, TypeError):
+        my_keys = []
+    try:
+        att = api_attendance(request, days=30, refresh=0)
+        att_rows = {(r.get("name") or "").lower(): r for r in (att.get("rows") or [])}
+    except Exception:
+        att_rows = {}
+    chars = []
+    for c in links:
+        try:
+            sm, _ts = bnet.character(c["realm"], c["name"], 0, locale=locale)
+        except Exception:
+            sm = {}
+        a = att_rows.get((c["name"] or "").lower()) or {}
+        chars.append({
+            "id": c["id"], "realm": c["realm"], "name": c["name"], "display": c["display"],
+            "is_main": bool(c["is_main"]),
+            "level": sm.get("level"), "class": sm.get("class"), "class_key": sm.get("class_key"),
+            "spec": sm.get("spec"), "ilvl_equipped": sm.get("ilvl_equipped"), "ilvl_avg": sm.get("ilvl_avg"),
+            "achievements": sm.get("achievement_points"), "last_login": sm.get("last_login"),
+            "att_pct": a.get("pct"), "att_nights": a.get("nights"),
+            "recipes": craft.get((c["name"] or "").lower(), 0),
+        })
+    keys_out = [{"char": k.get("char") or "", "dungeon": k.get("dungeon") or "", "level": k.get("level") or 2}
+                for k in (my_keys if isinstance(my_keys, list) else [])][:12]
+    return {"chars": chars, "keys": keys_out}

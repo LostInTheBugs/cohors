@@ -2619,116 +2619,13 @@ def api_progression(request: Request, days: int = 30):
     return _progression_data(days, _user_locale(request))
 
 
-# Clés de classe anglaises (couleurs côté front) ↔ libellés Blizzard localisés (données stockées).
-CLASS_KEY_FR = {
-    "Chevalier de la mort": "DeathKnight", "Chasseur de démons": "DemonHunter", "Druide": "Druid",
-    "Évocateur": "Evoker", "Chasseur": "Hunter", "Mage": "Mage", "Moine": "Monk", "Paladin": "Paladin",
-    "Prêtre": "Priest", "Voleur": "Rogue", "Chaman": "Shaman", "Démoniste": "Warlock", "Guerrier": "Warrior",
-}
+from app.core.util import CLASS_KEY_FR, _pick  # noqa: E402  (app/core/util.py)
 
 
-def _pick(d: dict, key: str, want_en: bool):
-    """Valeur d'un relevé dans la langue demandée (version EN si dispo, sinon FR)."""
-    v = d.get(key)
-    return (d.get(key + "_en") or v) if want_en else v
+# Assiduité aux soirées de raid (Warcraft Logs) — app/routers/attendance.py
+from app.routers import attendance as _attendance_router  # noqa: E402
 
-
-def _att_localized(data: dict, locale: str) -> dict:
-    """Assiduité : sert la classe dans la langue demandée (les clés/parcours restent FR)."""
-    if not locale.startswith("en"):
-        return data
-    out = dict(data)
-    out["rows"] = [dict(r, **{"class": r.get("class_en") or r.get("class")}) for r in (data.get("rows") or [])]
-    return out
-
-_ATT_CACHE: dict = {"ts": 0.0, "days": 0, "data": None}
-ATT_TTL = 900.0
-
-
-@app.get("/api/attendance")
-def api_attendance(request: Request, days: int = 30, refresh: int = 0):
-    """Assiduité réelle aux soirées de raid (logs Warcraft Logs) sur les N derniers jours."""
-    _require_user(request)
-    days = days if days in (14, 30, 60) else 30
-    now = time.time()
-    if (not refresh and _ATT_CACHE["data"] is not None and _ATT_CACHE["days"] == days
-            and now - _ATT_CACHE["ts"] < ATT_TTL):
-        return _att_localized(_ATT_CACHE["data"], _user_locale(request))
-    try:
-        rl, _ts = wcl.reports(limit=50, force=bool(refresh))
-    except wcl.WclError as exc:
-        return {"error": str(exc)}
-    cutoff = now - days * 86400
-    cls_by_name: dict[str, str] = {}
-    cls_en_by_name: dict[str, str] = {}
-    with _db_lock, _db() as conn:
-        for row in conn.execute(
-            "SELECT name, data FROM char_snapshots WHERE day = ?", (_snap_day(),)
-        ).fetchall():
-            try:
-                d_snap = json.loads(row["data"]) or {}
-            except (ValueError, TypeError):
-                d_snap = {}
-            if d_snap.get("class"):
-                cls_by_name[row["name"]] = d_snap["class"]
-            if d_snap.get("class_en"):
-                cls_en_by_name[row["name"]] = d_snap["class_en"]
-    roster: dict[str, dict] = {}
-    try:
-        rl2, _t = bnet.roster()
-        roster = {(m.get("name") or "").lower(): m for m in (rl2.get("members") or [])}
-    except bnet.BnetError:
-        pass
-    evenings: list[dict] = []
-    for r in rl.get("data") or []:
-        st = (r.get("startTime") or 0) / 1000
-        if st < cutoff:
-            continue
-        code = r.get("code")
-        try:
-            full, _t = wcl.report_full(code, force=bool(refresh))
-            comb, _t2 = wcl.report_combatants(code, force=bool(refresh))
-        except wcl.WclError as exc:
-            print(f"[att] WCL {code}: {exc}")
-            continue
-        fights = (full.get("report") or {}).get("fights") or []
-        boss = [f for f in fights if f.get("encounterID")]
-        players = comb.get("players") or {}
-        if not boss or not players:
-            continue
-        evenings.append({
-            "code": code, "day": _snap_day(st), "ts": st,
-            "zone": (r.get("zone") or {}).get("name") or "",
-            "kills": sum(1 for f in boss if f.get("kill")),
-            "bosses": len({f.get("encounterID") for f in boss}),
-            "players": list(players),
-        })
-    evenings.sort(key=lambda e: e["ts"])
-    total = len(evenings)
-    seen: dict[str, dict] = {}
-    for e in evenings:
-        for pname in e["players"]:
-            key = pname.lower()
-            d = seen.setdefault(key, {"name": pname, "nights": 0, "last_day": None})
-            d["nights"] += 1
-            d["last_day"] = e["day"]
-    rows = []
-    for key, d in seen.items():
-        mem = roster.get(key) or {}
-        rows.append({
-            "name": d["name"], "key": key,
-            "realm": mem.get("realm") or bnet.GUILD_REALM,
-            "class": cls_by_name.get(key), "class_en": cls_en_by_name.get(key),
-            "class_key": CLASS_KEY_FR.get(cls_by_name.get(key) or ""),
-            "nights": d["nights"], "pct": round(100 * d["nights"] / total) if total else 0,
-            "last_day": d["last_day"], "guest": key not in roster,
-        })
-    rows.sort(key=lambda r: (-r["nights"], r["name"].lower()))
-    data = {"days": days, "built": now, "total": total,
-            "evenings": [{k: v for k, v in e.items() if k != "players"} for e in evenings],
-            "rows": rows}
-    _ATT_CACHE.update({"ts": now, "days": days, "data": data})
-    return _att_localized(data, _user_locale(request))
+app.include_router(_attendance_router.router)
 
 
 # Spécialisations (noms FR renvoyés par l'API) → rôle : tank / heal / dps.
@@ -3816,48 +3713,6 @@ app.include_router(_mplus_router.router)
 from app.routers import me as _me_router  # noqa: E402
 
 app.include_router(_me_router.router)
-
-
-@app.get("/api/me/overview")
-def api_me_overview(request: Request):
-    """Page 🙋 Moi : mes personnages + stats rapides (ilvl, présence, recettes) et mes clés."""
-    user = _require_user(request)
-    locale = _user_locale(request)
-    with _db_lock, _db() as conn:
-        links = [dict(r) for r in conn.execute(
-            "SELECT id, realm, name, display, is_main FROM char_links WHERE user_email=? "
-            "ORDER BY is_main DESC, display COLLATE NOCASE", (user["email"],)).fetchall()]
-        craft = {(r["c"] or ""): r["n"] for r in conn.execute(
-            "SELECT lower(crafter) AS c, COUNT(*) AS n FROM craft_recipes GROUP BY lower(crafter)").fetchall()}
-        post = conn.execute("SELECT keys FROM mplus_posts WHERE user=?", (user["email"],)).fetchone()
-    try:
-        my_keys = json.loads(post["keys"]) if post else []
-    except (ValueError, TypeError):
-        my_keys = []
-    try:
-        att = api_attendance(request, days=30, refresh=0)
-        att_rows = {(r.get("name") or "").lower(): r for r in (att.get("rows") or [])}
-    except Exception:
-        att_rows = {}
-    chars = []
-    for c in links:
-        try:
-            sm, _ts = bnet.character(c["realm"], c["name"], 0, locale=locale)
-        except Exception:
-            sm = {}
-        a = att_rows.get((c["name"] or "").lower()) or {}
-        chars.append({
-            "id": c["id"], "realm": c["realm"], "name": c["name"], "display": c["display"],
-            "is_main": bool(c["is_main"]),
-            "level": sm.get("level"), "class": sm.get("class"), "class_key": sm.get("class_key"),
-            "spec": sm.get("spec"), "ilvl_equipped": sm.get("ilvl_equipped"), "ilvl_avg": sm.get("ilvl_avg"),
-            "achievements": sm.get("achievement_points"), "last_login": sm.get("last_login"),
-            "att_pct": a.get("pct"), "att_nights": a.get("nights"),
-            "recipes": craft.get((c["name"] or "").lower(), 0),
-        })
-    keys_out = [{"char": k.get("char") or "", "dungeon": k.get("dungeon") or "", "level": k.get("level") or 2}
-                for k in (my_keys if isinstance(my_keys, list) else [])][:12]
-    return {"chars": chars, "keys": keys_out}
 
 
 # Butin des raids et donjons — app/services/loot.py
