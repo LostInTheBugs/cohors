@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.030 - 2026-10-10
+
+### Changed
+
+- Pages: the helpers every page repeated (selection, API calls, number and date formatting,
+  class colours, logout link) now come from one shared file, `/static/common.js`. No visible
+  change; a repository test makes sure each page loads it.
+
 ## 2026.10.029 - 2026-10-10
 
 ### Added
