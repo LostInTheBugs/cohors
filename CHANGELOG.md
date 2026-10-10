@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.024 - 2026-10-10
+
+### Added
+
+- Calendar: for each upcoming raid, the raid buffs and debuffs covered and missing according
+  to the classes of the players who accepted (Bloodlust and battle resurrection included).
+
 ## 2026.10.023 - 2026-10-10
 
 ### Changed
