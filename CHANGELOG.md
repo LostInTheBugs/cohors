@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.017 - 2026-10-09
+
+### Changed
+
+- Internal clean-up after the `app/main.py` split: the music router builds the TeamSpeak
+  channel list in one place; `app/main.py` no longer re-exports helpers that only the tests
+  used, and the tests import them from their own modules. No user-visible change.
+
 ## 2026.10.016 - 2026-10-09
 
 ### Fixed
