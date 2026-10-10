@@ -2,6 +2,11 @@
 
 # Cohors
 
+[![Release](https://img.shields.io/github/v/release/LostInTheBugs/cohors?sort=date&label=release)](https://github.com/LostInTheBugs/cohors/releases)
+[![Tests](https://github.com/LostInTheBugs/cohors/actions/workflows/tests.yml/badge.svg)](https://github.com/LostInTheBugs/cohors/actions/workflows/tests.yml)
+[![Docker images](https://github.com/LostInTheBugs/cohors/actions/workflows/image.yml/badge.svg)](https://github.com/LostInTheBugs?tab=packages&repo_name=cohors)
+[![License: MIT](https://img.shields.io/github/license/LostInTheBugs/cohors)](LICENSE)
+
 **Guild companion for World of Warcraft — self-hosted.** SimulationCraft simulations,
 gear advice, raid preparation, Warcraft Logs reports, roster tracking, crafting, wishlist,
 guild calendar and Discord announcements — one web app, one instance per guild.
