@@ -936,6 +936,48 @@ def test_game_sync_resolves_crafted_item_by_name(monkeypatch):
                          "item_en": "Serpentine Helm"}
 
 
+
+def test_game_sync_covers_all_crafting_professions():
+    noms = [nom for _pid, nom in GAME.GAME_PREP_PROFS]
+    for nom in ("Enchantement", "Minéralogie", "Herboristerie", "Dépeçage", "Alchimie", "Couture"):
+        assert nom in noms
+    assert len(set(noms)) == len(noms)
+
+
+def test_game_sync_failed_profession_does_not_block_others(monkeypatch):
+    from app import bnet as B
+
+    def prof(pid, locale=None):
+        if pid == 165:                                          # Travail du cuir, avant Enchantement dans la liste
+            raise B.BnetError("panne Travail du cuir")
+        return {"name": "Enchantement", "skill_tiers": [{"id": 1, "name": "Enchantement de Midnight"}]}
+    monkeypatch.setattr(B, "game_profession", prof)
+    monkeypatch.setattr(B, "game_tier_recipes", lambda pid, tid, locale=None: [{"id": 910101}])
+    monkeypatch.setattr(B, "game_recipe", lambda rid, locale=None: {
+        "id": rid, "name": "Enchantement d'anneau", "reagents": []})
+    monkeypatch.setattr(B, "search_item_exact", lambda name: None)
+    GAME._game_sync_state["state"] = "idle"
+    GAME._game_sync(["Travail du cuir", "Enchantement"])
+    st = dict(GAME._game_sync_state)
+    with M._db_lock, M._db() as conn:
+        got = [(r["prof"], r["item"]) for r in conn.execute("SELECT prof, item FROM game_recipes WHERE id=910101")]
+        conn.execute("DELETE FROM game_recipes WHERE id=910101")
+    assert got == [("Enchantement", "Enchantement d'anneau")]  # écrit malgré la panne du métier précédent
+    assert st["state"] == "error" and "Travail du cuir" in st["error"]
+
+
+def test_missing_profs_lists_professions_without_recipes():
+    with M._db_lock, M._db() as conn:
+        conn.execute("DELETE FROM game_recipes WHERE prof='Dépeçage'")
+    assert "Dépeçage" in GAME._missing_profs()
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO game_recipes (id, prof, item) VALUES (930001, 'Dépeçage', 'Cuir traité')")
+    try:
+        assert "Dépeçage" not in GAME._missing_profs()
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM game_recipes WHERE id=930001")
+
 def test_stuff_best_crafted_filters_by_class_and_lists_crafters():
     rows = [  # id, prof, fr, en, item_id, inv, sub, ilvl
         (920001, "Travail du cuir", "Heaume de mailles", "Mail Helm", 272001, "HEAD", "Mail", 285),
