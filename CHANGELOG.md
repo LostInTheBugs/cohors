@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.027 - 2026-10-10
+
+### Added
+
+- Calendar: « 🔎 Compléter » on each raid lists the active players available to fill in
+  (not signed up, not unavailable, not on an account already coming), with role, spec and
+  item level — those who would bring a missing raid buff first.
+
 ## 2026.10.026 - 2026-10-10
 
 ### Added
