@@ -15,6 +15,10 @@ os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="cohors-test-secretbox-")
 os.environ["COOKIE_SECURE"] = "0"
 
 import app.main as M  # noqa: E402
+from app.services import api_keys as APIK  # noqa: E402
+from app.services import bot as BOTS  # noqa: E402
+from app.services import mail_settings as MAILS  # noqa: E402
+from app.routers import admin_backup as BACKUP  # noqa: E402
 from app.security import hash_password  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 import time  # noqa: E402
@@ -123,7 +127,7 @@ def test_secrets_encrypted_on_write(monkeypatch) -> None:
     assert "bnet-secret-plain-text-xyz" not in raw_secret, "plaintext found in api_keys.client_secret"
 
     # Readback via accessor should return plaintext
-    rows = M._api_keys_rows()
+    rows = APIK._api_keys_rows()
     assert rows["bnet"]["client_secret"] == "bnet-secret-plain-text-xyz"
 
     # --- 2. Bot config token ---
@@ -143,7 +147,7 @@ def test_secrets_encrypted_on_write(monkeypatch) -> None:
     assert "discord-bot-token-plain-abc" not in raw_token, "plaintext found in bot_config.token"
 
     # Readback via accessor should return plaintext
-    cfg = M._bot_config()
+    cfg = BOTS._bot_config()
     assert cfg["token"] == "discord-bot-token-plain-abc"
 
     # --- 3. Mail config password ---
@@ -167,7 +171,7 @@ def test_secrets_encrypted_on_write(monkeypatch) -> None:
     assert "smtp-pass-plain-123" not in raw_pw, "plaintext found in mail_config.password"
 
     # Readback via accessor should return plaintext
-    mrows = M._mail_rows()
+    mrows = MAILS._mail_rows()
     assert mrows["password"] == "smtp-pass-plain-123"
 
 
@@ -224,9 +228,9 @@ def test_migration_from_plaintext(monkeypatch) -> None:
         assert "plaintext-smtp-pass" not in row["value"], "plaintext still in mail_config after migration"
 
     # Verify accessors return plaintext
-    assert M._api_keys_rows()["bnet"]["client_secret"] == "plaintext-bnet-secret"
-    assert M._bot_config()["token"] == "plaintext-discord-token"
-    assert M._mail_rows()["password"] == "plaintext-smtp-pass"
+    assert APIK._api_keys_rows()["bnet"]["client_secret"] == "plaintext-bnet-secret"
+    assert BOTS._bot_config()["token"] == "plaintext-discord-token"
+    assert MAILS._mail_rows()["password"] == "plaintext-smtp-pass"
 
     # Store raw values for idempotency check
     with M._db_lock, M._db() as conn:
@@ -374,7 +378,7 @@ def test_secret_key_not_in_backup(monkeypatch) -> None:
     assert key_path.exists(), "secret.key should exist"
 
     # Call _build_backup (returns (bytes, filename))
-    tar_bytes, tar_name = M._build_backup()
+    tar_bytes, tar_name = BACKUP._build_backup()
 
     # Open the tar.gz and check contents
     with gzip.GzipFile(fileobj=io.BytesIO(tar_bytes)) as gz:

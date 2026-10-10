@@ -15,6 +15,13 @@ os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="cohors-test-")
 os.environ["COOKIE_SECURE"] = "0"
 
 import app.main as M  # noqa: E402
+from app.services import stuff as STUFF  # noqa: E402
+from app.routers import sims as RSIMS  # noqa: E402
+from app.routers import bnet_wcl as BWCL  # noqa: E402
+from app.routers import admin_backup as BACKUP  # noqa: E402
+from app.services import crafting as CRAFT  # noqa: E402
+from app.services import game_recipes as GAME  # noqa: E402
+from app.services import wishlist as WISH  # noqa: E402
 from app.services import updates as UPD  # noqa: E402  (code des mises à jour)
 from app.services import sims as SIMS  # noqa: E402  (moteur de simulation)
 from fastapi.testclient import TestClient  # noqa: E402
@@ -231,7 +238,7 @@ def test_swap_file_falls_back_on_cross_device(monkeypatch, tmp_path):
         return real(a, b)
 
     monkeypatch.setattr(M.os, "replace", fake)
-    M._swap_file(src, dst)
+    BACKUP._swap_file(src, dst)
     assert dst.read_bytes() == b"nouvelle"
     assert not src.exists()
 
@@ -707,7 +714,7 @@ def test_bis_json_all_src_fr_in_bis_content_map():
                     srcs.add(s)
     assert srcs, "aucun src_fr trouvé dans bis.json"
     # importer BIS_CONTENT_MAP dynamiquement
-    from app.main import BIS_CONTENT_MAP
+    from app.services.stuff import BIS_CONTENT_MAP
     missing = srcs - set(BIS_CONTENT_MAP.keys())
     assert not missing, f"src_fr non mappés : {missing}"
 
@@ -813,7 +820,7 @@ spec=feral"""
 
 def test_stuff_parse_export_real_format():
     """Non-régression : un vrai export SimC (classe="Nom") doit être parsé correctement."""
-    from app.main import _stuff_parse_export
+    from app.services.stuff import _stuff_parse_export
 
     r = _stuff_parse_export('shaman="X"\nspec=restoration\n')
     assert r["cls"] == "shaman", f"cls={r['cls']!r}"
@@ -912,12 +919,12 @@ def test_game_sync_resolves_crafted_item_by_name(monkeypatch):
     monkeypatch.setattr(B, "search_item_exact", lambda name: {"id": 271999, "inv_type": "HEAD",
                                                               "subclass_en": "Mail", "ilvl": 285}
                         if name == "Serpentine Helm" else None)
-    old_key = M._recipe_wish_key(0, "Casque serpentin")      # étoile posée quand l'objet était inconnu
+    old_key = WISH._recipe_wish_key(0, "Casque serpentin")      # étoile posée quand l'objet était inconnu
     with M._db_lock, M._db() as conn:
         conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, added) VALUES (?,?,?,?,?)",
                      ("wlsync@test.local", old_key, "Casque serpentin", "recipe", 0))
-    M._game_sync_state["state"] = "idle"
-    M._game_sync(["Travail du cuir"])
+    GAME._game_sync_state["state"] = "idle"
+    GAME._game_sync(["Travail du cuir"])
     with M._db_lock, M._db() as conn:
         row = conn.execute("SELECT item_id, inv_type, subclass_en, ilvl, item_en FROM game_recipes "
                            "WHERE id=910001").fetchone()
@@ -955,7 +962,7 @@ def test_stuff_best_crafted_filters_by_class_and_lists_crafters():
                      " VALUES (920012,'Forge','T',1,'Vieux heaume',272012,1,'[]',0,'Old Helm','T','','[]','HEAD','Mail',400)")
         conn.execute("INSERT OR REPLACE INTO craft_recipes (crafter, item, item_id) VALUES ('brokk', 'Heaume de mailles', 0)")
         conn.execute("INSERT OR REPLACE INTO craft_recipes (crafter, item, item_id) VALUES ('sindri', 'x', 272005)")
-        res = M._stuff_best_crafted(conn, "shaman", "restoration", ["craft"], {272005}, set())
+        res = STUFF._stuff_best_crafted(conn, "shaman", "restoration", ["craft"], {272005}, set())
         conn.execute("DELETE FROM game_recipes WHERE id BETWEEN 920001 AND 920012")
         conn.execute("DELETE FROM craft_recipes WHERE crafter IN ('brokk', 'sindri')")
     by = {s["slot"]: s for s in res["slots"]}
@@ -972,11 +979,11 @@ def test_stuff_best_crafted_filters_by_class_and_lists_crafters():
 def test_bis_murder_row_is_mythic_plus_only():
     """Murder Row (Allée du meurtre) est un donjon M+ : absent d'un filtre « Artisanat » seul."""
     for src in ("Murder Row", "Allée du meurtre", "Murder Row & Catalyseur"):
-        assert M.BIS_CONTENT_MAP[src] == "mplus", src
+        assert STUFF.BIS_CONTENT_MAP[src] == "mplus", src
     blk = {"slots": [{"slot": "feet", "id": 1, "src_fr": "Murder Row"},
                      {"slot": "hands", "id": 2, "src_fr": "Crafted"}]}
-    assert [s["id"] for s in M._stuff_bis_filter(blk, ["craft"])["slots"]] == [2]
-    assert [s["id"] for s in M._stuff_bis_filter(blk, ["mplus"])["slots"]] == [1]
+    assert [s["id"] for s in STUFF._stuff_bis_filter(blk, ["craft"])["slots"]] == [2]
+    assert [s["id"] for s in STUFF._stuff_bis_filter(blk, ["mplus"])["slots"]] == [1]
 
 
 def test_bnet_professions_keeps_known_recipes_of_last_two_tiers(monkeypatch):
@@ -1003,7 +1010,7 @@ def test_stuff_best_crafted_uses_known_recipes_and_profession_fallback():
                                "points": pts, "max": 100, "known": known}]}
             conn.execute("INSERT OR REPLACE INTO char_professions (realm, name, ts, data) VALUES ('hyjal', ?, 0, ?)",
                          (name, json.dumps(data)))
-        res = M._stuff_best_crafted(conn, "shaman", "restoration", ["craft"], set(), set())
+        res = STUFF._stuff_best_crafted(conn, "shaman", "restoration", ["craft"], set(), set())
         conn.execute("DELETE FROM game_recipes WHERE id IN (930001, 930002)")
         conn.execute("DELETE FROM char_professions WHERE name IN ('lithinie', 'arssalag', 'tanneur')")
     by = {s["slot"]: s["items"] for s in res["slots"]}
@@ -1036,8 +1043,8 @@ def test_known_craft_rows_from_blizzard():
     _seed_known_recipes()
     try:
         with M._db_lock, M._db() as conn:
-            rows = [r for r in M._known_craft_rows(conn) if r["item"] in ("Flacon connu", "Flacon inconnu")]
-            mine = M._known_craft_rows(conn, "Fiolette")
+            rows = [r for r in CRAFT._known_craft_rows(conn) if r["item"] in ("Flacon connu", "Flacon inconnu")]
+            mine = CRAFT._known_craft_rows(conn, "Fiolette")
     finally:
         _unseed_known_recipes()
     assert rows == [{"crafter": "Fiolette", "profession": "Alchimie", "item": "Flacon connu", "item_id": 0,
@@ -1209,7 +1216,7 @@ def test_guild_progress_aggregate():
         ({"name": "Gamma", "realm": "hyjal"}, None),                          # erreur API : ignoré
     ]
     names = {"order": {10: [1, 2, 3, 4]}, "enc": {4: "Boss quatre"}}
-    out = M._guild_progress_aggregate(results, names, {"beta"})
+    out = BWCL._guild_progress_aggregate(results, names, {"beta"})
     assert out["expansion"] == "Midnight"
     assert [d["difficulty"] for d in out["diffs"]] == ["NORMAL", "HEROIC"]
     inst = out["instances"][0]
@@ -1232,7 +1239,7 @@ def test_guild_progress_route(monkeypatch):
         return _prog([{"id": 10, "name": "Flèche du Vide", "modes": [_mode("NORMAL", "Normal", 1, 1, [1])]}]), 0.0
     monkeypatch.setattr(M.bnet, "raid_progress", fake)
     monkeypatch.setattr(M.bnet, "journal_names", lambda loc=None: {})
-    M._GPROG.clear()
+    BWCL._GPROG.clear()
     _make_user("gprog@test.local")
     c = TestClient(M.app)
     assert c.post("/api/login", json={"email": "gprog@test.local", "password": "test-pw-123"},
@@ -1243,11 +1250,11 @@ def test_guild_progress_route(monkeypatch):
     assert seen == ["Alpha"] and d["level"] == 90 and d["scanned"] == 1               # niveau max uniquement
     assert d["members"][0]["best"]["done"] == 1
     assert c.get("/api/guild/progress?kind=pvp").status_code == 400
-    M._GPROG.clear()
+    BWCL._GPROG.clear()
 
 
 def test_stuff_parse_export_server_and_talents():
-    r = M._stuff_parse_export('shaman="Chamoisdort"\nlevel=90\nserver=hyjal\nspec=restoration\ntalents=CgQABC\n')
+    r = STUFF._stuff_parse_export('shaman="Chamoisdort"\nlevel=90\nserver=hyjal\nspec=restoration\ntalents=CgQABC\n')
     assert (r["server"], r["talents"], r["spec"]) == ("hyjal", "CgQABC", "restoration")
 
 
@@ -1256,9 +1263,9 @@ def test_blizz_talents_loadout_in_stuff(monkeypatch):
         "active_spec": "Restoration", "active_spec_id": 264, "hero_tree": None, "loadouts": [
             {"spec": "Enhancement", "spec_id": 263, "active": True, "code": "CcQENH", "name": None},
             {"spec": "Restoration", "spec_id": 264, "active": True, "code": "CgQNEW", "name": None}]}, 0.0))
-    parsed = M._stuff_parse_export('shaman="Chamoisdort"\nserver=hyjal\nspec=restoration\ntalents=CgQOLD\n')
-    assert M._blizz_talents_for(parsed) == "CgQNEW"                                    # spé de l'export
-    assert M._spec_token("Beast Mastery") == "beast_mastery"
+    parsed = STUFF._stuff_parse_export('shaman="Chamoisdort"\nserver=hyjal\nspec=restoration\ntalents=CgQOLD\n')
+    assert RSIMS._blizz_talents_for(parsed) == "CgQNEW"                                    # spé de l'export
+    assert RSIMS._spec_token("Beast Mastery") == "beast_mastery"
     _make_user("blizztal@test.local")
     c = TestClient(M.app)
     assert c.post("/api/login", json={"email": "blizztal@test.local", "password": "test-pw-123"},
@@ -1266,8 +1273,8 @@ def test_blizz_talents_loadout_in_stuff(monkeypatch):
     export = 'shaman="Chamoisdort"\nlevel=90\nserver=hyjal\nspec=restoration\ntalents=CgQOLD\n'
     pid = c.post("/api/profiles", json={"name": "Profil talents", "input": export}).json()["id"]
     d = c.get(f"/api/stuff/profile/{pid}").json()
-    assert d["loadouts"][-1] == M.BLIZZ_LOADOUT and d["talents_changed"] is True
-    sim = M._stuff_sim_input({"_raw": export}, [], {"name": M.BLIZZ_LOADOUT, "talents": "CgQNEW"})[0]
+    assert d["loadouts"][-1] == RSIMS.BLIZZ_LOADOUT and d["talents_changed"] is True
+    sim = STUFF._stuff_sim_input({"_raw": export}, [], {"name": RSIMS.BLIZZ_LOADOUT, "talents": "CgQNEW"})[0]
     assert "talents=CgQNEW" in sim and "CgQOLD" not in sim
 
 

@@ -11,21 +11,20 @@ v2026.09.003: accounts + admin.
 from __future__ import annotations
 
 import logging
-import hmac
 import os
 import re
 import sqlite3
 import threading
 import time
 from collections import defaultdict
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app import bnet, discord_bot, mailer, wcl
+from app import bnet, discord_bot, mailer, wcl  # noqa: F401  (les tests les remplacent via app.main)
 from app.security import hash_password as _hash_password, verify_password as _verify_password
 
 logger = logging.getLogger(__name__)
@@ -39,7 +38,6 @@ from app.core.config import (
     VERSION, STATIC_DIR,
 )
 from app.core.db import _db, _db_lock  # noqa: F401
-from app.core.util import _int_any  # noqa: F401
 
 _login_attempts: dict[str, list[float]] = defaultdict(list)
 
@@ -78,7 +76,6 @@ from app.core.auth import (
 # ---------------------------------------------------------------------------
 # Identité de la guilde (v2026.09.111) — logo, nom et fond personnalisables.
 # ---------------------------------------------------------------------------
-from app.core.brand import _brand_identity, _brand_row  # noqa: E402,F401  (app/core/brand.py)
 
 
 from app.core.auth import _client_ip  # noqa: E402  (app/core/auth.py)
@@ -120,7 +117,6 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # ---------------------------------------------------------------- sauvegarde & restauration
 # app/routers/admin_backup.py
 from app.routers import admin_backup as _admin_backup_router  # noqa: E402
-from app.routers.admin_backup import _build_backup, _swap_file  # noqa: E402,F401  (tests)
 
 app.include_router(_admin_backup_router.router)
 
@@ -231,7 +227,6 @@ def char_detail_page(realm: str, name: str, request: Request):
     if _get_session_user(request) is None:
         return RedirectResponse("/login", status_code=302)
     return FileResponse(STATIC_DIR / "char.html")
-
 
 
 @app.api_route("/raids", methods=["GET", "HEAD"])
@@ -422,12 +417,7 @@ def register(payload: RegisterRequest, request: Request, response: Response):
 # ---------------------------------------------------------------------------
 # Sim API — app/routers/sims.py
 # ---------------------------------------------------------------------------
-# « Stuff conseillé » : réexportés pour les tests (code dans app/services/stuff.py)
-from app.services.stuff import (  # noqa: E402,F401
-    BIS_CONTENT_MAP, _stuff_best_crafted, _stuff_bis_filter, _stuff_parse_export, _stuff_sim_input,
-)
 from app.routers import sims as _sims_router  # noqa: E402
-from app.routers.sims import BLIZZ_LOADOUT, _blizz_talents_for, _spec_token  # noqa: E402,F401  (tests)
 
 app.include_router(_sims_router.router)
 
@@ -437,7 +427,6 @@ app.include_router(_sims_router.router)
 # ---------------------------------------------------------------------------
 # (rapports Warcraft Logs et comparateur dans le même module)
 from app.routers import bnet_wcl as _bnet_wcl_router  # noqa: E402
-from app.routers.bnet_wcl import _GPROG, _guild_progress_aggregate  # noqa: E402,F401  (tests)
 
 app.include_router(_bnet_wcl_router.router)
 
@@ -495,7 +484,6 @@ def wishlist_page(request: Request):
 
 
 # Wishlist — app/services/wishlist.py (helpers partagés) et app/routers/wishlist.py (routes)
-from app.services.wishlist import _recipe_wish_key  # noqa: E402
 
 
 from app.routers import wishlist as _wishlist_router  # noqa: E402
@@ -538,10 +526,8 @@ app.include_router(_characters_router.router)
 # ---------------------------------------------------------------------------
 # Relevés quotidiens — évolution des personnages liés (v2026.09.054) — app/services/snapshots.py, app/routers/snapshots.py
 # ---------------------------------------------------------------------------
-from app.core.util import _lua_unescape, _snap_day  # noqa: E402,F401
 
 
-from app.services.crafting import _known_craft_rows  # noqa: E402  (tests)
 from app.services.snapshots import _snap_loop  # noqa: E402  (démarrage)
 from app.routers import snapshots as _snapshots_router  # noqa: E402
 
@@ -561,16 +547,13 @@ app.include_router(_gcal_router.router)
 # Clés API (Battle.net, Warcraft Logs) — renseignées depuis l'administration
 # ---------------------------------------------------------------------------
 # app/services/api_keys.py
-from app.services.api_keys import _api_effective, _api_keys_rows, _apply_api_keys  # noqa: E402,F401
+from app.services.api_keys import _apply_api_keys  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
 # Jobs de synchronisation — réglages (administration) + état du dernier passage
 # ---------------------------------------------------------------------------
 # Réglages et état des tâches de fond — app/services/jobs.py
-from app.services.jobs import (  # noqa: E402,F401
-    JOB_BOUNDS, JOB_DEFAULTS, _job_conf, _job_int, _job_status_rows, _job_status_set,
-)
 
 
 # bornes de saisie (min, max) par réglage
@@ -582,11 +565,10 @@ from app.services.updates import _update_loop  # noqa: E402
 # E-mail (SMTP) — réglages de l'administration ; prioritaires sur l'environnement
 # ---------------------------------------------------------------------------
 # app/services/mail_settings.py
-from app.services.mail_settings import _apply_mail_config, _mail_rows  # noqa: E402,F401
+from app.services.mail_settings import _apply_mail_config  # noqa: E402
 
 
 # Réglages du bot Discord — app/services/bot.py
-from app.services.bot import _bot_config, _bot_save  # noqa: E402,F401
 
 
 # Boucle du bot (annonces, mouvements de roster, récap hebdo) — app/services/bot_loop.py
@@ -608,7 +590,7 @@ app.include_router(_prep_router.router)
 
 
 # Recettes du jeu — app/services/game_recipes.py
-from app.services.game_recipes import _game_recipes_loop, _game_sync, _game_sync_state  # noqa: E402,F401
+from app.services.game_recipes import _game_recipes_loop  # noqa: E402
 
 
 # Tableau MM+ (dispos et clés annoncées) — app/routers/mplus.py
@@ -637,7 +619,7 @@ app.include_router(_admin_mail_router.router)
 # Guilde (royaume, région, Warcraft Logs) — réglages de l'administration — app/routers/admin_guild.py
 # ---------------------------------------------------------------------------
 # app/services/guild_settings.py
-from app.services.guild_settings import _apply_guild_config, _guild_effective, _guild_rows  # noqa: E402,F401
+from app.services.guild_settings import _apply_guild_config  # noqa: E402
 from app.routers import admin_guild as _admin_guild_router  # noqa: E402
 
 app.include_router(_admin_guild_router.router)
