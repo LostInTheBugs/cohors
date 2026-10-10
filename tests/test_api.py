@@ -1255,6 +1255,12 @@ def test_global_search_finds_chars_items_and_recipes(monkeypatch):
         assert [x["id"] for x in d["items"]] == [960002]
         assert c.get("/api/search", params={"q": "g"}).json()["items"] == []
         assert client.get("/api/search", params={"q": "givre"}).status_code == 401
+        d = c.get("/api/search", params={"q": "hyprion"}).json()           # faute de frappe
+        assert d["chars"] == [] and d["suggest"][0] == "hÿpérion"
+        d = c.get("/api/search", params={"q": "epe de givre"}).json()
+        assert d["items"] == [] and d["suggest"][0] == "épée de givre"
+        assert c.get("/api/search", params={"q": "zzzzzz"}).json()["suggest"] == []
+        assert c.get("/api/search", params={"q": "givre"}).json()["suggest"] == []   # résultats → pas de suggestion
     finally:
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM char_snapshots WHERE name='hÿpérion'")

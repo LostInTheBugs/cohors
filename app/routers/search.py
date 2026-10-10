@@ -1,7 +1,9 @@
 """Cohors — global search (navigation bar, Ctrl+K): characters, items and recipes already in the database."""
 from __future__ import annotations
 
+import difflib
 import json
+import re
 import threading
 import time
 import unicodedata
@@ -98,8 +100,48 @@ def _build_index() -> dict:
         e["n"] = (_norm(e["fr"]), _norm(e["en"]))
     for k, rc in recipes.items():
         rc["n"] = (k, _norm(rc["en"]))
+    # vocabulaire pour « Vouliez-vous dire… » : mots normalisés → forme affichée (accents conservés)
+    words: dict[str, str] = {}
+    names = [c["key"] for c in chars]
+    names += [x for e in items.values() for x in (e["fr"], e["en"]) if x]
+    names += [x for rc in recipes.values() for x in (rc["fr"], rc["en"]) if x]
+    for nm in names:
+        for w in _WORD_RE.findall(str(nm).lower()):
+            nw = _norm(w)
+            if len(nw) >= 3:
+                words.setdefault(nw, w)
     return {"chars": chars, "items": [e for e in items.values() if e["fr"] or e["en"]],
-            "recipes": list(recipes.values())}
+            "recipes": list(recipes.values()), "words": words}
+
+
+_WORD_RE = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)*")
+
+
+def _suggest(idx: dict, needle: str) -> list[str]:
+    """Jusqu'à 3 corrections proches de la saisie (fautes de frappe), mot par mot."""
+    words = idx.get("words") or {}
+    keys = list(words)
+    toks = needle.split()
+    if not toks or len(toks) > 4:
+        return []
+    per_tok = []
+    for t in toks:
+        if t in words or len(t) < 3:
+            per_tok.append([t])
+            continue
+        close = difflib.get_close_matches(t, keys, n=3, cutoff=0.75)
+        if not close:
+            return []
+        per_tok.append(close)
+    if all(len(c) == 1 and c[0] == t for c, t in zip(per_tok, toks)):
+        return []
+    out = []
+    for i in range(3):
+        alt = [words.get(c[min(i, len(c) - 1)], c[min(i, len(c) - 1)]) for c in per_tok]
+        phrase = " ".join(alt)
+        if phrase not in out:
+            out.append(phrase)
+    return out
 
 
 def _index() -> dict:
@@ -127,7 +169,7 @@ def api_search(request: Request, q: str = ""):
     want_en = _user_locale(request).startswith("en")
     needle = _norm(q)[:60]
     if len(needle) < 2:
-        return {"q": q, "chars": [], "items": [], "recipes": []}
+        return {"q": q, "chars": [], "items": [], "recipes": [], "suggest": []}
     idx = _index()
     cands = [(r, c) for c in idx["chars"] if (r := _rank((c["n"],), needle)) is not None]
     cands.sort(key=lambda x: (x[0], -(x[1]["ilvl"] or 0), x[1]["n"]))
@@ -159,5 +201,6 @@ def api_search(request: Request, q: str = ""):
     recipes = [{"name": ((x["en"] or x["fr"]) if want_en else x["fr"]),
                 "profession": ((x["prof"]["en"] or x["prof"]["fr"]) if want_en else x["prof"]["fr"])}
                for _r, x in rec[:MAX_RECIPES]]
-    return {"q": q, "chars": chars, "items": items, "recipes": recipes,
+    suggest = _suggest(idx, needle) if not (chars or items or recipes) else []
+    return {"q": q, "chars": chars, "items": items, "recipes": recipes, "suggest": suggest,
             "more": {"chars": max(0, len(cands) - MAX_CHARS), "items": max(0, len(found) - MAX_ITEMS)}}

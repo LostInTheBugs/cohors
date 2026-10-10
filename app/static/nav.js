@@ -219,6 +219,8 @@
     "#gsearch a.gsi .gsm { margin-left:auto; color:var(--mut,#8c96ad); font-size:12.5px; text-align:right; }",
     "#gsearch a.gsi.sel, #gsearch a.gsi:hover { background:rgba(255,255,255,.08); }",
     "#gsearch .gsempty, #gsearch .gsfoot { color:var(--mut,#8c96ad); font-size:13px; padding:10px; }",
+    "#gsearch .gsempty + .gsempty { padding-top:0; line-height:1.5; }",
+    "#gsearch a.gssug .gsn { color:var(--acc2,#dfa55a); }",
     "#gsearch .gsfoot { border-top:1px solid var(--line,#2a3446); padding:8px 14px; font-size:12px; }",
     "#navburger, #navscrim, #navdrawer { display:none; }",
     "@media (max-width: 760px) {",
@@ -339,9 +341,28 @@
         return gsRow("/craft?q=" + encodeURIComponent(r.name), r.name, gEsc(r.profession || ""), "");
       }).join("");
     }
-    if (!html) html = '<div class="gsempty">' + (d ? "Aucun résultat." : "Recherche…") + '</div>';
+    if (!html && !d) html = '<div class="gsempty">Recherche…</div>';
+    else if (!html) {
+      if (d.suggest && d.suggest.length) {
+        html += '<div class="gsh">Vouliez-vous dire</div>' + d.suggest.map(function (sg) {
+          return '<a class="gsi gssug" href="#" data-q="' + gEsc(sg) + '"><span class="gsn">' + gEsc(sg) + '</span><span class="gsm"></span></a>';
+        }).join("");
+      }
+      html += '<div class="gsempty"><b>Aucun résultat.</b></div>' +
+        '<div class="gsempty">La recherche couvre ce que Cohors connaît déjà : les personnages relevés ces 30 derniers jours, ' +
+        'le butin des raids et donjons de la saison, les recettes des 2 dernières extensions, l\'équipement porté et les wishlists.</div>';
+    }
     box.innerHTML = html;
     GS_SEL = -1;
+    box.querySelectorAll("a.gssug").forEach(function (a) {
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var inp = GS.querySelector("input");
+        inp.value = a.getAttribute("data-q");
+        inp.focus();
+        gsQuery();
+      });
+    });
   }
 
   function gsQuery() {
@@ -385,7 +406,7 @@
         else if (ev.key === "Enter") {
           var rows = GS.querySelectorAll("a.gsi");
           var r = rows[GS_SEL >= 0 ? GS_SEL : 0];
-          if (r) { ev.preventDefault(); location.href = r.getAttribute("href"); }
+          if (r) { ev.preventDefault(); if (r.classList.contains("gssug")) r.click(); else location.href = r.getAttribute("href"); }
         }
       });
     }
