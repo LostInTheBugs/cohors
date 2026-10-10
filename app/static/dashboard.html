@@ -76,6 +76,17 @@
   <nav class="tabs" id="navmain"></nav>
 
   <div class="grid">
+    <div class="card hidden" id="linkcard" style="border-color:var(--acc2)">
+      <h2>🪪 Lie tes personnages</h2>
+      <p class="note">Tu n'as encore lié aucun personnage à ton compte. Ça prend une minute et ça débloque plusieurs fonctions :</p>
+      <ul class="note" style="margin:6px 0 8px 18px;padding:0">
+        <li>recevoir des commandes d'artisanat (📨 Demander sur la fiche d'un objet) ;</li>
+        <li>apparaître sous ton main dans les wishlists et le calendrier ;</li>
+        <li>tes rerolls ne sont pas proposés en double pour compléter un raid ;</li>
+        <li>tes statistiques et tes recettes dans 🙋 Moi.</li>
+      </ul>
+      <p class="note"><a class="hlink" href="/mespersos">Lier mes personnages →</a></p>
+    </div>
     <div class="card hidden" id="setcard">
       <h2>🚀 Première configuration</h2>
       <div class="cd" id="setcount"></div>
@@ -146,6 +157,7 @@ const jget = async (u) => { const r = await fetch(u);
   // première configuration — carte réservée aux administrateurs
   try {
     const me2 = await jget("/api/me");
+    if (me2.chars === 0) $("#linkcard").classList.remove("hidden");
     if (me2.role === "admin" || me2.is_admin) {
       const s = await jget("/api/setup/status");
       const done = (s.steps || []).filter((x) => x.done).length;

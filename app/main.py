@@ -377,6 +377,8 @@ def me(request: Request):
             "SELECT display, name FROM char_links WHERE user_email=? AND is_main=1 LIMIT 1",
             (user["email"],),
         ).fetchone()
+        n_chars = conn.execute("SELECT COUNT(*) AS n FROM char_links WHERE user_email=?",
+                               (user["email"],)).fetchone()["n"]
     voice_default = ""
     if main is not None:
         voice_default = (main["display"] or main["name"] or "").strip()
@@ -386,7 +388,7 @@ def me(request: Request):
     return {"email": user["email"], "name": user["name"], "is_admin": bool(user["is_admin"]),
             "role": _user_role(user), "lang": _user_lang(user),
             "voice_nick": voice_raw or voice_default, "voice_nick_raw": voice_raw,
-            "voice_default": voice_default}
+            "voice_default": voice_default, "chars": int(n_chars or 0)}
 
 
 @app.get("/api/invite/{token}")
