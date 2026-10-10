@@ -9,7 +9,8 @@
       { href: "/messtats", label: "📊 Mes statistiques" },
       { href: "/alertes", label: "🔔 Alertes MM+" },
       { href: "/mesindispos", label: "🚫 Mes indispos" },
-      { href: "/wishlist", label: "🎯 Ma wishlist" }
+      { href: "/wishlist", label: "🎯 Ma wishlist" },
+      { href: "/commandes", label: "🧾 Mes commandes" }
     ] },
     { label: "⚔️ Simulation", items: [
       { href: "/", label: "⚔️ Simulateur" },

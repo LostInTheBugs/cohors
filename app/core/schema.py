@@ -507,6 +507,27 @@ def _init_db() -> None:
             )
             """
         )
+        # v2026.10.028 — commandes d'artisanat (un joueur demande un objet à un artisan de la guilde).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS craft_orders (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                requester     TEXT NOT NULL,
+                crafter       TEXT NOT NULL,
+                crafter_realm TEXT NOT NULL DEFAULT '',
+                crafter_email TEXT NOT NULL,
+                item_id       INTEGER NOT NULL DEFAULT 0,
+                item          TEXT NOT NULL,
+                profession    TEXT NOT NULL DEFAULT '',
+                note          TEXT NOT NULL DEFAULT '',
+                status        TEXT NOT NULL DEFAULT 'open',
+                created       REAL NOT NULL DEFAULT 0,
+                updated       REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_craft_orders_req ON craft_orders(requester)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_craft_orders_crafter ON craft_orders(crafter_email)")
         for _stmt in (
             "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",

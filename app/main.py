@@ -191,6 +191,7 @@ _MOI_PAGES = {
     "messtats": "messtats.html",
     "alertes": "alertes.html",
     "mesindispos": "mesindispos.html",
+    "commandes": "commandes.html",
 }
 
 
@@ -199,6 +200,7 @@ _MOI_PAGES = {
 @app.api_route("/messtats", methods=["GET", "HEAD"])
 @app.api_route("/alertes", methods=["GET", "HEAD"])
 @app.api_route("/mesindispos", methods=["GET", "HEAD"])
+@app.api_route("/commandes", methods=["GET", "HEAD"])
 def moi_pages(request: Request):
     """Pages 🙋 Moi — personnages, recettes, statistiques, alertes MM+ (une par sujet)."""
     if _get_session_user(request) is None:
@@ -479,6 +481,12 @@ app.include_router(_search_router.router)
 from app.routers import readiness as _readiness_router  # noqa: E402
 
 app.include_router(_readiness_router.router)
+
+
+# Commandes d'artisanat (demande à un artisan, suivi, notifications) — app/routers/craft_orders.py
+from app.routers import craft_orders as _craft_orders_router  # noqa: E402
+
+app.include_router(_craft_orders_router.router)
 
 
 # Assiduité aux soirées de raid (Warcraft Logs) — app/routers/attendance.py

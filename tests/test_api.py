@@ -1433,6 +1433,72 @@ def test_gcal_fill_endpoint(monkeypatch):
             conn.execute("DELETE FROM gcal_import WHERE id=1")
             conn.execute("DELETE FROM char_snapshots WHERE name IN ('venu', 'dispo')")
 
+
+def test_craft_orders_flow_and_notifications(monkeypatch):
+    from app import bnet as B
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": [{"name": "Forgeronc", "realm": "hyjal"}]}, 0.0))
+    req = _plain_client("order-req@test.local", "10.99.61.1")
+    cra = _plain_client("order-crafter@test.local", "10.99.61.2")
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('order-crafter@test.local', 'hyjal', 'forgeronc', 'Forgeronc', 1, 0)")
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('order-req@test.local', 'hyjal', 'demandeur', 'Demandeur', 1, 0)")
+    try:
+        body = {"crafter": "Forgeronc", "realm": "hyjal", "item_id": 951001, "item": "Lame forgée",
+                "profession": "Forge", "note": "2 pièces"}
+        r = req.post("/api/craft/orders", json=body)
+        assert r.status_code == 200, r.text
+        oid = r.json()["id"]
+        assert req.post("/api/craft/orders", json=body).status_code == 400                   # doublon
+        assert req.post("/api/craft/orders", json={**body, "crafter": "Inconnu"}).status_code == 400
+        assert cra.post("/api/craft/orders", json=body).status_code == 400                   # son propre perso
+        todo = cra.get("/api/craft/orders").json()
+        assert [(o["item"], o["requester"], o["status"], o["note"]) for o in todo["todo"]] == [
+            ("Lame forgée", "Demandeur", "open", "2 pièces")] and todo["open_todo"] == 1
+        n = cra.get("/api/me/notifs").json()["items"][0]
+        assert n["kind"] == "craft" and n["data"]["event"] == "new" and n["data"]["who"] == "Demandeur"
+        assert req.post(f"/api/craft/orders/{oid}", json={"status": "done"}).status_code == 400   # pas l'artisan
+        assert cra.post(f"/api/craft/orders/{oid}", json={"status": "accepted"}).status_code == 200
+        n = req.get("/api/me/notifs").json()["items"][0]
+        assert n["data"]["event"] == "accepted" and n["data"]["who"] == "Forgeronc"
+        assert cra.post(f"/api/craft/orders/{oid}", json={"status": "done"}).status_code == 200
+        assert req.post(f"/api/craft/orders/{oid}", json={"status": "cancelled"}).status_code == 400  # déjà faite
+        mine = req.get("/api/craft/orders").json()["mine"]
+        assert [(o["status"], o["crafter"]) for o in mine] == [("done", "Forgeronc")]
+        other = _plain_client("order-other@test.local", "10.99.61.3")
+        assert other.post(f"/api/craft/orders/{oid}", json={"status": "cancelled"}).status_code == 404
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM craft_orders WHERE requester='order-req@test.local'")
+            conn.execute("DELETE FROM char_links WHERE user_email IN ('order-crafter@test.local', 'order-req@test.local')")
+            conn.execute("DELETE FROM notifs WHERE email IN ('order-crafter@test.local', 'order-req@test.local')")
+
+
+def test_item_card_marks_orderable_crafters(monkeypatch):
+    from app import bnet as B
+    monkeypatch.setattr(B, "item", lambda iid, locale=None: (_ for _ in ()).throw(B.BnetError(503, "x")))
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": []}, 0.0))
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats, updated)"
+                     " VALUES (951101, 'Forge', 'Forge de Midnight', 0, 'Hache', 951002, 1, '[]', 0)")
+        for nm in ("aveccompte", "sanscompte", "moimeme"):
+            conn.execute("INSERT OR REPLACE INTO char_professions (realm, name, ts, data) VALUES ('hyjal', ?, 1, ?)",
+                         (nm, json.dumps({"profs": [{"name": "Forge", "known": [951101]}]})))
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('autre-artisan@test.local', 'hyjal', 'aveccompte', 'Aveccompte', 1, 0)")
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('orderable@test.local', 'hyjal', 'moimeme', 'Moimeme', 1, 0)")
+    try:
+        c = _plain_client("orderable@test.local", "10.99.61.4")
+        d = c.get("/api/item/951002").json()
+        assert {x["key"]: x["orderable"] for x in d["crafters"]} == {"aveccompte": True, "sanscompte": False, "moimeme": False}
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM game_recipes WHERE id=951101")
+            conn.execute("DELETE FROM char_professions WHERE name IN ('aveccompte', 'sanscompte', 'moimeme')")
+            conn.execute("DELETE FROM char_links WHERE user_email IN ('autre-artisan@test.local', 'orderable@test.local')")
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):
