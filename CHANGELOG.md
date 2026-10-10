@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.019 - 2026-10-10
+
+### Added
+
+- Game recipe catalogue: Enchanting, Mining, Herbalism and Skinning are now synced too, so
+  « Who can craft… », My recipes and raid prep cover every profession that has recipes. The
+  new professions are fetched shortly after the update, without waiting for the daily refresh.
+
+### Changed
+
+- Game recipe sync: a profession that fails no longer stops the others.
+
 ## 2026.10.018 - 2026-10-10
 
 ### Added
