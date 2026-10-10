@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.025 - 2026-10-10
+
+### Added
+
+- « 🩺 Player readiness » page (Raid/MM+ menu): item level, Mythic+ rating, missing enchants
+  and empty sockets for every max-level character snapshotted in the last 7 days. Enchant and
+  socket data are collected by the daily snapshot from this version on.
+
 ## 2026.10.024 - 2026-10-10
 
 ### Added
