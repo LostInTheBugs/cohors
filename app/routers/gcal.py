@@ -15,6 +15,7 @@ from app.core.config import PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR, _int_any, _lua_unescape, _snap_day
 from app.services.bot import _bot_config
+from app.services.raidcomp import compo_embed, raid_buffs
 from app.services.wishlist import _bis_by_user
 
 router = APIRouter()
@@ -229,6 +230,7 @@ def api_gcal_get(request: Request):
             class_keys[nmk] = ck
     return {"imported_at": row["ts"] if row else 0, "player": row["player"] if row else "",
             "events": events, "raid_catalog": raid_catalog, "classes": classes, "class_keys": class_keys,
+            "raid_buffs": raid_buffs(en_loc),
             "unavail": {"rows": urows, "counts": {"members": len(urows), "conflict": conflicts}}}
 
 
@@ -357,3 +359,25 @@ def api_gcal_relance(event_id: int, request: Request):
     except discord_bot.DiscordError as exc:
         raise HTTPException(400, f"Discord — {exc}")
     return {"ok": True, "count": len(waiting)}
+
+
+@router.post("/api/gcal/post/{key}")
+def api_gcal_post_compo(key: str, request: Request):
+    """Publie sur Discord la composition d'une soirée : présents par rôle, buffs manquants, pièces voulues."""
+    _require_officer(request)
+    cfg = _bot_config() or {}
+    token, channel = (cfg.get("token") or "").strip(), (cfg.get("channel_id") or "").strip()
+    if not (cfg.get("enabled") and token and channel):
+        raise HTTPException(400, "Bot Discord non configuré ou inactif (Admin → Bot Discord).")
+    data = api_gcal_get(request)
+    ev = next((e for e in data.get("events") or [] if e.get("key") == key), None)
+    if ev is None:
+        raise HTTPException(404, "Événement introuvable dans le dernier import.")
+    link = f"{PUBLIC_BASE_URL}/calendar" if PUBLIC_BASE_URL else ""
+    emb = compo_embed(ev, data.get("class_keys") or {}, _brand_identity()["guild_name"], link,
+                      discord_bot.COLOR_GOLD)
+    try:
+        discord_bot.send(token, channel, embeds=[emb])
+    except discord_bot.DiscordError as exc:
+        raise HTTPException(400, f"Discord — {exc}")
+    return {"ok": True}

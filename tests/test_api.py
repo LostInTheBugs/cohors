@@ -1341,6 +1341,54 @@ def test_readiness_lists_missing_enchants_and_empty_sockets(monkeypatch):
             conn.execute("DELETE FROM char_snapshots WHERE name IN ('prêtàraid', 'ancienrelevé', 'petitniveau')")
             conn.execute("DELETE FROM char_links WHERE user_email='ready@test.local'")
 
+
+def test_compo_embed_groups_by_role_and_lists_missing_buffs():
+    from app.services import raidcomp as RC
+    ev = {"title": "Raid HM", "ts": 1790000000, "inv": [
+              {"n": "Tanky", "s": 1}, {"n": "Soigne", "s": 3}, {"n": "Frappe", "s": 1}, {"n": "Peutetre", "s": 8},
+              {"n": "Absent", "s": 2}, {"n": "Force", "s": 0}],
+          "meta": {"roles": {"Tanky": "tank", "Soigne": "heal", "Frappe": "dps"}, "ovr": {"Force": "ok"},
+                   "raids": ["Flèche du Vide"], "bosses": ["Boss A"]},
+          "wanted": [{"boss": "Boss A", "items": [{"name": "Lame", "who": ["Frappe"], "prio": True}]}]}
+    emb = RC.compo_embed(ev, {"tanky": "Warrior", "soigne": "Priest", "frappe": "Mage"}, "Ma Guilde")
+    f = {x["name"]: x["value"] for x in emb["fields"]}
+    assert "<t:1790000000:F>" in emb["description"]
+    pres = f["✅ Présents (4)"]
+    assert "**🛡️ Tanks (1)** : Tanky" in pres and "**💚 Heals (1)** : Soigne" in pres and "**⚔️ DPS (1)** : Frappe" in pres
+    assert "Sans rôle (1)** : Force" in pres
+    assert f["❓ Peut-être (1)"] == "Peutetre"
+    buffs = f["🧩 Buffs de raid"]
+    assert "Intelligence (Mage)" not in buffs and "Polyvalence (Druide)" in buffs and "Classe inconnue : Force" in buffs
+    assert f["🎁 Boss A"] == "⭐ Lame (Frappe)"
+    ok, missing = RC.buff_coverage(["Shaman"])
+    assert "Furie sanguinaire" in ok and "Maîtrise (Chaman)" in ok and "Résurrection en combat" in missing
+
+
+def test_gcal_post_compo_to_discord(monkeypatch):
+    from app import bnet as B, discord_bot as D
+    from app.routers import gcal as GCAL
+    monkeypatch.setattr(B, "journal_raids", lambda locale=None: ({"expansion": "", "raids": []}, 0.0))
+    monkeypatch.setattr(GCAL, "_bot_config", lambda: {"enabled": 1, "token": "t", "channel_id": "42"})
+    sent = []
+    monkeypatch.setattr(D, "send", lambda token, channel, embeds=None, content="": sent.append((channel, embeds)) or {})
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT OR REPLACE INTO gcal_import (id, ts, player, data) VALUES (1, ?, 'x', ?)",
+                     (time.time(), json.dumps({"events": [{"id": 777, "title": "Raid test", "ts": time.time() + 3600,
+                                                           "inv": [{"n": "Alpha", "s": 1}]}]})))
+    try:
+        c = _admin_client("compo-admin@test.local", "10.99.60.9")
+        d = c.get("/api/gcal").json()
+        assert d["raid_buffs"][0] == ["Intelligence (Mage)", ["Mage"]]
+        r = c.post("/api/gcal/post/id:777")
+        assert r.status_code == 200, r.text
+        assert sent and sent[0][0] == "42" and sent[0][1][0]["title"] == "📋 Raid test"
+        assert c.post("/api/gcal/post/id:999").status_code == 404
+        m = _plain_client("compo-member@test.local", "10.99.60.10")
+        assert m.post("/api/gcal/post/id:777").status_code == 403
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM gcal_import WHERE id=1")
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):
