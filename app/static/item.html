@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cohors — Fiche objet</title>
+<meta name="theme-color" content="#0b0e14">
+<link rel="icon" href="/static/icon-192.png">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brandname span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 12.5px; }
+  .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+         color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+         border: 1px solid var(--line); background: transparent;
+         transition: border-color .15s, color .15s, background .15s; }
+  .tab:hover { color: var(--fg); border-color: #3a4763; }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+  .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+  .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+  .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  input[type=search] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 260px; }
+  input:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
+  .meta { color: var(--mut); font-size: 13px; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 3px 20px; }
+  .pm { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; padding: 2px 0; }
+  .pm .pn { font-weight: 600; text-decoration: none; }
+  .pm .pn:hover { text-decoration: underline; }
+  .pm .pp { margin-left: auto; color: var(--mut); font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
+  .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
+  .hidden { display: none !important; }
+  .ihead { display: flex; align-items: center; gap: 14px; }
+  .ihead img { width: 52px; height: 52px; border-radius: 8px; border: 1px solid var(--line); flex-shrink: 0; }
+  .ihead .iname { font-size: 20px; font-weight: 700; line-height: 1.25; }
+  .q-common { color:#fff; } .q-uncommon { color:#1eff00; } .q-rare { color:#0070dd; }
+  .q-epic { color:#a335ee; } .q-legendary { color:#ff8000; } .q-artifact { color:#e6cc80; } .q-heirloom { color:#00ccff; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 16px; }
+  .ln { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .ln:first-of-type { border-top: 0; }
+  .ln a { font-weight: 600; text-decoration: none; }
+  .ln a:hover { text-decoration: underline; }
+  .ln .r { margin-left: auto; color: var(--mut); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
+  .chips a { font-weight: 600; text-decoration: none; }
+  .chips a:hover { text-decoration: underline; }
+</style>
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.019">
+</head>
+<body class="wb">
+<div class="wrap">
+  <header class="topbar">
+    <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+      <img src="/branding/logo" alt="Cohors" class="crest">
+      <div>
+        <div class="brandname">Cohors <span>Fiche objet</span></div>
+        <div class="tagline">Où il tombe, qui le veut, qui l'a déjà, qui peut le fabriquer.</div>
+      </div>
+    </a>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+  <div class="card"><div class="ihead" id="ihead"><div class="empty">Chargement…</div></div></div>
+  <div class="grid2">
+    <div class="card"><h2>📍 Où tombe-t-il</h2><div id="src"></div></div>
+    <div class="card"><h2>🎯 Qui le veut <span class="pc" id="nwish"></span></h2><div id="wish"></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>🛡️ Qui l'a déjà <span class="pc" id="nhold"></span></h2><div id="hold"></div></div>
+    <div class="card"><h2>🔨 Qui peut le fabriquer <span class="pc" id="ncraft"></span></h2><div id="craft"></div></div>
+  </div>
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js?v=2026.10.019"></script>
+<script src="/static/branding.js?v=2026.10.019"></script>
+<script src="/static/i18n.js?v=2026.10.019"></script>
+<script src="/static/esc.js?v=2026.10.019"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const fmt = (n, d = 0) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: d }).format(n);
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+const CLASS_COLORS = { DeathKnight: "#C41E3A", DemonHunter: "#A330C9", Druid: "#FF7C0A", Evoker: "#33937F",
+  Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
+  Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D" };
+const who = (p) => {
+  const st = `style="color:${CLASS_COLORS[p.class_key] || "var(--fg)"}"`;
+  return p.key && p.realm ? `<a ${st} href="/char/${esc(p.realm)}/${esc(p.key)}">${esc(p.name)}</a>` : `<span ${st}>${esc(p.name)}</span>`;
+};
+const none = (t) => `<div class="empty">${t}</div>`;
+function render(d) {
+  const it = d.item, q = "q-" + (it.quality || "common").toLowerCase();
+  document.title = "Cohors — " + it.name;
+  $("#ihead").innerHTML = `${it.icon ? `<img src="${esc(it.icon)}" alt="">` : ""}
+    <div><div class="iname ${q}">${esc(it.name)}</div><div class="meta">${esc(it.type || "")}</div></div>`;
+  $("#src").innerHTML = d.sources.length
+    ? d.sources.map(s => `<div class="ln"><span>${esc(s.boss)}</span><span class="r">${esc(s.instance)} · <span>${s.kind === "raid" ? "Raid" : "Donjon"}</span></span></div>`).join("")
+    : none("Ne tombe dans aucun raid ni donjon de la saison en cours.");
+  $("#nwish").textContent = d.wishers.length ? "· " + d.wishers.length : "";
+  $("#wish").innerHTML = d.wishers.length
+    ? d.wishers.map(w => `<div class="ln">${w.prio ? "⭐ " : ""}${who(w)}<span class="r">${w.bis ? `BIS pour ${esc(w.bis.char)} (+${fmt(w.bis.gain, 2)} %)` : (w.kind === "recipe" ? "recette" : "")}</span></div>`).join("")
+    : none("Personne ne l'a dans sa wishlist.");
+  $("#nhold").textContent = d.holders.length ? "· " + d.holders.length : "";
+  $("#hold").innerHTML = d.holders.length
+    ? d.holders.map(h => `<div class="ln">${who(h)}<span class="meta">${esc(h.slot || "")}</span><span class="r">iLvl ${fmt(h.ilvl)}</span></div>`).join("")
+    : none("Personne ne le porte dans les relevés du jour.");
+  $("#ncraft").textContent = d.crafters.length ? "· " + d.crafters.length : "";
+  $("#craft").innerHTML = d.craft
+    ? `<div class="meta" style="margin-bottom:6px">${esc(d.craft.profession || "")}${d.craft.expansion ? " · " + esc(d.craft.expansion) : ""}</div>`
+      + (d.crafters.length ? `<div class="chips">${d.crafters.map(who).join("")}</div>` : none("Personne dans la guilde"))
+    : none("Cet objet ne se fabrique pas.");
+}
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+  } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  const id = parseInt((location.pathname.match(/\/item\/(\d+)/) || [])[1] || "0", 10);
+  try {
+    render(await jget("/api/item/" + id));
+  } catch (e) {
+    $("#ihead").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>

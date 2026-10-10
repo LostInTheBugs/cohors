@@ -520,6 +520,9 @@ def _init_db() -> None:
             "ALTER TABLE game_recipes ADD COLUMN ilvl INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE prep_plan ADD COLUMN raids TEXT NOT NULL DEFAULT '[]'",
             "ALTER TABLE prep_plan ADD COLUMN bosses TEXT NOT NULL DEFAULT '[]'",
+            # v2026.10.020 — noms des objets du butin (fiche objet, recherche)
+            "ALTER TABLE item_loot ADD COLUMN name_fr TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE item_loot ADD COLUMN name_en TEXT NOT NULL DEFAULT ''",
         ):
             try:
                 conn.execute(_stmt)
@@ -534,6 +537,7 @@ def _init_db() -> None:
             # recettes connues par personnage (API Blizzard) : re-relevé des métiers
             ("known_recipes_v1", "UPDATE char_professions SET ts = 0"),
             ("known_recipes_v2", "UPDATE char_professions SET ts = 0"),  # + palier précédent
+            ("loot_names_v1", "UPDATE item_loot SET updated = 0"),  # re-synchro du butin avec les noms
         ):
             if conn.execute("SELECT value FROM meta WHERE key=?", (_key,)).fetchone() is None:
                 conn.execute(_stmt)

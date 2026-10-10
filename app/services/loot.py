@@ -23,9 +23,10 @@ def _loot_sync() -> None:
         with _db_lock, _db() as conn:
             conn.execute("DELETE FROM item_loot")
             conn.executemany(
-                "INSERT INTO item_loot (item_id, kind, inst_fr, inst_en, boss_fr, boss_en, updated) "
-                "VALUES (?,?,?,?,?,?,?)",
-                [(r["item_id"], r["kind"], r["inst_fr"], r["inst_en"], r["boss_fr"], r["boss_en"], now)
+                "INSERT INTO item_loot (item_id, kind, inst_fr, inst_en, boss_fr, boss_en, name_fr, name_en, updated) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                [(r["item_id"], r["kind"], r["inst_fr"], r["inst_en"], r["boss_fr"], r["boss_en"],
+                  r.get("name_fr") or "", r.get("name_en") or "", now)
                  for r in rows])
         st.update({"state": "idle", "ts": now})
         print(f"[loot] butin synchronisé : {len(rows)} ligne(s)", flush=True)
