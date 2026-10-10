@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.020 - 2026-10-10
+
+### Added
+
+- Item card (`/item/<id>`): where an item drops (raid or dungeon boss), who has it on their
+  wishlist (priority and BiS first), who already wears it and who can craft it. Item names in
+  the « Who can craft… » search and in the wishlist open the card.
+
+### Changed
+
+- The loot table now also stores item names (French and English); it is fetched again once
+  after the update to fill them in.
+
 ## 2026.10.019 - 2026-10-10
 
 ### Added
