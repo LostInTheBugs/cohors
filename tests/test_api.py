@@ -1225,6 +1225,43 @@ def test_loot_sync_stores_item_names(monkeypatch):
         conn.execute("DELETE FROM item_loot WHERE item_id=950002")
     assert dict(row) == {"name_fr": "Anneau test", "name_en": "Test Ring"}
 
+
+def test_global_search_finds_chars_items_and_recipes(monkeypatch):
+    from app import bnet as B
+    from app.routers import search as SEARCH
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": [{"name": "Hÿpérion", "realm": "hyjal"}]}, 0.0))
+    now = time.time()
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'hÿpérion', '2026-10-10', ?, ?)",
+                     (now, json.dumps({"class": "Mage", "spec": "Givre", "spec_en": "Frost", "ilvl": 290, "items": [
+                         {"slot": "Doigt", "name": "Anneau ancien de gel", "name_en": "Ancient Frost Ring", "ilvl": 289,
+                          "id": 960001}]})))
+        conn.execute("INSERT INTO item_loot (item_id, kind, inst_fr, inst_en, boss_fr, boss_en, name_fr, name_en, updated)"
+                     " VALUES (960002, 'raid', 'Flèche du Vide', 'Voidspire', 'Boss A', 'Boss A', 'Épée de givre', 'Frost Sword', 0)")
+        conn.execute("INSERT INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats, updated, item_en, prof_en)"
+                     " VALUES (960101, 'Alchimie', 'Alchimie de Midnight', 0, 'Potion de givre', 0, 1, '[]', 0, 'Frost Potion', 'Alchemy')")
+    SEARCH._IDX["data"] = None
+    try:
+        c = _plain_client("gsearch@test.local", "10.99.60.6")
+        d = c.get("/api/search", params={"q": "hyperion"}).json()           # sans accents
+        assert [(x["name"], x["spec"], x["ilvl"]) for x in d["chars"]] == [("Hÿpérion", "Givre", 290)]
+        d = c.get("/api/search", params={"q": "givre"}).json()
+        assert [x["name"] for x in d["items"]] == ["Épée de givre"]           # butin (avec source)
+        assert d["items"][0]["source"] == {"kind": "raid", "boss": "Boss A", "instance": "Flèche du Vide"}
+        assert [x["name"] for x in d["recipes"]] == ["Potion de givre"]
+        d = c.get("/api/search", params={"q": "gel"}).json()
+        assert [(x["id"], x["source"]) for x in d["items"]] == [(960001, None)]  # objet porté
+        d = c.get("/api/search", params={"q": "epee"}).json()
+        assert [x["id"] for x in d["items"]] == [960002]
+        assert c.get("/api/search", params={"q": "g"}).json()["items"] == []
+        assert client.get("/api/search", params={"q": "givre"}).status_code == 401
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name='hÿpérion'")
+            conn.execute("DELETE FROM item_loot WHERE item_id=960002")
+            conn.execute("DELETE FROM game_recipes WHERE id=960101")
+        SEARCH._IDX["data"] = None
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):

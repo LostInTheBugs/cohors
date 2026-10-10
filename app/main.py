@@ -461,6 +461,12 @@ from app.routers import items as _items_router  # noqa: E402
 app.include_router(_items_router.router)
 
 
+# Recherche globale (barre de navigation, Ctrl+K) — app/routers/search.py
+from app.routers import search as _search_router  # noqa: E402
+
+app.include_router(_search_router.router)
+
+
 # Assiduité aux soirées de raid (Warcraft Logs) — app/routers/attendance.py
 from app.routers import attendance as _attendance_router  # noqa: E402
 
