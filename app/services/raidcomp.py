@@ -108,3 +108,43 @@ def compo_embed(ev: dict, class_keys: dict, guild: str = "la guilde", link: str 
         "fields": fields[:25],
         "footer": {"text": f"{guild} · composition du raid"},
     }
+
+
+def _base(name: str) -> str:
+    """Nom de personnage sans le royaume (« Nom-Royaume » → « nom »), en minuscules."""
+    k = str(name or "").strip().lower()
+    return k.rsplit("-", 1)[0] if "-" in k else k
+
+
+def fill_candidates(ev: dict, chars: list[dict], owner_of: dict, unavailable: set, want_en: bool = False) -> dict:
+    """Qui peut compléter une soirée : personnages actifs ni inscrits (présent / peut-être / absent),
+    ni indisponibles ce jour-là, ni joués par un compte déjà présent.
+
+    `chars` : [{key, class_key, ...}] (derniers relevés) ; `owner_of` : nom → e-mail du compte ;
+    `unavailable` : e-mails indisponibles ce jour-là. Chaque candidat indique les buffs manquants
+    qu'il apporterait (`brings`) ; ceux qui en apportent le plus viennent en premier.
+    """
+    meta = ev.get("meta") or {}
+    ovr = meta.get("ovr") or {}
+    status = {}
+    for i in ev.get("inv") or []:
+        status[_base(i.get("n"))] = event_status(i, ovr)
+    class_of = {c["key"]: c.get("class_key") or "" for c in chars}
+    coming = [k for k, st in status.items() if st in ("ok", "maybe")]
+    coming_owners = {owner_of[k] for k in coming if owner_of.get(k)}
+    _ok, missing = buff_coverage(class_of.get(k, "") for k, st in status.items() if st == "ok")
+    missing = set(missing)
+    label = {fr: (en if want_en else fr) for fr, en, _c in RAID_BUFFS}
+    out = []
+    for c in chars:
+        k = c["key"]
+        st = status.get(k)
+        if st in ("ok", "maybe", "no"):
+            continue
+        owner = owner_of.get(k)
+        if owner and (owner in coming_owners or owner in unavailable):
+            continue
+        brings = [label[fr] for fr, _en, cls in RAID_BUFFS if fr in missing and c.get("class_key") in cls]
+        out.append({**c, "invited": st == "wait", "brings": brings})
+    out.sort(key=lambda c: (-len(c["brings"]), not c.get("main"), -(c.get("ilvl") or 0), c.get("name", "").lower()))
+    return {"candidates": out, "missing": [label[fr] for fr, _en, _c in RAID_BUFFS if fr in missing]}

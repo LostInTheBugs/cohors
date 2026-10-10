@@ -13,9 +13,9 @@ from app.core.auth import _require_officer, _require_user, _user_locale
 from app.core.brand import _brand_identity
 from app.core.config import PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
-from app.core.util import CLASS_KEY_FR, _int_any, _lua_unescape, _snap_day
+from app.core.util import CLASS_KEY_FR, SPEC_ROLE, _int_any, _lua_unescape, _pick, _snap_day
 from app.services.bot import _bot_config
-from app.services.raidcomp import compo_embed, raid_buffs
+from app.services.raidcomp import compo_embed, fill_candidates, raid_buffs
 from app.services.wishlist import _bis_by_user
 
 router = APIRouter()
@@ -381,3 +381,56 @@ def api_gcal_post_compo(key: str, request: Request):
     except discord_bot.DiscordError as exc:
         raise HTTPException(400, f"Discord — {exc}")
     return {"ok": True}
+
+
+FILL_MAX_AGE = 7 * 86400.0   # personnages relevés ces 7 derniers jours
+FILL_MIN_LEVEL = 90
+FILL_MAX = 40
+
+
+@router.get("/api/gcal/fill/{key}")
+def api_gcal_fill(key: str, request: Request):
+    """Qui peut compléter une soirée : actifs non inscrits, non indisponibles, buffs manquants apportés."""
+    data = api_gcal_get(request)
+    ev = next((e for e in data.get("events") or [] if e.get("key") == key), None)
+    if ev is None:
+        raise HTTPException(404, "Événement introuvable dans le dernier import.")
+    want_en = _user_locale(request).startswith("en")
+    try:
+        ts = float(ev.get("ts") or 0)
+    except (TypeError, ValueError):
+        ts = 0.0
+    day = _snap_day(ts) if ts > 0 else _snap_day()
+    with _db_lock, _db() as conn:
+        snaps = conn.execute(
+            "SELECT realm, name, ts, data FROM char_snapshots "
+            "WHERE id IN (SELECT MAX(id) FROM char_snapshots GROUP BY realm, name) AND ts >= ?",
+            (time.time() - FILL_MAX_AGE,)).fetchall()
+        links = conn.execute("SELECT user_email, name, is_main FROM char_links").fetchall()
+        unav = {r["email"] for r in conn.execute(
+            "SELECT email FROM unavails WHERE day_from <= ? AND day_to >= ?", (day, day)).fetchall()}
+    owner_of = {(r["name"] or "").strip().lower(): r["user_email"] for r in links}
+    mains = {(r["name"] or "").strip().lower() for r in links if r["is_main"]}
+    disp: dict[str, str] = {}
+    try:
+        roster, _t = bnet.roster()
+        disp = {(m.get("name") or "").lower(): m.get("name") or "" for m in (roster.get("members") or [])}
+    except bnet.BnetError:
+        pass
+    chars = []
+    for sr in snaps:
+        try:
+            d = json.loads(sr["data"]) or {}
+        except (ValueError, TypeError):
+            continue
+        if (d.get("level") or 0) < FILL_MIN_LEVEL:
+            continue
+        k = (sr["name"] or "").strip().lower()
+        seen = d.get("last_login")
+        chars.append({"key": k, "realm": sr["realm"], "name": disp.get(k) or k.title(),
+                      "class_key": CLASS_KEY_FR.get(d.get("class") or ""), "spec": _pick(d, "spec", want_en) or "",
+                      "role": SPEC_ROLE.get(d.get("spec") or ""), "ilvl": d.get("ilvl"),
+                      "seen": (seen / 1000) if seen else None, "main": k in mains})
+    res = fill_candidates(ev, chars, owner_of, unav, want_en)
+    return {"key": key, "missing": res["missing"], "total": len(res["candidates"]),
+            "candidates": res["candidates"][:FILL_MAX]}

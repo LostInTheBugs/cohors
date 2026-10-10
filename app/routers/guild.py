@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from app import bnet, wcl
 from app.core.auth import _require_admin, _require_user, _user_locale, _user_role
 from app.core.db import _db, _db_lock
-from app.core.util import CLASS_KEY_FR, _pick, _snap_day
+from app.core.util import CLASS_KEY_FR, SPEC_ROLE, _pick, _snap_day
 from app.services.crafting import PROF_EN, _craft_results
 from app.services.progression import _progression_data
 
@@ -127,19 +127,6 @@ def api_progression(request: Request, days: int = 30):
     """Classement des progressions (relevés quotidiens) + courbe iLvl moyen (7 ou 30 j)."""
     _require_user(request)
     return _progression_data(days, _user_locale(request))
-
-
-# Spécialisations (noms FR renvoyés par l'API) → rôle : tank / heal / dps.
-SPEC_ROLE = {
-    "Sang": "tank", "Vengeance": "tank", "Gardien": "tank", "Maître brasseur": "tank", "Protection": "tank",
-    "Restauration": "heal", "Sacré": "heal", "Discipline": "heal", "Tisse-brume": "heal", "Préservation": "heal",
-    "Givre": "dps", "Impie": "dps", "Dévastation": "dps", "Équilibre": "dps", "Farouche": "dps",
-    "Augmentation": "dps", "Maîtrise des bêtes": "dps", "Précision": "dps", "Survie": "dps",
-    "Arcanes": "dps", "Feu": "dps", "Marche-vent": "dps", "Vindicte": "dps", "Ombre": "dps",
-    "Assassinat": "dps", "Hors-la-loi": "dps", "Finesse": "dps", "Élémentaire": "dps",
-    "Amélioration": "dps", "Affliction": "dps", "Démonologie": "dps", "Destruction": "dps",
-    "Armes": "dps", "Fureur": "dps", "Dévoration": "dps",
-}
 
 
 @router.get("/api/avail")

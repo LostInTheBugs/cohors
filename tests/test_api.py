@@ -1389,6 +1389,50 @@ def test_gcal_post_compo_to_discord(monkeypatch):
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM gcal_import WHERE id=1")
 
+
+def test_fill_candidates_excludes_signed_unavailable_and_same_account():
+    from app.services import raidcomp as RC
+    ev = {"inv": [{"n": "Guerrier-Hyjal", "s": 1}, {"n": "Peutetre", "s": 8}, {"n": "Nonmerci", "s": 2},
+                  {"n": "Silencieux", "s": 0}], "meta": {}}
+    chars = [{"key": k, "class_key": ck, "ilvl": il, "name": k.title(), "main": False}
+             for k, ck, il in (("guerrier", "Warrior", 280), ("peutetre", "Mage", 280), ("nonmerci", "Mage", 280),
+                               ("silencieux", "Rogue", 270), ("druidelibre", "Druid", 275), ("chamanlibre", "Shaman", 290),
+                               ("rerollguerrier", "Priest", 260), ("absente", "Priest", 300), ("mageoisif", "Mage", 295))]
+    owner = {"guerrier": "a@x", "rerollguerrier": "a@x", "absente": "b@x"}
+    res = RC.fill_candidates(ev, chars, owner, {"b@x"})
+    keys = [c["key"] for c in res["candidates"]]
+    assert set(keys) == {"silencieux", "druidelibre", "chamanlibre", "mageoisif"}   # inscrits, indispo, même compte exclus
+    by = {c["key"]: c for c in res["candidates"]}
+    assert by["silencieux"]["invited"] is True and by["druidelibre"]["invited"] is False
+    assert "Polyvalence (Druide)" in by["druidelibre"]["brings"] and "Résurrection en combat" in by["druidelibre"]["brings"]
+    assert "Puissance d'attaque (Guerrier)" not in res["missing"]                   # déjà couvert par le guerrier
+    assert keys[-1] == "silencieux" and len(by["silencieux"]["brings"]) == 1        # Voleur : un seul buff
+    assert keys[0] == "mageoisif"                                                   # 2 buffs, à égalité : iLvl le plus haut
+
+
+def test_gcal_fill_endpoint(monkeypatch):
+    from app import bnet as B
+    monkeypatch.setattr(B, "journal_raids", lambda locale=None: ({"expansion": "", "raids": []}, 0.0))
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": [{"name": "Dispo", "realm": "hyjal"}]}, 0.0))
+    now = time.time()
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT OR REPLACE INTO gcal_import (id, ts, player, data) VALUES (1, ?, 'x', ?)",
+                     (now, json.dumps({"events": [{"id": 778, "title": "Raid", "ts": now + 86400,
+                                                   "inv": [{"n": "Venu", "s": 1}]}]})))
+        for nm, cls, spec in (("venu", "Guerrier", "Fureur"), ("dispo", "Druide", "Gardien")):
+            conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', ?, '2026-10-10', ?, ?)",
+                         (nm, now, json.dumps({"class": cls, "spec": spec, "level": 90, "ilvl": 280})))
+    try:
+        c = _plain_client("fill@test.local", "10.99.60.11")
+        d = c.get("/api/gcal/fill/id:778").json()
+        assert [(x["name"], x["role"], x["class_key"]) for x in d["candidates"]] == [("Dispo", "tank", "Druid")]
+        assert "Polyvalence (Druide)" in d["candidates"][0]["brings"]
+        assert c.get("/api/gcal/fill/id:1").status_code == 404
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM gcal_import WHERE id=1")
+            conn.execute("DELETE FROM char_snapshots WHERE name IN ('venu', 'dispo')")
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):
