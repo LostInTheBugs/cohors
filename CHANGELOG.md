@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.022 - 2026-10-10
+
+### Changed
+
+- Global search: when nothing is found, it now says what it covers (characters snapshotted
+  in the last 30 days, this season's loot, recipes of the last 2 expansions, gear worn,
+  wishlists) and suggests corrections for typos (« Did you mean … »).
+
 ## 2026.10.021 - 2026-10-10
 
 ### Added
