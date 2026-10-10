@@ -369,6 +369,7 @@ def equipment(realm: str, name: str, force: bool = False, locale: str | None = N
     items = []
     for it in raw.get("equipped_items", []):
         slot = it.get("slot") or {}
+        sockets = it.get("sockets") or []
         items.append(
             {
                 "slot": slot.get("name") or slot.get("type") or "?",
@@ -376,6 +377,14 @@ def equipment(realm: str, name: str, force: bool = False, locale: str | None = N
                 "ilvl": (it.get("level") or {}).get("value"),
                 "quality": ((it.get("quality") or {}).get("type") or "COMMON"),
                 "item_id": (it.get("item") or {}).get("id"),
+                # préparation (enchantements / châsses) : emplacement technique, enchantement permanent,
+                # châsses et gemmes serties, arme (une main gauche ne s'enchante que si c'est une arme)
+                "slot_type": slot.get("type") or "",
+                "ench": any(((e.get("enchantment_slot") or {}).get("type") == "PERMANENT")
+                            for e in (it.get("enchantments") or [])),
+                "sockets": len(sockets),
+                "gems": sum(1 for x in sockets if x.get("item")),
+                "weapon": (it.get("item_class") or {}).get("id") == 2,
             }
         )
     ilvls = [it["ilvl"] for it in items if it.get("ilvl")]

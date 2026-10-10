@@ -29,6 +29,7 @@
       { href: "/raids", label: "📊 Rapports" },
       { href: "/calendar", label: "🗓️ Calendrier" },
       { href: "/prep", label: "🧪 Préparation de raid" },
+      { href: "/readiness", label: "🩺 Bilan des joueurs" },
       { href: "/mplus", label: "⚔️ MM+" }
     ] },
     { label: "🎧 Vocal", items: [
