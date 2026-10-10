@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.023 - 2026-10-10
+
+### Changed
+
+- Global search: « Did you mean » only offers corrections that actually find something.
+
 ## 2026.10.022 - 2026-10-10
 
 ### Changed
