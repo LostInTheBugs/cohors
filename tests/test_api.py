@@ -1273,6 +1273,22 @@ def test_global_search_finds_chars_items_and_recipes(monkeypatch):
             conn.execute("DELETE FROM game_recipes WHERE id=960101")
         SEARCH._IDX["data"] = None
 
+
+def test_gcal_exposes_language_independent_class_keys(monkeypatch):
+    from app import bnet as B
+    monkeypatch.setattr(B, "journal_raids", lambda locale=None: ({"expansion": "", "raids": []}, 0.0))
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'totemix', '2026-10-10', 1, ?)",
+                     (json.dumps({"class": "Chaman", "class_en": "Shaman"}),))
+    try:
+        c = _plain_client("gcal-ck@test.local", "10.99.60.7")
+        d = c.get("/api/gcal").json()
+        assert d["class_keys"]["totemix"] == "Shaman"
+        assert d["classes"]["totemix"] == "Chaman"
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name='totemix'")
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):

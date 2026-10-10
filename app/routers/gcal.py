@@ -13,7 +13,7 @@ from app.core.auth import _require_officer, _require_user, _user_locale
 from app.core.brand import _brand_identity
 from app.core.config import PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
-from app.core.util import _int_any, _lua_unescape, _snap_day
+from app.core.util import CLASS_KEY_FR, _int_any, _lua_unescape, _snap_day
 from app.services.bot import _bot_config
 from app.services.wishlist import _bis_by_user
 
@@ -216,6 +216,7 @@ def api_gcal_get(request: Request):
         raid_catalog = {"expansion": "", "raids": []}
     en_loc = _user_locale(request).startswith("en")
     classes: dict = {}
+    class_keys: dict = {}   # clé de classe indépendante de la langue (couverture des buffs de raid)
     for cr in class_rows:
         nmk = str(cr["name"] or "").strip().lower()
         if not nmk or nmk in classes:
@@ -223,8 +224,11 @@ def api_gcal_get(request: Request):
         cname = (cr["cen"] if en_loc else cr["cfr"]) or cr["cfr"] or ""
         if cname:
             classes[nmk] = cname
+        ck = CLASS_KEY_FR.get(cr["cfr"] or "")
+        if ck:
+            class_keys[nmk] = ck
     return {"imported_at": row["ts"] if row else 0, "player": row["player"] if row else "",
-            "events": events, "raid_catalog": raid_catalog, "classes": classes,
+            "events": events, "raid_catalog": raid_catalog, "classes": classes, "class_keys": class_keys,
             "unavail": {"rows": urows, "counts": {"members": len(urows), "conflict": conflicts}}}
 
 

@@ -166,7 +166,37 @@ const CLASS_COLORS = {
   Hunter: "#AAD372", Mage: "#3FC7EB", Monk: "#00FF98", Paladin: "#F48CBA", Priest: "#FFFFFF",
   Rogue: "#FFF468", Shaman: "#0070DD", Warlock: "#8788EE", Warrior: "#C69B6D"
 };
-let GCAL_CLS = {};
+let GCAL_CLS = {}, GCAL_CK = {};
+const ckOf = (n) => {
+  const k = String(n || "").toLowerCase();
+  return GCAL_CK[k] || (k.includes("-") ? GCAL_CK[k.slice(0, k.lastIndexOf("-"))] : "") || "";
+};
+// Buffs et débuffs de raid apportés par chaque classe (Midnight) + utilitaires clés.
+const RAID_BUFFS = [
+  ["Intelligence (Mage)", ["Mage"]],
+  ["Endurance (Prêtre)", ["Priest"]],
+  ["Puissance d'attaque (Guerrier)", ["Warrior"]],
+  ["Polyvalence (Druide)", ["Druid"]],
+  ["Maîtrise (Chaman)", ["Shaman"]],
+  ["Mobilité (Évocateur)", ["Evoker"]],
+  ["Dégâts subis (Chasseur)", ["Hunter"]],
+  ["Dégâts magiques subis (Chasseur de démons)", ["DemonHunter"]],
+  ["Dégâts physiques subis (Moine)", ["Monk"]],
+  ["Aura de dévotion (Paladin)", ["Paladin"]],
+  ["Poison atrophiant (Voleur)", ["Rogue"]],
+  ["Furie sanguinaire", ["Shaman", "Mage", "Hunter", "Evoker"]],
+  ["Résurrection en combat", ["Druid", "DeathKnight", "Warlock", "Paladin"]]
+];
+function buffsHTML(names) {
+  const have = new Set(), unknown = [];
+  names.forEach(n => { const k = ckOf(n); if (k) have.add(k); else unknown.push(n); });
+  if (!have.size) return "";
+  const ok = [], miss = [];
+  RAID_BUFFS.forEach(([label, cls]) => (cls.some(c => have.has(c)) ? ok : miss).push(`<span>${label}</span>`));
+  return `<span class="meta"><span>🧩 Buffs de raid</span> ✅ ${ok.join(" · ")}</span>`
+    + (miss.length ? `<span class="meta" style="color:var(--warn)"><span>⚠️ Manquants :</span> ${miss.join(" · ")}</span>` : "")
+    + (unknown.length ? `<span class="meta"><span>Classe inconnue :</span> ${unknown.map(esc).join(", ")}</span>` : "");
+}
 const clsOf = (n) => {
   const k = String(n || "").toLowerCase();
   return GCAL_CLS[k] || (k.includes("-") ? GCAL_CLS[k.slice(0, k.lastIndexOf("-"))] : "") || "";
@@ -239,6 +269,7 @@ function renderGcal() {
   renderUnav(d);
   GCAL_CAT = d.raid_catalog || { raids: [] };
   GCAL_CLS = d.classes || {};
+  GCAL_CK = d.class_keys || {};
   const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
   const box = $("#glist");
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
@@ -249,11 +280,11 @@ function renderGcal() {
     const stOf = (i) => OVR[i.n] || (i.s === 1 || i.s === 3 ? "ok" : i.s === 8 ? "maybe" : i.s === 2 ? "no" : "wait");
     const nmTxt = (n) => cName(n) + (ROLES[n] ? " " + (REMO[ROLES[n]] || "") : "") + (OVR[n] ? " (officier)" : "");
     const c = { ok: 0, maybe: 0, no: 0, wait: 0 };
-    const lists = { ok: [], maybe: [], no: [] }, wait = [];
+    const lists = { ok: [], maybe: [], no: [] }, wait = [], okNames = [];
     const rc2 = { tank: 0, heal: 0, dps: 0 };
     for (const i of (e.inv || [])) {
       const st = stOf(i);
-      if (st === "ok") { c.ok++; lists.ok.push(nmTxt(i.n)); if (ROLES[i.n]) rc2[ROLES[i.n]]++; }
+      if (st === "ok") { c.ok++; lists.ok.push(nmTxt(i.n)); okNames.push(i.n); if (ROLES[i.n]) rc2[ROLES[i.n]]++; }
       else if (st === "maybe") { c.maybe++; lists.maybe.push(nmTxt(i.n)); }
       else if (st === "no") { c.no++; lists.no.push(nmTxt(i.n)); }
       else { c.wait++; wait.push(nmTxt(i.n)); }
@@ -269,6 +300,7 @@ function renderGcal() {
       <span class="meta">${e.ts ? dateTxt(e.ts) : esc(e.date || "")}</span>
       ${line("✅", lists.ok)}${line("❓", lists.maybe)}${line("❌", lists.no)}
       ${wait.length ? `<span class="meta warn">⏳ sans réponse : ${wait.join(", ")}</span>` : ""}
+      ${buffsHTML(okNames)}
       ${(e.unav || []).map(u => u.conflict
         ? `<span class="meta" style="color:var(--warn)">⚠️ ${cName(u.n)} — indispo mais a accepté le raid · ${perTxt(u)}</span>`
         : `<span class="meta">🚫 ${cName(u.n)} · ${perTxt(u)}</span>`).join("")}
