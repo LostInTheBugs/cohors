@@ -32,6 +32,27 @@ def test_pages_using_esc_load_shared_helper():
             assert "esc.js" in t or "const esc" in t or "function esc" in t, p.name
 
 
+def test_pages_using_common_helpers_load_common_js():
+    # $, jget, fmt, ago, CLASS_COLORS viennent de /static/common.js : une page qui les utilise doit
+    # le charger (avant son script), sauf si elle définit sa propre version.
+    helpers = {"$": r"(?<![\w$.])\$\(", "jget": r"\bjget\(", "fmt": r"(?<![\w.])fmt\(",
+               "ago": r"(?<![\w.])ago\(", "CLASS_COLORS": r"\bCLASS_COLORS\b"}
+    for p in sorted((ROOT / "app/static").glob("*.html")):
+        t = p.read_text(encoding="utf-8")
+        loads = "/static/common.js" in t
+        for name, pat in helpers.items():
+            if not re.search(pat, t):
+                continue
+            local = re.search(r"(const|let|var|function)\s+" + re.escape(name) + r"(?![\w$])", t)
+            assert loads or local, f"{p.name} utilise {name} sans charger common.js"
+        if loads:
+            first_inline = re.search(r"<script>", t)
+            assert first_inline is None or t.index("/static/common.js") < first_inline.start(), p.name
+    js = (ROOT / "app/static/common.js").read_text(encoding="utf-8")
+    for name in ("window.$ =", "window.jget =", "window.fmt =", "window.ago =", "window.CLASS_COLORS =", "/api/logout"):
+        assert name in js, name
+
+
 def test_addon_files_present():
     assert (ROOT / "addon/Cohors/Cohors.toc").exists()
     assert (ROOT / "addon/Cohors/Cohors.lua").exists()

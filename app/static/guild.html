@@ -132,11 +132,8 @@
 <script src="/static/branding.js?v=2026.10.029"></script>
 <script src="/static/i18n.js?v=2026.10.029"></script>
 <script src="/static/esc.js?v=2026.10.029"></script>
+<script src="/static/common.js?v=2026.10.029"></script>
 <script>
-const $ = (s) => document.querySelector(s);
-const jget = async (u) => { const r = await fetch(u);
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
 const jpost = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
   body: JSON.stringify(b) }); const j = await r.json().catch(() => ({}));
   if (!r.ok) { const err = new Error(j.detail || "Erreur"); err.status = r.status; throw err; } return j; };
@@ -235,11 +232,6 @@ $("#save").addEventListener("click", async () => {
   $("#save").disabled = false;
 });
 
-$("#logout").addEventListener("click", async (ev) => {
-  ev.preventDefault();
-  await fetch("/api/logout", { method: "POST" });
-  location.href = "/login";
-});
 
 (async () => {
   try {
