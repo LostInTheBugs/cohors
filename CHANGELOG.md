@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.018 - 2026-10-10
+
+### Added
+
+- Crafting page (Guild menu): new « Who can craft… » search. Type an item or recipe name to
+  see which guild members can craft it, from the recipes they know in game (Blizzard API, last
+  two expansions) and the recipes declared in My recipes or via the add-on. Recipes nobody
+  knows are listed as « Nobody in the guild ».
+
 ## 2026.10.017 - 2026-10-09
 
 ### Changed
