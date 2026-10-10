@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.029 - 2026-10-10
+
+### Added
+
+- Dashboard: players who haven't linked any character get a reminder card explaining what
+  linking unlocks (craft orders, main name, raid fill-in, personal pages).
+
 ## 2026.10.028 - 2026-10-10
 
 ### Added
