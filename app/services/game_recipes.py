@@ -12,7 +12,7 @@ from app.services.wishlist import _recipe_wish_key
 GAME_PREP_PROFS = ((185, "Cuisine"), (171, "Alchimie"), (773, "Calligraphie"),
                    (164, "Forge"), (165, "Travail du cuir"), (202, "Ingénierie"),
                    (197, "Couture"), (755, "Joaillerie"),
-                   # v2026.10.020 : tous les métiers qui ont des recettes (recherche « Qui sait fabriquer… »)
+                   # v2026.10.021 : tous les métiers qui ont des recettes (recherche « Qui sait fabriquer… »)
                    (333, "Enchantement"), (186, "Minéralogie"), (182, "Herboristerie"), (393, "Dépeçage"))
 GAME_SYNC_TTL = 86400.0  # resynchro auto au plus une fois par jour (boucle 6 h + au démarrage)
 _game_sync_state = {"state": "idle", "prof": "", "done": 0, "total": 0, "error": "", "ts": 0.0}

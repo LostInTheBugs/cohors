@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.021 - 2026-10-10
+
+### Added
+
+- Global search: a 🔎 button in the menu, or Ctrl+K (or « / ») on any page. It finds
+  characters, items (loot, gear worn, crafted items, wishlists — each opens its item card),
+  recipes and pages. Accents and case are ignored.
+- The crafting page accepts `?q=` to open the « Who can craft… » search pre-filled.
+
 ## 2026.10.020 - 2026-10-10
 
 ### Added
