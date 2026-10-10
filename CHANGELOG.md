@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.026 - 2026-10-10
+
+### Added
+
+- Calendar: « 📋 Discord » button (officers) posting a raid's composition to Discord —
+  attendees by role, maybes, missing raid buffs, schedule and wanted items per boss.
+
 ## 2026.10.025 - 2026-10-10
 
 ### Added
