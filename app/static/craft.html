@@ -53,6 +53,15 @@
   .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
   footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
   .hidden { display: none !important; }
+  .rlist { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; }
+  .ri { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 8px 2px; border-top: 1px solid var(--line); }
+  .ri:first-child { border-top: 0; }
+  .ri .rn { font-weight: 600; font-size: 14.5px; }
+  .ri .rp { color: var(--mut); font-size: 12.5px; }
+  .ri .rc { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13.5px; }
+  .ri .rc a { font-weight: 600; text-decoration: none; }
+  .ri .rc a:hover { text-decoration: underline; }
+  .ri .none { color: var(--mut); font-style: italic; }
   select { background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 14px; }
 </style>
 <link rel="stylesheet" href="/static/theme.css?v=2026.10.017">
@@ -75,6 +84,16 @@
   </header>
   <nav class="tabs" id="navmain"></nav>
 
+  <div class="card">
+    <h2>🔎 Qui sait fabriquer…</h2>
+    <div class="row">
+      <input type="search" id="rq" placeholder="Nom d'un objet ou d'une recette…" autocomplete="off">
+      <span class="spacer"></span>
+      <span class="meta" id="rmeta"></span>
+    </div>
+    <div id="rres"></div>
+    <div class="meta" style="margin-top:8px">Recettes connues d'après le jeu (deux dernières extensions) et recettes déclarées dans 📖 Mes recettes ou via l'addon.</div>
+  </div>
   <div class="card">
     <div class="row">
       <input type="search" id="q" placeholder="Rechercher un métier ou un personnage…">
@@ -136,6 +155,33 @@ function render() {
 }
 
 $("#q").addEventListener("input", () => { Q = $("#q").value; render(); });
+let RQ_SEQ = 0, RQ_TIMER = null;
+function renderRecipes(d) {
+  const box = $("#rres"), list = d.results || [];
+  $("#rmeta").textContent = list.length
+    ? (d.total > list.length ? `${fmt(list.length)} objets affichés sur ${fmt(d.total)}` : `${fmt(list.length)} objet${list.length > 1 ? "s" : ""}`)
+    : "";
+  if (!list.length) { box.innerHTML = `<div class="empty">Aucune recette trouvée.</div>`; return; }
+  box.innerHTML = `<div class="rlist">${list.map(r => `<div class="ri">
+    <span class="rn">${esc(r.item)}</span>
+    <span class="rp">${esc(r.profession || "")}${r.expansion ? " · " + esc(r.expansion) : ""}</span>
+    <div class="rc">${r.crafters.length
+      ? r.crafters.map(c => `<a style="color:${CLASS_COLORS[c.class_key] || "var(--fg)"}" href="/char/${esc(c.realm)}/${esc(c.key)}" title="${c.src.includes("blizzard") ? "Recette connue en jeu" : "Recette déclarée"}">${esc(c.name)}</a>`).join("")
+      : `<span class="none">Personne dans la guilde</span>`}</div>
+  </div>`).join("")}</div>`;
+}
+async function searchRecipes() {
+  const q = $("#rq").value.trim(), seq = ++RQ_SEQ;
+  if (q.length < 2) { $("#rres").innerHTML = ""; $("#rmeta").textContent = ""; return; }
+  $("#rmeta").textContent = "Recherche…";
+  try {
+    const d = await jget("/api/craft/search?q=" + encodeURIComponent(q));
+    if (seq === RQ_SEQ) renderRecipes(d);
+  } catch (e) {
+    if (seq === RQ_SEQ) { $("#rmeta").textContent = ""; $("#rres").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`; }
+  }
+}
+$("#rq").addEventListener("input", () => { clearTimeout(RQ_TIMER); RQ_TIMER = setTimeout(searchRecipes, 250); });
 
 $("#logout").addEventListener("click", async (ev) => {
   ev.preventDefault();

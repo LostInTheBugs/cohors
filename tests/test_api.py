@@ -1084,6 +1084,42 @@ def test_my_recipes_refresh_rereads_blizzard(monkeypatch):
     assert m.post("/api/my/recipes/refresh", json={"realm": "hyjal", "name": "Rafraichie"}).status_code == 403
 
 
+
+def test_craft_search_lists_who_can_craft(monkeypatch):
+    monkeypatch.setattr(M.bnet, "roster", lambda force=False: ({"members": [
+        {"name": "Fiolette", "realm": "hyjal"}]}, 0.0))
+    _seed_known_recipes()
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO craft_recipes (crafter, realm, profession, item, item_id, expansion, exp_rank, mats, updated)"
+                     " VALUES ('Bricolo', 'hyjal', 'Alchimie', 'Flacon inconnu', 0, '', 0, '[]', 1)")
+        conn.execute("INSERT INTO craft_recipes (crafter, realm, profession, item, item_id, expansion, exp_rank, mats, updated)"
+                     " VALUES ('Bricolo', 'hyjal', 'Cuisine', 'Potion maison', 0, '', 0, '[]', 1)")
+    try:
+        c = _plain_client("craft-search@test.local", "10.99.60.4")
+        d = c.get("/api/craft/search", params={"q": "FLACON"}).json()
+        by = {r["item"]: r for r in d["results"]}
+        assert set(by) == {"Flacon connu", "Flacon inconnu"} and d["total"] == 2
+        assert [(x["name"], x["realm"], x["src"]) for x in by["Flacon connu"]["crafters"]] == [
+            ("Fiolette", "hyjal", ["blizzard"])]
+        assert [(x["name"], x["src"]) for x in by["Flacon inconnu"]["crafters"]] == [("Bricolo", ["addon"])]
+        assert by["Flacon connu"]["profession"] == "Alchimie"
+        assert by["Flacon connu"]["expansion"] == "Alchimie de Midnight"
+        # recette déclarée seulement (absente du catalogue du jeu)
+        d = c.get("/api/craft/search", params={"q": "maison"}).json()
+        assert [(r["item"], [x["name"] for x in r["crafters"]]) for r in d["results"]] == [("Potion maison", ["Bricolo"])]
+        # recette que personne ne connaît : listée, sans artisan, après celles qui en ont
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM craft_recipes WHERE crafter='Bricolo' AND item='Flacon inconnu'")
+        d = c.get("/api/craft/search", params={"q": "flacon"}).json()
+        assert [(r["item"], len(r["crafters"])) for r in d["results"]] == [("Flacon connu", 1), ("Flacon inconnu", 0)]
+        assert c.get("/api/craft/search", params={"q": "f"}).json()["results"] == []
+        assert c.get("/api/craft/search", params={"q": "introuvable"}).json()["results"] == []
+        assert client.get("/api/craft/search", params={"q": "flacon"}).status_code == 401
+    finally:
+        _unseed_known_recipes()
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM craft_recipes WHERE crafter='Bricolo'")
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):
