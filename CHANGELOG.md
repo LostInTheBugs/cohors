@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.028 - 2026-10-10
+
+### Added
+
+- Craft orders: « 📨 Demander » on an item card sends an order to a guild crafter (with a
+  note); new « 🧾 Mes commandes » page to accept, finish, decline or cancel orders, with a
+  notification at each step.
+
 ## 2026.10.027 - 2026-10-10
 
 ### Added
