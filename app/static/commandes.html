@@ -103,16 +103,8 @@
 <script src="/static/branding.js?v=2026.10.029"></script>
 <script src="/static/i18n.js?v=2026.10.029"></script>
 <script src="/static/esc.js?v=2026.10.029"></script>
+<script src="/static/common.js?v=2026.10.029"></script>
 <script>
-const $ = (s) => document.querySelector(s);
-const jget = async (u) => { const r = await fetch(u);
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
-const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
-  if (s < 60) return "à l'instant";
-  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
-  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
-  return `il y a ${Math.floor(s / 86400)} j`; };
 const ST = { open: "En attente", accepted: "Acceptée", done: "Faite", declined: "Refusée", cancelled: "Annulée" };
 const ACT_CRAFTER = { open: [["accepted", "✅ Accepter"], ["done", "🎁 Faite"], ["declined", "✖ Refuser"]],
                       accepted: [["done", "🎁 Faite"], ["declined", "✖ Refuser"]] };
@@ -150,11 +142,6 @@ document.addEventListener("click", async (ev) => {
   } catch (e) { b.disabled = false; b.title = e.message; }
 });
 $("#fdone").addEventListener("input", () => DATA && render());
-$("#logout").addEventListener("click", async (ev) => {
-  ev.preventDefault();
-  await fetch("/api/logout", { method: "POST" });
-  location.href = "/login";
-});
 (async () => {
   try {
     const me = await jget("/api/me");

@@ -177,8 +177,8 @@
 <script src="/static/branding.js?v=2026.10.029"></script>
 <script src="/static/i18n.js?v=2026.10.029"></script>
 <script src="/static/esc.js?v=2026.10.029"></script>
+<script src="/static/common.js?v=2026.10.029"></script>
 <script>
-const $ = (s) => document.querySelector(s);
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
 const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
@@ -200,9 +200,6 @@ let REGION = "eu";
 const SUMS = new Map();   // clé -> résumé (pour réutiliser au détail)
 let observer = null;
 
-const jget = async (u) => { const r = await fetch(u);
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
 const jreq = async (m, u, b) => { const r = await fetch(u, { method: m, headers: { "Content-Type": "application/json" },
   body: b === undefined ? undefined : JSON.stringify(b) });
   const j = await r.json().catch(() => ({}));
@@ -409,11 +406,6 @@ $("#refresh").addEventListener("click", async (ev) => {
   ev.target.disabled = true;
   await load(1);
   ev.target.disabled = false;
-});
-$("#logout").addEventListener("click", async (ev) => {
-  ev.preventDefault();
-  await fetch("/api/logout", { method: "POST" });
-  location.href = "/login";
 });
 
 // ---- Mes personnages (liaison compte ↔ persos de guilde) ----

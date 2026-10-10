@@ -122,8 +122,8 @@
 <script src="/static/branding.js?v=2026.10.029"></script>
 <script src="/static/i18n.js?v=2026.10.029"></script>
 <script src="/static/esc.js?v=2026.10.029"></script>
+<script src="/static/common.js?v=2026.10.029"></script>
 <script>
-const $ = (s) => document.querySelector(s);
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(n);
 const ago = (ts) => { if (!ts) return "?"; const s = Math.max(0, Date.now()/1000 - ts);
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
@@ -144,9 +144,6 @@ const MAX = 6;
 let sel = [];
 let rosterNames = [];
 
-const jget = async (u) => { const r = await fetch(u);
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
 
 function renderChips() {
   $("#chips").innerHTML = sel.map(c => `<span class="chip">${esc(c.name)} <button data-del="${esc(c.name)}" title="Retirer">✕</button></span>`).join("");
@@ -215,11 +212,6 @@ async function load(force = 0) {
 $("#add").addEventListener("click", () => addName($("#newname").value));
 $("#newname").addEventListener("keydown", (ev) => { if (ev.key === "Enter") addName($("#newname").value); });
 $("#refresh").addEventListener("click", () => load(1));
-$("#logout").addEventListener("click", async (ev) => {
-  ev.preventDefault();
-  await fetch("/api/logout", { method: "POST" });
-  location.href = "/login";
-});
 
 (async () => {
   try {

@@ -149,8 +149,8 @@
 <script src="/static/branding.js?v=2026.10.029"></script>
 <script src="/static/i18n.js?v=2026.10.029"></script>
 <script src="/static/esc.js?v=2026.10.029"></script>
+<script src="/static/common.js?v=2026.10.029"></script>
 <script>
-const $ = (s) => document.querySelector(s);
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
 const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
@@ -174,9 +174,6 @@ let NAME = decodeURIComponent(PARTS[3] || "").toLowerCase();
 let ACCOUNTS = [];
 let ACCT = null;
 
-const jget = async (u) => { const r = await fetch(u);
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
 const charUrl = (realm, name) => `/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`;
 const key = (realm, name) => `${(realm || "").toLowerCase()}|${(name || "").toLowerCase()}`;
 const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
@@ -513,11 +510,6 @@ document.addEventListener("click", (ev) => {
   if (r && n) loadChar(r, n, true);
 });
 
-$("#logout").addEventListener("click", async (ev) => {
-  ev.preventDefault();
-  await fetch("/api/logout", { method: "POST" });
-  location.href = "/login";
-});
 
 (async () => {
   try { const me = await jget("/api/me"); $("#who").textContent = me.name || me.email; }
