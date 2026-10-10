@@ -520,7 +520,7 @@ def _init_db() -> None:
             "ALTER TABLE game_recipes ADD COLUMN ilvl INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE prep_plan ADD COLUMN raids TEXT NOT NULL DEFAULT '[]'",
             "ALTER TABLE prep_plan ADD COLUMN bosses TEXT NOT NULL DEFAULT '[]'",
-            # v2026.10.020 — noms des objets du butin (fiche objet, recherche)
+            # v2026.10.021 — noms des objets du butin (fiche objet, recherche)
             "ALTER TABLE item_loot ADD COLUMN name_fr TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE item_loot ADD COLUMN name_en TEXT NOT NULL DEFAULT ''",
         ):
