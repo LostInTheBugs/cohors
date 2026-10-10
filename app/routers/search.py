@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import difflib
+import itertools
 import json
 import re
 import threading
@@ -117,8 +118,16 @@ def _build_index() -> dict:
 _WORD_RE = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)*")
 
 
+def _has_hit(idx: dict, needle: str) -> bool:
+    """La recherche `needle` (déjà normalisée) trouve-t-elle au moins un personnage, objet ou recette ?"""
+    return (any(needle in c["n"] for c in idx["chars"])
+            or any(needle in n for e in idx["items"] for n in e["n"] if n)
+            or any(needle in n for x in idx["recipes"] for n in x["n"] if n))
+
+
 def _suggest(idx: dict, needle: str) -> list[str]:
-    """Jusqu'à 3 corrections proches de la saisie (fautes de frappe), mot par mot."""
+    """Jusqu'à 3 corrections proches de la saisie (fautes de frappe), mot par mot, en ne gardant
+    que celles qui donnent au moins un résultat."""
     words = idx.get("words") or {}
     keys = list(words)
     toks = needle.split()
@@ -129,18 +138,24 @@ def _suggest(idx: dict, needle: str) -> list[str]:
         if t in words or len(t) < 3:
             per_tok.append([t])
             continue
-        close = difflib.get_close_matches(t, keys, n=3, cutoff=0.75)
+        close = difflib.get_close_matches(t, keys, n=4, cutoff=0.75)
         if not close:
             return []
         per_tok.append(close)
     if all(len(c) == 1 and c[0] == t for c, t in zip(per_tok, toks)):
         return []
+    # combinaisons, les plus proches d'abord (somme des rangs), 16 essais au plus
+    combos = sorted(itertools.product(*[range(len(c)) for c in per_tok]), key=lambda ix: (sum(ix), ix))[:16]
     out = []
-    for i in range(3):
-        alt = [words.get(c[min(i, len(c) - 1)], c[min(i, len(c) - 1)]) for c in per_tok]
-        phrase = " ".join(alt)
+    for ix in combos:
+        keys_ix = [per_tok[k][i] for k, i in enumerate(ix)]
+        if not _has_hit(idx, " ".join(keys_ix)):
+            continue
+        phrase = " ".join(words.get(w, w) for w in keys_ix)
         if phrase not in out:
             out.append(phrase)
+        if len(out) == 3:
+            break
     return out
 
 

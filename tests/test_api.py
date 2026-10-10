@@ -1260,6 +1260,11 @@ def test_global_search_finds_chars_items_and_recipes(monkeypatch):
         d = c.get("/api/search", params={"q": "epe de givre"}).json()
         assert d["items"] == [] and d["suggest"][0] == "épée de givre"
         assert c.get("/api/search", params={"q": "zzzzzz"}).json()["suggest"] == []
+        # chaque suggestion donne au moins un résultat
+        sugg = c.get("/api/search", params={"q": "epe de givrz"}).json()["suggest"]
+        assert sugg and sugg[0] == "épée de givre"
+        for sg in sugg:
+            assert c.get("/api/search", params={"q": sg}).json()["items"], sg
         assert c.get("/api/search", params={"q": "givre"}).json()["suggest"] == []   # résultats → pas de suggestion
     finally:
         with M._db_lock, M._db() as conn:
