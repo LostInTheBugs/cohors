@@ -89,6 +89,19 @@ CLASS_KEY_FR = {
 }
 
 
+# Spécialisations (noms FR renvoyés par l'API) → rôle : tank / heal / dps.
+SPEC_ROLE = {
+    "Sang": "tank", "Vengeance": "tank", "Gardien": "tank", "Maître brasseur": "tank", "Protection": "tank",
+    "Restauration": "heal", "Sacré": "heal", "Discipline": "heal", "Tisse-brume": "heal", "Préservation": "heal",
+    "Givre": "dps", "Impie": "dps", "Dévastation": "dps", "Équilibre": "dps", "Farouche": "dps",
+    "Augmentation": "dps", "Maîtrise des bêtes": "dps", "Précision": "dps", "Survie": "dps",
+    "Arcanes": "dps", "Feu": "dps", "Marche-vent": "dps", "Vindicte": "dps", "Ombre": "dps",
+    "Assassinat": "dps", "Hors-la-loi": "dps", "Finesse": "dps", "Élémentaire": "dps",
+    "Amélioration": "dps", "Affliction": "dps", "Démonologie": "dps", "Destruction": "dps",
+    "Armes": "dps", "Fureur": "dps", "Dévoration": "dps",
+}
+
+
 def _pick(d: dict, key: str, want_en: bool):
     """Valeur d'un relevé dans la langue demandée (version EN si dispo, sinon FR)."""
     v = d.get(key)

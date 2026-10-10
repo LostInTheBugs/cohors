@@ -50,6 +50,10 @@
           margin-bottom:9px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
   .item .main { display:flex; flex-direction:column; min-width:240px; gap:1px; }
   .item .name { font-weight:700; font-size:15px; }
+  .gfill { border:1px dashed var(--line); border-radius:11px; padding:10px 14px; margin:-4px 0 10px; }
+  .gfill .fl { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px; padding:5px 0; border-top:1px solid var(--line); font-size:14px; }
+  .gfill .fl a { font-weight:600; text-decoration:none; }
+  .gfill .good { color:var(--ok); font-size:12.5px; }
   .item .meta { color:var(--mut); font-size:12.5px; }
   .badge { font-size:12.5px; padding:2px 10px; border-radius:999px; border:1px solid var(--line); color:var(--mut); white-space:nowrap; }
   .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
@@ -144,6 +148,7 @@ function setMsg(sel, t, ok) { const e = $(sel); e.textContent = t || ""; e.class
 let GCAL = null, CAN_IMP = false;
 let GCAL_CAT = { raids: [] };
 let EDBOX = null;   // édition officier : { key, raids, bosses, start }
+let FILL = null;    // « Qui peut compléter ? » : { key, data, role }
 
 const fmtDay = (s) => { s = String(s || ""); return s.length >= 10 ? s.slice(8, 10) + "/" + s.slice(5, 7) : s; };
 const perTxt = (r) => (r.periods || []).map(x =>
@@ -218,6 +223,25 @@ function playerRows(e) {
         <button class="eb${ov ? "" : " on"}" data-fname="${esc(i.n)}" data-fv="" title="Réponse du jeu">↺</button>
       </span></div>`;
   }).join("") || `<div class="empty">Aucun invité.</div>`;
+}
+
+function fillHTML() {
+  const d = FILL.data;
+  if (!d) return `<div class="gfill"><span class="meta">Chargement…</span></div>`;
+  if (d.error) return `<div class="gfill"><span class="meta">Erreur : ${esc(d.error)}</span></div>`;
+  const REMO = { tank: "🛡️", heal: "💚", dps: "⚔️" };
+  const list = d.candidates.filter(c => !FILL.role || c.role === FILL.role);
+  const chip = (r, lab) => `<span class="chip${FILL.role === r ? " on" : ""}" data-fr="${r}">${lab}</span>`;
+  return `<div class="gfill">
+    <div class="row"><span class="meta"><b style="color:var(--fg)">🔎 Qui peut compléter ?</b> ${d.total > d.candidates.length ? `<span>${d.candidates.length} sur ${d.total}</span>` : `<span>${d.total} disponible(s)</span>`}</span>
+      <span class="chips">${chip("", "Tous")}${chip("tank", "🛡️")}${chip("heal", "💚")}${chip("dps", "⚔️")}</span></div>
+    <div class="meta" style="margin:2px 0 6px">Joueurs actifs ni inscrits ni indisponibles ce jour-là ; ceux qui apportent un buff manquant en premier.</div>
+    ${list.length ? list.map(c => `<div class="fl">
+      <a style="color:${CLASS_COLORS[c.class_key] || "var(--fg)"}" href="/char/${esc(c.realm)}/${esc(c.key)}">${esc(c.name)}</a>${c.main ? " ⭐" : ""}
+      <span class="meta">${REMO[c.role] || ""} ${esc(c.spec || "")} · ${c.ilvl ? "iLvl " + c.ilvl : "—"}${c.invited ? ` · <span>invité, sans réponse</span>` : ""}</span>
+      ${c.brings.length ? `<span class="good">＋ ${c.brings.map(b => `<span>${esc(b)}</span>`).join(" · ")}</span>` : ""}
+    </div>`).join("") : `<div class="meta">Personne de disponible${FILL.role ? " pour ce rôle" : ""}.</div>`}
+  </div>`;
 }
 
 function editHTML(e) {
@@ -297,15 +321,28 @@ function renderGcal() {
     </div>
     <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}${(e.unav || []).length ? ` · 🚫 ${e.unav.length}` : ""}${roleTxt ? ` · ${roleTxt}` : ""}</span>
     ${wait.length && CAN_IMP ? `<button class="small ghost" data-rel="${e.id}">📣 Relancer</button>` : ""}
+    <button class="small ghost" data-fill="${esc(e.key)}" title="Joueurs disponibles pour compléter">🔎 Compléter</button>
     ${CAN_IMP ? `<button class="small ghost" data-post="${esc(e.key)}" title="Publier la composition sur Discord">📋 Discord</button>` : ""}
     ${CAN_IMP ? `<button class="small ghost" data-ed="${esc(e.key)}" title="Raids & boss visés">✏️</button>` : ""}
-    </div>` + (EDBOX && EDBOX.key === e.key ? editHTML(e) : "");
+    </div>` + (FILL && FILL.key === e.key ? fillHTML() : "") + (EDBOX && EDBOX.key === e.key ? editHTML(e) : "");
   }).join("");
   box.querySelectorAll("button[data-rel]").forEach(b => b.addEventListener("click", async () => {
     b.disabled = true;
     try { const r = await jpost("POST", `/api/gcal/relance/${b.dataset.rel}`); setMsg("#gmsg", `Relance envoyée pour ${r.count} membre(s) ✓`, true); }
     catch (e) { setMsg("#gmsg", e.message, false); }
     b.disabled = false;
+  }));
+  box.querySelectorAll("button[data-fill]").forEach(b => b.addEventListener("click", async () => {
+    const key = b.dataset.fill;
+    if (FILL && FILL.key === key) { FILL = null; renderGcal(); return; }
+    FILL = { key, data: null, role: "" };
+    renderGcal();
+    try { FILL.data = await jget("/api/gcal/fill/" + encodeURIComponent(key)); }
+    catch (e) { FILL.data = { error: e.message }; }
+    if (FILL && FILL.key === key) renderGcal();
+  }));
+  box.querySelectorAll("[data-fr]").forEach(ch => ch.addEventListener("click", () => {
+    if (FILL) { FILL.role = ch.dataset.fr; renderGcal(); }
   }));
   box.querySelectorAll("button[data-post]").forEach(b => b.addEventListener("click", async () => {
     if (!confirm("Publier la composition de ce raid sur Discord ?")) return;
