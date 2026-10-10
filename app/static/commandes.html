@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cohors — Mes commandes</title>
+<meta name="theme-color" content="#0b0e14">
+<link rel="icon" href="/static/icon-192.png">
+<style>
+  :root {
+    --bg: #0b0e14; --card: #131a26; --card2: #1a2233; --line: #232d42;
+    --fg: #e7ebf5; --mut: #8c96ad; --acc: #b1002e; --acc2: #dfa55a;
+    --ok: #34d399; --warn: #fbbf24; --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 24px 18px 40px; }
+  header.topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandname { font-size: 22px; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+  .brandname span { color: var(--acc2); }
+  .crest { width: 42px; height: 42px; border-radius: 9px; flex-shrink: 0; }
+  .tagline { color: var(--mut); font-size: 12.5px; }
+  .userbox { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .spacer { flex: 1; }
+  .hlink { color: var(--acc2); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .hlink:hover { text-decoration: underline; }
+  .who { color: var(--mut); font-size: 14px; }
+  nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 16px; }
+  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px;
+         color: var(--mut); text-decoration: none; font-weight: 600; font-size: 14px;
+         border: 1px solid var(--line); background: transparent;
+         transition: border-color .15s, color .15s, background .15s; }
+  .tab:hover { color: var(--fg); border-color: #3a4763; }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--acc), #7d0020); border-color: transparent; }
+  .tab.admin { margin-left: auto; color: var(--acc2); border-color: #5e4a1e; }
+  .tab.admin:hover { background: #241d10; color: var(--acc2); border-color: var(--acc2); }
+  .tab.admin.active { background: linear-gradient(135deg, #b8862e, #7a5312); color: #fff; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  input[type=search] { background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 10px; padding: 9px 12px; font-size: 14px; min-width: 260px; }
+  input:focus { outline: 2px solid var(--acc); border-color: var(--acc); }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h2 .pc { color: var(--mut); font-weight: 500; font-size: 13px; }
+  .meta { color: var(--mut); font-size: 13px; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 3px 20px; }
+  .pm { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; padding: 2px 0; }
+  .pm .pn { font-weight: 600; text-decoration: none; }
+  .pm .pn:hover { text-decoration: underline; }
+  .pm .pp { margin-left: auto; color: var(--mut); font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
+  .empty { color: var(--mut); font-size: 14px; padding: 10px 4px; }
+  footer { color: var(--mut); font-size: 12.5px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 12px; }
+  .hidden { display: none !important; }
+  .ln { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .ln:first-child { border-top: 0; }
+  .ln .it { font-weight: 600; color: var(--fg); text-decoration: none; }
+  .ln a.it:hover { text-decoration: underline; }
+  .ln .r { margin-left: auto; display: inline-flex; gap: 6px; flex-wrap: wrap; }
+  .ln .note { flex-basis: 100%; color: var(--mut); font-size: 13px; font-style: italic; }
+  .st { font-size: 12px; border-radius: 999px; padding: 1px 9px; border: 1px solid var(--line); color: var(--mut); white-space: nowrap; }
+  .st.open { color: var(--warn); border-color: var(--warn); }
+  .st.accepted { color: var(--acc2); border-color: var(--acc2); }
+  .st.done { color: var(--ok); border-color: var(--ok); }
+  button.act { background: transparent; color: var(--acc2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 3px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+  button.act:hover { border-color: var(--acc2); }
+  .chk { display: inline-flex; align-items: center; gap: 6px; color: var(--mut); font-size: 13.5px; }
+</style>
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.027">
+</head>
+<body class="wb">
+<div class="wrap">
+  <header class="topbar">
+    <a class="brand" href="/dashboard" title="Tableau de bord" style="text-decoration:none;color:inherit">
+      <img src="/branding/logo" alt="Cohors" class="crest">
+      <div>
+        <div class="brandname">Cohors <span>Mes commandes</span></div>
+        <div class="tagline">Objets demandés aux artisans de la guilde, et commandes à fabriquer pour toi.</div>
+      </div>
+    </a>
+    <div class="userbox">
+      <span class="who" id="who"></span>
+      <a class="hlink" href="/settings">⚙️ Paramètres</a>
+      <a class="hlink" href="#" id="logout">Déconnexion</a>
+    </div>
+  </header>
+  <nav class="tabs" id="navmain"></nav>
+  <div class="card">
+    <div class="row"><h2 style="margin:0">📥 À fabriquer pour moi <span class="pc" id="ntodo"></span></h2><span class="spacer"></span>
+      <label class="chk"><input type="checkbox" id="fdone"> Afficher les commandes terminées</label></div>
+    <div id="todo" style="margin-top:8px"><div class="empty">Chargement…</div></div>
+  </div>
+  <div class="card">
+    <h2>📤 Mes demandes <span class="pc" id="nmine"></span></h2>
+    <div id="mine"><div class="empty">Chargement…</div></div>
+    <div class="meta" style="margin-top:8px">Pour demander un objet : ouvre sa fiche (🔎 recherche, 🔨 Artisanat ou 🎯 wishlist) puis « 📨 Demander » à côté d'un artisan.</div>
+  </div>
+  <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
+</div>
+<script src="/static/nav.js?v=2026.10.027"></script>
+<script src="/static/branding.js?v=2026.10.027"></script>
+<script src="/static/i18n.js?v=2026.10.027"></script>
+<script src="/static/esc.js?v=2026.10.027"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const jget = async (u) => { const r = await fetch(u);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
+const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`;
+  return `il y a ${Math.floor(s / 86400)} j`; };
+const ST = { open: "En attente", accepted: "Acceptée", done: "Faite", declined: "Refusée", cancelled: "Annulée" };
+const ACT_CRAFTER = { open: [["accepted", "✅ Accepter"], ["done", "🎁 Faite"], ["declined", "✖ Refuser"]],
+                      accepted: [["done", "🎁 Faite"], ["declined", "✖ Refuser"]] };
+const ACT_REQ = { open: [["cancelled", "Annuler"]], accepted: [["cancelled", "Annuler"]] };
+let DATA = null;
+const live = (o) => o.status === "open" || o.status === "accepted";
+function row(o, side) {
+  const acts = (side === "todo" ? ACT_CRAFTER : ACT_REQ)[o.status] || [];
+  const item = o.item_id > 0 ? `<a class="it" href="/item/${o.item_id}">${esc(o.item)}</a>` : `<span class="it">${esc(o.item)}</span>`;
+  const whom = side === "todo" ? `<span class="meta"><span>pour</span> <b style="color:var(--fg)">${esc(o.requester)}</b> · ${esc(o.crafter)}</span>`
+                               : `<span class="meta"><span>à</span> <a href="/char/${esc(o.crafter_realm)}/${esc(o.crafter_key)}" style="color:var(--fg);font-weight:600;text-decoration:none">${esc(o.crafter)}</a>${o.profession ? " · " + esc(o.profession) : ""}</span>`;
+  return `<div class="ln">${item}${whom}<span class="st ${o.status}">${ST[o.status] || o.status}</span><span class="meta">${ago(o.updated)}</span>
+    <span class="r">${acts.map(([s, l]) => `<button class="act" data-id="${o.id}" data-s="${s}">${l}</button>`).join("")}</span>
+    ${o.note ? `<span class="note">« ${esc(o.note)} »</span>` : ""}</div>`;
+}
+function render() {
+  const all = $("#fdone").checked;
+  const todo = DATA.todo.filter(o => all || live(o)), mine = DATA.mine.filter(o => all || live(o));
+  $("#ntodo").textContent = DATA.open_todo ? "· " + DATA.open_todo : "";
+  $("#nmine").textContent = mine.length ? "· " + mine.length : "";
+  $("#todo").innerHTML = todo.length ? todo.map(o => row(o, "todo")).join("") : `<div class="empty">Aucune commande à fabriquer.</div>`;
+  $("#mine").innerHTML = mine.length ? mine.map(o => row(o, "mine")).join("") : `<div class="empty">Aucune demande en cours.</div>`;
+}
+async function load() { DATA = await jget("/api/craft/orders"); render(); }
+document.addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button.act");
+  if (!b) return;
+  b.disabled = true;
+  try {
+    const r = await fetch("/api/craft/orders/" + b.dataset.id, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: b.dataset.s }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || "Erreur");
+    await load();
+  } catch (e) { b.disabled = false; b.title = e.message; }
+});
+$("#fdone").addEventListener("input", () => DATA && render());
+$("#logout").addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  await fetch("/api/logout", { method: "POST" });
+  location.href = "/login";
+});
+(async () => {
+  try {
+    const me = await jget("/api/me");
+    $("#who").textContent = me.name || me.email;
+  } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
+  try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
+  try { await load(); }
+  catch (e) { $("#todo").innerHTML = $("#mine").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`; }
+})();
+</script>
+</body>
+</html>

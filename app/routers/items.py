@@ -21,7 +21,7 @@ HOLDERS_MAX_AGE = 30 * 86400.0  # relevés plus anciens ignorés (personnages pa
 @router.get("/api/item/{iid}")
 def api_item(iid: int, request: Request):
     """Fiche objet : source (butin), wishlists, personnages qui l'ont équipé, artisans."""
-    _require_user(request)
+    user = _require_user(request)
     if iid <= 0 or iid > 10_000_000:
         raise HTTPException(400, "Identifiant d'objet invalide.")
     loc = _user_locale(request)
@@ -37,6 +37,8 @@ def api_item(iid: int, request: Request):
         mains = {r["user_email"]: dict(r) for r in conn.execute(
             "SELECT user_email, realm, name, display FROM char_links WHERE is_main=1").fetchall()}
         unames = {r["email"]: (r["name"] or "") for r in conn.execute("SELECT email, name FROM users").fetchall()}
+        owner_of = {(r["name"] or "").strip().lower(): r["user_email"] for r in conn.execute(
+            "SELECT name, user_email FROM char_links").fetchall()}
         snaps = conn.execute(
             "SELECT realm, name, ts, data FROM char_snapshots "
             "WHERE id IN (SELECT MAX(id) FROM char_snapshots GROUP BY realm, name) AND ts >= ?",
@@ -120,7 +122,11 @@ def api_item(iid: int, request: Request):
             meta["name"] = crafters[0]["item"]
     if not meta["name"]:
         meta["name"] = f"Objet {iid}"
+    craft_list = crafters[0]["crafters"] if crafters else []
+    for c in craft_list:   # commande possible : l'artisan a un compte Cohors, et ce n'est pas le mien
+        owner = owner_of.get(c["key"])
+        c["orderable"] = bool(owner) and owner != user["email"]
     return {"item": meta, "sources": sources, "wishers": wishers, "holders": holders,
-            "crafters": crafters[0]["crafters"] if crafters else [],
+            "crafters": craft_list,
             "craft": ({"profession": crafters[0]["profession"], "expansion": crafters[0]["expansion"]}
                       if crafters else None)}

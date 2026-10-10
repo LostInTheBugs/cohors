@@ -207,6 +207,15 @@ async function loadNotifs() {
     $("#nflist").innerHTML = items.length
       ? items.map(n => {
           const x = n.data || {};
+          if (n.kind === "craft") {
+            const CE = { new: ["📨", "Nouvelle commande de"], accepted: ["✅", "Commande acceptée par"],
+                         done: ["🎁", "Commande fabriquée par"], declined: ["✖", "Commande refusée par"],
+                         cancelled: ["↩️", "Commande annulée par"] }[x.event] || ["🧾", "Commande —"];
+            return `<div class="nfr ${n.seen ? "" : "unseen"}">
+              <span>${CE[0]}</span><a href="/commandes" style="color:var(--fg);font-weight:600;text-decoration:none">${esc(x.item || "—")}</a>
+              <span><span>${CE[1]}</span> <b>${esc(x.who || "?")}</b></span>
+              <span class="meta">${ago(n.created)}</span></div>`;
+          }
           return `<div class="nfr ${n.seen ? "" : "unseen"}">
             <span>🔑</span><span class="qty">+${fmt(x.level)}</span>
             <span>${esc(x.dungeon || "—")}</span>
