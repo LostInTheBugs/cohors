@@ -1162,6 +1162,69 @@ def test_craft_search_lists_who_can_craft(monkeypatch):
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM craft_recipes WHERE crafter='Bricolo'")
 
+
+def test_item_card_gathers_loot_wishes_holders_and_crafters(monkeypatch):
+    from app import bnet as B
+    from app.services import loot as LOOT
+    monkeypatch.setattr(B, "item", lambda iid, locale=None: (_ for _ in ()).throw(B.BnetError(503, "hors ligne")))
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": [{"name": "Porteuse", "realm": "hyjal"}]}, 0.0))
+    monkeypatch.setattr(B, "journal_loot", lambda: [{"item_id": 950001, "kind": "raid", "inst_fr": "Flèche du Vide",
+                                                     "inst_en": "Void Spire", "boss_fr": "Boss A", "boss_en": "Boss A",
+                                                     "name_fr": "Lame du test", "name_en": "Test Blade"}])
+    LOOT._loot_sync_state["state"] = "idle"
+    LOOT._loot_sync()
+    _make_user("wisher@test.local")
+    now = time.time()
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('wisher@test.local', 'hyjal', 'souhaiteur', 'Souhaiteur', 1, 0)")
+        conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, prio, added)"
+                     " VALUES ('wisher@test.local', 950001, 'Lame du test', 'item', 1, 0)")
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'porteuse', '2026-10-10', ?, ?)",
+                     (now, json.dumps({"class": "Mage", "ilvl": 280, "items": [
+                         {"slot": "Main droite", "slot_en": "Main Hand", "name": "Lame du test", "name_en": "Test Blade",
+                          "ilvl": 289, "id": 950001}]})))
+        conn.execute("INSERT INTO game_recipes (id, prof, tier, exp_rank, item, item_id, rank_no, mats, updated, item_en)"
+                     " VALUES (950101, 'Forge', 'Forge de Midnight', 0, 'Lame du test', 950001, 1, '[]', 0, 'Test Blade')")
+        conn.execute("INSERT OR REPLACE INTO char_professions (realm, name, ts, data) VALUES ('hyjal', 'forgeron', 1, ?)",
+                     (json.dumps({"profs": [{"name": "Forge", "known": [950101]}]}),))
+    try:
+        c = _plain_client("item-card@test.local", "10.99.60.5")
+        d = c.get("/api/item/950001").json()
+        assert d["item"]["name"] == "Lame du test"                      # repli sur les noms en base
+        assert d["sources"] == [{"kind": "raid", "instance": "Flèche du Vide", "boss": "Boss A"}]
+        assert [(w["name"], w["prio"], w["key"]) for w in d["wishers"]] == [("Souhaiteur", True, "souhaiteur")]
+        assert [(h["name"], h["ilvl"], h["slot"], h["class_key"]) for h in d["holders"]] == [
+            ("Porteuse", 289, "Main droite", "Mage")]
+        assert [x["name"] for x in d["crafters"]] == ["Forgeron"] and d["craft"]["profession"] == "Forge"
+        empty = c.get("/api/item/950999").json()
+        assert empty["sources"] == [] and empty["wishers"] == [] and empty["holders"] == [] and empty["craft"] is None
+        assert c.get("/api/item/0").status_code == 400
+        assert client.get("/api/item/950001").status_code == 401
+        assert c.get("/item/950001").status_code == 200
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM item_loot WHERE item_id=950001")
+            conn.execute("DELETE FROM wishlist WHERE user_email='wisher@test.local'")
+            conn.execute("DELETE FROM char_links WHERE user_email='wisher@test.local'")
+            conn.execute("DELETE FROM char_snapshots WHERE name='porteuse'")
+            conn.execute("DELETE FROM game_recipes WHERE id=950101")
+            conn.execute("DELETE FROM char_professions WHERE name='forgeron'")
+
+
+def test_loot_sync_stores_item_names(monkeypatch):
+    from app import bnet as B
+    from app.services import loot as LOOT
+    monkeypatch.setattr(B, "journal_loot", lambda: [{"item_id": 950002, "kind": "dungeon", "inst_fr": "I", "inst_en": "I",
+                                                     "boss_fr": "B", "boss_en": "B",
+                                                     "name_fr": "Anneau test", "name_en": "Test Ring"}])
+    LOOT._loot_sync_state["state"] = "idle"
+    LOOT._loot_sync()
+    with M._db_lock, M._db() as conn:
+        row = conn.execute("SELECT name_fr, name_en FROM item_loot WHERE item_id=950002").fetchone()
+        conn.execute("DELETE FROM item_loot WHERE item_id=950002")
+    assert dict(row) == {"name_fr": "Anneau test", "name_en": "Test Ring"}
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):

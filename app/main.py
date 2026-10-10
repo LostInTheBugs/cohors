@@ -169,6 +169,14 @@ def craft_page(request: Request):
     return FileResponse(STATIC_DIR / "craft.html")
 
 
+@app.api_route("/item/{iid}", methods=["GET", "HEAD"])
+def item_page(iid: int, request: Request):
+    """Fiche objet — où il tombe, qui le veut, qui l'a, qui peut le fabriquer."""
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "item.html")
+
+
 _MOI_PAGES = {
     "mespersos": "mespersos.html",
     "mesrecettes": "mesrecettes.html",
@@ -445,6 +453,12 @@ app.include_router(_profiles_router.router)
 from app.routers import guild as _guild_router  # noqa: E402
 
 app.include_router(_guild_router.router)
+
+
+# Fiche objet (butin, wishlists, porteurs, artisans) — app/routers/items.py
+from app.routers import items as _items_router  # noqa: E402
+
+app.include_router(_items_router.router)
 
 
 # Assiduité aux soirées de raid (Warcraft Logs) — app/routers/attendance.py

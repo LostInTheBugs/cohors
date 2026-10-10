@@ -236,7 +236,8 @@ def journal_raids(locale: str | None = None) -> tuple[dict, float]:
 def journal_loot() -> list[dict]:
     """Butin des raids et donjons du dernier palier (journal de jeu) — noms FR et EN.
 
-    Une entrée par couple (objet, rencontre) : {item_id, kind, inst_fr, inst_en, boss_fr, boss_en}.
+    Une entrée par couple (objet, rencontre) : {item_id, kind, inst_fr, inst_en, boss_fr, boss_en,
+    name_fr, name_en}.
     """
     ns_fr = {"namespace": f"static-{REGION}", "locale": "fr_FR"}
     ns_en = {"namespace": f"static-{REGION}", "locale": "en_US"}
@@ -268,13 +269,24 @@ def journal_loot() -> list[dict]:
                     e_fr = _get(f"/data/wow/journal-encounter/{enc['id']}", dict(ns_fr))
                 except BnetError:
                     continue
+                try:
+                    e_en = _get(f"/data/wow/journal-encounter/{enc['id']}", dict(ns_en))
+                except BnetError:
+                    e_en = {}
+                names_en = {}
+                for it in (e_en.get("items") or []):
+                    ref_en = it.get("item") or {}
+                    if ref_en.get("id"):
+                        names_en[int(ref_en["id"])] = ref_en.get("name") or ""
                 for it in (e_fr.get("items") or []):
                     iid = ((it.get("item") or {}).get("id")) or it.get("id")
                     if not iid:
                         continue
+                    nm_fr = (it.get("item") or {}).get("name") or ""
                     rows.append({"item_id": int(iid), "kind": kind,
                                  "inst_fr": in_fr, "inst_en": in_en,
-                                 "boss_fr": b_fr, "boss_en": b_en})
+                                 "boss_fr": b_fr, "boss_en": b_en,
+                                 "name_fr": nm_fr, "name_en": names_en.get(int(iid)) or nm_fr})
                 time.sleep(0.03)
     return rows
 

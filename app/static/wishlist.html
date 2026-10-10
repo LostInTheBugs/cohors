@@ -59,6 +59,7 @@
   .del { background:transparent; border:0; cursor:pointer; font-size:15px; padding:0 4px; }
   .del:hover { filter:brightness(1.4); }
   .q-common { color:#fff; } .q-uncommon { color:#1eff00; } .q-rare { color:#0070dd; }
+  a.ilink { color: inherit; text-decoration: none; } a.ilink:hover { text-decoration: underline; }
   .q-epic { color:#a335ee; } .q-legendary { color:#ff8000; } .q-artifact { color:#e6cc80; } .q-heirloom { color:#00ccff; }
   .gv { text-align:right; }
   .gpos { color:var(--ok); } .gneg { color:var(--err); }
@@ -185,7 +186,7 @@ function renderItems() {
       }
       const bisTxt = (it.bis || []).map(b => `⭐ BIS pour ${esc(b.char)} (+${b.gain} %)`).join(" · ");
       return `<tr><td>${it.icon ? `<img class="icn" src="${esc(it.icon)}" alt="">` : ""}</td>
-        <td class="${qcls}">${it.prio ? "⭐ " : ""}${esc(it.name)}${srcs.length ? `<div class="meta">${srcs.join(" · ")}</div>` : ""}${crTxt ? `<div class="meta">${crTxt}</div>` : ""}${metTxt ? `<div class="meta">${metTxt}</div>` : ""}${recTxt ? `<div class="meta">${recTxt}</div>` : ""}${meTxt ? `<div class="meta">${meTxt}</div>` : ""}${bisTxt ? `<div class="meta">${bisTxt}</div>` : ""}</td>
+        <td class="${qcls}">${it.prio ? "⭐ " : ""}${it.item_id > 0 ? `<a class="ilink" href="/item/${it.item_id}" title="Fiche objet">${esc(it.name)}</a>` : esc(it.name)}${srcs.length ? `<div class="meta">${srcs.join(" · ")}</div>` : ""}${crTxt ? `<div class="meta">${crTxt}</div>` : ""}${metTxt ? `<div class="meta">${metTxt}</div>` : ""}${recTxt ? `<div class="meta">${recTxt}</div>` : ""}${meTxt ? `<div class="meta">${meTxt}</div>` : ""}${bisTxt ? `<div class="meta">${bisTxt}</div>` : ""}</td>
         <td class="meta">${esc(it.slot_fr || "")}</td>
         <td>${chips}</td>
         <td><button class="prio" data-prio="${it.item_id}" data-on="${it.prio ? 1 : 0}" title="Prioritaire">${it.prio ? "⭐" : "☆"}</button> <button class="del" data-id="${it.item_id}" title="Retirer">🗑</button></td></tr>`;

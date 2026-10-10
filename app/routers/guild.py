@@ -11,7 +11,7 @@ from app import bnet, wcl
 from app.core.auth import _require_admin, _require_user, _user_locale, _user_role
 from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR, _pick, _snap_day
-from app.services.crafting import PROF_EN
+from app.services.crafting import PROF_EN, _craft_results
 from app.services.progression import _progression_data
 
 router = APIRouter()
@@ -263,111 +263,9 @@ def api_craft_search(request: Request, q: str = ""):
     needle = " ".join((q or "").split())[:60].casefold()
     if len(needle) < 2:
         return {"q": q, "total": 0, "results": []}
-    with _db_lock, _db() as conn:
-        game = [dict(r) for r in conn.execute(
-            "SELECT id, prof, prof_en, tier, tier_en, exp_rank, item, item_en, item_id, rank_no "
-            "FROM game_recipes").fetchall()]
-        addon = [dict(r) for r in conn.execute(
-            "SELECT crafter, realm, profession, item, item_id, expansion, exp_rank FROM craft_recipes").fetchall()]
-        profs = [dict(r) for r in conn.execute("SELECT realm, name, data FROM char_professions").fetchall()]
-        cls_by_name: dict[str, str] = {}
-        for row in conn.execute("SELECT name, data FROM char_snapshots WHERE day = ?", (_snap_day(),)).fetchall():
-            try:
-                c = (json.loads(row["data"]) or {}).get("class")
-            except (ValueError, TypeError):
-                c = None
-            if c:
-                cls_by_name[row["name"]] = c
-    # 1) recettes du jeu dont l'objet correspond (nom FR ou EN), regroupées par objet
-    groups: dict = {}
-    by_item_id: dict[int, tuple] = {}
-    by_name: dict[str, tuple] = {}
-    gkey_of_recipe: dict[int, tuple] = {}
-    for g in game:
-        fr, en = str(g.get("item") or "").strip(), str(g.get("item_en") or "").strip()
-        if not fr or (needle not in fr.casefold() and needle not in en.casefold()):
-            continue
-        iid = int(g.get("item_id") or 0)
-        key = ("id", iid) if iid else ("n", fr.casefold())
-        e = groups.get(key)
-        if e is None:
-            e = groups[key] = {"item": fr, "item_en": en, "item_id": iid,
-                               "prof": g.get("prof") or "", "prof_en": g.get("prof_en") or "",
-                               "tier": g.get("tier") or "", "tier_en": g.get("tier_en") or "",
-                               "exp_rank": int(g.get("exp_rank") or 0), "who": {}}
-        gkey_of_recipe[int(g["id"])] = key
-        if iid:
-            by_item_id[iid] = key
-        for nm in (fr, en):
-            if nm:
-                by_name[nm.casefold()] = key
-    # 2) personnages qui connaissent ces recettes d'après l'API Blizzard
-    realm_of: dict[str, str] = {}
-    if gkey_of_recipe:
-        for pr in profs:
-            try:
-                plist = (json.loads(pr["data"]) or {}).get("profs") or []
-            except (ValueError, TypeError):
-                continue
-            k = (pr["name"] or "").strip().lower()
-            for p in plist:
-                for rid in p.get("known") or []:
-                    try:
-                        key = gkey_of_recipe.get(int(rid))
-                    except (TypeError, ValueError):
-                        key = None
-                    if key:
-                        groups[key]["who"].setdefault(k, set()).add("blizzard")
-                        realm_of.setdefault(k, pr["realm"] or "")
-    # 3) recettes déclarées (add-on / Mes recettes) : rattachées à l'objet du jeu, sinon objet à part
-    for a in addon:
-        nm = str(a.get("item") or "").strip()
-        if not nm or needle not in nm.casefold():
-            continue
-        iid = int(a.get("item_id") or 0)
-        key = by_item_id.get(iid) if iid else None
-        key = key or by_name.get(nm.casefold())
-        if key is None:
-            key = ("id", iid) if iid else ("n", nm.casefold())
-            if key not in groups:
-                groups[key] = {"item": nm, "item_en": "", "item_id": iid,
-                               "prof": a.get("profession") or "", "prof_en": "",
-                               "tier": a.get("expansion") or "", "tier_en": "",
-                               "exp_rank": int(a.get("exp_rank") or 0), "who": {}}
-        k = str(a.get("crafter") or "").strip().lower()
-        if k:
-            groups[key]["who"].setdefault(k, set()).add("addon")
-            realm_of.setdefault(k, a.get("realm") or "")
-    disp: dict[str, str] = {}
-    realms: dict[str, str] = {}
-    if any(e["who"] for e in groups.values()):
-        try:
-            roster, _t = bnet.roster()
-            for m in (roster.get("members") or []):
-                k = (m.get("name") or "").lower()
-                if k:
-                    disp[k] = m.get("name") or k
-                    realms[k] = m.get("realm") or bnet.GUILD_REALM
-        except bnet.BnetError:
-            pass
-    results = []
-    for e in groups.values():
-        crafters = [{"name": disp.get(k) or k.title(), "key": k,
-                     "realm": realms.get(k) or realm_of.get(k) or bnet.GUILD_REALM,
-                     "class_key": CLASS_KEY_FR.get(cls_by_name.get(k) or ""),
-                     "src": sorted(src)} for k, src in e["who"].items()]
-        crafters.sort(key=lambda c: c["name"].lower())
-        prof = e["prof"]
-        if want_en:
-            prof = e["prof_en"] or PROF_EN.get(prof, prof)
-        results.append({
-            "item": ((e["item_en"] or e["item"]) if want_en else e["item"]),
-            "item_id": e["item_id"], "profession": prof,
-            "expansion": ((e["tier_en"] or e["tier"]) if want_en else e["tier"]),
-            "exp_rank": e["exp_rank"], "crafters": crafters,
-        })
-    results.sort(key=lambda r: (not r["crafters"], r["exp_rank"], r["item"].casefold()))
+    results = _craft_results(lambda fr, en, iid: needle in fr.casefold() or needle in en.casefold(), want_en)
     return {"q": q, "total": len(results), "results": results[:CRAFT_SEARCH_MAX]}
+
 
 @router.get("/api/leaderboard")
 def api_leaderboard(request: Request, refresh: int = 0):
