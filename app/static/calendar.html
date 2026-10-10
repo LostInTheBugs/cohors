@@ -171,28 +171,14 @@ const ckOf = (n) => {
   const k = String(n || "").toLowerCase();
   return GCAL_CK[k] || (k.includes("-") ? GCAL_CK[k.slice(0, k.lastIndexOf("-"))] : "") || "";
 };
-// Buffs et débuffs de raid apportés par chaque classe (Midnight) + utilitaires clés.
-const RAID_BUFFS = [
-  ["Intelligence (Mage)", ["Mage"]],
-  ["Endurance (Prêtre)", ["Priest"]],
-  ["Puissance d'attaque (Guerrier)", ["Warrior"]],
-  ["Polyvalence (Druide)", ["Druid"]],
-  ["Maîtrise (Chaman)", ["Shaman"]],
-  ["Mobilité (Évocateur)", ["Evoker"]],
-  ["Dégâts subis (Chasseur)", ["Hunter"]],
-  ["Dégâts magiques subis (Chasseur de démons)", ["DemonHunter"]],
-  ["Dégâts physiques subis (Moine)", ["Monk"]],
-  ["Aura de dévotion (Paladin)", ["Paladin"]],
-  ["Poison atrophiant (Voleur)", ["Rogue"]],
-  ["Furie sanguinaire", ["Shaman", "Mage", "Hunter", "Evoker"]],
-  ["Résurrection en combat", ["Druid", "DeathKnight", "Warlock", "Paladin"]]
-];
+// Buffs et débuffs de raid (Midnight) : table fournie par /api/gcal (raid_buffs), [[libellé, [classes]], …].
+let RAID_BUFFS = [];
 function buffsHTML(names) {
   const have = new Set(), unknown = [];
   names.forEach(n => { const k = ckOf(n); if (k) have.add(k); else unknown.push(n); });
   if (!have.size) return "";
   const ok = [], miss = [];
-  RAID_BUFFS.forEach(([label, cls]) => (cls.some(c => have.has(c)) ? ok : miss).push(`<span>${label}</span>`));
+  RAID_BUFFS.forEach(([label, cls]) => (cls.some(c => have.has(c)) ? ok : miss).push(`<span>${esc(label)}</span>`));
   return `<span class="meta"><span>🧩 Buffs de raid</span> ✅ ${ok.join(" · ")}</span>`
     + (miss.length ? `<span class="meta" style="color:var(--warn)"><span>⚠️ Manquants :</span> ${miss.join(" · ")}</span>` : "")
     + (unknown.length ? `<span class="meta"><span>Classe inconnue :</span> ${unknown.map(esc).join(", ")}</span>` : "");
@@ -270,6 +256,7 @@ function renderGcal() {
   GCAL_CAT = d.raid_catalog || { raids: [] };
   GCAL_CLS = d.classes || {};
   GCAL_CK = d.class_keys || {};
+  RAID_BUFFS = d.raid_buffs || [];
   const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
   const box = $("#glist");
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
@@ -310,12 +297,20 @@ function renderGcal() {
     </div>
     <span class="badge">✅ ${c.ok} · ❓ ${c.maybe} · ❌ ${c.no} · ⏳ ${c.wait}${(e.unav || []).length ? ` · 🚫 ${e.unav.length}` : ""}${roleTxt ? ` · ${roleTxt}` : ""}</span>
     ${wait.length && CAN_IMP ? `<button class="small ghost" data-rel="${e.id}">📣 Relancer</button>` : ""}
+    ${CAN_IMP ? `<button class="small ghost" data-post="${esc(e.key)}" title="Publier la composition sur Discord">📋 Discord</button>` : ""}
     ${CAN_IMP ? `<button class="small ghost" data-ed="${esc(e.key)}" title="Raids & boss visés">✏️</button>` : ""}
     </div>` + (EDBOX && EDBOX.key === e.key ? editHTML(e) : "");
   }).join("");
   box.querySelectorAll("button[data-rel]").forEach(b => b.addEventListener("click", async () => {
     b.disabled = true;
     try { const r = await jpost("POST", `/api/gcal/relance/${b.dataset.rel}`); setMsg("#gmsg", `Relance envoyée pour ${r.count} membre(s) ✓`, true); }
+    catch (e) { setMsg("#gmsg", e.message, false); }
+    b.disabled = false;
+  }));
+  box.querySelectorAll("button[data-post]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("Publier la composition de ce raid sur Discord ?")) return;
+    b.disabled = true;
+    try { await jpost("POST", "/api/gcal/post/" + encodeURIComponent(b.dataset.post)); setMsg("#gmsg", "Composition publiée sur Discord ✓", true); }
     catch (e) { setMsg("#gmsg", e.message, false); }
     b.disabled = false;
   }));
