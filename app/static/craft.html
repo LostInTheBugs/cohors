@@ -198,6 +198,8 @@ $("#logout").addEventListener("click", async (ev) => {
   } catch (e) { if (e && (e.status === 401 || /connexion requise|non connect/i.test(String((e && e.message) || "")))) { location.href = "/login"; } return; }
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   try {
+    const q0 = new URLSearchParams(location.search).get("q");
+    if (q0) { $("#rq").value = q0; searchRecipes(); }
     DATA = await jget("/api/craft");
     $("#cmeta").textContent = `${fmt(DATA.with_profs)} personnages avec métier · actualisé ${ago(DATA.built)}`;
     render();
