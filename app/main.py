@@ -169,6 +169,14 @@ def craft_page(request: Request):
     return FileResponse(STATIC_DIR / "craft.html")
 
 
+@app.api_route("/readiness", methods=["GET", "HEAD"])
+def readiness_page(request: Request):
+    """Bilan des joueurs — iLvl, cote M+, enchantements manquants, châsses vides."""
+    if _get_session_user(request) is None:
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC_DIR / "readiness.html")
+
+
 @app.api_route("/item/{iid}", methods=["GET", "HEAD"])
 def item_page(iid: int, request: Request):
     """Fiche objet — où il tombe, qui le veut, qui l'a, qui peut le fabriquer."""
@@ -465,6 +473,12 @@ app.include_router(_items_router.router)
 from app.routers import search as _search_router  # noqa: E402
 
 app.include_router(_search_router.router)
+
+
+# Bilan des joueurs (préparation : enchantements, châsses, iLvl, M+) — app/routers/readiness.py
+from app.routers import readiness as _readiness_router  # noqa: E402
+
+app.include_router(_readiness_router.router)
 
 
 # Assiduité aux soirées de raid (Warcraft Logs) — app/routers/attendance.py

@@ -1289,6 +1289,58 @@ def test_gcal_exposes_language_independent_class_keys(monkeypatch):
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM char_snapshots WHERE name='totemix'")
 
+
+def test_equipment_reports_enchants_and_sockets(monkeypatch):
+    from app import bnet as B
+    raw = {"equipped_items": [
+        {"slot": {"type": "HEAD", "name": "Tête"}, "name": "Casque", "level": {"value": 280}, "item": {"id": 1},
+         "quality": {"type": "EPIC"}, "item_class": {"id": 4},
+         "enchantments": [{"enchantment_slot": {"id": 1, "type": "TEMPORARY"}}],
+         "sockets": [{"socket_type": {"type": "PRISMATIC"}}, {"socket_type": {"type": "PRISMATIC"}, "item": {"id": 9}}]},
+        {"slot": {"type": "MAIN_HAND", "name": "Main droite"}, "name": "Épée", "level": {"value": 285}, "item": {"id": 2},
+         "item_class": {"id": 2}, "enchantments": [{"enchantment_slot": {"id": 0, "type": "PERMANENT"}}]}]}
+    monkeypatch.setattr(B, "_get", lambda *a, **k: raw)
+    B._cache.clear()
+    data, _ts = B.equipment("hyjal", "testeur-equip", force=True)
+    head, weapon = data["items"]
+    assert (head["slot_type"], head["ench"], head["sockets"], head["gems"], head["weapon"]) == ("HEAD", False, 2, 1, False)
+    assert (weapon["slot_type"], weapon["ench"], weapon["weapon"]) == ("MAIN_HAND", True, True)
+
+
+def test_readiness_lists_missing_enchants_and_empty_sockets(monkeypatch):
+    from app import bnet as B
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": [{"name": "Prêtàraid", "realm": "hyjal"}]}, 0.0))
+    now = time.time()
+    items = [
+        {"slot": "Tête", "slot_en": "Head", "st": "HEAD", "ench": False, "sock": 1, "gems": 0},
+        {"slot": "Doigt", "st": "FINGER_1", "ench": True, "sock": 2, "gems": 2},
+        {"slot": "Main gauche", "st": "OFF_HAND", "ench": False, "wpn": False},          # bouclier : ignoré
+        {"slot": "Dos", "st": "BACK", "ench": False},                                      # cape : plus enchantable
+    ]
+    with M._db_lock, M._db() as conn:
+        for nm, lvl, its in (("prêtàraid", 90, items), ("ancienrelevé", 90, [{"slot": "Tête", "id": 5}]), ("petitniveau", 80, items)):
+            conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', ?, '2026-10-10', ?, ?)",
+                         (nm, now, json.dumps({"class": "Prêtre", "spec": "Ombre", "level": lvl, "ilvl": 280, "mplus": 2500,
+                                               "items": its})))
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('ready@test.local', 'hyjal', 'prêtàraid', 'Prêtàraid', 1, 0)")
+    try:
+        c = _plain_client("readiness@test.local", "10.99.60.8")
+        d = c.get("/api/readiness").json()
+        by = {r["key"]: r for r in d["rows"]}
+        assert "petitniveau" not in by
+        r = by["prêtàraid"]
+        assert (r["name"], r["known"], r["missing_enchants"], r["empty_sockets"], r["main"], r["class_key"]) == (
+            "Prêtàraid", True, ["Tête"], 1, True, "Priest")
+        assert by["ancienrelevé"]["known"] is False and by["ancienrelevé"]["missing_enchants"] == []
+        assert d["rows"][0]["key"] == "prêtàraid"                  # le plus à corriger en tête
+        assert c.get("/readiness").status_code == 200
+        assert client.get("/api/readiness").status_code == 401
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name IN ('prêtàraid', 'ancienrelevé', 'petitniveau')")
+            conn.execute("DELETE FROM char_links WHERE user_email='ready@test.local'")
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):

@@ -68,6 +68,9 @@ def _char_snapshot(realm: str, name: str) -> dict:
             "slot": it.get("slot"), "slot_en": e.get("slot"),
             "name": it.get("name"), "name_en": e.get("name"),
             "ilvl": it.get("ilvl"), "q": it.get("quality"), "id": it.get("item_id"),
+            # préparation : absent (None) dans les relevés d'avant v2026.10.025
+            "st": it.get("slot_type"), "ench": it.get("ench"), "sock": it.get("sockets"),
+            "gems": it.get("gems"), "wpn": it.get("weapon"),
         })
     return {
         "level": s.get("level"), "spec": s.get("spec"), "spec_en": s_en.get("spec"),
