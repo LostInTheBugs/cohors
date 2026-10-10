@@ -1499,6 +1499,19 @@ def test_item_card_marks_orderable_crafters(monkeypatch):
             conn.execute("DELETE FROM char_professions WHERE name IN ('aveccompte', 'sanscompte', 'moimeme')")
             conn.execute("DELETE FROM char_links WHERE user_email IN ('autre-artisan@test.local', 'orderable@test.local')")
 
+
+def test_me_reports_linked_character_count():
+    c = _plain_client("me-chars@test.local", "10.99.61.5")
+    assert c.get("/api/me").json()["chars"] == 0
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('me-chars@test.local', 'hyjal', 'perso', 'Perso', 1, 0)")
+    try:
+        assert c.get("/api/me").json()["chars"] == 1
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_links WHERE user_email='me-chars@test.local'")
+
 # ---- v2026.09.153 : progression raids / donjons et talents (API Blizzard) ----
 def _enc_payload():
     def exp(eid, name, inst):
