@@ -7,10 +7,13 @@ import time
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app import bnet
+from app import bnet, discord_bot
 from app.core.auth import _require_officer, _require_user, _user_locale, _user_role
+from app.core.brand import _brand_identity
+from app.core.config import PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR, _pick
+from app.services.bot import _bot_config
 
 router = APIRouter()
 
@@ -28,6 +31,10 @@ READY_TRACK_KEY = "readiness_min_ilvl"
 
 class ReadyThreshold(BaseModel):
     min_ilvl: int = Field(..., ge=1, le=2000)
+
+
+class ReadyPost(BaseModel):
+    mains_only: bool = False
 
 
 def _track_ilvl(conn) -> int:
@@ -64,11 +71,8 @@ def _readiness(d: dict, want_en: bool) -> dict:
             "ench_items": ench_items, "sock_items": sock_items}
 
 
-@router.get("/api/readiness")
-def api_readiness(request: Request):
-    """Préparation des personnages actifs de niveau max : iLvl, cote M+, enchantements et châsses."""
-    user = _require_user(request)
-    want_en = _user_locale(request).startswith("en")
+def _collect(want_en: bool) -> tuple[list[dict], int]:
+    """Personnages actifs de niveau max (relevés < 7 jours) avec leur préparation, + seuil Héros / Mythe."""
     cutoff = time.time() - READY_MAX_AGE
     with _db_lock, _db() as conn:
         snaps = conn.execute(
@@ -100,6 +104,14 @@ def api_readiness(request: Request):
         })
     rows.sort(key=lambda x: (-(len(x["missing_enchants"]) + x["empty_sockets"]), not x["known"],
                              -(x["ilvl"] or 0), x["name"].lower()))
+    return rows, track_ilvl
+
+
+@router.get("/api/readiness")
+def api_readiness(request: Request):
+    """Préparation des personnages actifs de niveau max : iLvl, cote M+, enchantements et châsses."""
+    user = _require_user(request)
+    rows, track_ilvl = _collect(_user_locale(request).startswith("en"))
     todo = sum(1 for x in rows if x["known"] and (x["missing_enchants"] or x["empty_sockets"]))
     return {"rows": rows, "counts": {"total": len(rows), "todo": todo,
                                      "unknown": sum(1 for x in rows if not x["known"])},
@@ -152,6 +164,68 @@ def api_readiness_mine(request: Request):
                         "empty_sockets": sock})
     out.sort(key=lambda x: (not x["main"], -(len(x["missing_enchants"]) + x["empty_sockets"]), x["name"].lower()))
     return {"chars": out, "track_ilvl": track_ilvl, "linked": len(links)}
+
+
+READY_POST_MAX = 25   # personnages listés dans le message Discord (les plus en retard d'abord)
+
+
+def readiness_embed(rows: list[dict], track_ilvl: int, guild: str = "la guilde", link: str = "",
+                    mains_only: bool = False, color: int = 0xDFA55A) -> dict:
+    """Embed Discord : personnages à préparer sur leurs pièces Héros / Mythe (enchantements, gemmes)."""
+    todo = []
+    for r in rows:
+        if not r.get("known") or (mains_only and not r.get("main")):
+            continue
+        ench = [it["slot"] for it in _above(r.get("ench_items") or [], track_ilvl)]
+        sock = sum(it["n"] for it in _above(r.get("sock_items") or [], track_ilvl))
+        if ench or sock:
+            todo.append((r, ench, sock))
+    todo.sort(key=lambda x: (-(len(x[1]) + x[2]), -(x[0].get("ilvl") or 0), x[0]["name"].lower()))
+    lines = []
+    for r, ench, sock in todo[:READY_POST_MAX]:
+        parts = []
+        if ench:
+            parts.append("🪄 " + ", ".join(ench))
+        if sock:
+            parts.append(f"💎 {sock} châsse{'s' if sock > 1 else ''} vide{'s' if sock > 1 else ''}")
+        lines.append(f"**{r['name']}**{' ⭐' if r.get('main') else ''} ({r.get('ilvl') or '?'}) — " + " · ".join(parts))
+    if len(todo) > READY_POST_MAX:
+        lines.append(f"_… et {len(todo) - READY_POST_MAX} autre(s) : voir le bilan._")
+    fields, cur = [], ""
+    for ln in lines:                       # champs Discord : 1 024 caractères au plus
+        if cur and len(cur) + 1 + len(ln) > 1024:
+            fields.append(cur)
+            cur = ""
+        cur = (cur + "\n" + ln) if cur else ln[:1024]
+    if cur:
+        fields.append(cur)
+    scope = "mains" if mains_only else "personnages"
+    desc = (f"{len(todo)} {scope} à préparer — enchantements et gemmes manquants sur les pièces Héros / Mythe "
+            f"(iLvl ≥ {track_ilvl})." if todo else f"Tous les {scope} sont prêts sur leurs pièces Héros / Mythe ✅")
+    if link:
+        desc += f"\n👉 [Bilan des joueurs]({link})"
+    return {"title": "🩺 Préparation du raid", "description": desc, "color": color,
+            "fields": [{"name": "À corriger" if i == 0 else "\u200b", "value": v} for i, v in enumerate(fields[:5])],
+            "footer": {"text": f"{guild} · bilan des joueurs"}}
+
+
+@router.post("/api/readiness/post")
+def api_readiness_post(body: ReadyPost, request: Request):
+    """Officiers : publie sur Discord la liste des personnages à préparer (pièces Héros / Mythe)."""
+    _require_officer(request)
+    cfg = _bot_config() or {}
+    token, channel = (cfg.get("token") or "").strip(), (cfg.get("channel_id") or "").strip()
+    if not (cfg.get("enabled") and token and channel):
+        raise HTTPException(400, "Bot Discord non configuré ou inactif (Admin → Bot Discord).")
+    rows, track_ilvl = _collect(False)
+    link = f"{PUBLIC_BASE_URL}/readiness" if PUBLIC_BASE_URL else ""
+    emb = readiness_embed(rows, track_ilvl, _brand_identity()["guild_name"], link, body.mains_only,
+                          discord_bot.COLOR_GOLD)
+    try:
+        discord_bot.send(token, channel, embeds=[emb])
+    except discord_bot.DiscordError as exc:
+        raise HTTPException(400, f"Discord — {exc}")
+    return {"ok": True}
 
 
 @router.post("/api/readiness/threshold")
