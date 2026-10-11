@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.034 - 2026-10-11
+
+### Added
+
+- Discord weekly recap: « 🩺 Préparation » field — characters still missing enchants or gems
+  on their Hero / Myth pieces, the five most behind, and a link to the player readiness page.
+
+### Changed
+
+- Readiness logic moved to `app/services/readiness.py` (shared by the page and the bot); new
+  repository test enforcing that services never import routers. Dead imports and variables
+  reported by pyflakes removed.
+
 ## 2026.10.033 - 2026-10-11
 
 ### Added
