@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.042 - 2026-10-11
+
+### Added
+
+- Character sheet: « 🩺 Préparation » card — missing enchants (linked to the guild's crafters),
+  empty sockets, tier set and progress since last week, on the Hero / Myth pieces.
+
 ## 2026.10.041 - 2026-10-11
 
 ### Added
