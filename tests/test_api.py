@@ -1549,11 +1549,16 @@ def test_gcal_lists_readiness_of_signed_up_players(monkeypatch):
         conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'calready', '2026-10-11', ?, ?)",
                      (now, json.dumps({"class": "Mage", "level": 90, "ilvl": 315, "items": [
                          {"slot": "Tête", "st": "HEAD", "ench": False, "sock": 1, "gems": 0, "ilvl": 315},
-                         {"slot": "Pieds", "st": "FEET", "ench": False, "ilvl": 290}]})))
+                         {"slot": "Pieds", "st": "FEET", "ench": False, "ilvl": 290}],
+                         "sets": [{"id": 1, "name": "Set", "n": 3, "of": 5, "bonus": 1}]})))
     try:
         c = _plain_client("calready@test.local", "10.99.60.14")
         d = c.get("/api/gcal").json()
         assert d["ready"]["calready"] == {"e": ["Tête"], "s": 1}        # pièce Champion (290) ignorée
+        assert d["tier_near"]["calready"] == {"n": 3, "of": 5}           # à une pièce du bonus 4 pièces
+        from app.services.readiness import tier_near
+        assert tier_near([{"key": "a", "tier": {"n": 1, "of": 5}}, {"key": "b", "tier": {"n": 2, "of": 5}},
+                          {"key": "c", "tier": {"n": 4, "of": 5}}, {"key": "d", "tier": None}]) == {"a": {"n": 1, "of": 5}}
     finally:
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM gcal_import WHERE id=1")

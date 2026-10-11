@@ -174,7 +174,15 @@ const ckOf = (n) => {
   return GCAL_CK[k] || (k.includes("-") ? GCAL_CK[k.slice(0, k.lastIndexOf("-"))] : "") || "";
 };
 // Buffs et débuffs de raid (Midnight) : table fournie par /api/gcal (raid_buffs), [[libellé, [classes]], …].
-let RAID_BUFFS = [], READY = {};
+let RAID_BUFFS = [], READY = {}, TIER_NEAR = {};
+// À une pièce d'un bonus de set (1/5 → 2 pièces, 3/5 → 4 pièces) : pour attribuer une pièce de tier tombée.
+function tierHTML(names) {
+  const near = names.map(n => {
+    const k = String(n || "").toLowerCase(), t = TIER_NEAR[k] || (k.includes("-") ? TIER_NEAR[k.slice(0, k.lastIndexOf("-"))] : null);
+    return t ? `${cName(n)} <span>(${t.n}${t.of ? "/" + t.of : ""})</span>` : "";
+  }).filter(Boolean);
+  return near.length ? `<span class="meta"><span>🧥 À une pièce d'un bonus de set :</span> ${near.join(", ")}</span>` : "";
+}
 // Inscrits à préparer : enchantements / gemmes manquants sur pièces Héros / Mythe (/api/gcal → ready).
 function readyHTML(names) {
   const bad = names.map(n => {
@@ -289,6 +297,7 @@ function renderGcal() {
   GCAL_CK = d.class_keys || {};
   RAID_BUFFS = d.raid_buffs || [];
   READY = d.ready || {};
+  TIER_NEAR = d.tier_near || {};
   const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
   const box = $("#glist");
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
@@ -321,6 +330,7 @@ function renderGcal() {
       ${wait.length ? `<span class="meta warn">⏳ sans réponse : ${wait.join(", ")}</span>` : ""}
       ${buffsHTML(okNames)}
       ${readyHTML(okNames)}
+      ${tierHTML(okNames)}
       ${(e.unav || []).map(u => u.conflict
         ? `<span class="meta" style="color:var(--warn)">⚠️ ${cName(u.n)} — indispo mais a accepté le raid · ${perTxt(u)}</span>`
         : `<span class="meta">🚫 ${cName(u.n)} · ${perTxt(u)}</span>`).join("")}

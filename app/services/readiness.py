@@ -176,6 +176,20 @@ def readiness_embed(rows: list[dict], track_ilvl: int, guild: str = "la guilde",
             "footer": {"text": f"{guild} · bilan des joueurs"}}
 
 
+TIER_STEPS = (2, 4)   # bonus de set : 2 et 4 pièces
+
+
+def tier_near(rows: list[dict]) -> dict:
+    """{nom en minuscules: {"n": pièces, "of": total}} pour les personnages à une pièce d'un bonus de set
+    (1 ou 3 pièces) — utile pour attribuer une pièce de tier tombée en raid."""
+    out = {}
+    for r in rows:
+        t = r.get("tier")
+        if t and t.get("n") and (t["n"] + 1) in TIER_STEPS:
+            out[r["key"]] = {"n": t["n"], "of": t.get("of") or 0}
+    return out
+
+
 def todo_by_name(rows: list[dict], track_ilvl: int) -> dict:
     """{nom en minuscules: {"e": [emplacements sans enchantement], "s": châsses vides}} pour les personnages
     qui ont quelque chose à corriger sur leurs pièces ≥ seuil (calendrier : inscrits à préparer)."""
