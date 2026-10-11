@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.036 - 2026-10-11
+
+### Added
+
+- Player readiness: « Set » column — tier set pieces worn (4/5 = 2- and 4-piece bonuses), set
+  name and active bonuses on hover. Collected by the daily snapshot from this release on.
+
 ## 2026.10.035 - 2026-10-11
 
 ### Added
