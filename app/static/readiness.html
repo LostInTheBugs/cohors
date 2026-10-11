@@ -90,6 +90,7 @@
       <label class="chk"><input type="checkbox" id="ftodo"> Seulement à corriger</label>
       <label class="chk" title="Ignore les enchantements et gemmes manquants sur les pièces sous ce niveau d'objet (Champion et moins)"><input type="checkbox" id="ftrack" checked> Pièces Héros / Mythe seulement</label>
       <span class="chk" id="trackbox" style="white-space:nowrap"></span>
+      <button class="btn hidden" id="postbtn" type="button" title="Publier sur Discord la liste des personnages à préparer (pièces Héros / Mythe)">📋 Discord</button>
       <span class="spacer"></span>
       <span class="meta" id="cmeta">Chargement…</span>
     </div>
@@ -150,6 +151,21 @@ function render() {
 ["#q", "#fmain", "#ftodo", "#ftrack"].forEach(s => $(s).addEventListener("input", render));
 function trackEditor() {
   if (!DATA || !DATA.can_edit) return;
+  $("#postbtn").classList.remove("hidden");
+  $("#postbtn").addEventListener("click", async () => {
+    const mains = $("#fmain").checked;
+    const tr = window.__cohorsTr || ((x) => x);
+    if (!confirm(tr(mains ? "Publier sur Discord les mains à préparer ?" : "Publier sur Discord les personnages à préparer ?"))) return;
+    $("#postbtn").disabled = true;
+    try {
+      const r = await fetch("/api/readiness/post", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mains_only: mains }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail || "Erreur API");
+      $("#trackinfo").textContent = "Liste publiée sur Discord ✓";
+    } catch (e) { $("#trackinfo").textContent = "Erreur : " + e.message; }
+    $("#postbtn").disabled = false;
+  });
   $("#trackbox").innerHTML = `iLvl min. <input type="number" id="trackmin" min="100" max="2000" style="width:70px" value="${DATA.track_ilvl}">
     <button class="btn" id="tracksave" type="button">OK</button>`;
   $("#tracksave").addEventListener("click", async () => {

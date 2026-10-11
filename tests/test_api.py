@@ -1383,6 +1383,44 @@ def test_readiness_mine_lists_my_characters_to_fix():
             conn.execute("DELETE FROM char_links WHERE user_email='mine@test.local'")
 
 
+def test_readiness_post_to_discord(monkeypatch):
+    from app import bnet as B, discord_bot as D
+    from app.routers import readiness as RD
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": []}, 0.0))
+    monkeypatch.setattr(RD, "_bot_config", lambda: {"enabled": 1, "token": "t", "channel_id": "42"})
+    sent = []
+    monkeypatch.setattr(D, "send", lambda token, channel, embeds=None, content="": sent.append((channel, embeds)) or {})
+    now = time.time()
+    hero = [{"slot": "Tête", "st": "HEAD", "ench": False, "sock": 2, "gems": 0, "ilvl": 315},
+            {"slot": "Pieds", "st": "FEET", "ench": False, "ilvl": 298}]
+    champ = [{"slot": "Tête", "st": "HEAD", "ench": False, "ilvl": 290}]
+    with M._db_lock, M._db() as conn:
+        for nm, its in (("postmain", hero), ("postalt", hero), ("postchamp", champ)):
+            conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', ?, '2026-10-11', ?, ?)",
+                         (nm, now, json.dumps({"class": "Mage", "level": 90, "ilvl": 312, "items": its})))
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('post@test.local', 'hyjal', 'postmain', 'Postmain', 1, 0)")
+    try:
+        assert _plain_client("post-member@test.local", "10.99.60.12").post("/api/readiness/post", json={}).status_code == 403
+        c = _admin_client("post-admin@test.local", "10.99.60.13")
+        assert c.post("/api/readiness/post", json={}).status_code == 200
+        emb = sent[-1][1][0]
+        txt = "\n".join(f["value"] for f in emb["fields"])
+        assert sent[-1][0] == "42" and emb["title"] == "🩺 Préparation du raid"
+        assert "**Postmain** ⭐ (312) — 🪄 Tête · 💎 2 châsses vides" in txt and "**Postalt**" in txt
+        assert "Postchamp" not in txt and "Pieds" not in txt          # pièces Champion ignorées
+        assert c.post("/api/readiness/post", json={"mains_only": True}).status_code == 200
+        txt = "\n".join(f["value"] for f in sent[-1][1][0]["fields"])
+        assert "Postmain" in txt and "Postalt" not in txt
+        # embed vide : message « tous prêts »
+        e = RD.readiness_embed([], 305)
+        assert e["fields"] == [] and "prêts" in e["description"]
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name IN ('postmain', 'postalt', 'postchamp')")
+            conn.execute("DELETE FROM char_links WHERE user_email='post@test.local'")
+
+
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     from app.services import raidcomp as RC
     ev = {"title": "Raid HM", "ts": 1790000000, "inv": [
