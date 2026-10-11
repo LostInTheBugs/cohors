@@ -15,7 +15,7 @@ from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR
 from app.services.bot import _bot_config
 from app.services.readiness import (ENCHANT_SLOTS, READY_MAX_AGE, READY_MIN_LEVEL, READY_TRACK_KEY, _above,
-                                    _collect, _readiness, _track_ilvl, readiness_embed)
+                                    _collect, _readiness, _track_ilvl, char_readiness, readiness_embed)
 
 router = APIRouter()
 
@@ -38,6 +38,16 @@ def api_readiness(request: Request):
                                      "unknown": sum(1 for x in rows if not x["known"])},
             "enchant_slots": list(ENCHANT_SLOTS), "track_ilvl": track_ilvl,
             "can_edit": _user_role(user) in ("officer", "admin")}
+
+
+@router.get("/api/readiness/char/{realm}/{name}")
+def api_readiness_char(realm: str, name: str, request: Request):
+    """Préparation d'un personnage, pour sa fiche (enchantements, châsses, set, progression)."""
+    _require_user(request)
+    r = char_readiness(realm[:60], name[:60], _user_locale(request).startswith("en"))
+    if r is None:
+        raise HTTPException(404, "Aucun relevé pour ce personnage.")
+    return r
 
 
 @router.get("/api/readiness/mine")

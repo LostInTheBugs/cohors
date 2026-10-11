@@ -106,6 +106,9 @@
   .tal { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0; }
   .tal code { font-size:11.5px; color:var(--mut); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 1 260px; min-width:0; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:20px; padding-top:12px; }
+  .rd-ok { color: var(--ok); }
+  .rd-warn { color: #e0a84c; }
+  #ready > div { margin: 4px 0; }
 </style>
 <link rel="stylesheet" href="/static/theme.css?v=2026.10.041">
 </head>
@@ -131,6 +134,11 @@
   <div class="card">
     <div id="switchbox" class="switchbox hidden"></div>
     <div id="content"><div class="empty"><span class="spin">⏳</span> Chargement de la fiche…</div></div>
+  </div>
+
+  <div class="card hidden" id="readycard">
+    <h2>🩺 Préparation <span class="meta" id="ready-day"></span></h2>
+    <div id="ready"></div>
   </div>
 
   <div class="card">
@@ -251,11 +259,49 @@ async function loadChar(realm, name, push) {
     document.title = `Cohors — ${s.name || name}`;
     loadEvo(realm, name);
     loadProg(realm, name);
+    loadReady(realm, name);
     if (push) history.replaceState(null, "", charUrl(realm, name));
   } catch (e) {
     $("#content").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
     $("#prog").innerHTML = "";
   }
+}
+
+// ---- 🩺 Préparation : enchantements, châsses, set de tier (relevé quotidien, pièces Héros / Mythe) ----
+const READY_CRAFT_Q = { HEAD: "Enchantement de casque", SHOULDER: "Enchantement d’épaulières", CHEST: "Enchantement de plastron",
+  LEGS: "Fil ensorcelé", FEET: "Enchantement de bottes", FINGER_1: "Enchantement d’anneau", FINGER_2: "Enchantement d’anneau",
+  MAIN_HAND: "Enchantement d’arme", OFF_HAND: "Enchantement d’arme" };   // mêmes recherches que le Bilan des joueurs
+async function loadReady(realm, name) {
+  $("#readycard").classList.add("hidden");
+  let r;
+  try { r = await jget(`/api/readiness/char/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`); }
+  catch (e) { return; }
+  if (!r || !r.known || (r.level || 0) < r.max_level || REALM !== realm.toLowerCase() || NAME !== name.toLowerCase()) return;
+  const min = r.track_ilvl || 0, keep = (it) => it.ilvl == null || it.ilvl >= min;
+  const ench = r.ench_items.filter(keep), socks = r.sock_items.filter(keep);
+  const nsock = socks.reduce((a, it) => a + it.n, 0);
+  const encLink = (it) => READY_CRAFT_Q[it.st]
+    ? `<a class="hlink" href="/craft?q=${encodeURIComponent(READY_CRAFT_Q[it.st])}" title="Qui peut le faire dans la guilde ?">${esc(it.slot)}</a>`
+    : esc(it.slot);
+  const lines = [];
+  lines.push(ench.length
+    ? `<div><span class="rd-warn">🪄 Enchantements manquants :</span> ${ench.map(encLink).join(", ")}</div>`
+    : `<div class="rd-ok">🪄 Tous les enchantements sont posés ✓</div>`);
+  lines.push(nsock
+    ? `<div><span class="rd-warn">💎 Châsses vides : ${nsock}</span> <span class="meta">(${esc(socks.map(it => it.slot).join(", "))})</span></div>`
+    : `<div class="rd-ok">💎 Aucune châsse vide ✓</div>`);
+  if (r.tier) lines.push(r.tier.n
+    ? `<div>🧥 Set de tier : <b class="${r.tier.n >= 4 ? "rd-ok" : ""}">${r.tier.n}${r.tier.of ? "/" + r.tier.of : ""}</b> <span class="meta">${esc(r.tier.name)}${r.tier.bonus ? ` — ${r.tier.bonus} bonus actif(s)` : ""}</span></div>`
+    : `<div>🧥 Set de tier : <span class="rd-warn">aucune pièce</span></div>`);
+  if (r.before) {
+    const e0 = r.before.ench_items.filter(keep).length, g0 = r.before.sock_items.filter(keep).reduce((a, it) => a + it.n, 0);
+    const de = Math.max(0, e0 - ench.length), dg = Math.max(0, g0 - nsock);
+    if (de || dg) lines.push(`<div class="rd-ok">📈 Depuis le ${esc(r.before.day.slice(8, 10) + "/" + r.before.day.slice(5, 7))} : ${de} enchantement(s), ${dg} gemme(s) posés</div>`);
+  }
+  lines.push(`<div class="meta"><span>Pièces d'iLvl ≥ ${min} (Héros / Mythe)</span> · <a class="hlink" href="/readiness">Bilan des joueurs →</a></div>`);
+  $("#ready").innerHTML = lines.join("");
+  $("#ready-day").textContent = r.ts ? "· relevé " + ago(r.ts) : "";
+  $("#readycard").classList.remove("hidden");
 }
 
 // ---- 🏰 Progression raids / donjons + 🌳 talents — API Blizzard (v2026.09.155-c1) ----

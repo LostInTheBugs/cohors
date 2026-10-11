@@ -67,14 +67,17 @@ def _tier(d: dict, want_en: bool) -> dict | None:
             "name": ((best.get("name_en") or best.get("name")) if want_en else best.get("name")) or ""}
 
 
-def _baselines(conn, want_en: bool, today: str) -> dict:
+def _baselines(conn, want_en: bool, today: str, only: tuple | None = None) -> dict:
     """Relevé de référence par personnage pour la progression : le dernier d'il y a au moins 7 jours ; s'il ne
     contient pas encore les enchantements (collectés depuis 2026.10.025), le plus ancien suivant qui les a."""
     ref_day = _snap_day(time.time() - READY_PROGRESS_DAYS * 86400)
     floor_day = _snap_day(time.time() - 3 * READY_PROGRESS_DAYS * 86400)
     days: dict = {}
-    for sr in conn.execute("SELECT id, realm, name, day FROM char_snapshots WHERE day >= ? AND day < ? ORDER BY day",
-                           (floor_day, today)).fetchall():
+    sql, args = "SELECT id, realm, name, day FROM char_snapshots WHERE day >= ? AND day < ?", [floor_day, today]
+    if only:                                   # un seul personnage (fiche)
+        sql += " AND realm=? AND name=?"
+        args += [only[0], only[1]]
+    for sr in conn.execute(sql + " ORDER BY day", args).fetchall():
         days.setdefault((sr["realm"], sr["name"]), []).append((sr["day"], sr["id"]))
     best: dict = {}
     for k, lst in days.items():
@@ -216,3 +219,25 @@ def progress(rows: list[dict], track_ilvl: int) -> dict:
                 fixed += 1
         since = b["day"] if since is None else min(since, b["day"])
     return {"since": since, "improved": improved, "fixed": fixed, "ench": ench, "gems": gems}
+
+
+def char_readiness(realm: str, name: str, want_en: bool) -> dict | None:
+    """Préparation d'un personnage (fiche) : dernier relevé, détail par pièce, set, référence de progression.
+    None si le personnage n'a aucun relevé."""
+    realm, name = realm.strip().lower(), name.strip().lower()
+    with _db_lock, _db() as conn:
+        sr = conn.execute("SELECT day, ts, data FROM char_snapshots WHERE realm=? AND name=? ORDER BY day DESC LIMIT 1",
+                          (realm, name)).fetchone()
+        if sr is None:
+            return None
+        track = _track_ilvl(conn)
+        base = _baselines(conn, want_en, sr["day"], only=(realm, name)).get((realm, name))
+    try:
+        d = json.loads(sr["data"]) or {}
+    except (ValueError, TypeError):
+        return None
+    r = _readiness(d, want_en)
+    return {"day": sr["day"], "ts": sr["ts"], "level": d.get("level"), "ilvl": d.get("ilvl"), "track_ilvl": track,
+            "max_level": READY_MIN_LEVEL, "tier": _tier(d, want_en), **r,
+            "before": ({"day": base[0], "ench_items": base[1]["ench_items"], "sock_items": base[1]["sock_items"]}
+                       if base and r["known"] else None)}
