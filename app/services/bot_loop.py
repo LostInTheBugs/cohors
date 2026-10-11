@@ -22,12 +22,12 @@ def _weekly_recap_embed() -> dict | None:
         prog = _progression_data(7)
         top = [r for r in (prog.get("rows") or []) if r.get("d_ilvl")][:5]
         if top:
-            lines = [f"**{r['name'].title()}** +{r['d_ilvl']} iLvl ({r.get('ilvl0')} → {r.get('ilvl1')})" for r in top]
+            lines = [f"**{r['name']}** +{r['d_ilvl']} iLvl ({r.get('ilvl0')} → {r.get('ilvl1')})" for r in top]
             fields.append({"name": "🏆 Progressions de la semaine", "value": "\n".join(lines)[:1024]})
         mp = sorted((r for r in (prog.get("rows") or []) if (r.get("d_mplus") or 0) > 0),
                     key=lambda r: -r["d_mplus"])[:5]
         if mp:
-            lines = [f"**{r['name'].title()}** +{round(r['d_mplus'])} ({round(r.get('mplus0') or 0)} → {round(r.get('mplus1') or 0)})"
+            lines = [f"**{r['name']}** +{round(r['d_mplus'])} ({round(r.get('mplus0') or 0)} → {round(r.get('mplus1') or 0)})"
                      for r in mp]
             fields.append({"name": "🗝️ Cote MM+ de la semaine", "value": "\n".join(lines)[:1024]})
     except Exception as exc:  # noqa: BLE001
