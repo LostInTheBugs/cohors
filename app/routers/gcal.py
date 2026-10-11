@@ -382,8 +382,13 @@ def api_gcal_post_compo(key: str, request: Request):
     if ev is None:
         raise HTTPException(404, "Événement introuvable dans le dernier import.")
     link = f"{PUBLIC_BASE_URL}/calendar" if PUBLIC_BASE_URL else ""
+    try:                                   # présents à préparer, emplacements en français pour Discord
+        r_rows, r_track = _ready_collect(False, with_progress=False)
+        ready = todo_by_name(r_rows, r_track)
+    except Exception:  # noqa: BLE001
+        ready = {}
     emb = compo_embed(ev, data.get("class_keys") or {}, _brand_identity()["guild_name"], link,
-                      discord_bot.COLOR_GOLD)
+                      discord_bot.COLOR_GOLD, ready=ready)
     try:
         discord_bot.send(token, channel, embeds=[emb])
     except discord_bot.DiscordError as exc:

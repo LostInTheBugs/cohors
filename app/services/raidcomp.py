@@ -55,8 +55,9 @@ def _clip(text: str, n: int = 1024) -> str:
 
 
 def compo_embed(ev: dict, class_keys: dict, guild: str = "la guilde", link: str = "",
-                color: int = 0xDFA55A) -> dict:
-    """Embed Discord (français) : présents par rôle, peut-être, buffs manquants, pièces voulues."""
+                color: int = 0xDFA55A, ready: dict | None = None) -> dict:
+    """Embed Discord (français) : présents par rôle, peut-être, buffs manquants, présents à préparer
+    (enchantements / gemmes, d'après ready = {nom en minuscules: {"e": [...], "s": n}}), pièces voulues."""
     meta = ev.get("meta") or {}
     roles, ovr = meta.get("roles") or {}, meta.get("ovr") or {}
     ok, maybe = [], []
@@ -86,6 +87,15 @@ def compo_embed(ev: dict, class_keys: dict, guild: str = "la guilde", link: str 
         if unknown:
             txt += f"\n_Classe inconnue : {', '.join(unknown)}_"
         fields.append({"name": "🧩 Buffs de raid", "value": _clip(txt)})
+    todo = []
+    for n in ok:
+        r = (ready or {}).get(_base(n))
+        if r and (r.get("e") or r.get("s")):
+            parts = ([f"{len(r['e'])} ench."] if r.get("e") else []) + (
+                [f"{r['s']} gemme{'s' if r['s'] > 1 else ''}"] if r.get("s") else [])
+            todo.append(f"{n} ({', '.join(parts)})")
+    if todo:
+        fields.append({"name": f"🩺 À préparer ({len(todo)})", "value": _clip(", ".join(todo))})
     if meta.get("raids") or meta.get("bosses"):
         fields.append({"name": "🗺️ Programme", "value": _clip(
             " · ".join(meta.get("raids") or []) + (f"\n⚔️ {' · '.join(meta.get('bosses') or [])}" if meta.get("bosses") else "")
