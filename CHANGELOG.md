@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.035 - 2026-10-11
+
+### Added
+
+- Player readiness: progress since the snapshot 7 days ago (or the oldest one with enchant
+  data) — « 📈 » summary line, ↗ next to characters who added enchants or gems, and the same
+  summary in the weekly recap's « 🩺 Préparation » field.
+
 ## 2026.10.034 - 2026-10-11
 
 ### Added
