@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.037 - 2026-10-11
+
+### Added
+
+- Rankings: Mythic+ rating gain in the « 📈 Progression » table, with iLvl / MM+ sort buttons.
+- Discord weekly recap: « 🗝️ Cote MM+ de la semaine » — the five biggest rating gains.
+
 ## 2026.10.036 - 2026-10-11
 
 ### Added
