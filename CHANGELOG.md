@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.031 - 2026-10-11
+
+### Added
+
+- Player readiness: « Pièces Héros / Mythe seulement » filter, on by default — missing enchants
+  and empty sockets on pieces below a minimum item level (Champion and lower) are ignored.
+  Default threshold 305 (Hero 1/6, Midnight season 2); officers adjust it on the page each
+  season. Hovering a slot shows its item level.
+
 ## 2026.10.030 - 2026-10-10
 
 ### Changed
