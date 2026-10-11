@@ -107,6 +107,53 @@ def api_readiness(request: Request):
             "can_edit": _user_role(user) in ("officer", "admin")}
 
 
+def _above(items: list[dict], min_ilvl: int) -> list[dict]:
+    """Pièces retenues par le filtre Héros / Mythe (iLvl inconnu : gardée)."""
+    return [it for it in items if it.get("ilvl") is None or it["ilvl"] >= min_ilvl]
+
+
+@router.get("/api/readiness/mine")
+def api_readiness_mine(request: Request):
+    """Mes personnages liés (niveau max, relevés de moins de 7 jours) qui ont des enchantements ou des gemmes
+    à poser sur leurs pièces Héros / Mythe — pour la carte du tableau de bord."""
+    user = _require_user(request)
+    want_en = _user_locale(request).startswith("en")
+    cutoff = time.time() - READY_MAX_AGE
+    with _db_lock, _db() as conn:
+        links = conn.execute("SELECT realm, name, display, is_main FROM char_links WHERE user_email=?",
+                             (user["email"],)).fetchall()
+        track_ilvl = _track_ilvl(conn)
+        snaps = {}
+        for ln in links:
+            r = conn.execute("SELECT ts, data FROM char_snapshots WHERE realm=? AND name=? ORDER BY id DESC LIMIT 1",
+                             ((ln["realm"] or "").lower(), (ln["name"] or "").lower())).fetchone()
+            if r is not None and r["ts"] >= cutoff:
+                snaps[(ln["realm"], ln["name"])] = r
+    out = []
+    for ln in links:
+        sr = snaps.get((ln["realm"], ln["name"]))
+        if sr is None:
+            continue
+        try:
+            d = json.loads(sr["data"]) or {}
+        except (ValueError, TypeError):
+            continue
+        if (d.get("level") or 0) < READY_MIN_LEVEL:
+            continue
+        r = _readiness(d, want_en)
+        if not r["known"]:
+            continue
+        ench = [it["slot"] for it in _above(r["ench_items"], track_ilvl)]
+        sock = sum(it["n"] for it in _above(r["sock_items"], track_ilvl))
+        if ench or sock:
+            out.append({"name": ln["display"] or (ln["name"] or "").title(), "realm": (ln["realm"] or "").lower(),
+                        "key": (ln["name"] or "").lower(), "main": bool(ln["is_main"]), "ilvl": d.get("ilvl"),
+                        "class_key": CLASS_KEY_FR.get(d.get("class") or ""), "missing_enchants": ench,
+                        "empty_sockets": sock})
+    out.sort(key=lambda x: (not x["main"], -(len(x["missing_enchants"]) + x["empty_sockets"]), x["name"].lower()))
+    return {"chars": out, "track_ilvl": track_ilvl, "linked": len(links)}
+
+
 @router.post("/api/readiness/threshold")
 def api_readiness_threshold(body: ReadyThreshold, request: Request):
     """Officiers : iLvl minimum des pièces prises en compte par le filtre « Héros / Mythe »."""

@@ -1357,6 +1357,32 @@ def test_readiness_lists_missing_enchants_and_empty_sockets(monkeypatch):
             conn.execute("DELETE FROM char_links WHERE user_email='ready@test.local'")
 
 
+def test_readiness_mine_lists_my_characters_to_fix():
+    now = time.time()
+    hero = [{"slot": "Tête", "st": "HEAD", "ench": False, "sock": 1, "gems": 0, "ilvl": 315},
+            {"slot": "Pieds", "st": "FEET", "ench": False, "ilvl": 298}]               # Champion : ignoré
+    champ = [{"slot": "Tête", "st": "HEAD", "ench": False, "sock": 1, "gems": 0, "ilvl": 290}]
+    with M._db_lock, M._db() as conn:
+        for nm, its in (("monmain", hero), ("monreroll", champ), ("pasamoi", hero)):
+            conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', ?, '2026-10-11', ?, ?)",
+                         (nm, now, json.dumps({"class": "Mage", "level": 90, "ilvl": 312, "items": its})))
+        for nm, main in (("monmain", 1), ("monreroll", 0)):
+            conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                         " VALUES ('mine@test.local', 'hyjal', ?, ?, ?, 0)", (nm, nm.title(), main))
+    try:
+        c = _plain_client("mine@test.local", "10.99.60.10")
+        d = c.get("/api/readiness/mine").json()
+        assert d["linked"] == 2 and d["track_ilvl"] == 305
+        assert [(x["key"], x["main"], x["missing_enchants"], x["empty_sockets"]) for x in d["chars"]] == [
+            ("monmain", True, ["Tête"], 1)]                       # le reroll n'a que du Champion
+        assert _plain_client("other@test.local", "10.99.60.11").get("/api/readiness/mine").json()["chars"] == []
+        assert client.get("/api/readiness/mine").status_code == 401
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name IN ('monmain', 'monreroll', 'pasamoi')")
+            conn.execute("DELETE FROM char_links WHERE user_email='mine@test.local'")
+
+
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     from app.services import raidcomp as RC
     ev = {"title": "Raid HM", "ts": 1790000000, "inv": [

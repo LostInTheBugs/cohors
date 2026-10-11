@@ -87,6 +87,12 @@
       </ul>
       <p class="note"><a class="hlink" href="/mespersos">Lier mes personnages →</a></p>
     </div>
+    <div class="card hidden" id="readycard" style="border-color:var(--warn)">
+      <h2>🩺 Prépare tes personnages</h2>
+      <p class="note">Enchantements et gemmes manquants sur tes pièces Héros / Mythe (dernier relevé) :</p>
+      <div id="readylist"></div>
+      <p class="note"><a class="hlink" href="/readiness">Bilan des joueurs →</a></p>
+    </div>
     <div class="card hidden" id="setcard">
       <h2>🚀 Première configuration</h2>
       <div class="cd" id="setcount"></div>
@@ -151,6 +157,18 @@ const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >=
   try {
     const me2 = await jget("/api/me");
     if (me2.chars === 0) $("#linkcard").classList.remove("hidden");
+    else {
+      const rd = await jget("/api/readiness/mine").catch(() => null);
+      if (rd && rd.chars && rd.chars.length) {
+        $("#readylist").innerHTML = rd.chars.map((c) => `<div style="margin:6px 0;font-size:13.5px">
+          <a href="/char/${esc(c.realm)}/${esc(c.key)}" style="font-weight:600;text-decoration:none;color:${CLASS_COLORS[c.class_key] || "var(--fg)"}">${esc(c.name)}</a>${c.main ? " ⭐" : ""}
+          <span class="note">(${esc(c.ilvl)})</span>
+          ${c.missing_enchants.length ? `<div class="note"><span>Enchantements manquants : ${esc(c.missing_enchants.join(", "))}</span></div>` : ""}
+          ${c.empty_sockets ? `<div class="note"><span>Châsses vides : ${esc(c.empty_sockets)}</span></div>` : ""}
+        </div>`).join("");
+        $("#readycard").classList.remove("hidden");
+      }
+    }
     if (me2.role === "admin" || me2.is_admin) {
       const s = await jget("/api/setup/status");
       const done = (s.steps || []).filter((x) => x.done).length;
