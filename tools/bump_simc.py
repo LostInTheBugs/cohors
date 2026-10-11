@@ -11,9 +11,7 @@ Requires: Python 3.11+, internet access to Docker Hub.
 import argparse
 import json
 import re
-import shutil
 import sys
-import tempfile
 import urllib.request
 from pathlib import Path
 

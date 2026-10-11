@@ -140,7 +140,6 @@ def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0:
     if isinstance(contents, str):
         contents = [contents]
     blk = _stuff_bis_filter(blk, contents)
-    slot_fr = {}
     with _db_lock, _db() as conn:
         loc = "fr_FR"
         loc_en = "en_US"
