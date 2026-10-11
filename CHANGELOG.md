@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.039 - 2026-10-11
+
+### Added
+
+- Calendar: « 🩺 À préparer » line on each raid — attendees still missing enchants or gems on
+  their Hero / Myth pieces, with the slots on hover and a link to the player readiness page.
+
 ## 2026.10.038 - 2026-10-11
 
 ### Fixed
