@@ -133,7 +133,16 @@ function view(r, min) {
   return v;
 }
 const dayFr = (d) => d ? d.slice(8, 10) + "/" + d.slice(5, 7) : "";
-const slotTxt = (it) => `<span title="${it.ilvl ? "iLvl " + it.ilvl : ""}">${esc(it.slot)}</span>`;
+// Recherche d'artisanat par emplacement (noms des recettes en jeu ; la recherche compare aussi les noms anglais).
+const CRAFT_Q = { HEAD: "Enchantement de casque", SHOULDER: "Enchantement d’épaulières", CHEST: "Enchantement de plastron",
+  LEGS: "Fil ensorcelé", FEET: "Enchantement de bottes", FINGER_1: "Enchantement d’anneau", FINGER_2: "Enchantement d’anneau",
+  MAIN_HAND: "Enchantement d’arme", OFF_HAND: "Enchantement d’arme" };
+const slotTxt = (it) => {
+  const tip = (it.ilvl ? "iLvl " + it.ilvl + " · " : "") + "Qui peut le faire dans la guilde ?";
+  return CRAFT_Q[it.st]
+    ? `<a class="bad" style="font-weight:400;text-decoration:underline dotted" href="/craft?q=${encodeURIComponent(CRAFT_Q[it.st])}" title="${esc(tip)}">${esc(it.slot)}</a>`
+    : `<span title="${it.ilvl ? "iLvl " + it.ilvl : ""}">${esc(it.slot)}</span>`;
+};
 function render() {
   if (!DATA) return;
   const q = norm($("#q").value.trim()), fm = $("#fmain").checked, ft = $("#ftodo").checked;

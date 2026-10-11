@@ -1334,7 +1334,7 @@ def test_readiness_lists_missing_enchants_and_empty_sockets(monkeypatch):
         assert (r["name"], r["known"], r["missing_enchants"], r["empty_sockets"], r["main"], r["class_key"]) == (
             "Prêtàraid", True, ["Tête", "Pieds"], 2, True, "Priest")
         # détail par pièce avec l'iLvl : la page filtre les pièces sous le seuil Héros / Mythe
-        assert r["ench_items"] == [{"slot": "Tête", "ilvl": 318}, {"slot": "Pieds", "ilvl": 298}]
+        assert r["ench_items"] == [{"slot": "Tête", "ilvl": 318, "st": "HEAD"}, {"slot": "Pieds", "ilvl": 298, "st": "FEET"}]
         assert r["sock_items"] == [{"slot": "Tête", "ilvl": 318, "n": 1}, {"slot": "Pieds", "ilvl": 298, "n": 1}]
         assert d["track_ilvl"] == 305 and d["can_edit"] is False
         assert c.post("/api/readiness/threshold", json={"min_ilvl": 300}).status_code == 403

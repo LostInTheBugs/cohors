@@ -44,7 +44,7 @@ def _readiness(d: dict, want_en: bool) -> dict:
             il = it.get("ilvl")
             if (st in ENCHANT_SLOTS or (st == "OFF_HAND" and it.get("wpn"))) and it.get("ench") is False:
                 missing.append(label)
-                ench_items.append({"slot": label, "ilvl": il})
+                ench_items.append({"slot": label, "ilvl": il, "st": st})
             try:
                 n = max(0, int(it.get("sock") or 0) - int(it.get("gems") or 0))
             except (TypeError, ValueError):
