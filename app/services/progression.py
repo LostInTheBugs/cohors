@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import time
 
+from app import bnet
 from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR, _pick, _snap_day
 
@@ -34,6 +35,12 @@ def _progression_data(days: int = 30, locale: str = "fr_FR") -> dict:
         a, b = f.get(key), l.get(key)
         return (b - a) if (a is not None and b is not None) else None
 
+    disp: dict[str, str] = {}           # nom affiché : casse du roster (les relevés stockent le nom en minuscules)
+    try:
+        roster, _t = bnet.roster()
+        disp = {(m.get("name") or "").lower(): m.get("name") or "" for m in (roster.get("members") or [])}
+    except bnet.BnetError:
+        pass
     out_rows, measured = [], 0
     day_ilvl: dict[str, dict] = {}      # jour -> {(royaume, nom): iLvl} (persos niveau 90)
     for (realm, name), snaps in per.items():
@@ -52,7 +59,7 @@ def _progression_data(days: int = 30, locale: str = "fr_FR") -> dict:
         if not any(v is not None and v != 0 for v in gains.values()):
             continue
         out_rows.append({
-            "realm": realm, "name": name,
+            "realm": realm, "name": disp.get(name) or name.title(), "key": name,
             "class": _pick(l, "class", want_en) or _pick(f, "class", want_en),
             "spec": _pick(l, "spec", want_en) or _pick(f, "spec", want_en),
             "class_key": CLASS_KEY_FR.get((l.get("class") or f.get("class")) or ""),

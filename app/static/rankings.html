@@ -145,7 +145,10 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 
 function nameCell(r) {
   const col = CLASS_COLORS[r.class] || "var(--fg)";
-  return `<b style="color:${col}">${esc(r.name)}</b> <span class="meta">${esc(CLASS_FR[r.class] || r.class || "")} ${esc(r.spec || "")}</span>`;
+  const nm = (r.key && r.realm)    // progression : lien vers la fiche du personnage
+    ? `<a href="/char/${esc(r.realm)}/${esc(r.key)}" style="color:${col};font-weight:700;text-decoration:none">${esc(r.name)}</a>`
+    : `<b style="color:${col}">${esc(r.name)}</b>`;
+  return `${nm} <span class="meta">${esc(CLASS_FR[r.class] || r.class || "")} ${esc(r.spec || "")}</span>`;
 }
 
 // ---- Progression (relevés quotidiens)

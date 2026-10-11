@@ -1518,7 +1518,7 @@ def test_mplus_progress_in_progression_and_weekly_recap(monkeypatch):
 
     def _no_wcl(*a, **k):
         raise W.WclError(503, "off")
-    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": []}, 0.0))
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": [{"name": "CleMan"}]}, 0.0))
     monkeypatch.setattr(W, "reports", _no_wcl)
     now = time.time()
     with M._db_lock, M._db() as conn:
@@ -1526,11 +1526,12 @@ def test_mplus_progress_in_progression_and_weekly_recap(monkeypatch):
             conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'cleman', ?, ?, ?)",
                          (_snap_day(ts), ts, json.dumps({"class": "Mage", "level": 90, "ilvl": 300, "mplus": rating})))
     try:
-        row = next(r for r in _progression_data(7)["rows"] if r["name"] == "cleman")
+        row = next(r for r in _progression_data(7)["rows"] if r["key"] == "cleman")
+        assert row["name"] == "CleMan"                                   # casse du roster
         assert (row["mplus0"], row["mplus1"], round(row["d_mplus"])) == (2500.4, 2731.8, 231)
         emb = BL._weekly_recap_embed()
         f = next(x for x in emb["fields"] if x["name"] == "🗝️ Cote MM+ de la semaine")
-        assert "**Cleman** +231 (2500 → 2732)" in f["value"]
+        assert "**CleMan** +231 (2500 → 2732)" in f["value"]
     finally:
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM char_snapshots WHERE name='cleman'")
