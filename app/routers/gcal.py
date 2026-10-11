@@ -16,6 +16,7 @@ from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR, SPEC_ROLE, _int_any, _lua_unescape, _pick, _snap_day
 from app.services.bot import _bot_config
 from app.services.raidcomp import compo_embed, fill_candidates, raid_buffs
+from app.services.readiness import _collect as _ready_collect, todo_by_name
 from app.services.wishlist import _bis_by_user
 
 router = APIRouter()
@@ -228,9 +229,16 @@ def api_gcal_get(request: Request):
         ck = CLASS_KEY_FR.get(cr["cfr"] or "")
         if ck:
             class_keys[nmk] = ck
+    ready: dict = {}                  # inscrits à préparer (enchantements / gemmes sur pièces Héros / Mythe)
+    if events:
+        try:
+            r_rows, r_track = _ready_collect(en_loc, with_progress=False)
+            ready = todo_by_name(r_rows, r_track)
+        except Exception as exc:  # noqa: BLE001 — le calendrier reste utilisable sans le bilan
+            print(f"[gcal] bilan des joueurs indisponible : {exc}")
     return {"imported_at": row["ts"] if row else 0, "player": row["player"] if row else "",
             "events": events, "raid_catalog": raid_catalog, "classes": classes, "class_keys": class_keys,
-            "raid_buffs": raid_buffs(en_loc),
+            "raid_buffs": raid_buffs(en_loc), "ready": ready,
             "unavail": {"rows": urows, "counts": {"members": len(urows), "conflict": conflicts}}}
 
 

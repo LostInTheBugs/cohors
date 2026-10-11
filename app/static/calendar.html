@@ -174,7 +174,17 @@ const ckOf = (n) => {
   return GCAL_CK[k] || (k.includes("-") ? GCAL_CK[k.slice(0, k.lastIndexOf("-"))] : "") || "";
 };
 // Buffs et débuffs de raid (Midnight) : table fournie par /api/gcal (raid_buffs), [[libellé, [classes]], …].
-let RAID_BUFFS = [];
+let RAID_BUFFS = [], READY = {};
+// Inscrits à préparer : enchantements / gemmes manquants sur pièces Héros / Mythe (/api/gcal → ready).
+function readyHTML(names) {
+  const bad = names.map(n => {
+    const k = String(n || "").toLowerCase(), r = READY[k] || (k.includes("-") ? READY[k.slice(0, k.lastIndexOf("-"))] : null);
+    if (!r) return "";
+    const parts = [r.e.length ? `${r.e.length} ench.` : "", r.s ? `${r.s} gemme${r.s > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
+    return `<span title="${esc(r.e.join(", "))}">${cName(n)} <span>(${parts})</span></span>`;
+  }).filter(Boolean);
+  return bad.length ? `<span class="meta" style="color:var(--warn)"><span>🩺 À préparer (${bad.length}) :</span> ${bad.join(", ")} · <a class="hlink" href="/readiness">Bilan →</a></span>` : "";
+}
 function buffsHTML(names) {
   const have = new Set(), unknown = [];
   names.forEach(n => { const k = ckOf(n); if (k) have.add(k); else unknown.push(n); });
@@ -278,6 +288,7 @@ function renderGcal() {
   GCAL_CLS = d.classes || {};
   GCAL_CK = d.class_keys || {};
   RAID_BUFFS = d.raid_buffs || [];
+  READY = d.ready || {};
   const evs = (d.events || []).filter(e => (e.ts || 0) * 1000 > Date.now() - 86400000).sort((a, b) => a.ts - b.ts);
   const box = $("#glist");
   if (!evs.length) { box.innerHTML = `<div class="empty">Aucun événement in-game à venir.</div>`; return; }
@@ -309,6 +320,7 @@ function renderGcal() {
       ${line("✅", lists.ok)}${line("❓", lists.maybe)}${line("❌", lists.no)}
       ${wait.length ? `<span class="meta warn">⏳ sans réponse : ${wait.join(", ")}</span>` : ""}
       ${buffsHTML(okNames)}
+      ${readyHTML(okNames)}
       ${(e.unav || []).map(u => u.conflict
         ? `<span class="meta" style="color:var(--warn)">⚠️ ${cName(u.n)} — indispo mais a accepté le raid · ${perTxt(u)}</span>`
         : `<span class="meta">🚫 ${cName(u.n)} · ${perTxt(u)}</span>`).join("")}

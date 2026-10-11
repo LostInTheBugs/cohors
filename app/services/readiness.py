@@ -92,7 +92,7 @@ def _baselines(conn, want_en: bool, today: str) -> dict:
     return best
 
 
-def _collect(want_en: bool) -> tuple[list[dict], int]:
+def _collect(want_en: bool, with_progress: bool = True) -> tuple[list[dict], int]:
     """Personnages actifs de niveau max (relevés < 7 jours) avec leur préparation, + seuil Héros / Mythe."""
     cutoff = time.time() - READY_MAX_AGE
     with _db_lock, _db() as conn:
@@ -103,7 +103,7 @@ def _collect(want_en: bool) -> tuple[list[dict], int]:
         mains = {(r["name"] or "").strip().lower() for r in conn.execute(
             "SELECT name FROM char_links WHERE is_main=1").fetchall()}
         track_ilvl = _track_ilvl(conn)
-        base = _baselines(conn, want_en, _snap_day())
+        base = _baselines(conn, want_en, _snap_day()) if with_progress else {}
     disp: dict[str, str] = {}
     try:
         roster, _t = bnet.roster()
@@ -171,6 +171,12 @@ def readiness_embed(rows: list[dict], track_ilvl: int, guild: str = "la guilde",
     return {"title": "🩺 Préparation du raid", "description": desc, "color": color,
             "fields": [{"name": "À corriger" if i == 0 else "\u200b", "value": v} for i, v in enumerate(fields[:5])],
             "footer": {"text": f"{guild} · bilan des joueurs"}}
+
+
+def todo_by_name(rows: list[dict], track_ilvl: int) -> dict:
+    """{nom en minuscules: {"e": [emplacements sans enchantement], "s": châsses vides}} pour les personnages
+    qui ont quelque chose à corriger sur leurs pièces ≥ seuil (calendrier : inscrits à préparer)."""
+    return {r["key"]: {"e": ench, "s": sock} for r, ench, sock in todo_rows(rows, track_ilvl)}
 
 
 def todo_rows(rows: list[dict], track_ilvl: int, mains_only: bool = False) -> list[tuple[dict, list[str], int]]:

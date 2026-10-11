@@ -1537,6 +1537,29 @@ def test_mplus_progress_in_progression_and_weekly_recap(monkeypatch):
             conn.execute("DELETE FROM char_snapshots WHERE name='cleman'")
 
 
+def test_gcal_lists_readiness_of_signed_up_players(monkeypatch):
+    from app import bnet as B
+    monkeypatch.setattr(B, "journal_raids", lambda locale=None: ({"expansion": "", "raids": []}, 0.0))
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": []}, 0.0))
+    now = time.time()
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT OR REPLACE INTO gcal_import (id, ts, player, data) VALUES (1, ?, 'x', ?)",
+                     (now, json.dumps({"events": [{"id": 778, "title": "Raid", "ts": now + 3600,
+                                                    "inv": [{"n": "Calready-Hyjal", "s": 1}]}]})))
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'calready', '2026-10-11', ?, ?)",
+                     (now, json.dumps({"class": "Mage", "level": 90, "ilvl": 315, "items": [
+                         {"slot": "Tête", "st": "HEAD", "ench": False, "sock": 1, "gems": 0, "ilvl": 315},
+                         {"slot": "Pieds", "st": "FEET", "ench": False, "ilvl": 290}]})))
+    try:
+        c = _plain_client("calready@test.local", "10.99.60.14")
+        d = c.get("/api/gcal").json()
+        assert d["ready"]["calready"] == {"e": ["Tête"], "s": 1}        # pièce Champion (290) ignorée
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM gcal_import WHERE id=1")
+            conn.execute("DELETE FROM char_snapshots WHERE name='calready'")
+
+
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     from app.services import raidcomp as RC
     ev = {"title": "Raid HM", "ts": 1790000000, "inv": [
