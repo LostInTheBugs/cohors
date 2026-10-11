@@ -1560,6 +1560,32 @@ def test_gcal_lists_readiness_of_signed_up_players(monkeypatch):
             conn.execute("DELETE FROM char_snapshots WHERE name='calready'")
 
 
+def test_readiness_for_one_character(monkeypatch):
+    from app.core.util import _snap_day
+    now = time.time()
+    old = [{"slot": "Tête", "st": "HEAD", "ench": False, "sock": 1, "gems": 0, "ilvl": 315},
+           {"slot": "Torse", "st": "CHEST", "ench": False, "ilvl": 315}]
+    new = [{"slot": "Tête", "st": "HEAD", "ench": False, "sock": 1, "gems": 1, "ilvl": 315},
+           {"slot": "Torse", "st": "CHEST", "ench": True, "ilvl": 315}]
+    with M._db_lock, M._db() as conn:
+        for ts, its in ((now - 8 * 86400, old), (now, new)):
+            conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'fichready', ?, ?, ?)",
+                         (_snap_day(ts), ts, json.dumps({"class": "Mage", "level": 90, "ilvl": 315, "items": its,
+                                                          "sets": [{"id": 1, "name": "Set", "n": 4, "of": 5, "bonus": 2}]})))
+    try:
+        c = _plain_client("fichready@test.local", "10.99.60.15")
+        r = c.get("/api/readiness/char/Hyjal/FichReady").json()
+        assert r["known"] and r["level"] == 90 and r["max_level"] == 90
+        assert r["ench_items"] == [{"slot": "Tête", "ilvl": 315, "st": "HEAD"}] and r["sock_items"] == []
+        assert r["tier"]["n"] == 4 and r["before"]["day"] == _snap_day(now - 8 * 86400)
+        assert len(r["before"]["ench_items"]) == 2 and r["before"]["sock_items"][0]["n"] == 1
+        assert c.get("/api/readiness/char/hyjal/inconnu").status_code == 404
+        assert client.get("/api/readiness/char/hyjal/fichready").status_code == 401
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name='fichready'")
+
+
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     from app.services import raidcomp as RC
     ev = {"title": "Raid HM", "ts": 1790000000, "inv": [
