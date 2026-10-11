@@ -12,7 +12,7 @@ from app.core.db import _db, _db_lock
 from app.services.bot import _bot_config, _bot_save
 from app.services.jobs import _job_int, _job_status_set
 from app.services.progression import _progression_data
-from app.services.readiness import _collect, todo_rows
+from app.services.readiness import _collect, progress, todo_rows
 
 
 def _weekly_recap_embed() -> dict | None:
@@ -64,6 +64,10 @@ def _weekly_recap_embed() -> dict | None:
                        f"Héros / Mythe (iLvl ≥ {track}).\nLes plus en retard : {worst}")
             else:
                 txt = "Tout le monde est prêt sur ses pièces Héros / Mythe ✅"
+            pg = progress(rows, track)
+            if pg["improved"]:
+                txt += (f"\n📈 Cette semaine : {pg['improved']} ont progressé ({pg['ench']} enchantement(s), "
+                        f"{pg['gems']} gemme(s) posés), {pg['fixed']} n'ont plus rien à corriger.")
             if PUBLIC_BASE_URL:
                 txt += f"\n👉 [Bilan des joueurs]({PUBLIC_BASE_URL}/readiness)"
             fields.append({"name": "🩺 Préparation", "value": txt[:1024]})
