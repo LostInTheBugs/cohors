@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.038 - 2026-10-11
+
+### Fixed
+
+- Rankings progression and weekly recap: character names shown with the roster's casing
+  instead of lower case; names in the progression table link to the character sheet.
+
 ## 2026.10.037 - 2026-10-11
 
 ### Added
