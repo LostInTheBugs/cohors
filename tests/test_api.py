@@ -1443,6 +1443,47 @@ def test_weekly_recap_includes_readiness(monkeypatch):
             conn.execute("DELETE FROM char_snapshots WHERE name='recapready'")
 
 
+def test_readiness_progress_against_last_week(monkeypatch):
+    from app import bnet as B
+    from app.core.util import _snap_day
+    from app.services import readiness as RS
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": []}, 0.0))
+    now = time.time()
+
+    def its(missing, gems_missing):
+        out = [{"slot": s, "st": st, "ench": st not in missing, "ilvl": 315} for s, st in
+               (("Tête", "HEAD"), ("Épaules", "SHOULDER"), ("Torse", "CHEST"))]
+        out[0].update({"sock": 1, "gems": 0 if gems_missing else 1})
+        return out
+
+    rows = (
+        ("progone", now - 8 * 86400, its({"HEAD", "SHOULDER", "CHEST"}, True)),   # il y a 8 jours : tout à faire
+        ("progone", now - 2 * 86400, its({"HEAD", "SHOULDER"}, True)),            # ignoré (une référence ≤ J-7 existe)
+        ("progone", now, its(set(), False)),                                      # aujourd'hui : tout fait
+        ("progtwo", now - 9 * 86400, [{"slot": "Tête", "id": 1}]),                # ancien relevé sans enchantements
+        ("progtwo", now - 3 * 86400, its({"HEAD", "CHEST"}, False)),              # première référence connue
+        ("progtwo", now, its({"HEAD"}, False)),
+        ("prognew", now, its({"HEAD"}, False)),                                   # un seul relevé : pas de référence
+    )
+    with M._db_lock, M._db() as conn:
+        for nm, ts, items in rows:
+            conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', ?, ?, ?, ?)",
+                         (nm, _snap_day(ts), ts, json.dumps({"class": "Mage", "level": 90, "ilvl": 315, "items": items})))
+    try:
+        got, track = RS._collect(False)
+        by = {r["key"]: r for r in got if r["key"].startswith("prog")}
+        assert by["progone"]["before"]["day"] == _snap_day(now - 8 * 86400)
+        assert by["progtwo"]["before"]["day"] == _snap_day(now - 3 * 86400)
+        assert by["prognew"]["before"] is None
+        pg = RS.progress(list(by.values()), track)
+        assert (pg["improved"], pg["fixed"], pg["ench"], pg["gems"]) == (2, 1, 4, 1)
+        assert pg["since"] == _snap_day(now - 8 * 86400)
+        assert RS.progress(list(by.values()), 400)["improved"] == 0      # pièces sous le seuil : rien ne compte
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name IN ('progone', 'progtwo', 'prognew')")
+
+
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     from app.services import raidcomp as RC
     ev = {"title": "Raid HM", "ts": 1790000000, "inv": [

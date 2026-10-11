@@ -7,7 +7,7 @@ import time
 
 from app import bnet
 from app.core.db import _db, _db_lock
-from app.core.util import CLASS_KEY_FR, _pick
+from app.core.util import CLASS_KEY_FR, _pick, _snap_day
 
 READY_MAX_AGE = 7 * 86400.0   # relevés de moins de 7 jours (joueurs actifs)
 READY_MIN_LEVEL = 90          # niveau maximum (Midnight)
@@ -19,6 +19,7 @@ ENCHANT_SLOTS = ("HEAD", "SHOULDER", "CHEST", "LEGS", "FEET", "FINGER_1", "FINGE
 # Par défaut Héros 1/6 de Midnight saison 2 (305) ; les officiers l'ajustent à chaque saison.
 READY_TRACK_ILVL_DEFAULT = 305
 READY_TRACK_KEY = "readiness_min_ilvl"
+READY_PROGRESS_DAYS = 7       # progression : comparaison avec le relevé d'il y a 7 jours (ou le plus ancien connu)
 
 
 def _track_ilvl(conn) -> int:
@@ -55,6 +56,31 @@ def _readiness(d: dict, want_en: bool) -> dict:
             "ench_items": ench_items, "sock_items": sock_items}
 
 
+def _baselines(conn, want_en: bool, today: str) -> dict:
+    """Relevé de référence par personnage pour la progression : le dernier d'il y a au moins 7 jours ; s'il ne
+    contient pas encore les enchantements (collectés depuis 2026.10.025), le plus ancien suivant qui les a."""
+    ref_day = _snap_day(time.time() - READY_PROGRESS_DAYS * 86400)
+    floor_day = _snap_day(time.time() - 3 * READY_PROGRESS_DAYS * 86400)
+    days: dict = {}
+    for sr in conn.execute("SELECT id, realm, name, day FROM char_snapshots WHERE day >= ? AND day < ? ORDER BY day",
+                           (floor_day, today)).fetchall():
+        days.setdefault((sr["realm"], sr["name"]), []).append((sr["day"], sr["id"]))
+    best: dict = {}
+    for k, lst in days.items():
+        older = [x for x in lst if x[0] <= ref_day]
+        cands = ([older[-1]] if older else []) + [x for x in lst if x[0] > ref_day]
+        for day, sid in cands:                     # en pratique un ou deux relevés lus par personnage
+            row = conn.execute("SELECT data FROM char_snapshots WHERE id=?", (sid,)).fetchone()
+            try:
+                r = _readiness(json.loads(row["data"]) or {}, want_en)
+            except (ValueError, TypeError):
+                continue
+            if r["known"]:
+                best[k] = (day, r)
+                break
+    return best
+
+
 def _collect(want_en: bool) -> tuple[list[dict], int]:
     """Personnages actifs de niveau max (relevés < 7 jours) avec leur préparation, + seuil Héros / Mythe."""
     cutoff = time.time() - READY_MAX_AGE
@@ -66,6 +92,7 @@ def _collect(want_en: bool) -> tuple[list[dict], int]:
         mains = {(r["name"] or "").strip().lower() for r in conn.execute(
             "SELECT name FROM char_links WHERE is_main=1").fetchall()}
         track_ilvl = _track_ilvl(conn)
+        base = _baselines(conn, want_en, _snap_day())
     disp: dict[str, str] = {}
     try:
         roster, _t = bnet.roster()
@@ -85,6 +112,9 @@ def _collect(want_en: bool) -> tuple[list[dict], int]:
             "name": disp.get(sr["name"]) or sr["name"].title(), "key": sr["name"], "realm": sr["realm"],
             "class_key": CLASS_KEY_FR.get(d.get("class") or ""), "spec": _pick(d, "spec", want_en) or "",
             "ilvl": d.get("ilvl"), "mplus": d.get("mplus"), "main": sr["name"] in mains, "ts": sr["ts"], **r,
+            "before": ({"day": b[0], "ench_items": b[1]["ench_items"], "sock_items": b[1]["sock_items"]}
+                       if (b := base.get((sr["realm"], sr["name"]))) and r["known"]
+                       and b[0] < _snap_day(sr["ts"]) else None),
         })
     rows.sort(key=lambda x: (-(len(x["missing_enchants"]) + x["empty_sockets"]), not x["known"],
                              -(x["ilvl"] or 0), x["name"].lower()))
@@ -144,3 +174,27 @@ def todo_rows(rows: list[dict], track_ilvl: int, mains_only: bool = False) -> li
             todo.append((r, ench, sock))
     todo.sort(key=lambda x: (-(len(x[1]) + x[2]), -(x[0].get("ilvl") or 0), x[0]["name"].lower()))
     return todo
+
+
+def progress(rows: list[dict], track_ilvl: int) -> dict:
+    """Progression depuis le relevé de référence, sur les pièces ≥ seuil : personnages qui ont posé des
+    enchantements ou des gemmes, ceux qui n'ont plus rien à corriger, et le total posé."""
+    improved = fixed = ench = gems = 0
+    since = None
+    for r in rows:
+        b = r.get("before")
+        if not b or not r.get("known"):
+            continue
+        e0 = len(_above(b["ench_items"], track_ilvl))
+        g0 = sum(it["n"] for it in _above(b["sock_items"], track_ilvl))
+        e1 = len(_above(r.get("ench_items") or [], track_ilvl))
+        g1 = sum(it["n"] for it in _above(r.get("sock_items") or [], track_ilvl))
+        de, dg = max(0, e0 - e1), max(0, g0 - g1)
+        if de or dg:
+            improved += 1
+            ench += de
+            gems += dg
+            if not e1 and not g1:
+                fixed += 1
+        since = b["day"] if since is None else min(since, b["day"])
+    return {"since": since, "improved": improved, "fixed": fixed, "ench": ench, "gems": gems}
