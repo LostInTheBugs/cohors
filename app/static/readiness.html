@@ -88,10 +88,13 @@
       <input type="search" id="q" placeholder="Rechercher un personnage ou une spé…">
       <label class="chk"><input type="checkbox" id="fmain"> Mains seulement</label>
       <label class="chk"><input type="checkbox" id="ftodo"> Seulement à corriger</label>
+      <label class="chk" title="Ignore les enchantements et gemmes manquants sur les pièces sous ce niveau d'objet (Champion et moins)"><input type="checkbox" id="ftrack" checked> Pièces Héros / Mythe seulement</label>
+      <span class="chk" id="trackbox" style="white-space:nowrap"></span>
       <span class="spacer"></span>
       <span class="meta" id="cmeta">Chargement…</span>
     </div>
     <div class="meta" style="margin-top:8px">Personnages de niveau max relevés ces 7 derniers jours. Emplacements enchantables : tête, épaules, torse, jambes, pieds, anneaux et armes. Mis à jour au relevé quotidien.</div>
+    <div class="meta" id="trackinfo" style="margin-top:4px"></div>
   </div>
   <div class="card"><div class="scroll" id="tbl"><div class="empty">Chargement…</div></div></div>
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
@@ -105,15 +108,31 @@
 let DATA = null, SORT = null;
 const norm = (s) => String(s || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const KEYS = { name: (r) => norm(r.name), ilvl: (r) => -(r.ilvl || 0), mplus: (r) => -(r.mplus || 0),
-  ench: (r) => -r.missing_enchants.length, sock: (r) => -r.empty_sockets };
+  ench: (r) => -r.v_ench.length, sock: (r) => -r.v_sock };
+// Vue selon le filtre « Héros / Mythe » : seules comptent les pièces d'iLvl ≥ seuil (iLvl inconnu : gardée).
+const keep = (it, min) => !min || it.ilvl == null || it.ilvl >= min;
+function view(r, min) {
+  const ench = (r.ench_items || r.missing_enchants.map(s => ({ slot: s }))).filter(it => keep(it, min));
+  const socks = (r.sock_items || []).filter(it => keep(it, min));
+  return { ...r, v_ench: ench, v_sock: r.sock_items ? socks.reduce((a, it) => a + it.n, 0) : r.empty_sockets,
+           v_socks: socks };
+}
+const slotTxt = (it) => `<span title="${it.ilvl ? "iLvl " + it.ilvl : ""}">${esc(it.slot)}</span>`;
 function render() {
   if (!DATA) return;
   const q = norm($("#q").value.trim()), fm = $("#fmain").checked, ft = $("#ftodo").checked;
-  let rows = DATA.rows.filter(r => (!q || norm(r.name).includes(q) || norm(r.spec).includes(q))
-    && (!fm || r.main) && (!ft || (r.known && (r.missing_enchants.length || r.empty_sockets))));
-  if (SORT) rows = rows.slice().sort((a, b) => { const x = KEYS[SORT](a), y = KEYS[SORT](b); return x < y ? -1 : x > y ? 1 : 0; });
-  const c = DATA.counts;
-  $("#cmeta").textContent = `${fmt(c.total)} personnages · ${fmt(c.todo)} à corriger` + (c.unknown ? ` · ${fmt(c.unknown)} en attente du prochain relevé` : "");
+  const min = $("#ftrack").checked ? DATA.track_ilvl : 0;
+  $("#trackinfo").textContent = min ? `Filtre Héros / Mythe : les pièces sous l'iLvl ${min} sont ignorées.` : "";
+  const all = DATA.rows.map(r => view(r, min));
+  const todoOf = (r) => r.known && (r.v_ench.length || r.v_sock);
+  let rows = all.filter(r => (!q || norm(r.name).includes(q) || norm(r.spec).includes(q))
+    && (!fm || r.main) && (!ft || todoOf(r)));
+  const sorter = SORT ? KEYS[SORT] : (r) => [-(r.v_ench.length + r.v_sock), r.known ? 0 : 1, -(r.ilvl || 0), norm(r.name)];
+  rows = rows.slice().sort((a, b) => { const x = sorter(a), y = sorter(b);
+    if (Array.isArray(x)) { for (let i = 0; i < x.length; i++) { if (x[i] < y[i]) return -1; if (x[i] > y[i]) return 1; } return 0; }
+    return x < y ? -1 : x > y ? 1 : 0; });
+  const todo = all.filter(todoOf).length, unknown = all.filter(r => !r.known).length;
+  $("#cmeta").textContent = `${fmt(all.length)} personnages · ${fmt(todo)} à corriger` + (unknown ? ` · ${fmt(unknown)} en attente du prochain relevé` : "");
   if (!rows.length) { $("#tbl").innerHTML = `<div class="empty">Aucun personnage.</div>`; return; }
   $("#tbl").innerHTML = `<table class="tbl"><thead><tr>
       <th data-s="name">Personnage</th><th>Spé</th><th data-s="ilvl" style="text-align:right">iLvl</th>
@@ -123,12 +142,27 @@ function render() {
       <td class="meta">${esc(r.spec)}</td>
       <td class="n">${fmt(r.ilvl)}</td>
       <td class="n">${r.mplus ? fmt(r.mplus) : "—"}</td>
-      <td>${!r.known ? `<span class="meta">—</span>` : r.missing_enchants.length ? `<span class="bad">${r.missing_enchants.map(esc).join(", ")}</span>` : `<span class="good">✓</span>`}</td>
-      <td class="n">${!r.known ? `<span class="meta">—</span>` : r.empty_sockets ? `<span class="bad">${r.empty_sockets}</span>` : `<span class="good">✓</span>`}</td>
+      <td>${!r.known ? `<span class="meta">—</span>` : r.v_ench.length ? `<span class="bad">${r.v_ench.map(slotTxt).join(", ")}</span>` : `<span class="good">✓</span>`}</td>
+      <td class="n">${!r.known ? `<span class="meta">—</span>` : r.v_sock ? `<span class="bad" title="${esc(r.v_socks.map(it => it.slot + (it.ilvl ? " (" + it.ilvl + ")" : "")).join(", "))}">${r.v_sock}</span>` : `<span class="good">✓</span>`}</td>
     </tr>`).join("")}</tbody></table>`;
   document.querySelectorAll("th[data-s]").forEach(th => th.addEventListener("click", () => { SORT = th.dataset.s; render(); }));
 }
-["#q", "#fmain", "#ftodo"].forEach(s => $(s).addEventListener("input", render));
+["#q", "#fmain", "#ftodo", "#ftrack"].forEach(s => $(s).addEventListener("input", render));
+function trackEditor() {
+  if (!DATA || !DATA.can_edit) return;
+  $("#trackbox").innerHTML = `iLvl min. <input type="number" id="trackmin" min="100" max="2000" style="width:70px" value="${DATA.track_ilvl}">
+    <button class="btn" id="tracksave" type="button">OK</button>`;
+  $("#tracksave").addEventListener("click", async () => {
+    const v = parseInt($("#trackmin").value, 10);
+    try {
+      const r = await fetch("/api/readiness/threshold", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ min_ilvl: v }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail || "Erreur API");
+      DATA.track_ilvl = j.track_ilvl; render();
+    } catch (e) { $("#trackinfo").textContent = "Erreur : " + e.message; }
+  });
+}
 (async () => {
   try {
     const me = await jget("/api/me");
@@ -137,6 +171,7 @@ function render() {
   try { const h = await jget("/api/health"); $("#ver").textContent = "v" + h.version; } catch (e) {}
   try {
     DATA = await jget("/api/readiness");
+    trackEditor();
     render();
   } catch (e) {
     $("#tbl").innerHTML = `<div class="empty">Erreur de chargement : ${esc(e.message)}</div>`;

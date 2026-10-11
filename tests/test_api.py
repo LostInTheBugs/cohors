@@ -1312,8 +1312,9 @@ def test_readiness_lists_missing_enchants_and_empty_sockets(monkeypatch):
     monkeypatch.setattr(B, "roster", lambda force=False: ({"members": [{"name": "Prêtàraid", "realm": "hyjal"}]}, 0.0))
     now = time.time()
     items = [
-        {"slot": "Tête", "slot_en": "Head", "st": "HEAD", "ench": False, "sock": 1, "gems": 0},
+        {"slot": "Tête", "slot_en": "Head", "st": "HEAD", "ench": False, "sock": 1, "gems": 0, "ilvl": 318},
         {"slot": "Doigt", "st": "FINGER_1", "ench": True, "sock": 2, "gems": 2},
+        {"slot": "Pieds", "st": "FEET", "ench": False, "sock": 1, "gems": 0, "ilvl": 298},   # pièce Champion
         {"slot": "Main gauche", "st": "OFF_HAND", "ench": False, "wpn": False},          # bouclier : ignoré
         {"slot": "Dos", "st": "BACK", "ench": False},                                      # cape : plus enchantable
     ]
@@ -1331,13 +1332,27 @@ def test_readiness_lists_missing_enchants_and_empty_sockets(monkeypatch):
         assert "petitniveau" not in by
         r = by["prêtàraid"]
         assert (r["name"], r["known"], r["missing_enchants"], r["empty_sockets"], r["main"], r["class_key"]) == (
-            "Prêtàraid", True, ["Tête"], 1, True, "Priest")
+            "Prêtàraid", True, ["Tête", "Pieds"], 2, True, "Priest")
+        # détail par pièce avec l'iLvl : la page filtre les pièces sous le seuil Héros / Mythe
+        assert r["ench_items"] == [{"slot": "Tête", "ilvl": 318}, {"slot": "Pieds", "ilvl": 298}]
+        assert r["sock_items"] == [{"slot": "Tête", "ilvl": 318, "n": 1}, {"slot": "Pieds", "ilvl": 298, "n": 1}]
+        assert d["track_ilvl"] == 305 and d["can_edit"] is False
+        assert c.post("/api/readiness/threshold", json={"min_ilvl": 300}).status_code == 403
         assert by["ancienrelevé"]["known"] is False and by["ancienrelevé"]["missing_enchants"] == []
         assert d["rows"][0]["key"] == "prêtàraid"                  # le plus à corriger en tête
         assert c.get("/readiness").status_code == 200
         assert client.get("/api/readiness").status_code == 401
+        _make_user("ready-off@test.local", is_admin=0, role="officer")
+        o = TestClient(M.app)
+        assert o.post("/api/login", json={"email": "ready-off@test.local", "password": "test-pw-123"},
+                      headers={"X-Forwarded-For": "10.99.60.9"}).status_code == 200
+        assert o.get("/api/readiness").json()["can_edit"] is True
+        assert o.post("/api/readiness/threshold", json={"min_ilvl": 50}).status_code == 400
+        assert o.post("/api/readiness/threshold", json={"min_ilvl": 320}).json() == {"ok": True, "track_ilvl": 320}
+        assert c.get("/api/readiness").json()["track_ilvl"] == 320
     finally:
         with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM meta WHERE key='readiness_min_ilvl'")
             conn.execute("DELETE FROM char_snapshots WHERE name IN ('prêtàraid', 'ancienrelevé', 'petitniveau')")
             conn.execute("DELETE FROM char_links WHERE user_email='ready@test.local'")
 
