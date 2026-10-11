@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.032 - 2026-10-11
+
+### Added
+
+- Dashboard: « 🩺 Prépare tes personnages » card — players whose linked max-level characters
+  miss enchants or gems on their Hero / Myth pieces see which slots to fix, with a link to
+  the player readiness page.
+
 ## 2026.10.031 - 2026-10-11
 
 ### Added
