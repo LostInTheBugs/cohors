@@ -664,8 +664,8 @@ def test_applier_failure_clears_running_and_sets_at(tmp_path):
     (app / "deploy/apply-update.py").write_text(patched, encoding="utf-8")
     env_mod = {**env, "PYTHONPATH": str(app / "deploy")}
 
-    res = _sp.run([_sys.executable, str(app / "deploy/apply-update.py")],
-                  capture_output=True, text=True, env=env_mod)
+    _sp.run([_sys.executable, str(app / "deploy/apply-update.py")],
+            capture_output=True, text=True, env=env_mod)
     # le script peut échouer (1) ou non selon comment on simule, mais le plus important
     # est que l'état reflète l'échec : running="" et at renseigné
     st = json.loads((app / "data/update-applier.json").read_text(encoding="utf-8"))
@@ -1419,6 +1419,28 @@ def test_readiness_post_to_discord(monkeypatch):
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM char_snapshots WHERE name IN ('postmain', 'postalt', 'postchamp')")
             conn.execute("DELETE FROM char_links WHERE user_email='post@test.local'")
+
+
+def test_weekly_recap_includes_readiness(monkeypatch):
+    from app import bnet as B, wcl as W
+    from app.services import bot_loop as BL
+
+    def _no_wcl(*a, **k):
+        raise W.WclError(503, "off")
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": []}, 0.0))
+    monkeypatch.setattr(BL, "_progression_data", lambda days: {"rows": []})
+    monkeypatch.setattr(W, "reports", _no_wcl)
+    hero = [{"slot": "Tête", "st": "HEAD", "ench": False, "ilvl": 315}]
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'recapready', '2026-10-11', ?, ?)",
+                     (time.time(), json.dumps({"class": "Mage", "level": 90, "ilvl": 312, "items": hero})))
+    try:
+        emb = BL._weekly_recap_embed()
+        f = next(x for x in emb["fields"] if x["name"] == "🩺 Préparation")
+        assert "à préparer" in f["value"] and "Recapready" in f["value"]
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name='recapready'")
 
 
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():

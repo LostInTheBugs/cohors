@@ -98,7 +98,6 @@ def _make_admin(name: str) -> TestClient:
 
 def test_secrets_encrypted_on_write(monkeypatch) -> None:
     """Test 3 — write each secret via admin route, verify encryption in DB and plain-text readback."""
-    import sqlite3
 
     # Mock external API validation so we can test encryption without real credentials
     monkeypatch.setattr(M.bnet, "check", lambda cid, secret: {"ok": True, "detail": "mocked"})
@@ -177,7 +176,6 @@ def test_secrets_encrypted_on_write(monkeypatch) -> None:
 
 def test_migration_from_plaintext(monkeypatch) -> None:
     """Test 4 — insert plaintext secrets, call _init_db(), verify encryption and idempotency."""
-    import sqlite3
     import shutil
 
     # Set up fresh DATA_DIR
@@ -257,7 +255,6 @@ def test_migration_from_plaintext(monkeypatch) -> None:
 
 def test_undecryptable_and_no_leak_in_responses(monkeypatch) -> None:
     """Test 5 — GET endpoints never leak plaintext or enc:v1:; undecryptable=true for wrong-key ciphertext."""
-    import sqlite3
     import shutil
 
     # Set up fresh DATA_DIR

@@ -12,10 +12,11 @@ from app.core.db import _db, _db_lock
 from app.services.bot import _bot_config, _bot_save
 from app.services.jobs import _job_int, _job_status_set
 from app.services.progression import _progression_data
+from app.services.readiness import _collect, todo_rows
 
 
 def _weekly_recap_embed() -> dict | None:
-    """Embed du récap hebdo : progressions (7 j), raids, mouvements de guilde."""
+    """Embed du récap hebdo : progressions (7 j), raids, mouvements de guilde, préparation (enchantements)."""
     fields: list[dict] = []
     try:
         prog = _progression_data(7)
@@ -53,6 +54,21 @@ def _weekly_recap_embed() -> dict | None:
                            "value": f"+{mov.get('join', 0)} / −{mov.get('leave', 0)}", "inline": True})
     except Exception:  # noqa: BLE001
         pass
+    try:
+        rows, track = _collect(False)
+        if any(r.get("known") for r in rows):
+            todo = todo_rows(rows, track)
+            if todo:
+                worst = ", ".join(r["name"] + (" ⭐" if r.get("main") else "") for r, _e, _s in todo[:5])
+                txt = (f"{len(todo)} personnage(s) à préparer — enchantements et gemmes sur les pièces "
+                       f"Héros / Mythe (iLvl ≥ {track}).\nLes plus en retard : {worst}")
+            else:
+                txt = "Tout le monde est prêt sur ses pièces Héros / Mythe ✅"
+            if PUBLIC_BASE_URL:
+                txt += f"\n👉 [Bilan des joueurs]({PUBLIC_BASE_URL}/readiness)"
+            fields.append({"name": "🩺 Préparation", "value": txt[:1024]})
+    except Exception as exc:  # noqa: BLE001
+        print(f"[bot] récap préparation: {exc}")
     if not fields:
         return None
     return discord_bot.weekly_embed(fields, f"{PUBLIC_BASE_URL}/rankings" if PUBLIC_BASE_URL else "",

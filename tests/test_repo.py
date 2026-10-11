@@ -53,6 +53,14 @@ def test_pages_using_common_helpers_load_common_js():
         assert name in js, name
 
 
+def test_layering_core_and_services_never_import_routers_or_main():
+    # app/core et app/services ne dépendent ni des routeurs ni de app.main (sinon imports circulaires).
+    for sub in ("core", "services"):
+        for p in sorted((ROOT / "app" / sub).glob("*.py")):
+            t = p.read_text(encoding="utf-8")
+            assert not re.search(r"^\s*from app(\.routers| import routers|\.main)\b", t, re.M), p.name
+
+
 def test_addon_files_present():
     assert (ROOT / "addon/Cohors/Cohors.toc").exists()
     assert (ROOT / "addon/Cohors/Cohors.lua").exists()
@@ -276,7 +284,6 @@ def test_bump_simc_replaces_tag_and_checks_consistency():
     import tools.bump_simc as bump
     import sys
     import tempfile
-    import textwrap
     from pathlib import Path
 
     # --- fixture: copie de l'arborescence dans un dossier temporaire --------
@@ -309,7 +316,6 @@ def test_bump_simc_replaces_tag_and_checks_consistency():
                 bump.main()
 
         # --- vérifications --------------------------------------------------
-        old_tag = "1210-2026-10-04-2d54d82"
         for rel in bump.FILES:
             text = (tmpdir / rel).read_text(encoding="utf-8")
             assert new_tag in text, f"{rel}: nouveau tag manquant"
@@ -328,7 +334,6 @@ def test_bump_simc_inconsistent_tags_exits():
     """Si un fichier a un tag différent, le script quitte avec code 1."""
     from unittest import mock
     import tempfile
-    import sys
     from pathlib import Path
 
     tmp = tempfile.TemporaryDirectory()
