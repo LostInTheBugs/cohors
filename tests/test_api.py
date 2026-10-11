@@ -1484,6 +1484,32 @@ def test_readiness_progress_against_last_week(monkeypatch):
             conn.execute("DELETE FROM char_snapshots WHERE name IN ('progone', 'progtwo', 'prognew')")
 
 
+def test_equipment_collects_tier_set_and_readiness_shows_it(monkeypatch):
+    from app import bnet as B
+    from app.services import readiness as RS
+    tier = {"item_set": {"id": 1900, "name": "Tenue du Vide"},
+            "items": [{"item": {"id": i}, "is_equipped": i <= 4} for i in range(1, 6)],
+            "effects": [{"display_string": "(2) Bonus", "required_count": 2, "is_active": True},
+                        {"display_string": "(4) Bonus", "required_count": 4, "is_active": True}],
+            "display_string": "Tenue du Vide (4/5)"}
+    other = {"item_set": {"id": 77, "name": "Vieux set"}, "items": [{"is_equipped": True}, {"is_equipped": False}],
+             "effects": [], "display_string": "Vieux set (1/2)"}
+    raw = {"equipped_items": [
+        {"slot": {"type": "HEAD", "name": "Tête"}, "level": {"value": 315}, "item": {"id": 1}, "set": tier},
+        {"slot": {"type": "SHOULDER", "name": "Épaules"}, "level": {"value": 315}, "item": {"id": 2}, "set": tier},
+        {"slot": {"type": "WRIST", "name": "Poignets"}, "level": {"value": 300}, "item": {"id": 9}, "set": other},
+        {"slot": {"type": "FEET", "name": "Pieds"}, "level": {"value": 300}, "item": {"id": 8}}]}
+    monkeypatch.setattr(B, "_get", lambda *a, **k: raw)
+    B._cache.clear()
+    data, _ts = B.equipment("hyjal", "testeur-set", force=True)
+    assert data["sets"][0] == {"id": 1900, "name": "Tenue du Vide", "n": 4, "of": 5, "bonus": 2, "steps": [2, 4]}
+    assert [x["id"] for x in data["sets"]] == [1900, 77]            # une entrée par set, le plus complet d'abord
+    # Bilan : set le plus complet ; None pour un relevé d'avant la collecte des sets
+    assert RS._tier({"sets": data["sets"]}, False) == {"n": 4, "of": 5, "bonus": 2, "name": "Tenue du Vide"}
+    assert RS._tier({"sets": []}, False)["n"] == 0
+    assert RS._tier({"items": []}, False) is None
+
+
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     from app.services import raidcomp as RC
     ev = {"title": "Raid HM", "ts": 1790000000, "inv": [

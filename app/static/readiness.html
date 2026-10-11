@@ -73,7 +73,7 @@
       <img src="/branding/logo" alt="Cohors" class="crest">
       <div>
         <div class="brandname">Cohors <span>Bilan des joueurs</span></div>
-        <div class="tagline">Prêts pour le raid ? iLvl, cote MM+, enchantements manquants et châsses vides.</div>
+        <div class="tagline">Prêts pour le raid ? iLvl, cote MM+, set de tier, enchantements manquants et châsses vides.</div>
       </div>
     </a>
     <div class="userbox">
@@ -110,7 +110,14 @@
 let DATA = null, SORT = null;
 const norm = (s) => String(s || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const KEYS = { name: (r) => norm(r.name), ilvl: (r) => -(r.ilvl || 0), mplus: (r) => -(r.mplus || 0),
-  ench: (r) => -r.v_ench.length, sock: (r) => -r.v_sock };
+  ench: (r) => -r.v_ench.length, sock: (r) => -r.v_sock, tier: (r) => -(r.tier ? r.tier.n : -1) };
+function tierCell(t) {
+  if (!t) return `<span class="meta">—</span>`;
+  if (!t.n) return `<span class="bad" title="Aucune pièce de set">0</span>`;
+  const cls = t.n >= 4 ? "good" : t.n >= 2 ? "" : "bad";
+  const tip = t.name + (t.bonus ? ` — ${t.bonus} bonus actif(s)` : "");
+  return `<span class="${cls}" title="${esc(tip)}">${t.n}${t.of ? "/" + t.of : ""}</span>`;
+}
 // Vue selon le filtre « Héros / Mythe » : seules comptent les pièces d'iLvl ≥ seuil (iLvl inconnu : gardée).
 const keep = (it, min) => !min || it.ilvl == null || it.ilvl >= min;
 function view(r, min) {
@@ -150,12 +157,13 @@ function render() {
   if (!rows.length) { $("#tbl").innerHTML = `<div class="empty">Aucun personnage.</div>`; return; }
   $("#tbl").innerHTML = `<table class="tbl"><thead><tr>
       <th data-s="name">Personnage</th><th>Spé</th><th data-s="ilvl" style="text-align:right">iLvl</th>
-      <th data-s="mplus" style="text-align:right">MM+</th><th data-s="ench">Enchantements manquants</th><th data-s="sock" style="text-align:right">Châsses vides</th>
+      <th data-s="mplus" style="text-align:right">MM+</th><th data-s="tier" style="text-align:right" title="Pièces du set de tier portées (bonus 2 et 4 pièces)">Set</th><th data-s="ench">Enchantements manquants</th><th data-s="sock" style="text-align:right">Châsses vides</th>
     </tr></thead><tbody>${rows.map(r => `<tr>
       <td><a style="color:${CLASS_COLORS[r.class_key] || "var(--fg)"}" href="/char/${esc(r.realm)}/${esc(r.key)}">${esc(r.name)}</a>${r.main ? ` <span class="meta">⭐</span>` : ""}${(r.d_ench || r.d_sock) ? ` <span class="good" title="Depuis le ${esc(dayFr(r.before.day))} : ${r.d_ench} enchantement(s), ${r.d_sock} gemme(s) posés">↗</span>` : ""}</td>
       <td class="meta">${esc(r.spec)}</td>
       <td class="n">${fmt(r.ilvl)}</td>
       <td class="n">${r.mplus ? fmt(r.mplus) : "—"}</td>
+      <td class="n">${tierCell(r.tier)}</td>
       <td>${!r.known ? `<span class="meta">—</span>` : r.v_ench.length ? `<span class="bad">${r.v_ench.map(slotTxt).join(", ")}</span>` : `<span class="good">✓</span>`}</td>
       <td class="n">${!r.known ? `<span class="meta">—</span>` : r.v_sock ? `<span class="bad" title="${esc(r.v_socks.map(it => it.slot + (it.ilvl ? " (" + it.ilvl + ")" : "")).join(", "))}">${r.v_sock}</span>` : `<span class="good">✓</span>`}</td>
     </tr>`).join("")}</tbody></table>`;
