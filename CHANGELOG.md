@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.033 - 2026-10-11
+
+### Added
+
+- Player readiness: « 📋 Discord » button for officers — posts the characters with missing
+  enchants or gems on their Hero / Myth pieces to the bot channel (mains only when « Mains
+  seulement » is checked), with a link back to the page.
+
 ## 2026.10.032 - 2026-10-11
 
 ### Added
