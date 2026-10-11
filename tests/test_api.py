@@ -1510,6 +1510,32 @@ def test_equipment_collects_tier_set_and_readiness_shows_it(monkeypatch):
     assert RS._tier({"items": []}, False) is None
 
 
+def test_mplus_progress_in_progression_and_weekly_recap(monkeypatch):
+    from app import bnet as B, wcl as W
+    from app.core.util import _snap_day
+    from app.services import bot_loop as BL
+    from app.services.progression import _progression_data
+
+    def _no_wcl(*a, **k):
+        raise W.WclError(503, "off")
+    monkeypatch.setattr(B, "roster", lambda force=False: ({"members": []}, 0.0))
+    monkeypatch.setattr(W, "reports", _no_wcl)
+    now = time.time()
+    with M._db_lock, M._db() as conn:
+        for ts, rating in ((now - 5 * 86400, 2500.4), (now, 2731.8)):
+            conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'cleman', ?, ?, ?)",
+                         (_snap_day(ts), ts, json.dumps({"class": "Mage", "level": 90, "ilvl": 300, "mplus": rating})))
+    try:
+        row = next(r for r in _progression_data(7)["rows"] if r["name"] == "cleman")
+        assert (row["mplus0"], row["mplus1"], round(row["d_mplus"])) == (2500.4, 2731.8, 231)
+        emb = BL._weekly_recap_embed()
+        f = next(x for x in emb["fields"] if x["name"] == "🗝️ Cote MM+ de la semaine")
+        assert "**Cleman** +231 (2500 → 2732)" in f["value"]
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name='cleman'")
+
+
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     from app.services import raidcomp as RC
     ev = {"title": "Raid HM", "ts": 1790000000, "inv": [

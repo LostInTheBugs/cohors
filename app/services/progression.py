@@ -57,7 +57,7 @@ def _progression_data(days: int = 30, locale: str = "fr_FR") -> dict:
             "spec": _pick(l, "spec", want_en) or _pick(f, "spec", want_en),
             "class_key": CLASS_KEY_FR.get((l.get("class") or f.get("class")) or ""),
             "first_day": fd, "last_day": ld,
-            "ilvl0": f.get("ilvl"), "ilvl1": l.get("ilvl"),
+            "ilvl0": f.get("ilvl"), "ilvl1": l.get("ilvl"), "mplus0": f.get("mplus"), "mplus1": l.get("mplus"),
             "d_ilvl": gains["ilvl"], "d_achv": gains["achv"], "d_mounts": gains["mounts"],
             "d_pets": gains["pets"], "d_mplus": gains["mplus"],
         })
