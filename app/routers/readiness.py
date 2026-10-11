@@ -4,10 +4,11 @@ from __future__ import annotations
 import json
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from app import bnet
-from app.core.auth import _require_user, _user_locale
+from app.core.auth import _require_officer, _require_user, _user_locale, _user_role
 from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR, _pick
 
@@ -18,6 +19,23 @@ READY_MIN_LEVEL = 90          # niveau maximum (Midnight)
 # Emplacements enchantables en Midnight (plus de cape ni de brassards) ; la main gauche seulement si
 # c'est une arme (bouclier et objet tenu en main gauche ne s'enchantent pas).
 ENCHANT_SLOTS = ("HEAD", "SHOULDER", "CHEST", "LEGS", "FEET", "FINGER_1", "FINGER_2", "MAIN_HAND")
+# Filtre « pièces Héros / Mythe » : iLvl minimum d'une pièce pour qu'un enchantement ou une gemme manquant
+# compte. L'API Blizzard ne donne pas la piste d'amélioration (« Héros 4/6 ») : seulement l'iLvl.
+# Par défaut Héros 1/6 de Midnight saison 2 (305) ; les officiers l'ajustent à chaque saison.
+READY_TRACK_ILVL_DEFAULT = 305
+READY_TRACK_KEY = "readiness_min_ilvl"
+
+
+class ReadyThreshold(BaseModel):
+    min_ilvl: int = Field(..., ge=1, le=2000)
+
+
+def _track_ilvl(conn) -> int:
+    row = conn.execute("SELECT value FROM meta WHERE key=?", (READY_TRACK_KEY,)).fetchone()
+    try:
+        return int(row["value"]) if row else READY_TRACK_ILVL_DEFAULT
+    except (TypeError, ValueError):
+        return READY_TRACK_ILVL_DEFAULT
 
 
 def _readiness(d: dict, want_en: bool) -> dict:
@@ -26,22 +44,30 @@ def _readiness(d: dict, want_en: bool) -> dict:
     items = d.get("items") or []
     known = any(it.get("ench") is not None for it in items)
     missing, empty = [], 0
+    ench_items, sock_items = [], []      # détail par pièce, avec son iLvl (filtre Héros / Mythe côté page)
     if known:
         for it in items:
             st = it.get("st") or ""
+            label = ((it.get("slot_en") or it.get("slot")) if want_en else it.get("slot")) or st
+            il = it.get("ilvl")
             if (st in ENCHANT_SLOTS or (st == "OFF_HAND" and it.get("wpn"))) and it.get("ench") is False:
-                missing.append(((it.get("slot_en") or it.get("slot")) if want_en else it.get("slot")) or st)
+                missing.append(label)
+                ench_items.append({"slot": label, "ilvl": il})
             try:
-                empty += max(0, int(it.get("sock") or 0) - int(it.get("gems") or 0))
+                n = max(0, int(it.get("sock") or 0) - int(it.get("gems") or 0))
             except (TypeError, ValueError):
-                pass
-    return {"known": known, "missing_enchants": missing, "empty_sockets": empty}
+                n = 0
+            if n:
+                empty += n
+                sock_items.append({"slot": label, "ilvl": il, "n": n})
+    return {"known": known, "missing_enchants": missing, "empty_sockets": empty,
+            "ench_items": ench_items, "sock_items": sock_items}
 
 
 @router.get("/api/readiness")
 def api_readiness(request: Request):
     """Préparation des personnages actifs de niveau max : iLvl, cote M+, enchantements et châsses."""
-    _require_user(request)
+    user = _require_user(request)
     want_en = _user_locale(request).startswith("en")
     cutoff = time.time() - READY_MAX_AGE
     with _db_lock, _db() as conn:
@@ -51,6 +77,7 @@ def api_readiness(request: Request):
             (cutoff,)).fetchall()
         mains = {(r["name"] or "").strip().lower() for r in conn.execute(
             "SELECT name FROM char_links WHERE is_main=1").fetchall()}
+        track_ilvl = _track_ilvl(conn)
     disp: dict[str, str] = {}
     try:
         roster, _t = bnet.roster()
@@ -76,4 +103,16 @@ def api_readiness(request: Request):
     todo = sum(1 for x in rows if x["known"] and (x["missing_enchants"] or x["empty_sockets"]))
     return {"rows": rows, "counts": {"total": len(rows), "todo": todo,
                                      "unknown": sum(1 for x in rows if not x["known"])},
-            "enchant_slots": list(ENCHANT_SLOTS)}
+            "enchant_slots": list(ENCHANT_SLOTS), "track_ilvl": track_ilvl,
+            "can_edit": _user_role(user) in ("officer", "admin")}
+
+
+@router.post("/api/readiness/threshold")
+def api_readiness_threshold(body: ReadyThreshold, request: Request):
+    """Officiers : iLvl minimum des pièces prises en compte par le filtre « Héros / Mythe »."""
+    _require_officer(request)
+    if body.min_ilvl < 100:
+        raise HTTPException(400, "iLvl trop bas.")
+    with _db_lock, _db() as conn:
+        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (READY_TRACK_KEY, str(body.min_ilvl)))
+    return {"ok": True, "track_ilvl": body.min_ilvl}
