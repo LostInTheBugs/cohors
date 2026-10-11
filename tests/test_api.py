@@ -1578,6 +1578,10 @@ def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     buffs = f["🧩 Buffs de raid"]
     assert "Intelligence (Mage)" not in buffs and "Polyvalence (Druide)" in buffs and "Classe inconnue : Force" in buffs
     assert f["🎁 Boss A"] == "⭐ Lame (Frappe)"
+    assert not any(k.startswith("🩺") for k in f)                       # sans bilan : pas de rubrique
+    ready = {"frappe": {"e": ["Tête", "Torse"], "s": 1}, "peutetre": {"e": ["Tête"], "s": 0}, "soigne": {"e": [], "s": 2}}
+    f2 = {x["name"]: x["value"] for x in RC.compo_embed(ev, {}, "Ma Guilde", ready=ready)["fields"]}
+    assert f2["🩺 À préparer (2)"] == "Soigne (2 gemmes), Frappe (2 ench., 1 gemme)"   # présents seulement
     ok, missing = RC.buff_coverage(["Shaman"])
     assert "Furie sanguinaire" in ok and "Maîtrise (Chaman)" in ok and "Résurrection en combat" in missing
 
