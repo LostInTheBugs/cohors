@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.043 - 2026-10-11
+
+### Added
+
+- Tier set: characters one piece away from a set bonus (1/5 or 3/5) — on the player readiness
+  page and under each calendar raid (attendees), to hand out tier pieces.
+
 ## 2026.10.042 - 2026-10-11
 
 ### Added
