@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.040 - 2026-10-11
+
+### Added
+
+- Discord raid composition: « 🩺 À préparer » field — attendees still missing enchants or gems
+  on their Hero / Myth pieces.
+
 ## 2026.10.039 - 2026-10-11
 
 ### Added
