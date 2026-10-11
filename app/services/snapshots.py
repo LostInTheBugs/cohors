@@ -80,6 +80,9 @@ def _char_snapshot(realm: str, name: str) -> dict:
         "achv": s.get("achievement_points"),
         "mounts": x.get("mounts"), "pets": x.get("pets"), "mplus": x.get("mplus_rating"),
         "items": items,
+        # sets de tier portés (absent dans les relevés d'avant v2026.10.036) : nom FR + EN, pièces, bonus actifs
+        "sets": [{**st, "name_en": next((e.get("name") for e in (g_en.get("sets") or []) if e.get("id") == st.get("id")), "")}
+                 for st in (g.get("sets") or [])],
     }
 
 

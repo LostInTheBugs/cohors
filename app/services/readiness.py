@@ -56,6 +56,17 @@ def _readiness(d: dict, want_en: bool) -> dict:
             "ench_items": ench_items, "sock_items": sock_items}
 
 
+def _tier(d: dict, want_en: bool) -> dict | None:
+    """Set de tier le plus complet d'un relevé ; None si le relevé ne contient pas encore les sets."""
+    if "sets" not in d:
+        return None
+    best = max(d.get("sets") or [], key=lambda x: x.get("n") or 0, default=None)
+    if not best:
+        return {"n": 0, "of": 0, "name": "", "bonus": 0}
+    return {"n": best.get("n") or 0, "of": best.get("of") or 0, "bonus": best.get("bonus") or 0,
+            "name": ((best.get("name_en") or best.get("name")) if want_en else best.get("name")) or ""}
+
+
 def _baselines(conn, want_en: bool, today: str) -> dict:
     """Relevé de référence par personnage pour la progression : le dernier d'il y a au moins 7 jours ; s'il ne
     contient pas encore les enchantements (collectés depuis 2026.10.025), le plus ancien suivant qui les a."""
@@ -112,6 +123,7 @@ def _collect(want_en: bool) -> tuple[list[dict], int]:
             "name": disp.get(sr["name"]) or sr["name"].title(), "key": sr["name"], "realm": sr["realm"],
             "class_key": CLASS_KEY_FR.get(d.get("class") or ""), "spec": _pick(d, "spec", want_en) or "",
             "ilvl": d.get("ilvl"), "mplus": d.get("mplus"), "main": sr["name"] in mains, "ts": sr["ts"], **r,
+            "tier": _tier(d, want_en),
             "before": ({"day": b[0], "ench_items": b[1]["ench_items"], "sock_items": b[1]["sock_items"]}
                        if (b := base.get((sr["realm"], sr["name"]))) and r["known"]
                        and b[0] < _snap_day(sr["ts"]) else None),

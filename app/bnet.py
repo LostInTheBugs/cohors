@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -388,8 +389,35 @@ def equipment(realm: str, name: str, force: bool = False, locale: str | None = N
             }
         )
     ilvls = [it["ilvl"] for it in items if it.get("ilvl")]
-    data = {"ilvl": round(sum(ilvls) / len(ilvls)) if ilvls else None, "items": items}
+    data = {"ilvl": round(sum(ilvls) / len(ilvls)) if ilvls else None, "items": items,
+            "sets": _equipped_sets(raw.get("equipped_items", []))}
     return data, _store(key, data)
+
+
+_SET_COUNT = re.compile(r"\((\d+)\s*/\s*(\d+)\)")
+
+
+def _equipped_sets(equipped: list) -> list[dict]:
+    """Ensembles (sets de tier) portés : pièces équipées / total et bonus actifs, d'après le champ « set »
+    de chaque pièce. Un ensemble n'apparaît qu'une fois même si plusieurs pièces le portent."""
+    out: dict = {}
+    for it in equipped or []:
+        st = it.get("set") or {}
+        iset = st.get("item_set") or {}
+        sid = iset.get("id")
+        if not sid or sid in out:
+            continue
+        pieces = st.get("items") or []
+        n = sum(1 for p in pieces if p.get("is_equipped"))
+        total = len(pieces)
+        m = _SET_COUNT.search(st.get("display_string") or "")
+        if m and not n:
+            n, total = int(m.group(1)), int(m.group(2))
+        effects = st.get("effects") or []
+        out[sid] = {"id": sid, "name": iset.get("name") or "", "n": n, "of": total,
+                    "bonus": sum(1 for e in effects if e.get("is_active")),
+                    "steps": sorted(int(e.get("required_count") or 0) for e in effects if e.get("required_count"))}
+    return sorted(out.values(), key=lambda x: -x["n"])
 
 
 # Libellés FR des métiers (l'API professions renvoie les noms en anglais).
