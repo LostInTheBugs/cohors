@@ -105,6 +105,8 @@
     <div class="row">
       <h2 style="margin:0">📈 Progression</h2>
       <span class="spacer"></span>
+      <button class="chipbtn schip act" data-ps="ilvl" title="Trier par gain d'iLvl">iLvl</button>
+      <button class="chipbtn schip" data-ps="mplus" title="Trier par gain de cote MM+">MM+</button>
       <button class="chipbtn pchip" data-pd="7">7 j</button>
       <button class="chipbtn pchip act" data-pd="30">30 j</button>
     </div>
@@ -147,7 +149,7 @@ function nameCell(r) {
 }
 
 // ---- Progression (relevés quotidiens)
-let PROG = null, PDAY = 30;
+let PROG = null, PDAY = 30, PSORT = "ilvl";
 
 function progSpark(curve) {
   const pts = (curve || []).filter(x => x.avg != null);
@@ -172,19 +174,23 @@ function gainCell(v, dec = 0) {
 
 function renderProg() {
   if (!PROG) return;
-  const rows = (PROG.rows || []).slice(0, 15).map(r => ({ ...r, class: r.class_key || r.class }));
+  let all = (PROG.rows || []).map(r => ({ ...r, class: r.class_key || r.class }));
+  if (PSORT === "mplus") all = all.filter(r => r.d_mplus).sort((a, b) => (b.d_mplus || 0) - (a.d_mplus || 0));
+  const rows = all.slice(0, 15);
   const cols = [["Hauts faits", "d_achv"], ["Montures", "d_mounts"], ["Mascottes", "d_pets"]];
+  const mcol = rows.some(r => r.d_mplus != null);
   const shown = cols.filter(([, k]) => rows.some(r => r[k] != null));
   const head = progSpark(PROG.curve || []);
   const table = rows.length ? `<table class="rtab">
-    <thead><tr><th>#</th><th>Joueur</th><th>iLvl</th>${shown.map(([h]) => `<th>${h}</th>`).join("")}</tr></thead>
+    <thead><tr><th>#</th><th>Joueur</th><th>iLvl</th>${mcol ? "<th>MM+</th>" : ""}${shown.map(([h]) => `<th>${h}</th>`).join("")}</tr></thead>
     <tbody>${rows.map((r, i) => `<tr>
       <td><b>${i < 3 ? MEDALS[i] : i + 1}</b></td>
       <td>${nameCell(r)}</td>
       <td>${fmt(r.ilvl0)} → ${fmt(r.ilvl1)} ${gainCell(r.d_ilvl)}</td>
+      ${mcol ? `<td>${r.d_mplus != null ? `${fmt(r.mplus0)} → ${fmt(r.mplus1)} ${gainCell(r.d_mplus)}` : `<span class="meta">—</span>`}</td>` : ""}
       ${shown.map(([, k]) => `<td>${gainCell(r[k])}</td>`).join("")}
     </tr>`).join("")}</tbody></table>`
-    : `<div class="empty">Aucune progression mesurée pour le moment — les relevés quotidiens l'alimentent au fil des jours.</div>`;
+    : `<div class="empty">${PSORT === "mplus" ? "Aucun gain de cote MM+ sur la période." : "Aucune progression mesurée pour le moment — les relevés quotidiens l'alimentent au fil des jours."}</div>`;
   $("#prog").innerHTML = head + table +
     `<div class="meta" style="margin-top:8px">${fmt(PROG.progressed)} ont progressé · ${fmt(PROG.measured)} personnages suivis</div>`;
 }
@@ -260,6 +266,11 @@ document.querySelectorAll(".chipbtn[data-f]").forEach(b => b.addEventListener("c
   FILTER = b.dataset.f;
   document.querySelectorAll(".chipbtn[data-f]").forEach(x => x.classList.toggle("act", x === b));
   render();
+}));
+document.querySelectorAll(".schip").forEach(b => b.addEventListener("click", () => {
+  PSORT = b.dataset.ps;
+  document.querySelectorAll(".schip").forEach(x => x.classList.toggle("act", x === b));
+  renderProg();
 }));
 document.querySelectorAll(".pchip").forEach(b => b.addEventListener("click", () => {
   PDAY = +b.dataset.pd;
