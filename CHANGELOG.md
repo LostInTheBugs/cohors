@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.041 - 2026-10-11
+
+### Added
+
+- Player readiness: each missing enchant links to the crafting search for that slot (helm,
+  shoulders, chest, boots, ring, weapon enchants; spellthread for legs) — who in the guild
+  can make it.
+
 ## 2026.10.040 - 2026-10-11
 
 ### Added
