@@ -1507,6 +1507,11 @@ def test_equipment_collects_tier_set_and_readiness_shows_it(monkeypatch):
     # Bilan : set le plus complet ; None pour un relevé d'avant la collecte des sets
     assert RS._tier({"sets": data["sets"]}, False) == {"n": 4, "of": 5, "bonus": 2, "name": "Tenue du Vide"}
     assert RS._tier({"sets": []}, False)["n"] == 0
+    # seuls les sets de tier (5 pièces) comptent : un ensemble de 8 ou de 2 pièces est ignoré
+    assert RS._tier({"sets": [{"id": 9, "name": "Artisanat", "n": 1, "of": 8, "bonus": 0},
+                              {"id": 8, "name": "Vieux", "n": 2, "of": 2, "bonus": 1}]}, False)["n"] == 0
+    assert RS._tier({"sets": [{"id": 9, "name": "Artisanat", "n": 6, "of": 8, "bonus": 2},
+                              {"id": 1, "name": "Tier", "n": 3, "of": 5, "bonus": 1}]}, False)["name"] == "Tier"
     assert RS._tier({"items": []}, False) is None
 
 

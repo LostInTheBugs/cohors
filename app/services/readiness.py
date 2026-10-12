@@ -56,11 +56,15 @@ def _readiness(d: dict, want_en: bool) -> dict:
             "ench_items": ench_items, "sock_items": sock_items}
 
 
+TIER_PIECES = 5   # un set de tier compte 5 pièces ; les autres ensembles (anciens sets, artisanat : 2, 8…) sont ignorés
+
+
 def _tier(d: dict, want_en: bool) -> dict | None:
     """Set de tier le plus complet d'un relevé ; None si le relevé ne contient pas encore les sets."""
     if "sets" not in d:
         return None
-    best = max(d.get("sets") or [], key=lambda x: x.get("n") or 0, default=None)
+    tiers = [x for x in (d.get("sets") or []) if (x.get("of") or 0) == TIER_PIECES]
+    best = max(tiers, key=lambda x: x.get("n") or 0, default=None)
     if not best:
         return {"n": 0, "of": 0, "name": "", "bonus": 0}
     return {"n": best.get("n") or 0, "of": best.get("of") or 0, "bonus": best.get("bonus") or 0,
