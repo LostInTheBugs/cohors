@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.045 - 2026-10-12
+
+### Added
+
+- Loot council: officers export « who wants what » from the calendar (« 📦 Export loot (addon) »)
+  and paste it into the add-on. Add-on **1.13.0**: new « Loot » tab — on an item tooltip and on
+  each loot roll it shows, among the group, who has the item in their wishlist (⭐ priority, BiS
+  gain), the best item-level gains (by armor type), who is one piece away from a set bonus, and
+  what each player already received tonight; « Soirée » / `/cohors loot` list the evening's loot.
+
 ## 2026.10.044 - 2026-10-12
 
 ### Fixed
