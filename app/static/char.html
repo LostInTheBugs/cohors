@@ -110,7 +110,7 @@
   .rd-warn { color: #e0a84c; }
   #ready > div { margin: 4px 0; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.10.047">
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.048">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -141,6 +141,11 @@
     <div id="ready"></div>
   </div>
 
+  <div class="card hidden" id="lootcard">
+    <h2>🎁 Butin de raid <span class="meta" id="loot-n"></span></h2>
+    <div id="loothist"></div>
+  </div>
+
   <div class="card">
     <h2>🏰 Progression &amp; talents</h2>
     <div id="prog"><div class="empty"><span class="spin">⏳</span> Chargement…</div></div>
@@ -153,11 +158,11 @@
 
   <footer>Fiche personnage — API Battle.net (cache 30 min) · Données de jeu fournies par Blizzard Entertainment · Outil non affilié à Blizzard Entertainment · <span id="ver"></span></footer>
 </div>
-<script src="/static/nav.js?v=2026.10.047"></script>
-<script src="/static/branding.js?v=2026.10.047"></script>
-<script src="/static/i18n.js?v=2026.10.047"></script>
-<script src="/static/esc.js?v=2026.10.047"></script>
-<script src="/static/common.js?v=2026.10.047"></script>
+<script src="/static/nav.js?v=2026.10.048"></script>
+<script src="/static/branding.js?v=2026.10.048"></script>
+<script src="/static/i18n.js?v=2026.10.048"></script>
+<script src="/static/esc.js?v=2026.10.048"></script>
+<script src="/static/common.js?v=2026.10.048"></script>
 <script>
 const fmt = (n) => n == null ? "—" : new Intl.NumberFormat("fr-FR").format(n);
 const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
@@ -260,6 +265,7 @@ async function loadChar(realm, name, push) {
     loadEvo(realm, name);
     loadProg(realm, name);
     loadReady(realm, name);
+    loadLoot(realm, name);
     if (push) history.replaceState(null, "", charUrl(realm, name));
   } catch (e) {
     $("#content").innerHTML = `<div class="err">Erreur de chargement : ${esc(e.message)}</div>`;
@@ -302,6 +308,20 @@ async function loadReady(realm, name) {
   $("#ready").innerHTML = lines.join("");
   $("#ready-day").textContent = r.ts ? "· relevé " + ago(r.ts) : "";
   $("#readycard").classList.remove("hidden");
+}
+
+// ---- 🎁 Butin de raid noté par l'addon des officiers (90 derniers jours) ----
+async function loadLoot(realm, name) {
+  $("#lootcard").classList.add("hidden");
+  let r;
+  try { r = await jget(`/api/loot/history/char/${encodeURIComponent(name)}`); }
+  catch (e) { return; }
+  if (!r || !(r.items || []).length || REALM !== realm.toLowerCase() || NAME !== name.toLowerCase()) return;
+  const dd = (t) => new Date(t * 1000).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+  $("#loothist").innerHTML = r.items.map(it =>
+    `<div><span class="meta">${dd(it.at)}</span> <a class="hlink" href="/item/${it.item_id}">${esc(it.item_name || ("Objet " + it.item_id))}</a></div>`).join("");
+  $("#loot-n").textContent = `· ${r.n30} ces ${r.days} derniers jours`;
+  $("#lootcard").classList.remove("hidden");
 }
 
 // ---- 🏰 Progression raids / donjons + 🌳 talents — API Blizzard (v2026.09.155-c1) ----

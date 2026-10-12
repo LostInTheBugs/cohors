@@ -599,7 +599,7 @@ elseif scenario == "loot" then
         "H|1790000000|305|Ma Guilde",
         "U|u1|Élanisse",
         "U|u2|Bob",
-        "P|élanisse|Priest|u1|3|5|HEAD=300;CHEST=310;FINGER_1=310;FINGER_2=290",
+        "P|élanisse|Priest|u1|3|5|HEAD=300;CHEST=310;FINGER_1=310;FINGER_2=290|2",   -- 7e champ : 2 objets en 30 j
         "P|hÿpérion|Warrior|u2|1|5|HEAD=280;CHEST=320",
         "P|hypérïon|Mage||5|5|HEAD=250;CHEST=250",
         "P|absent|Mage||1|5|HEAD=200",
@@ -641,7 +641,7 @@ elseif scenario == "loot" then
     pcall(driver._scripts["OnEvent"], driver, "ENCOUNTER_LOOT_RECEIVED", 3001, 5001, "|Hitem:5001|h[Casque]|h", 1, "Élanisse", "PRIEST")
     check(#(Cohors_DB.lc_log or {}) == 1, "butin noté pour la soirée")
     local L5 = table.concat(Cohors_LCSummary(5004, "|Hitem:5004|h[Anneau]|h") or {}, "\n")
-    check(L5:find("[1 ce soir]", 1, true) ~= nil, "« déjà reçu ce soir » affiché (%s)", L5)
+    check(L5:find("[1 ce soir · 2 en 30 j]", 1, true) ~= nil, "« déjà reçu ce soir » et butin des 30 jours affichés (%s)", L5)
     -- objet mis en jet → résumé dans le chat
     ROLL_LINKS[77] = "|Hitem:5002|h[Heaume]|h"
     pcall(driver._scripts["OnEvent"], driver, "START_LOOT_ROLL", 77, 60)
@@ -658,6 +658,11 @@ elseif scenario == "loot" then
     check(#tt2.lines == 0, "info-bulle : rien pour un objet sans intérêt")
     Cohors_LCEvening()
     check(chat_has("butin de la soirée : 1 objet(s)"), "« Soirée » liste le butin de la soirée")
+    -- v1.15.0 : « Soirée » met aussi dans le champ le texte à coller sur le site (historique)
+    local ht = ebL._text or ""
+    check(ht:find("^CohorsLOOT1\n") ~= nil and ht:find("|5001|Élanisse|3001|Casque", 1, true) ~= nil,
+        "« Soirée » : texte CohorsLOOT1 pour le site (%s)", ht)
+    check(chat_has("historique : 1 objet(s) dans le champ"), "« Soirée » : consigne de copie dans le chat")
     -- v1.14.0 : butin par boss — hors instance et sans instance mémorisée : message clair
     Cohors_LCBoss(0)
     check(chat_has("par boss : entre dans le raid"), "par boss hors instance : explication")
@@ -675,7 +680,7 @@ elseif scenario == "loot" then
     check(bt:find("Description de", 1, true) == nil, "la description du boss n'est plus prise pour son nom")
     check(bt:find("Casque : Élanisse ⭐ (BIS +2.5 %) → Héros", 1, true) ~= nil,
         "par boss : prio, BIS et piste visée Héros (%s)", bt)
-    check(bt:find("[1 ce soir]", 1, true) ~= nil, "par boss : « déjà reçu ce soir »")
+    check(bt:find("[1 ce soir · 2 en 30 j]", 1, true) ~= nil, "par boss : « déjà reçu ce soir » + 30 jours")
     check(bt:find("Hÿpérion", 1, true) ~= nil, "par boss : 2e joueur qui veut le casque")
     check(bt:find("Composant 5004", 1, true) ~= nil and bt:find("Élanisse ⭐", 1, true) ~= nil,
         "par boss : anneau visé Mythe listé sans étiquette de piste")

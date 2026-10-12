@@ -532,6 +532,24 @@ def _init_db() -> None:
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_craft_orders_req ON craft_orders(requester)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_craft_orders_crafter ON craft_orders(crafter_email)")
+        # v2026.10.048 — historique du butin de raid, noté par l'addon (ENCOUNTER_LOOT_RECEIVED) et
+        # importé par un officier ; un même objet reçu au même instant par le même perso = 1 ligne.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS loot_history (
+                at        REAL NOT NULL,
+                item_id   INTEGER NOT NULL,
+                char      TEXT NOT NULL,
+                name      TEXT NOT NULL DEFAULT '',
+                item_name TEXT NOT NULL DEFAULT '',
+                encounter INTEGER NOT NULL DEFAULT 0,
+                added_by  TEXT NOT NULL DEFAULT '',
+                added     REAL NOT NULL DEFAULT 0,
+                UNIQUE (at, item_id, char)
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_loot_history_char ON loot_history(char, at)")
         for _stmt in (
             "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",

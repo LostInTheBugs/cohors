@@ -13,6 +13,7 @@ from app.core.auth import _require_user, _user_locale
 from app.core.db import _db, _db_lock
 from app.core.util import ITEM_REF_RE
 from app.services.loot import _loot_sync, _loot_sync_state
+from app.services.loothistory import received as _loot_received
 from app.services.readiness import TRACKS, track_mins
 from app.services.wishlist import _bis_by_user, _recipe_wish_key
 
@@ -244,6 +245,9 @@ def api_wishlist(request: Request):
         items.sort(key=lambda it: 0 if it["prio"] else (1 if it["bis"] else 2))
         chars_out = [dict(c) for c in chars]
         tmins = track_mins(conn)
+        got = _loot_received(conn, [c["name"] for c in chars], [it["item_id"] for it in items])
+    for it in items:                           # butin de raid noté par l'addon (🎁 reçu le …)
+        it["received"] = got.get(int(it["item_id"] or 0), [])[:3]
     for ch in chars_out:
         try:
             eq, _t = bnet.equipment(ch["realm"], ch["name"])

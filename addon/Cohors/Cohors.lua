@@ -10,7 +10,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.14.0"
+local ADDON_VER = "1.15.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -1906,12 +1906,13 @@ local function lcParse(txt)
                 local k, disp = t:match("^U|(u%d+)|(.*)$")
                 if k then d.users[k] = disp else bad = bad + 1 end
             elseif kind == "P|" then
-                local nm, cls, u, tn, to, sl = t:match("^P|([^|]+)|([^|]*)|([^|]*)|(%d+)|(%d+)|(.*)$")
+                -- 7e champ (v1.15.0) : objets reçus en raid ces 30 jours (historique importé sur le site)
+                local nm, cls, u, tn, to, sl, got = t:match("^P|([^|]+)|([^|]*)|([^|]*)|(%d+)|(%d+)|([^|]*)|?(%d*)$")
                 if nm then
                     local slots = {}
                     for st, il in sl:gmatch("([%u_%d]+)=(%d+)") do slots[st] = tonumber(il) end
                     d.players[lcName(nm)] = { n = nm, c = cls, u = (u ~= "" and u or nil),
-                        tn = tonumber(tn) or 0, to = tonumber(to) or 0, s = slots }
+                        tn = tonumber(tn) or 0, to = tonumber(to) or 0, s = slots, g = tonumber(got) or 0 }
                 else
                     bad = bad + 1
                 end
@@ -1935,6 +1936,14 @@ local function lcParse(txt)
     local np = 0
     for _ in pairs(d.players) do np = np + 1 end
     if np == 0 then return nil, "aucun joueur dans l'export" end
+    -- butin des 30 jours compté par COMPTE (main + rerolls) quand les persos sont liés
+    local byU = {}
+    for _, p in pairs(d.players) do
+        if p.u then byU[p.u] = (byU[p.u] or 0) + p.g end
+    end
+    for _, p in pairs(d.players) do
+        if p.u then p.m = byU[p.u] else p.m = p.g end
+    end
     return d, nil, bad, np
 end
 
@@ -1994,6 +2003,16 @@ local function lcItemFacts(iid, link)
     return equip, classID, subID, setID, ilvl
 end
 
+-- Repères après un nom : déjà reçu ce soir (noté par l'addon), reçu ces 30 jours (site)
+local function lcTag(d, k, tonight)
+    local t = {}
+    if tonight[k] and tonight[k] > 0 then t[#t + 1] = tonight[k] .. " ce soir" end
+    local p = d.players[k]
+    if p and (p.m or 0) > 0 then t[#t + 1] = p.m .. " en 30 j" end
+    if #t == 0 then return "" end
+    return " |cff999999[" .. table.concat(t, " · ") .. "]|r"
+end
+
 -- Piste visée d'un souhait d'après son iLvl minimal (H = seuil Héros ; Mythe = +13, Champion = -13)
 local function lcTrackLabel(d, m)
     m = tonumber(m) or 0
@@ -2023,9 +2042,7 @@ local function lcWantList(d, iid, ilvl, group, tonight, withTrack)
                 local tl = lcTrackLabel(d, w.m)
                 if tl ~= "" and tl ~= "Mythe" then s = s .. " → " .. tl end
             end
-            if who and tonight[who] and tonight[who] > 0 then
-                s = s .. " |cff999999[" .. tonight[who] .. " ce soir]|r"
-            end
+            if who then s = s .. lcTag(d, who, tonight) end
             wl[#wl + 1] = { s = s, p = w.p, b = w.b or 0 }
         end
     end
@@ -2045,7 +2062,7 @@ local function lcSummary(iid, link)
     local tonight = lcTonight()
     local present = function(k) return group == nil or group[k] ~= nil end
     local disp = function(k) return (group and group[k]) or d.players[k].n end
-    local tag = function(k) return (tonight[k] and tonight[k] > 0) and (" |cff999999[" .. tonight[k] .. " ce soir]|r") or "" end
+    local tag = function(k) return lcTag(d, k, tonight) end
     local lines = {}
     local equip, classID, subID, setID, ilvl = lcItemFacts(iid, link)
     -- 1. wishlist
@@ -2163,7 +2180,20 @@ local function lcClear()
     msg("export loot vidé dans l'addon.")
 end
 
--- Soirée : qui a reçu quoi (6 dernières heures)
+-- Texte « CohorsLOOT1 » pour le site (Calendrier → « Importer le butin ») : tout le journal (300
+-- dernières entrées) ; le site ignore ce qu'il connaît déjà, on peut donc le recoller sans risque.
+local function lcHistoryText()
+    local out = { "CohorsLOOT1" }
+    for _, e in ipairs(Cohors_DB.lc_log or {}) do
+        local nm = type(e.l) == "string" and e.l:match("|h%[(.-)%]|h") or ""
+        nm = nm:gsub("|", " ")
+        out[#out + 1] = ("L|%d|%d|%s|%d|%s"):format(tonumber(e.t) or 0, tonumber(e.id) or 0,
+            tostring(e.w or "?"):gsub("|", " "), tonumber(e.e) or 0, nm)
+    end
+    return table.concat(out, "\n"), #out - 1
+end
+
+-- Soirée : qui a reçu quoi (6 dernières heures) dans le chat, et le texte pour le site dans le champ
 local function lcEvening()
     local now, list = time(), {}
     for _, e in ipairs(Cohors_DB.lc_log or {}) do
@@ -2171,11 +2201,21 @@ local function lcEvening()
     end
     if #list == 0 then
         msg("aucun butin noté ce soir (6 dernières heures).")
-        return
+    else
+        msg(("butin de la soirée : %d objet(s)."):format(#list))
+        for _, e in ipairs(list) do
+            msg(("%s — %s"):format(e.w or "?", e.l or ("objet " .. tostring(e.id))))
+        end
     end
-    msg(("butin de la soirée : %d objet(s)."):format(#list))
-    for _, e in ipairs(list) do
-        msg(("%s — %s"):format(e.w or "?", e.l or ("objet " .. tostring(e.id))))
+    local txt, n = lcHistoryText()
+    if n > 0 and wlField then
+        wlField:SetText(txt)
+        local nl = n + 1
+        if wlField.SetHeight then wlField:SetHeight(math.max(12, nl * 13 + 8)) end
+        if wlField.HighlightText then wlField:HighlightText() end
+        if wlField.SetFocus then wlField:SetFocus() end
+        msg(("historique : %d objet(s) dans le champ — Ctrl+C puis colle-le sur le site (Calendrier → « Importer le butin »).")
+            :format(n))
     end
 end
 
@@ -2191,11 +2231,11 @@ local function lcOnRoll(rollID)
     for _, l in ipairs(lines) do msg("  " .. l) end
 end
 
-local function lcOnLoot(_encounterID, iid, link, _qty, player)
+local function lcOnLoot(encounterID, iid, link, _qty, player)
     if not player or not iid then return end
     Cohors_DB.lc_log = Cohors_DB.lc_log or {}
     local log = Cohors_DB.lc_log
-    log[#log + 1] = { t = time(), id = tonumber(iid), l = link, w = player }
+    log[#log + 1] = { t = time(), id = tonumber(iid), l = link, w = player, e = tonumber(encounterID) or 0 }
     while #log > 300 do table.remove(log, 1) end
 end
 
@@ -2254,9 +2294,9 @@ local function lcBossLines(d, list, idx)
             if #wl > 8 then t[#t + 1] = "+" .. (#wl - 8) end
             local nm = wlItemName(it.id)
             if nm == "" then nm = it.name or ("objet " .. it.id) end
-            for _, l in ipairs(wrapTxt("• " .. nm .. " : " .. table.concat(t, ", "), 64)) do
-                lines[#lines + 1] = l
-            end
+            -- une ligne par objet : le champ revient lui-même à la ligne (couper à la main cassait
+            -- les codes couleur des repères « [1 ce soir · 2 en 30 j] »)
+            lines[#lines + 1] = "• " .. nm .. " : " .. table.concat(t, ", ")
         end
     end
     if n == 0 then
@@ -2274,7 +2314,9 @@ local function lcFieldShow(lines)
     if not wlField then return false end
     local txt = table.concat(lines, "\n")
     wlField:SetText(txt)
-    if wlField.SetHeight then wlField:SetHeight(math.max(12, #lines * 13 + 8)) end
+    local nl = 0
+    for _, l in ipairs(lines) do nl = nl + math.max(1, math.ceil(#l / 62)) end
+    if wlField.SetHeight then wlField:SetHeight(math.max(12, nl * 13 + 8)) end
     if scrollBar and scrollBar.ScrollBar and scrollBar.ScrollBar.SetValue then scrollBar.ScrollBar:SetValue(0) end
     return true
 end
@@ -2582,7 +2624,7 @@ buildPanel = function()
         mkButton("Importer", 22, 54, 108, function() Cohors_LCImport() end,
             "Lit l'export loot collé dans le champ (qui veut quoi, iLvl portés, sets).", "loot")
         mkButton("Soirée", 140, 54, 108, function() Cohors_LCEvening() end,
-            "Affiche dans le chat qui a reçu quoi ce soir (6 dernières heures).", "loot")
+            "Qui a reçu quoi ce soir (chat) + le texte à coller sur le site (Calendrier → « Importer le butin ») pour l'historique.", "loot")
         mkButton("Vider", 258, 54, 108, function() Cohors_LCClear() end,
             "Efface l'export loot de l'addon.", "loot")
         mkButton("Boss ▶", 376, 54, 108, function() Cohors_LCBoss(1) end,
