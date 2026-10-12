@@ -485,6 +485,12 @@ from app.routers import readiness as _readiness_router  # noqa: E402
 app.include_router(_readiness_router.router)
 
 
+# Loot council : export pour l'add-on (qui veut quel objet, gain d'iLvl, set) — app/routers/loot_council.py
+from app.routers import loot_council as _loot_council_router  # noqa: E402
+
+app.include_router(_loot_council_router.router)
+
+
 # Commandes d'artisanat (demande à un artisan, suivi, notifications) — app/routers/craft_orders.py
 from app.routers import craft_orders as _craft_orders_router  # noqa: E402
 

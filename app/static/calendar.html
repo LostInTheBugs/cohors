@@ -116,6 +116,11 @@
         <button class="small ghost" id="gbtn-text">📥 Importer la chaîne</button>
       </div>
       <div id="gmsg" class="meta"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="small ghost" id="lcbtn" title="Avant le raid : qui veut quel objet, iLvl portés et sets, à coller dans l'addon (onglet Loot)">📦 Export loot (addon)</button>
+        <span class="meta" id="lcmsg">Loot council : en jeu, /cohors loot → colle l'export → « Importer ». Au survol d'un objet, l'addon montre qui en a besoin.</span>
+      </div>
+      <textarea id="lctext" rows="3" class="hidden" readonly></textarea>
     </div>
     <div id="glist"><div class="empty">Chargement…</div></div>
     <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
@@ -454,6 +459,20 @@ $("#gbtn-text").addEventListener("click", () => {
   gcalImport(t);
 });
 
+
+$("#lcbtn").addEventListener("click", async () => {
+  try {
+    const r = await fetch("/api/loot/export");
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.detail || "Erreur API"); }
+    const txt = await r.text();
+    const ta = $("#lctext");
+    ta.value = txt; ta.classList.remove("hidden"); ta.focus(); ta.select();
+    let copied = false;
+    try { await navigator.clipboard.writeText(txt); copied = true; } catch (e) { /* copie manuelle */ }
+    const n = (txt.match(/^P\|/gm) || []).length, w = new Set((txt.match(/^W\|(\d+)/gm) || [])).size;
+    $("#lcmsg").textContent = `${n} joueur(s), ${w} objet(s) en wishlist — ` + (copied ? "copié ✓, colle-le dans l'addon." : "sélectionné : Ctrl+C puis colle-le dans l'addon.");
+  } catch (e) { $("#lcmsg").textContent = "Erreur : " + e.message; }
+});
 
 (async () => {
   try {

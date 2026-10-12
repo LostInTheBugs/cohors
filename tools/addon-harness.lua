@@ -44,6 +44,7 @@ local VALID_EVENTS = {
     ADDON_LOADED = true, CALENDAR_OPEN_EVENT = true,
     TRADE_SKILL_SHOW = true, TRADE_SKILL_CLOSE = true,
     PLAYER_ENTERING_WORLD = true, ZONE_CHANGED_NEW_AREA = true, PLAYER_LOGOUT = true,
+    START_LOOT_ROLL = true, ENCOUNTER_LOOT_RECEIVED = true,      -- loot council (v1.13.0)
 }
 local function newRegion(kind)
     local r = { _kind = kind, _scripts = {}, _shown = true, _value = 0, _enabled = true }
@@ -110,16 +111,39 @@ date = real_date
 GetTime = function() return M.t end
 GetBuildInfo = function() return "12.1.0", "69814", "Sep 1 2026", 120100, "12.1.0" end
 GetRealmName = function() return "Hyjal" end
-UnitName = function() return "Chamoisdort" end
+-- Groupe simulé (loot council) : GROUP = liste de noms ; vide = hors groupe
+local GROUP = {}
+UnitName = function(unit)
+    if unit and unit:match("^party(%d+)$") then return GROUP[tonumber(unit:match("%d+")) + 1] end
+    return "Chamoisdort"
+end
+GetNumGroupMembers = function() return #GROUP end
+IsInRaid = function() return #GROUP > 5 end
+GetRaidRosterInfo = function(i) return GROUP[i] end
 GetNumAddOns = function() return 1 end
 GetAddOnInfo = function() return "Cohors", "Cohors", "", true, "LOADED" end
 GetAddOnMetadata = function(_, f) return f == "Version" and "1.7.0" or nil end
 C_AddOns = { GetNumAddOns = GetNumAddOns, GetAddOnInfo = GetAddOnInfo, GetAddOnMetadata = GetAddOnMetadata }
 -- Wishlist (v1.12.0) : noms/liens d'objets configurables par scénario, sort des recettes
 local C_ITEM_NAMES, C_ITEM_LINKS, C_ITEM_SPELLS = {}, {}, {}
+-- objets « loot council » : emplacement, classe/sous-classe, iLvl, set (C_ITEM_FACTS[id])
+local C_ITEM_FACTS = {}
+local function factsOf(x)
+    local id = tonumber(x) or tonumber(tostring(x or ""):match("item:(%d+)"))
+    return C_ITEM_FACTS[id] or {}, id
+end
 C_Item = {
     GetItemNameByID = function(id) return C_ITEM_NAMES[id] or ("Composant " .. tostring(id)) end,
-    GetItemInfo = function(id) return C_ITEM_NAMES[id] or ("Composant " .. tostring(id)), C_ITEM_LINKS[id] end,
+    GetItemInfo = function(x)
+        local fa, id = factsOf(x)
+        return C_ITEM_NAMES[id] or ("Composant " .. tostring(id)), C_ITEM_LINKS[id],
+            nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, fa.set
+    end,
+    GetItemInfoInstant = function(x)
+        local fa, id = factsOf(x)
+        return id, "Armure", "", fa.equip or "", 0, fa.class, fa.sub
+    end,
+    GetDetailedItemLevelInfo = function(x) return (factsOf(x)).ilvl end,
     GetItemSpell = function(link)
         local sid = link and C_ITEM_SPELLS[link]
         if sid then return "Sort de recette", sid end
@@ -128,6 +152,12 @@ C_Item = {
 }
 -- C_Timer.After exécute la tâche immédiatement (l'addon n'en utilise qu'une : le scan d'instance)
 C_Timer = { After = function(_, fn) if type(fn) == "function" then fn() end end }
+-- Info-bulle (loot council) : la fonction inscrite par l'addon est conservée pour le scénario
+local TT_HOOKS = {}
+Enum = { TooltipDataType = { Item = 0 } }
+TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) TT_HOOKS[#TT_HOOKS + 1] = fn end }
+local ROLL_LINKS = {}
+GetLootRollItemLink = function(rollID) return ROLL_LINKS[rollID] end
 
 -- Instance + Journal d'aventure simulés : WL est rempli par le scénario « wishlist »
 local WL = { instance = nil, jid = nil, loot = {}, known = {}, extra = {} }
@@ -531,6 +561,82 @@ elseif scenario == "slash" then
             tostring(mmb), tostring(uif))
     end
 
+elseif scenario == "loot" then
+    -- v1.13.0 : loot council — import de l'export « CohorsLC1 », résumé, info-bulle, jets, soirée
+    SlashCmdList["Cohors"]("loot")
+    local ebL
+    for i = #frames, 1, -1 do
+        if frames[i]._type == "EditBox" then ebL = frames[i]; break end
+    end
+    check(ebL ~= nil, "« /cohors loot » ouvre le panneau (onglet Loot)")
+    ebL:SetText("pas un export")
+    Cohors_LCImport()
+    check(chat_has("import loot refusé"), "export invalide refusé")
+    ebL:SetText(table.concat({
+        "CohorsLC1",
+        "H|1790000000|305|Ma Guilde",
+        "U|u1|Élanisse",
+        "U|u2|Bob",
+        "P|élanisse|Priest|u1|3|5|HEAD=300;CHEST=310;FINGER_1=310;FINGER_2=290",
+        "P|hÿpérion|Warrior|u2|1|5|HEAD=280;CHEST=320",
+        "P|hypérïon|Mage||5|5|HEAD=250;CHEST=250",
+        "P|absent|Mage||1|5|HEAD=200",
+        "W|5001|u1|1|2.5",
+        "W|5001|u2|0|0",
+        "W|5002|u2|0|0",
+        "ligne bidon",
+    }, "\n"))
+    Cohors_LCImport()
+    check(chat_has("export loot importé : 4 joueur(s), 2 objet(s) en wishlist, 1 ligne(s) ignorée(s)"),
+        "import : 4 joueurs, 2 objets, 1 ligne ignorée")
+    check(#TT_HOOKS == 1, "info-bulle accrochée une seule fois (%d)", #TT_HOOKS)
+    -- groupe : Élanisse, Hÿpérion, Hypérïon (le 4e joueur est absent) — noms du jeu (majuscules, royaume)
+    GROUP = { "Élanisse", "Hÿpérion-Hyjal", "Hypérïon", "Quidam", "Autre", "Sixieme" }
+    -- 5001 : casque en tissu 315 (prio d'Élanisse) ; 5002 : casque en plaques 315 ; 5003 : jeton de set
+    C_ITEM_FACTS[5001] = { equip = "INVTYPE_HEAD", class = 4, sub = 1, ilvl = 315 }
+    C_ITEM_FACTS[5002] = { equip = "INVTYPE_HEAD", class = 4, sub = 4, ilvl = 315 }
+    C_ITEM_FACTS[5003] = { equip = "", class = 15, sub = 0, ilvl = 300 }
+    C_ITEM_FACTS[5004] = { equip = "INVTYPE_FINGER", class = 4, sub = 0, ilvl = 300 }
+    local L = Cohors_LCSummary(5001, "|Hitem:5001|h[Casque]|h") or {}
+    local all = table.concat(L, "\n")
+    check(all:find("Élanisse ⭐ (BIS +2.5 %)", 1, true) ~= nil, "wishlist : prio et BIS (%s)", all)
+    check(all:find("Hÿpérion", 1, true) ~= nil, "wishlist : 2e compte sous le nom de son perso présent")
+    check(all:find("Élanisse", 1, true) < all:find("Hÿpérion", 1, true), "prio classée en premier")
+    check(all:find("Hypérïon +65", 1, true) ~= nil, "gain d'iLvl : tissu pour un mage (+65)")
+    check(all:find("Hÿpérion +35", 1, true) == nil, "pas de casque en tissu proposé à un guerrier")
+    check(all:find("Absent", 1, true) == nil and all:find("absent", 1, true) == nil, "joueur absent du groupe ignoré")
+    local L2 = table.concat(Cohors_LCSummary(5002, "|Hitem:5002|h[Heaume]|h") or {}, "\n")
+    check(L2:find("Hÿpérion +35", 1, true) ~= nil, "plaques : gain pour le guerrier (+35) (%s)", L2)
+    check(L2:find("Hypérïon", 1, true) == nil, "plaques : pas pour le mage")
+    local L3 = table.concat(Cohors_LCSummary(5003, "|Hitem:5003|h[Jeton]|h") or {}, "\n")
+    check(L3:find("Élanisse 3/5", 1, true) ~= nil and L3:find("Hÿpérion 1/5", 1, true) ~= nil
+        and L3:find("Hypérïon", 1, true) == nil, "jeton : joueurs à une pièce d'un bonus (%s)", L3)
+    local L4 = table.concat(Cohors_LCSummary(5004, "|Hitem:5004|h[Anneau]|h") or {}, "\n")
+    check(L4:find("Élanisse +10", 1, true) ~= nil, "anneau : comparé au plus faible des deux (+10) (%s)", L4)
+    -- butin reçu → noté ; apparaît ensuite dans les résumés et dans « Soirée »
+    pcall(driver._scripts["OnEvent"], driver, "ENCOUNTER_LOOT_RECEIVED", 3001, 5001, "|Hitem:5001|h[Casque]|h", 1, "Élanisse", "PRIEST")
+    check(#(Cohors_DB.lc_log or {}) == 1, "butin noté pour la soirée")
+    local L5 = table.concat(Cohors_LCSummary(5004, "|Hitem:5004|h[Anneau]|h") or {}, "\n")
+    check(L5:find("[1 ce soir]", 1, true) ~= nil, "« déjà reçu ce soir » affiché (%s)", L5)
+    -- objet mis en jet → résumé dans le chat
+    ROLL_LINKS[77] = "|Hitem:5002|h[Heaume]|h"
+    pcall(driver._scripts["OnEvent"], driver, "START_LOOT_ROLL", 77, 60)
+    check(chat_has("Gain d'iLvl :|r Hÿpérion +35"), "jet de butin : résumé dans le chat")
+    -- info-bulle
+    local tt = { lines = {} }
+    tt.AddLine = function(self, t) self.lines[#self.lines + 1] = t end
+    tt.GetItem = function() return "Casque", "|Hitem:5001|h[Casque]|h" end
+    TT_HOOKS[1](tt, { id = 5001 })
+    check(table.concat(tt.lines, "\n"):find("Cohors — loot", 1, true) ~= nil, "info-bulle : lignes Cohors ajoutées")
+    local tt2 = { lines = {} }
+    tt2.AddLine = function(self, t) self.lines[#self.lines + 1] = t end
+    TT_HOOKS[1](tt2, { id = 9999 })
+    check(#tt2.lines == 0, "info-bulle : rien pour un objet sans intérêt")
+    Cohors_LCEvening()
+    check(chat_has("butin de la soirée : 1 objet(s)"), "« Soirée » liste le butin de la soirée")
+    Cohors_LCClear()
+    check(Cohors_DB.lc_txt == nil and Cohors_LCSummary(5001) == nil, "« Vider » efface l'export")
+    check(not chat_has("chargement INCOMPLET"), "aucune alerte de chargement partiel")
 elseif scenario == "wishlist" then
     -- v1.12.1 : un seul panneau à onglets — l'import se fait dans le champ partagé
     SlashCmdList["Cohors"]("wishlist")
@@ -621,7 +727,7 @@ elseif scenario == "wishlist" then
         if fr._text == "Wishlist" then bWl = fr end
         if fr._text == "Alerte : oui" or fr._text == "Alerte : non" then bAlert = fr end
         if fr._text == "Calendrier" then bCal = fr end
-        if fr._text == "Importer" then bImp = fr end
+        if fr._text == "Importer" and not bImp then bImp = fr end   -- 1er « Importer » = onglet Wishlist
         if fr._text == "Collecter" then bMenuCol = fr end
     end
     check(bWl ~= nil, "bouton de menu « Wishlist » sur le panneau principal")

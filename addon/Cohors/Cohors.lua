@@ -2,7 +2,7 @@
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
 -- une chaîne à coller sur le site (page Calendrier  « Importer »).
 -- Commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors wishlist
---             · /cohors ici · /cohors diag · /cohors reset
+--             · /cohors ici · /cohors loot · /cohors diag · /cohors reset
 --
 -- Lecture du calendrier : même méthode que l'UI Blizzard — on affiche le mois
 -- (SetAbsMonth/SetMonth) puis on lit les jours (GetNumDayEvents/GetDayEvent),
@@ -10,7 +10,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.12.1"
+local ADDON_VER = "1.13.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -593,8 +593,12 @@ f:SetScript("OnUpdate", function()
 end)
 -- pas de minuteur créé au chargement : la collecte avance par l'affichage (OnUpdate) et par les clics
 -- (chaque clic sur « Collecter » force une étape, même si l'affichage ne tourne pas)
-f:SetScript("OnEvent", function(_, event, arg1)
-    if event == "ADDON_LOADED" then
+f:SetScript("OnEvent", function(_, event, arg1, ...)
+    if event == "START_LOOT_ROLL" then
+        if Cohors_LCOnRoll then Cohors_LCOnRoll(arg1) end
+    elseif event == "ENCOUNTER_LOOT_RECEIVED" then
+        if Cohors_LCOnLoot then Cohors_LCOnLoot(arg1, ...) end
+    elseif event == "ADDON_LOADED" then
         if arg1 == (ADDON_NAME or "Cohors") then
             if Cohors_DB.file_ok ~= ADDON_VER then
                 msg("|cffff5555! chargement INCOMPLET du fichier (des fonctions manquent — " ..
@@ -610,6 +614,7 @@ f:SetScript("OnEvent", function(_, event, arg1)
                     table.concat(copies, ", ") .. ") — supprime les doublons !|r")
             end
             pcall(Cohors_BuildMinimapButton)
+            if Cohors_DB.lc_txt and Cohors_LCHook then Cohors_LCHook() end   -- info-bulle loot
             msg(("v%s chargée (client %s · dossier « %s ») — %s"):format(ADDON_VER, tostring(clientIface()),
                 tostring(ADDON_NAME or "?"),
                 Cohors_DB.export and ("dernier export : " .. dateStr(Cohors_DB.export_at or 0) ..
@@ -649,6 +654,8 @@ regEvent("TRADE_SKILL_SHOW")
 regEvent("PLAYER_LOGOUT")
 regEvent("PLAYER_ENTERING_WORLD")
 regEvent("ZONE_CHANGED_NEW_AREA")
+regEvent("START_LOOT_ROLL")            -- loot council : objet mis en jet
+regEvent("ENCOUNTER_LOOT_RECEIVED")    -- loot council : qui a reçu quoi (soirée)
 
 function Cohors_Collect()
     if recEngine then
@@ -1777,6 +1784,339 @@ Cohors_WLImport = function() pcall(wlImport) end
 Cohors_WLClear = function() pcall(wlClear) end
 Cohors_WLToggleAlert = function() pcall(wlToggleAlert) end
 
+-- ------------------------------------------------------------- loot council (v1.13.0)
+-- Pour les officiers : l'export « CohorsLC1 » du site (page Calendrier → « Export loot ») dit qui
+-- veut quel objet (wishlist, ⭐ prio, BIS), l'iLvl porté par emplacement et l'état du set de tier.
+-- En jeu : au survol d'un objet (info-bulle) et quand un objet est mis en jet, l'addon résume
+-- QUI EN A BESOIN parmi les joueurs du groupe ; il note aussi qui a reçu quoi pendant la soirée.
+local LC_SLOTS = {
+    INVTYPE_HEAD = { "HEAD" }, INVTYPE_NECK = { "NECK" }, INVTYPE_SHOULDER = { "SHOULDER" },
+    INVTYPE_CLOAK = { "BACK" }, INVTYPE_CHEST = { "CHEST" }, INVTYPE_ROBE = { "CHEST" },
+    INVTYPE_WRIST = { "WRIST" }, INVTYPE_HAND = { "HANDS" }, INVTYPE_WAIST = { "WAIST" },
+    INVTYPE_LEGS = { "LEGS" }, INVTYPE_FEET = { "FEET" },
+    INVTYPE_FINGER = { "FINGER_1", "FINGER_2" }, INVTYPE_TRINKET = { "TRINKET_1", "TRINKET_2" },
+    INVTYPE_WEAPON = { "MAIN_HAND", "OFF_HAND" }, INVTYPE_2HWEAPON = { "MAIN_HAND" },
+    INVTYPE_WEAPONMAINHAND = { "MAIN_HAND" }, INVTYPE_RANGED = { "MAIN_HAND" },
+    INVTYPE_RANGEDRIGHT = { "MAIN_HAND" }, INVTYPE_WEAPONOFFHAND = { "OFF_HAND" },
+    INVTYPE_SHIELD = { "OFF_HAND" }, INVTYPE_HOLDABLE = { "OFF_HAND" },
+}
+-- type d'armure porté par classe (classID 4 = armure ; sous-classes 1 tissu … 4 plaques)
+local LC_ARMOR = {
+    Mage = 1, Priest = 1, Warlock = 1, Druid = 2, Rogue = 2, Monk = 2, DemonHunter = 2,
+    Hunter = 3, Shaman = 3, Evoker = 3, Warrior = 4, Paladin = 4, DeathKnight = 4,
+}
+local LC_ARMOR_SLOTS = { HEAD = true, SHOULDER = true, CHEST = true, WRIST = true, HANDS = true,
+    WAIST = true, LEGS = true, FEET = true }
+local LC_TONIGHT = 6 * 3600         -- « ce soir » = les 6 dernières heures
+local LC_UPPER = {                  -- minuscules des majuscules accentuées (noms de personnages)
+    ["À"] = "à", ["Á"] = "á", ["Â"] = "â", ["Ã"] = "ã", ["Ä"] = "ä", ["Å"] = "å", ["Æ"] = "æ",
+    ["Ç"] = "ç", ["È"] = "è", ["É"] = "é", ["Ê"] = "ê", ["Ë"] = "ë", ["Ì"] = "ì", ["Í"] = "í",
+    ["Î"] = "î", ["Ï"] = "ï", ["Ñ"] = "ñ", ["Ò"] = "ò", ["Ó"] = "ó", ["Ô"] = "ô", ["Õ"] = "õ",
+    ["Ö"] = "ö", ["Ø"] = "ø", ["Ù"] = "ù", ["Ú"] = "ú", ["Û"] = "û", ["Ü"] = "ü", ["Ý"] = "ý",
+    ["Œ"] = "œ", ["Ÿ"] = "ÿ",
+}
+local lcData = nil                  -- export décodé (cache de Cohors_DB.lc)
+
+-- Nom de personnage comparable : sans royaume, en minuscules (accents conservés : « Hÿpérion »
+-- et « Hypérïon » sont deux personnages différents).
+local function lcName(s)
+    s = tostring(s or ""):match("^([^%-]+)") or ""
+    s = s:gsub("[%z\1-\127\194-\244][\128-\191]*", function(ch) return LC_UPPER[ch] or ch:lower() end)
+    return s
+end
+
+local function lcParse(txt)
+    local d = { users = {}, players = {}, wants = {}, track = 0, at = 0 }
+    local n, bad = 0, 0
+    for line in tostring(txt or ""):gmatch("[^\r\n]+") do
+        local t = line:match("^%s*(.-)%s*$")
+        if n == 0 then
+            if t ~= "CohorsLC1" then
+                return nil, "en-tête « CohorsLC1 » introuvable — copie bien tout l'export loot du site."
+            end
+        elseif t ~= "" then
+            local kind = t:sub(1, 2)
+            if kind == "H|" then
+                local at, track = t:match("^H|(%d+)|(%d+)")
+                d.at, d.track = tonumber(at) or 0, tonumber(track) or 0
+            elseif kind == "U|" then
+                local k, disp = t:match("^U|(u%d+)|(.*)$")
+                if k then d.users[k] = disp else bad = bad + 1 end
+            elseif kind == "P|" then
+                local nm, cls, u, tn, to, sl = t:match("^P|([^|]+)|([^|]*)|([^|]*)|(%d+)|(%d+)|(.*)$")
+                if nm then
+                    local slots = {}
+                    for st, il in sl:gmatch("([%u_%d]+)=(%d+)") do slots[st] = tonumber(il) end
+                    d.players[lcName(nm)] = { n = nm, c = cls, u = (u ~= "" and u or nil),
+                        tn = tonumber(tn) or 0, to = tonumber(to) or 0, s = slots }
+                else
+                    bad = bad + 1
+                end
+            elseif kind == "W|" then
+                local iid, u, prio, bis = t:match("^W|(%d+)|(u%d+)|(%d)|([%d%.]+)$")
+                if iid then
+                    iid = tonumber(iid)
+                    d.wants[iid] = d.wants[iid] or {}
+                    table.insert(d.wants[iid], { u = u, p = prio == "1", b = tonumber(bis) or 0 })
+                else
+                    bad = bad + 1
+                end
+            else
+                bad = bad + 1
+            end
+        end
+        n = n + 1
+    end
+    if n == 0 then return nil, "texte vide" end
+    local np = 0
+    for _ in pairs(d.players) do np = np + 1 end
+    if np == 0 then return nil, "aucun joueur dans l'export" end
+    return d, nil, bad, np
+end
+
+local function lcGet()
+    if lcData then return lcData end
+    if Cohors_DB.lc_txt then
+        local d = lcParse(Cohors_DB.lc_txt)
+        lcData = d
+    end
+    return lcData
+end
+
+-- Membres du groupe : {nom comparable = nom affiché (sans royaume)} ; nil hors groupe (on montre
+-- alors tout le monde, sous le nom de l'export).
+local function lcGroup()
+    local okN, n = pcall(GetNumGroupMembers)
+    if not okN or type(n) ~= "number" or n == 0 then return nil end
+    local g = {}
+    local okR, raid = pcall(IsInRaid)
+    if okR and raid then
+        for i = 1, n do
+            local ok, nm = pcall(GetRaidRosterInfo, i)
+            if ok and nm then g[lcName(nm)] = nm:match("^([^%-]+)") or nm end
+        end
+    else
+        local okP, me = pcall(UnitName, "player")
+        if okP and me then g[lcName(me)] = me end
+        for i = 1, n - 1 do
+            local ok, nm = pcall(UnitName, "party" .. i)
+            if ok and nm then g[lcName(nm)] = nm:match("^([^%-]+)") or nm end
+        end
+    end
+    return g
+end
+
+local function lcTonight()
+    local cnt, now = {}, time()
+    for _, e in ipairs(Cohors_DB.lc_log or {}) do
+        if (e.t or 0) >= now - LC_TONIGHT then
+            local k = lcName(e.w)
+            cnt[k] = (cnt[k] or 0) + 1
+        end
+    end
+    return cnt
+end
+
+local function lcItemFacts(iid, link)
+    local equip, classID, subID, setID, ilvl = "", nil, nil, nil, nil
+    local okI, _id, _t, _st, eq, _ic, cid, sid = pcall(C_Item.GetItemInfoInstant, iid)
+    if okI then equip, classID, subID = eq or "", cid, sid end
+    local okS = { pcall(C_Item.GetItemInfo, link or iid) }
+    if okS[1] then setID = okS[17] end          -- 16e valeur : identifiant d'ensemble (set de tier)
+    if link and C_Item.GetDetailedItemLevelInfo then
+        local okL, il = pcall(C_Item.GetDetailedItemLevelInfo, link)
+        if okL and type(il) == "number" then ilvl = il end
+    end
+    return equip, classID, subID, setID, ilvl
+end
+
+-- Lignes de résumé pour un objet : qui le veut, meilleurs gains, set de tier, déjà reçu ce soir.
+local function lcSummary(iid, link)
+    local d = lcGet()
+    iid = tonumber(iid)
+    if not d or not iid then return nil end
+    local group = lcGroup()
+    local tonight = lcTonight()
+    local present = function(k) return group == nil or group[k] ~= nil end
+    local disp = function(k) return (group and group[k]) or d.players[k].n end
+    local tag = function(k) return (tonight[k] and tonight[k] > 0) and (" |cff999999[" .. tonight[k] .. " ce soir]|r") or "" end
+    local lines = {}
+    -- 1. wishlist : comptes qui le veulent, sous le nom de leur personnage présent (sinon du main)
+    local wl = {}
+    for _, w in ipairs(d.wants[iid] or {}) do
+        local who
+        for k, p in pairs(d.players) do
+            if p.u == w.u and present(k) then who = k; break end
+        end
+        if who or group == nil then
+            local nm = who and disp(who) or d.users[w.u] or w.u
+            local s = nm .. (w.p and " ⭐" or "") .. ((w.b or 0) > 0 and (" (BIS +" .. w.b .. " %)") or "")
+            wl[#wl + 1] = { s = s .. (who and tag(who) or ""), p = w.p, b = w.b or 0 }
+        end
+    end
+    table.sort(wl, function(a, b)
+        if a.p ~= b.p then return a.p end
+        return a.b > b.b
+    end)
+    if #wl > 0 then
+        local t = {}
+        for i = 1, math.min(#wl, 6) do t[#t + 1] = wl[i].s end
+        lines[#lines + 1] = "|cffdfa55aWishlist :|r " .. table.concat(t, ", ")
+    end
+    -- 2. gain d'iLvl (pièces d'équipement), en respectant le type d'armure de la classe
+    local equip, classID, subID, setID, ilvl = lcItemFacts(iid, link)
+    local slots = LC_SLOTS[equip]
+    if slots and ilvl then
+        local gains = {}
+        for k, p in pairs(d.players) do
+            if present(k) then
+                local okArmor = true
+                if classID == 4 and subID and subID >= 1 and subID <= 4 and LC_ARMOR_SLOTS[slots[1]] then
+                    okArmor = (LC_ARMOR[p.c] == nil) or (LC_ARMOR[p.c] == subID)
+                end
+                local worn
+                for _, st in ipairs(slots) do
+                    local v = p.s[st]
+                    if v and (worn == nil or v < worn) then worn = v end
+                end
+                if okArmor and worn and ilvl > worn then
+                    gains[#gains + 1] = { k = k, n = disp(k), g = ilvl - worn }
+                end
+            end
+        end
+        table.sort(gains, function(a, b) return a.g > b.g end)
+        if #gains > 0 then
+            local t = {}
+            for i = 1, math.min(#gains, 5) do t[#t + 1] = gains[i].n .. " +" .. gains[i].g .. tag(gains[i].k) end
+            lines[#lines + 1] = "|cffdfa55aGain d'iLvl :|r " .. table.concat(t, ", ")
+        end
+    end
+    -- 3. set de tier : pièce de set (ou jeton sans emplacement) → qui est à une pièce d'un bonus
+    if setID or (equip == "" and classID == 15) then
+        local near = {}
+        for k, p in pairs(d.players) do
+            if present(k) and p.to == 5 and (p.tn == 1 or p.tn == 3) then
+                near[#near + 1] = disp(k) .. " " .. p.tn .. "/5" .. tag(k)
+            end
+        end
+        table.sort(near)
+        if #near > 0 then
+            lines[#lines + 1] = "|cffdfa55aBonus de set à 1 pièce :|r " .. table.concat(near, ", ", 1, math.min(#near, 6))
+        end
+    end
+    if #lines == 0 then return nil end
+    return lines
+end
+
+-- Info-bulle : lignes Cohors sous l'objet survolé (si un export loot est importé)
+local function lcTooltip(tooltip, data)
+    if not Cohors_DB.lc_txt or not tooltip or not tooltip.AddLine then return end
+    local iid = data and data.id
+    local link
+    if tooltip.GetItem then
+        local ok, _nm, l = pcall(tooltip.GetItem, tooltip)
+        if ok then link = l end
+    end
+    if not iid and link then iid = tonumber(link:match("item:(%d+)")) end
+    local lines = iid and lcSummary(iid, link)
+    if not lines then return end
+    tooltip:AddLine(" ")
+    tooltip:AddLine("Cohors — loot")
+    for _, l in ipairs(lines) do tooltip:AddLine(l, 1, 1, 1, true) end
+end
+
+local function lcHookTooltip()
+    if Cohors_LCHooked then return end
+    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+        local ok = pcall(TooltipDataProcessor.AddTooltipPostCall, Enum.TooltipDataType.Item,
+            function(tt, data) pcall(lcTooltip, tt, data) end)
+        Cohors_LCHooked = ok
+    end
+end
+
+local function lcStatusText()
+    local d = lcGet()
+    if not d then return "Aucun export loot — colle l'export du site (Calendrier → « Export loot ») puis « Importer »." end
+    local np, nw = 0, 0
+    for _ in pairs(d.players) do np = np + 1 end
+    for _ in pairs(d.wants) do nw = nw + 1 end
+    return ("%d joueur(s) · %d objet(s) en wishlist — export du %s"):format(np, nw, d.at > 0 and dateStr(d.at) or "?")
+end
+
+local function lcImport()
+    local txt = (wlField and wlField:GetText()) or ""
+    local d, err, bad, np = lcParse(txt)
+    if not d then
+        msg("import loot refusé — " .. tostring(err))
+        return
+    end
+    Cohors_DB.lc_txt = txt
+    lcData = d
+    lcHookTooltip()
+    local nw = 0
+    for _ in pairs(d.wants) do nw = nw + 1 end
+    if wlField then
+        wlField:SetText(("Import reussi : %d joueur(s), %d objet(s) en wishlist.\nSurvole un objet (ou attends un jet de butin) pour voir qui en a besoin.")
+            :format(np, nw))
+    end
+    if panelRefreshStatus then panelRefreshStatus() end
+    msg(("export loot importé : %d joueur(s), %d objet(s) en wishlist%s.")
+        :format(np, nw, (bad or 0) > 0 and (", " .. bad .. " ligne(s) ignorée(s)") or ""))
+end
+
+local function lcClear()
+    Cohors_DB.lc_txt = nil
+    lcData = nil
+    if wlField then wlField:SetText("") end
+    if panelRefreshStatus then panelRefreshStatus() end
+    msg("export loot vidé dans l'addon.")
+end
+
+-- Soirée : qui a reçu quoi (6 dernières heures)
+local function lcEvening()
+    local now, list = time(), {}
+    for _, e in ipairs(Cohors_DB.lc_log or {}) do
+        if (e.t or 0) >= now - LC_TONIGHT then list[#list + 1] = e end
+    end
+    if #list == 0 then
+        msg("aucun butin noté ce soir (6 dernières heures).")
+        return
+    end
+    msg(("butin de la soirée : %d objet(s)."):format(#list))
+    for _, e in ipairs(list) do
+        msg(("%s — %s"):format(e.w or "?", e.l or ("objet " .. tostring(e.id))))
+    end
+end
+
+-- Événements : objet mis en jet → résumé dans le chat ; butin reçu → noté pour la soirée
+local function lcOnRoll(rollID)
+    if not Cohors_DB.lc_txt then return end
+    local ok, link = pcall(GetLootRollItemLink, rollID)
+    if not ok or type(link) ~= "string" then return end
+    local iid = tonumber(link:match("item:(%d+)"))
+    local lines = iid and lcSummary(iid, link)
+    if not lines then return end
+    msg(link .. " :")
+    for _, l in ipairs(lines) do msg("  " .. l) end
+end
+
+local function lcOnLoot(_encounterID, iid, link, _qty, player)
+    if not player or not iid then return end
+    Cohors_DB.lc_log = Cohors_DB.lc_log or {}
+    local log = Cohors_DB.lc_log
+    log[#log + 1] = { t = time(), id = tonumber(iid), l = link, w = player }
+    while #log > 300 do table.remove(log, 1) end
+end
+
+Cohors_LCImport = function() pcall(lcImport) end
+Cohors_LCClear = function() pcall(lcClear) end
+Cohors_LCEvening = function() pcall(lcEvening) end
+Cohors_LCSummary = lcSummary
+Cohors_LCOnRoll = function(id) pcall(lcOnRoll, id) end
+Cohors_LCOnLoot = function(...) pcall(lcOnLoot, ...) end
+Cohors_LCStatus = lcStatusText
+Cohors_LCHook = function() pcall(lcHookTooltip) end
+
 -- ------------------------------------------------------------------- panneau
 -- La fenêtre est construite À LA DEMANDE (jamais au chargement) : si sa
 -- construction échoue, l'addon continue de fonctionner sans fenêtre.
@@ -1827,10 +2167,12 @@ buildPanel = function()
         local introTxt = {
             collecter = "Collecte tes données puis copie le texte vers le site — il apparaît ici dès la fin.",
             wishlist = "Colle l'export du site ici puis clique « Importer » (page Ma wishlist → Export pour l'addon).",
+            loot = "Officiers : colle l'export loot du site (Calendrier → « Export loot ») puis « Importer ».",
             outils = "Utilitaires : réinitialiser la collecte, écrire un rapport de diagnostic.",
         }
         local statusDefault = function()
             if panelTab == "wishlist" then return wlStatusText() end
+            if panelTab == "loot" and Cohors_LCStatus then return Cohors_LCStatus() end
             if panelTab == "outils" then return "prêt (v" .. ADDON_VER .. ")" end
             if Cohors_DB.export then
                 return ("calendrier : chaîne prête (%s) — Ctrl+A puis Ctrl+C pour la copier.")
@@ -1980,7 +2322,7 @@ buildPanel = function()
 
         local function mkMenu(label, key, x)
             local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
-            b:SetSize(146, 24)
+            b:SetSize(108, 24)
             b:SetPoint("TOPLEFT", x, -58)
             b:SetText(label)
             b:SetScript("OnClick", function()
@@ -1995,8 +2337,9 @@ buildPanel = function()
             return b
         end
         mkMenu("Collecter", "collecter", 22)
-        mkMenu("Wishlist", "wishlist", 178)
-        mkMenu("Outils", "outils", 334)
+        mkMenu("Wishlist", "wishlist", 134)
+        mkMenu("Loot", "loot", 246)
+        mkMenu("Outils", "outils", 358)
 
         -- Onglet Collecter
         mkButton("Calendrier", 22, 54, 108, function()
@@ -2015,6 +2358,13 @@ buildPanel = function()
             "Relance la recherche d'objets de ta wishlist dans l'instance où tu es.", "wishlist")
         mkButton("Vider", 376, 54, 108, function() Cohors_WLClear() end,
             "Efface la liste de l'addon (le site n'est pas touché).", "wishlist")
+        -- Onglet Loot (officiers)
+        mkButton("Importer", 22, 54, 108, function() Cohors_LCImport() end,
+            "Lit l'export loot collé dans le champ (qui veut quoi, iLvl portés, sets).", "loot")
+        mkButton("Soirée", 140, 54, 108, function() Cohors_LCEvening() end,
+            "Affiche dans le chat qui a reçu quoi ce soir (6 dernières heures).", "loot")
+        mkButton("Vider", 258, 54, 108, function() Cohors_LCClear() end,
+            "Efface l'export loot de l'addon.", "loot")
         -- Onglet Outils
         mkButton("Réinitialiser", 22, 54, 108, function() Cohors_Reset() end,
             "Efface la collecte en cours et sa dernière sauvegarde.", "outils")
@@ -2125,7 +2475,7 @@ SlashCmdList["Cohors"] = function(arg)
         if arg == "" then
             buildPanel()
             if ui then ui:Show() end
-            msg(("v%s · dossier « %s » (TOC %s) — menu : « Collecter » (calendrier, recettes) · « Wishlist » (import, alerte) · « Outils ».")
+            msg(("v%s · dossier « %s » (TOC %s) — menu : « Collecter » (calendrier, recettes) · « Wishlist » (import, alerte) · « Loot » (officiers) · « Outils ».")
                 :format(ADDON_VER, tostring(ADDON_NAME or "?"), tostring(tocVersion())))
             if Cohors_DB.export and showSummary then pcall(showSummary) end
         elseif arg == "collect" then
@@ -2153,10 +2503,15 @@ SlashCmdList["Cohors"] = function(arg)
             Cohors_Wishlist()
         elseif arg == "ici" then
             Cohors_WLZoneCheck(true)
+        elseif arg == "loot" then
+            buildPanel()
+            if ui then ui:Show() end
+            if panelShow then pcall(panelShow, "loot") end
+            Cohors_LCEvening()
         elseif arg == "reset" then
             Cohors_Reset()
         else
-            msg("commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors wishlist · /cohors ici · /cohors diag · /cohors reset")
+            msg("commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors wishlist · /cohors ici · /cohors loot · /cohors diag · /cohors reset")
         end
     end)
     if not okAll then
