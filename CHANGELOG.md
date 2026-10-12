@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.047 - 2026-10-12
+
+### Added
+
+- Loot council, add-on **1.14.0**: « Boss ▶ » in the Loot tab (or `/cohors boss`) shows a boss's
+  loot with the group members who have each item on their wishlist (⭐ prio, BiS gain, target
+  track, already received tonight). The boss is picked automatically when the fight starts.
+
+### Fixed
+
+- Add-on wishlist alert: bosses are read in the client's real order (name, then ids) — the boss
+  was not selected and its description was shown; the journal's class/slot filters no longer hide
+  items; an item of a boss is no longer repeated under « Autres ».
+
 ## 2026.10.046 - 2026-10-12
 
 ### Changed
