@@ -2,7 +2,7 @@
 -- Collecte les événements de guilde (raids, invitations, réponses) et génère
 -- une chaîne à coller sur le site (page Calendrier  « Importer »).
 -- Commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors wishlist
---             · /cohors ici · /cohors loot · /cohors diag · /cohors reset
+--             · /cohors ici · /cohors loot · /cohors boss · /cohors diag · /cohors reset
 --
 -- Lecture du calendrier : même méthode que l'UI Blizzard — on affiche le mois
 -- (SetAbsMonth/SetMonth) puis on lit les jours (GetNumDayEvents/GetDayEvent),
@@ -10,7 +10,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.13.1"
+local ADDON_VER = "1.14.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -598,6 +598,8 @@ f:SetScript("OnEvent", function(_, event, arg1, ...)
         if Cohors_LCOnRoll then Cohors_LCOnRoll(arg1) end
     elseif event == "ENCOUNTER_LOOT_RECEIVED" then
         if Cohors_LCOnLoot then Cohors_LCOnLoot(arg1, ...) end
+    elseif event == "ENCOUNTER_START" then
+        if Cohors_LCOnEncounter then Cohors_LCOnEncounter(arg1, ...) end
     elseif event == "ADDON_LOADED" then
         if arg1 == (ADDON_NAME or "Cohors") then
             if Cohors_DB.file_ok ~= ADDON_VER then
@@ -656,6 +658,7 @@ regEvent("PLAYER_ENTERING_WORLD")
 regEvent("ZONE_CHANGED_NEW_AREA")
 regEvent("START_LOOT_ROLL")            -- loot council : objet mis en jet
 regEvent("ENCOUNTER_LOOT_RECEIVED")    -- loot council : qui a reçu quoi (soirée)
+regEvent("ENCOUNTER_START")            -- loot council : boss choisi au début du combat (v1.14.0)
 
 function Cohors_Collect()
     if recEngine then
@@ -1560,16 +1563,69 @@ local function wlRecipeKnown(iid)
     return okK and known == true
 end
 
+-- ------------------------------------------------------- journal d'aventure (v1.14.0)
+-- EJ_GetEncounterInfoByIndex renvoie name, description, journalEncounterID, rootSectionID, link,
+-- journalInstanceID, dungeonEncounterID… — jusqu'à la 1.13 l'addon le lisait à tort comme
+-- (id, nom) : le boss n'était pas sélectionné et la description s'affichait à la place du nom.
+local function ejEncounter(i, jid)
+    local r = { pcall(EJ_GetEncounterInfoByIndex, i, jid) }
+    if not r[1] or r[2] == nil then return nil end
+    if type(r[2]) == "number" then return r[2], tostring(r[3] or ""), nil end
+    return tonumber(r[4]), tostring(r[2]), tonumber(r[8])
+end
+
+local function ejNumLoot()
+    local n
+    if C_EncounterJournal and C_EncounterJournal.GetNumLoot then
+        local ok, v = pcall(C_EncounterJournal.GetNumLoot)
+        if ok then n = v end
+    end
+    if type(n) ~= "number" and EJ_GetNumLoot then
+        local ok, v = pcall(EJ_GetNumLoot)
+        if ok then n = v end
+    end
+    n = tonumber(n) or 0
+    if n > 500 then n = 500 end
+    return n
+end
+
+local function ejLootInfo(j)
+    if C_EncounterJournal and C_EncounterJournal.GetLootInfoByIndex then
+        local ok, info = pcall(C_EncounterJournal.GetLootInfoByIndex, j)
+        if ok and type(info) == "table" then return info end
+    end
+    if EJ_GetLootInfoByIndex then
+        local ok, info = pcall(EJ_GetLootInfoByIndex, j)
+        if ok and type(info) == "table" then return info end
+    end
+    return nil
+end
+
+-- Le journal filtre le butin (classe/spé du joueur, emplacement) : on lève les filtres le temps
+-- de la lecture, puis on remet ceux du joueur.
+local function ejAllLoot(fn)
+    local cls, spec, slot
+    local okF, c, s = pcall(EJ_GetLootFilter)
+    if okF then cls, spec = c, s end
+    local CEJ = C_EncounterJournal
+    if CEJ and CEJ.GetSlotFilter then
+        local okS, v = pcall(CEJ.GetSlotFilter)
+        if okS then slot = v end
+    end
+    pcall(EJ_ResetLootFilter)
+    if CEJ and CEJ.ResetSlotFilter then pcall(CEJ.ResetSlotFilter) end
+    local ok, res = pcall(fn)
+    if cls ~= nil then pcall(EJ_SetLootFilter, cls, spec or 0) end
+    if slot ~= nil and CEJ and CEJ.SetSlotFilter then pcall(CEJ.SetSlotFilter, slot) end
+    if not ok then error(res, 0) end
+    return res
+end
+
 local function wlScanLoot()
     local hits = {}
-    local n = 0
-    local okN, nv = pcall(EJ_GetNumLoot)
-    if okN and type(nv) == "number" then n = nv end
-    if n > 500 then n = 500 end
-    for j = 1, n do
-        local okL, info = pcall(EJ_GetLootInfoByIndex, j)
-        local iid = nil
-        if okL and type(info) == "table" then iid = tonumber(info.itemID) end
+    for j = 1, ejNumLoot() do
+        local info = ejLootInfo(j)
+        local iid = info and tonumber(info.itemID)
         if iid then
             if wlItems[iid] then
                 hits[#hits + 1] = { iid = iid, name = wlItems[iid], why = "item" }
@@ -1611,20 +1667,27 @@ local function wlScan(inst)
         if okH and h == false then return nil, "pas de butin au journal" end
     end
     local bosses, extra = {}, {}
-    local okS, errS = pcall(function()
-        local i = 0
-        while i < 50 do
-            i = i + 1
-            local eid, ename = EJ_GetEncounterInfoByIndex(i, jid)
+    local okS, errS = pcall(ejAllLoot, function()
+        pcall(EJ_SelectInstance, jid)
+        for i = 1, 50 do
+            local eid, ename = ejEncounter(i, jid)
             if not eid then break end
             pcall(EJ_SelectEncounter, eid)
             local hits = wlScanLoot()
             if #hits > 0 then
-                bosses[#bosses + 1] = { name = ename or ("Boss " .. tostring(i)), items = hits }
+                bosses[#bosses + 1] = { name = (ename ~= "" and ename) or ("Boss " .. tostring(i)), items = hits }
             end
         end
         pcall(EJ_SelectInstance, jid)
-        extra = wlScanLoot()
+        -- sans boss choisi, le journal liste le butin de TOUTE l'instance : on ne garde que ce qui
+        -- n'est rattaché à aucun boss (sinon chaque objet apparaissait deux fois)
+        local seen = {}
+        for _, b in ipairs(bosses) do
+            for _, it in ipairs(b.items) do seen[it.iid] = true end
+        end
+        for _, it in ipairs(wlScanLoot()) do
+            if not seen[it.iid] then extra[#extra + 1] = it end
+        end
     end)
     if not okS then return nil, "lecture du journal : " .. tostring(errS) end
     return { name = inst.name, diff = inst.diff, bosses = bosses, extra = extra }
@@ -1931,6 +1994,48 @@ local function lcItemFacts(iid, link)
     return equip, classID, subID, setID, ilvl
 end
 
+-- Piste visée d'un souhait d'après son iLvl minimal (H = seuil Héros ; Mythe = +13, Champion = -13)
+local function lcTrackLabel(d, m)
+    m = tonumber(m) or 0
+    local h = tonumber(d.track) or 0
+    if m <= 0 or h <= 0 then return "" end
+    if m >= h + 13 then return "Mythe" end
+    if m >= h then return "Héros" end
+    return "Champion"
+end
+
+-- Wishlist d'un objet : comptes qui le veulent, sous le nom de leur personnage présent (sinon du
+-- main), ⭐ prio puis gain BIS d'abord. Un objet tombé SOUS la piste visée (ex. Champion pour un
+-- souhait Mythe) ne compte pas. withTrack : ajoute la piste quand elle n'est pas Mythe.
+local function lcWantList(d, iid, ilvl, group, tonight, withTrack)
+    local present = function(k) return group == nil or group[k] ~= nil end
+    local wl = {}
+    for _, w in ipairs(d.wants[iid] or {}) do
+        local who
+        for k, p in pairs(d.players) do
+            if p.u == w.u and present(k) then who = k; break end
+        end
+        local below = ilvl and (w.m or 0) > 0 and ilvl < w.m
+        if (who or group == nil) and not below then
+            local nm = who and ((group and group[who]) or d.players[who].n) or d.users[w.u] or w.u
+            local s = nm .. (w.p and " ⭐" or "") .. ((w.b or 0) > 0 and (" (BIS +" .. w.b .. " %)") or "")
+            if withTrack then
+                local tl = lcTrackLabel(d, w.m)
+                if tl ~= "" and tl ~= "Mythe" then s = s .. " → " .. tl end
+            end
+            if who and tonight[who] and tonight[who] > 0 then
+                s = s .. " |cff999999[" .. tonight[who] .. " ce soir]|r"
+            end
+            wl[#wl + 1] = { s = s, p = w.p, b = w.b or 0 }
+        end
+    end
+    table.sort(wl, function(a, b)
+        if a.p ~= b.p then return a.p end
+        return a.b > b.b
+    end)
+    return wl
+end
+
 -- Lignes de résumé pour un objet : qui le veut, meilleurs gains, set de tier, déjà reçu ce soir.
 local function lcSummary(iid, link)
     local d = lcGet()
@@ -1943,25 +2048,8 @@ local function lcSummary(iid, link)
     local tag = function(k) return (tonight[k] and tonight[k] > 0) and (" |cff999999[" .. tonight[k] .. " ce soir]|r") or "" end
     local lines = {}
     local equip, classID, subID, setID, ilvl = lcItemFacts(iid, link)
-    -- 1. wishlist : comptes qui le veulent, sous le nom de leur personnage présent (sinon du main) ;
-    --    un objet tombé SOUS la piste visée (ex. Champion pour un souhait Mythe) ne compte pas
-    local wl = {}
-    for _, w in ipairs(d.wants[iid] or {}) do
-        local who
-        for k, p in pairs(d.players) do
-            if p.u == w.u and present(k) then who = k; break end
-        end
-        local below = ilvl and (w.m or 0) > 0 and ilvl < w.m
-        if (who or group == nil) and not below then
-            local nm = who and disp(who) or d.users[w.u] or w.u
-            local s = nm .. (w.p and " ⭐" or "") .. ((w.b or 0) > 0 and (" (BIS +" .. w.b .. " %)") or "")
-            wl[#wl + 1] = { s = s .. (who and tag(who) or ""), p = w.p, b = w.b or 0 }
-        end
-    end
-    table.sort(wl, function(a, b)
-        if a.p ~= b.p then return a.p end
-        return a.b > b.b
-    end)
+    -- 1. wishlist
+    local wl = lcWantList(d, iid, ilvl, group, tonight, false)
     if #wl > 0 then
         local t = {}
         for i = 1, math.min(#wl, 6) do t[#t + 1] = wl[i].s end
@@ -2111,12 +2199,141 @@ local function lcOnLoot(_encounterID, iid, link, _qty, player)
     while #log > 300 do table.remove(log, 1) end
 end
 
+-- ------------------------------------------------------------- loot par boss (v1.14.0)
+-- Pour le boss choisi (automatiquement au début du combat, ou « Boss ▶ »), chaque objet de son
+-- butin (journal d'aventure, toutes classes) avec les joueurs du groupe qui l'ont en wishlist.
+local lcBossIdx = 0
+
+-- Boss de l'instance : celle où l'on est, sinon la dernière visitée (préparer avant d'entrer).
+local function lcInstanceBosses()
+    local jid
+    local inst = wlInstance()
+    if inst then
+        local ok, j = pcall(EJ_GetInstanceForMap, inst.mapID)
+        if ok and j then jid = j end
+    end
+    jid = jid or Cohors_DB.lc_jid
+    if not jid then
+        return nil, "entre dans le raid (ou le donjon) : la liste des boss vient du journal d'aventure de l'instance."
+    end
+    if Cohors_DB.lc_jid ~= jid then lcBossIdx = 0 end
+    Cohors_DB.lc_jid = jid
+    local list = ejAllLoot(function()
+        local l = {}
+        pcall(EJ_SelectInstance, jid)
+        for i = 1, 50 do
+            local eid, name, deid = ejEncounter(i, jid)
+            if not eid then break end
+            pcall(EJ_SelectEncounter, eid)
+            local items = {}
+            for j = 1, ejNumLoot() do
+                local info = ejLootInfo(j)
+                local iid = info and tonumber(info.itemID)
+                if iid then items[#items + 1] = { id = iid, name = info.name } end
+            end
+            l[#l + 1] = { name = (name ~= "" and name) or ("Boss " .. i), deid = deid, items = items }
+        end
+        pcall(EJ_SelectInstance, jid)
+        return l
+    end)
+    if #list == 0 then return nil, "aucun boss trouvé dans le journal pour cette instance." end
+    return list
+end
+
+local function lcBossLines(d, list, idx)
+    local boss = list[idx]
+    local group, tonight = lcGroup(), lcTonight()
+    local lines = { ("%s — boss %d/%d"):format(boss.name, idx, #list) }
+    local n = 0
+    for _, it in ipairs(boss.items) do
+        local wl = lcWantList(d, it.id, nil, group, tonight, true)
+        if #wl > 0 then
+            n = n + 1
+            local t = {}
+            for i = 1, math.min(#wl, 8) do t[#t + 1] = wl[i].s end
+            if #wl > 8 then t[#t + 1] = "+" .. (#wl - 8) end
+            local nm = wlItemName(it.id)
+            if nm == "" then nm = it.name or ("objet " .. it.id) end
+            for _, l in ipairs(wrapTxt("• " .. nm .. " : " .. table.concat(t, ", "), 64)) do
+                lines[#lines + 1] = l
+            end
+        end
+    end
+    if n == 0 then
+        lines[#lines + 1] = (group and "Personne du groupe n'a" or "Personne n'a") .. " d'objet de ce boss en wishlist."
+    end
+    if #boss.items == 0 then
+        lines[#lines + 1] = "(butin pas encore chargé par le jeu — reclique dans un instant)"
+    end
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "« Boss ▶ » : boss suivant · choix automatique au début de chaque combat."
+    return lines, n
+end
+
+local function lcFieldShow(lines)
+    if not wlField then return false end
+    local txt = table.concat(lines, "\n")
+    wlField:SetText(txt)
+    if wlField.SetHeight then wlField:SetHeight(math.max(12, #lines * 13 + 8)) end
+    if scrollBar and scrollBar.ScrollBar and scrollBar.ScrollBar.SetValue then scrollBar.ScrollBar:SetValue(0) end
+    return true
+end
+
+-- step : 0 = boss courant (le 1er au départ), 1 = suivant (on reboucle)
+local function lcShowBoss(step)
+    local d = lcGet()
+    if not d then
+        msg("par boss : importe d'abord l'export loot du site (Calendrier → « Export loot »).")
+        return
+    end
+    local list, why = lcInstanceBosses()
+    if not list then
+        msg("par boss : " .. tostring(why))
+        return
+    end
+    local idx = lcBossIdx + (step or 0)
+    if idx < 1 or idx > #list then idx = 1 end
+    lcBossIdx = idx
+    local lines = lcBossLines(d, list, idx)
+    buildPanel()
+    if ui and not ui:IsShown() then ui:Show() end
+    if panelShow and panelTab ~= "loot" then pcall(panelShow, "loot") end
+    if not lcFieldShow(lines) then
+        for _, l in ipairs(lines) do msg(l) end
+    end
+end
+
+-- Début de combat : le boss est choisi tout seul ; un mot dans le chat s'il y a des souhaits.
+local function lcOnEncounter(deid, ename)
+    if not Cohors_DB.lc_txt then return end
+    local d = lcGet()
+    local list = d and lcInstanceBosses()
+    if not list then return end
+    local found
+    for i, b in ipairs(list) do
+        if (b.deid and b.deid == tonumber(deid)) or b.name == ename then found = i; break end
+    end
+    if not found then return end
+    lcBossIdx = found
+    local lines, n = lcBossLines(d, list, found)
+    if ui and ui:IsShown() and panelTab == "loot" then lcFieldShow(lines) end
+    if n > 0 then
+        msg(("%s : %d objet(s) en wishlist dans le groupe — détail : onglet Loot ou /cohors boss.")
+            :format(list[found].name, n))
+    end
+end
+
 Cohors_LCImport = function() pcall(lcImport) end
 Cohors_LCClear = function() pcall(lcClear) end
 Cohors_LCEvening = function() pcall(lcEvening) end
 Cohors_LCSummary = lcSummary
 Cohors_LCOnRoll = function(id) pcall(lcOnRoll, id) end
 Cohors_LCOnLoot = function(...) pcall(lcOnLoot, ...) end
+Cohors_LCBoss = function(step)
+    local ok, err = pcall(lcShowBoss, step)
+    if not ok then msg("par boss : erreur — " .. tostring(err)) end
+end
+Cohors_LCOnEncounter = function(...) pcall(lcOnEncounter, ...) end
 Cohors_LCStatus = lcStatusText
 Cohors_LCHook = function() pcall(lcHookTooltip) end
 
@@ -2170,7 +2387,7 @@ buildPanel = function()
         local introTxt = {
             collecter = "Collecte tes données puis copie le texte vers le site — il apparaît ici dès la fin.",
             wishlist = "Colle l'export du site ici puis clique « Importer » (page Ma wishlist → Export pour l'addon).",
-            loot = "Officiers : colle l'export loot du site (Calendrier → « Export loot ») puis « Importer ».",
+            loot = "Officiers : colle l'export loot du site (Calendrier → « Export loot ») puis « Importer ». « Boss ▶ » : qui veut quoi sur chaque boss.",
             outils = "Utilitaires : réinitialiser la collecte, écrire un rapport de diagnostic.",
         }
         local statusDefault = function()
@@ -2368,6 +2585,8 @@ buildPanel = function()
             "Affiche dans le chat qui a reçu quoi ce soir (6 dernières heures).", "loot")
         mkButton("Vider", 258, 54, 108, function() Cohors_LCClear() end,
             "Efface l'export loot de l'addon.", "loot")
+        mkButton("Boss ▶", 376, 54, 108, function() Cohors_LCBoss(1) end,
+            "Butin du boss suivant de l'instance et qui l'a en wishlist (choisi tout seul au début de chaque combat).", "loot")
         -- Onglet Outils
         mkButton("Réinitialiser", 22, 54, 108, function() Cohors_Reset() end,
             "Efface la collecte en cours et sa dernière sauvegarde.", "outils")
@@ -2511,10 +2730,12 @@ SlashCmdList["Cohors"] = function(arg)
             if ui then ui:Show() end
             if panelShow then pcall(panelShow, "loot") end
             Cohors_LCEvening()
+        elseif arg == "boss" then
+            Cohors_LCBoss(0)
         elseif arg == "reset" then
             Cohors_Reset()
         else
-            msg("commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors wishlist · /cohors ici · /cohors loot · /cohors diag · /cohors reset")
+            msg("commandes : /cohors · /cohors collect · /cohors export · /cohors recettes · /cohors wishlist · /cohors ici · /cohors loot · /cohors boss · /cohors diag · /cohors reset")
         end
     end)
     if not okAll then
