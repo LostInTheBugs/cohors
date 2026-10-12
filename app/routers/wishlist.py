@@ -13,6 +13,7 @@ from app.core.auth import _require_user, _user_locale
 from app.core.db import _db, _db_lock
 from app.core.util import ITEM_REF_RE
 from app.services.loot import _loot_sync, _loot_sync_state
+from app.services.readiness import TRACKS, track_mins
 from app.services.wishlist import _bis_by_user, _recipe_wish_key
 
 router = APIRouter()
@@ -25,6 +26,10 @@ class WishlistAdd(BaseModel):
 
 class PrioSet(BaseModel):
     on: bool = False
+
+
+class TrackSet(BaseModel):
+    track: str = "myth"
 
 
 class RecipeWish(BaseModel):
@@ -96,7 +101,7 @@ def api_wishlist(request: Request):
             threading.Thread(target=_loot_sync, daemon=True).start()
     with _db_lock, _db() as conn:
         rows = conn.execute(
-            "SELECT item_id, name, slot, quality, icon, added, prio, kind FROM wishlist "
+            "SELECT item_id, name, slot, quality, icon, added, prio, kind, track FROM wishlist "
             "WHERE user_email=? ORDER BY added DESC",
             (user["email"],),
         ).fetchall()
@@ -234,18 +239,27 @@ def api_wishlist(request: Request):
                 "source": src, "craft": None if is_recipe else craft,
                 "me": None if is_recipe else me,
                 "prio": bool(r["prio"]), "bis": bis, "kind": r["kind"] or "item",
+                "track": r["track"] if r["track"] in TRACKS else "myth",
             })
         items.sort(key=lambda it: 0 if it["prio"] else (1 if it["bis"] else 2))
         chars_out = [dict(c) for c in chars]
+        tmins = track_mins(conn)
     for ch in chars_out:
         try:
             eq, _t = bnet.equipment(ch["realm"], ch["name"])
         except bnet.BnetError:
             ch["_ids"] = set()
             continue
-        ch["_ids"] = {it.get("item_id") for it in (eq.get("items") or []) if it.get("item_id")}
+        ch["_ids"] = {}
+        for e in eq.get("items") or []:          # objet porté → meilleur iLvl porté (deux anneaux identiques…)
+            if e.get("item_id"):
+                ch["_ids"][e["item_id"]] = max(ch["_ids"].get(e["item_id"]) or 0, e.get("ilvl") or 0)
     for it in items:
-        it["owned"] = {ch["name"]: (it["item_id"] in ch["_ids"]) for ch in chars_out}
+        it["track_min"] = tmins.get(it["track"], tmins["myth"])
+        # possédé = porté au niveau de la piste visée ; porté plus bas = encore à obtenir (iLvl indiqué)
+        it["owned"] = {ch["name"]: (it["item_id"] in ch["_ids"]
+                                    and (ch["_ids"][it["item_id"]] or 0) >= it["track_min"]) for ch in chars_out}
+        it["worn"] = {ch["name"]: ch["_ids"][it["item_id"]] for ch in chars_out if it["item_id"] in ch["_ids"]}
     for ch in chars_out:
         ch.pop("_ids", None)
     return {"items": items, "chars": chars_out}
@@ -292,6 +306,18 @@ def api_wishlist_del(item_id: int, request: Request):
     with _db_lock, _db() as conn:
         conn.execute("DELETE FROM wishlist WHERE user_email=? AND item_id=?", (user["email"], item_id))
     return {"ok": True}
+
+
+@router.post("/api/wishlist/{item_id}/track")
+def api_wishlist_track(item_id: int, payload: TrackSet, request: Request):
+    """Piste visée pour une pièce : myth (par défaut), hero ou champion."""
+    user = _require_user(request)
+    if payload.track not in TRACKS:
+        raise HTTPException(400, "Piste inconnue (myth, hero ou champion).")
+    with _db_lock, _db() as conn:
+        conn.execute("UPDATE wishlist SET track=? WHERE user_email=? AND item_id=?",
+                     (payload.track, user["email"], item_id))
+    return {"ok": True, "track": payload.track}
 
 
 @router.post("/api/wishlist/{item_id}/prio")

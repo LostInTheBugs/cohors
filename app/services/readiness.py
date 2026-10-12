@@ -19,7 +19,11 @@ ENCHANT_SLOTS = ("HEAD", "SHOULDER", "CHEST", "LEGS", "FEET", "FINGER_1", "FINGE
 # Par défaut Héros 1/6 de Midnight saison 2 (305) ; les officiers l'ajustent à chaque saison.
 READY_TRACK_ILVL_DEFAULT = 305
 READY_TRACK_KEY = "readiness_min_ilvl"
-READY_PROGRESS_DAYS = 7       # progression : comparaison avec le relevé d'il y a 7 jours (ou le plus ancien connu)
+READY_PROGRESS_DAYS = 7
+# Pistes d'amélioration : chaque piste démarre 13 iLvl au-dessus de la précédente (Midnight S1 et S2 :
+# Champion 246/292, Héros 259/305, Mythe 272/318). Le seuil Héros est celui que règlent les officiers.
+TRACKS = ("champion", "hero", "myth")
+TRACK_STEP = 13       # progression : comparaison avec le relevé d'il y a 7 jours (ou le plus ancien connu)
 
 
 def _track_ilvl(conn) -> int:
@@ -259,3 +263,9 @@ def char_readiness(realm: str, name: str, want_en: bool) -> dict | None:
             "max_level": READY_MIN_LEVEL, "tier": _tier(d, want_en), **r,
             "before": ({"day": base[0], "ench_items": base[1]["ench_items"], "sock_items": base[1]["sock_items"]}
                        if base and r["known"] else None)}
+
+
+def track_mins(conn) -> dict:
+    """iLvl minimal de chaque piste, déduit du seuil Héros réglé par les officiers."""
+    hero = _track_ilvl(conn)
+    return {"champion": hero - TRACK_STEP, "hero": hero, "myth": hero + TRACK_STEP}

@@ -1619,12 +1619,36 @@ def test_loot_council_export(monkeypatch):
         u = next(l for l in lines if l.startswith("U|") and l.endswith("|LcPrêtre")).split("|")[1]
         assert f"P|lcprêtre|Priest|{u}|3|5|HEAD=300;FINGER_1=310" in lines
         assert not any(l.startswith("P|lcreroll|") for l in lines)          # niveau 80 : ignoré
-        assert f"W|4242|{u}|1|0" in lines and not any(l.startswith("W|77|") for l in lines)   # pas les recettes
+        assert f"W|4242|{u}|1|0|318" in lines and not any(l.startswith("W|77|") for l in lines)   # pas les recettes ; Mythe = 305 + 13
     finally:
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM char_snapshots WHERE name IN ('lcprêtre', 'lcreroll')")
             conn.execute("DELETE FROM char_links WHERE user_email='lc@test.local'")
             conn.execute("DELETE FROM wishlist WHERE user_email='lc@test.local'")
+
+
+def test_wishlist_owned_depends_on_target_track(monkeypatch):
+    from app import bnet as B
+    _make_user("wtrack@test.local", is_admin=0, role="member")
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('wtrack@test.local', 'hyjal', 'wtrackchar', 'Wtrackchar', 1, 0)")
+        conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, prio, added) VALUES ('wtrack@test.local', 5150, 'Casque', 'item', 0, 0)")
+    monkeypatch.setattr(B, "equipment", lambda realm, name, force=False, locale=None: (
+        {"items": [{"item_id": 5150, "ilvl": 298}]}, 0.0))
+    try:
+        c = _plain_client("wtrack@test.local", "10.99.60.18")
+        it = next(i for i in c.get("/api/wishlist").json()["items"] if i["item_id"] == 5150)
+        assert it["track"] == "myth" and it["track_min"] == 318                 # Mythe par défaut
+        assert it["owned"]["wtrackchar"] is False and it["worn"]["wtrackchar"] == 298   # porté en Champion
+        assert c.post("/api/wishlist/5150/track", json={"track": "legendaire"}).status_code == 400
+        assert c.post("/api/wishlist/5150/track", json={"track": "champion"}).json()["track"] == "champion"
+        it = next(i for i in c.get("/api/wishlist").json()["items"] if i["item_id"] == 5150)
+        assert it["track_min"] == 292 and it["owned"]["wtrackchar"] is True    # Champion visé : possédé
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_links WHERE user_email='wtrack@test.local'")
+            conn.execute("DELETE FROM wishlist WHERE user_email='wtrack@test.local'")
 
 
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
