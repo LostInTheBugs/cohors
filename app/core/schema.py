@@ -315,6 +315,10 @@ def _init_db() -> None:
         # v2026.09.150 — wishlist : recettes de métier (kind='recipe') en plus des pièces d'équipement.
         if "kind" not in wcols:
             conn.execute("ALTER TABLE wishlist ADD COLUMN kind TEXT NOT NULL DEFAULT 'item'")
+        # v2026.10.046 — wishlist : piste visée (myth par défaut, hero ou champion) — « possédé » tient
+        # compte de l'iLvl porté, pas seulement de l'objet.
+        if "track" not in wcols:
+            conn.execute("ALTER TABLE wishlist ADD COLUMN track TEXT NOT NULL DEFAULT 'myth'")
         # v2026.09.151 — mises à jour de l'application : réglages + état de la dernière vérification.
         conn.execute("CREATE TABLE IF NOT EXISTS update_config (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '', updated REAL NOT NULL DEFAULT 0)")
         # v2026.09.111 — identité de la guilde (logo, nom, fond) pour réutiliser le site avec une autre guilde.

@@ -581,14 +581,15 @@ elseif scenario == "loot" then
         "P|hÿpérion|Warrior|u2|1|5|HEAD=280;CHEST=320",
         "P|hypérïon|Mage||5|5|HEAD=250;CHEST=250",
         "P|absent|Mage||1|5|HEAD=200",
-        "W|5001|u1|1|2.5",
+        "W|5001|u1|1|2.5|310",
         "W|5001|u2|0|0",
         "W|5002|u2|0|0",
+        "W|5004|u1|0|0|320",
         "ligne bidon",
     }, "\n"))
     Cohors_LCImport()
-    check(chat_has("export loot importé : 4 joueur(s), 2 objet(s) en wishlist, 1 ligne(s) ignorée(s)"),
-        "import : 4 joueurs, 2 objets, 1 ligne ignorée")
+    check(chat_has("export loot importé : 4 joueur(s), 3 objet(s) en wishlist, 1 ligne(s) ignorée(s)"),
+        "import : 4 joueurs, 3 objets, 1 ligne ignorée")
     check(#TT_HOOKS == 1, "info-bulle accrochée une seule fois (%d)", #TT_HOOKS)
     -- groupe : Élanisse, Hÿpérion, Hypérïon (le 4e joueur est absent) — noms du jeu (majuscules, royaume)
     GROUP = { "Élanisse", "Hÿpérion-Hyjal", "Hypérïon", "Quidam", "Autre", "Sixieme" }
@@ -613,6 +614,7 @@ elseif scenario == "loot" then
         and L3:find("Hypérïon", 1, true) == nil, "jeton : joueurs à une pièce d'un bonus (%s)", L3)
     local L4 = table.concat(Cohors_LCSummary(5004, "|Hitem:5004|h[Anneau]|h") or {}, "\n")
     check(L4:find("Élanisse +10", 1, true) ~= nil, "anneau : comparé au plus faible des deux (+10) (%s)", L4)
+    check(L4:find("Wishlist", 1, true) == nil, "souhait visé à 320 ignoré pour un anneau tombé en 300 (%s)", L4)
     -- butin reçu → noté ; apparaît ensuite dans les résumés et dans « Soirée »
     pcall(driver._scripts["OnEvent"], driver, "ENCOUNTER_LOOT_RECEIVED", 3001, 5001, "|Hitem:5001|h[Casque]|h", 1, "Élanisse", "PRIEST")
     check(#(Cohors_DB.lc_log or {}) == 1, "butin noté pour la soirée")

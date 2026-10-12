@@ -10,7 +10,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.13.0"
+local ADDON_VER = "1.13.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -1853,11 +1853,12 @@ local function lcParse(txt)
                     bad = bad + 1
                 end
             elseif kind == "W|" then
-                local iid, u, prio, bis = t:match("^W|(%d+)|(u%d+)|(%d)|([%d%.]+)$")
+                -- 6e champ (v1.13.1) : iLvl minimal visé (piste Mythe/Héros/Champion de la wishlist)
+                local iid, u, prio, bis, mn = t:match("^W|(%d+)|(u%d+)|(%d)|([%d%.]+)|?(%d*)$")
                 if iid then
                     iid = tonumber(iid)
                     d.wants[iid] = d.wants[iid] or {}
-                    table.insert(d.wants[iid], { u = u, p = prio == "1", b = tonumber(bis) or 0 })
+                    table.insert(d.wants[iid], { u = u, p = prio == "1", b = tonumber(bis) or 0, m = tonumber(mn) or 0 })
                 else
                     bad = bad + 1
                 end
@@ -1941,14 +1942,17 @@ local function lcSummary(iid, link)
     local disp = function(k) return (group and group[k]) or d.players[k].n end
     local tag = function(k) return (tonight[k] and tonight[k] > 0) and (" |cff999999[" .. tonight[k] .. " ce soir]|r") or "" end
     local lines = {}
-    -- 1. wishlist : comptes qui le veulent, sous le nom de leur personnage présent (sinon du main)
+    local equip, classID, subID, setID, ilvl = lcItemFacts(iid, link)
+    -- 1. wishlist : comptes qui le veulent, sous le nom de leur personnage présent (sinon du main) ;
+    --    un objet tombé SOUS la piste visée (ex. Champion pour un souhait Mythe) ne compte pas
     local wl = {}
     for _, w in ipairs(d.wants[iid] or {}) do
         local who
         for k, p in pairs(d.players) do
             if p.u == w.u and present(k) then who = k; break end
         end
-        if who or group == nil then
+        local below = ilvl and (w.m or 0) > 0 and ilvl < w.m
+        if (who or group == nil) and not below then
             local nm = who and disp(who) or d.users[w.u] or w.u
             local s = nm .. (w.p and " ⭐" or "") .. ((w.b or 0) > 0 and (" (BIS +" .. w.b .. " %)") or "")
             wl[#wl + 1] = { s = s .. (who and tag(who) or ""), p = w.p, b = w.b or 0 }
@@ -1964,7 +1968,6 @@ local function lcSummary(iid, link)
         lines[#lines + 1] = "|cffdfa55aWishlist :|r " .. table.concat(t, ", ")
     end
     -- 2. gain d'iLvl (pièces d'équipement), en respectant le type d'armure de la classe
-    local equip, classID, subID, setID, ilvl = lcItemFacts(iid, link)
     local slots = LC_SLOTS[equip]
     if slots and ilvl then
         local gains = {}
