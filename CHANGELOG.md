@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.044 - 2026-10-12
+
+### Fixed
+
+- Tier set: only 5-piece sets count — other item sets reported by the API (legacy or crafted
+  sets of 2 or 8 pieces) no longer show in the Set column or the « one piece away » lists.
+
 ## 2026.10.043 - 2026-10-11
 
 ### Added
