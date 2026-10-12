@@ -1332,11 +1332,22 @@
  "Aucune recette d'équipement connue pour l'instant — la liste se remplit à la prochaine synchronisation des recettes du jeu.": "No gear recipe known yet — the list fills in at the next game-recipe sync.",
  "recette connue de personne — ont le métier :": "recipe known by nobody — have the profession:",
  "Valeur illisible avec la clé de cette instance — ressaisis-la.": "Unreadable value with this instance's key — re-enter it.",
+  "Après le raid : colle ici le butin noté par l'addon (onglet Loot → « Soirée »)": "After the raid: paste the loot noted by the add-on here (Loot tab → « Evening »)",
+  "Historique du butin : « a eu N objets ces 30 jours » dans l'export loot, sur la fiche personnage et dans les wishlists": "Loot history: « got N items in the last 30 days » in the loot export, on the character sheet and in wishlists",
+  "🎁 Importer le butin": "🎁 Import loot",
+  "Colle le texte de l'addon (onglet Loot → « Soirée »)": "Paste the add-on's text (Loot tab → « Evening »)",
+  "🎁 Butin de raid": "🎁 Raid loot",
+  "🎁 Historique du butin (officiers) : après le raid, onglet Loot de l'addon → « Soirée » met dans le champ tout le butin noté (qui a reçu quoi) ; colle-le sur la page Calendrier → « 🎁 Importer le butin ». Le site garde l'historique : « N en 30 j » à côté des noms dans l'addon (export loot suivant, par compte), carte 🎁 Butin de raid sur la fiche personnage, et « 🎁 Reçu en raid » dans ta wishlist. Recoller le même texte ne crée pas de doublon.": "🎁 Loot history (officers): after the raid, the add-on's Loot tab → « Evening » puts all the noted loot (who got what) in the field; paste it on the Calendar page → « 🎁 Import loot ». The site keeps the history: « N in 30 d » next to names in the add-on (next loot export, per account), a 🎁 Raid loot card on the character sheet, and « 🎁 Received in raid » in your wishlist. Pasting the same text again creates no duplicate.",
   "⚠️ Les clés API, le token Discord et le mot de passe SMTP sont chiffrés avec la clé de cette instance (secret.key ou COHORS_SECRET_KEY). Pour restaurer sur une autre instance, recopie cette clé ou ressaisis-les.": "⚠️ API keys, Discord token and SMTP password are encrypted with this instance's key (secret.key or COHORS_SECRET_KEY). To restore on another instance, copy this key or re-enter them."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
   const RULES = [
+    // Historique du butin (v2026.10.048)
+    [/^(\d+) objet\(s\) ajouté\(s\) à l'historique · (\d+) déjà connu\(s\)( · (\d+) ligne\(s\) illisible\(s\))?$/,
+      (m, a, b, c, d) => `${a} item(s) added to the history · ${b} already known` + (d ? ` · ${d} unreadable line(s)` : "")],
+    [/^· (\d+) ces (\d+) derniers jours$/, "· $1 in the last $2 days"],
+    [/^🎁 Reçu en raid : (.+) — retire-la \(🗑\) si c'est la bonne pièce\.$/, "🎁 Received in raid: $1 — remove it (🗑) if it's the right piece."],
     [/^Relevé Blizzard : /g, "Blizzard data: "],
     // Fiche perso — progression (v2026.09.153)
     [/^Aucun boss tué dans (.+)$/g, "No boss killed in $1"],

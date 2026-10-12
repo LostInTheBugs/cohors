@@ -1617,7 +1617,7 @@ def test_loot_council_export(monkeypatch):
         lines = r.text.splitlines()
         assert lines[0] == "CohorsLC1" and lines[1].startswith("H|") and lines[1].split("|")[2] == "305"
         u = next(l for l in lines if l.startswith("U|") and l.endswith("|LcPrêtre")).split("|")[1]
-        assert f"P|lcprêtre|Priest|{u}|3|5|HEAD=300;FINGER_1=310" in lines
+        assert f"P|lcprêtre|Priest|{u}|3|5|HEAD=300;FINGER_1=310|0" in lines     # 7e champ : butin en 30 j
         assert not any(l.startswith("P|lcreroll|") for l in lines)          # niveau 80 : ignoré
         assert f"W|4242|{u}|1|0|318" in lines and not any(l.startswith("W|77|") for l in lines)   # pas les recettes ; Mythe = 305 + 13
     finally:
@@ -1625,6 +1625,49 @@ def test_loot_council_export(monkeypatch):
             conn.execute("DELETE FROM char_snapshots WHERE name IN ('lcprêtre', 'lcreroll')")
             conn.execute("DELETE FROM char_links WHERE user_email='lc@test.local'")
             conn.execute("DELETE FROM wishlist WHERE user_email='lc@test.local'")
+
+
+def test_loot_history_import_counts_and_views(monkeypatch):
+    from app import bnet as B
+    now = int(time.time())
+    _make_user("lh@test.local", is_admin=0, role="member")
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'lhélan', '2026-10-12', ?, ?)",
+                     (now, json.dumps({"class": "Prêtre", "level": 90, "ilvl": 300, "items": []})))
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('lh@test.local', 'hyjal', 'lhélan', 'LhÉlan', 1, 0)")
+        conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, prio, added) VALUES ('lh@test.local', 6101, 'Casque', 'item', 0, 0)")
+    monkeypatch.setattr(B, "equipment", lambda realm, name, force=False, locale=None: ({"items": []}, 0.0))
+    text = "\n".join([
+        "CohorsLOOT1",
+        f"L|{now - 3600}|6101|LhÉlan-Hyjal|3001|Casque du test",
+        f"L|{now - 1800}|6102|LhÉlan|3002|Anneau|bizarre",
+        f"L|{now - 1800}|6102|LhÉlan|3002|Anneau",                  # doublon : même instant, objet, perso
+        f"L|{now - 400 * 86400}|6103|LhÉlan|0|Trop vieux",          # plus d'un an : refusé
+        "pas une ligne",
+    ])
+    try:
+        assert _plain_client("lh@test.local", "10.99.60.21").post("/api/loot/history", json={"text": text}).status_code == 403
+        c = _admin_client("lh-admin@test.local", "10.99.60.22")
+        assert c.post("/api/loot/history", json={"text": "bonjour"}).status_code == 400
+        r = c.post("/api/loot/history", json={"text": text}).json()
+        assert (r["added"], r["known"], r["bad"]) == (2, 1, 2)
+        r = c.post("/api/loot/history", json={"text": text}).json()          # recoller : rien de neuf
+        assert (r["added"], r["known"]) == (0, 3)
+        lines = c.get("/api/loot/export").text.splitlines()
+        assert any(l.startswith("P|lhélan|") and l.endswith("|2") for l in lines)
+        h = _plain_client("lh@test.local", "10.99.60.21").get("/api/loot/history/char/LhÉlan").json()
+        assert h["n30"] == 2 and [i["item_id"] for i in h["items"]] == [6102, 6101]
+        assert h["items"][1]["item_name"] == "Casque du test"
+        it = next(i for i in _plain_client("lh@test.local", "10.99.60.21").get("/api/wishlist").json()["items"]
+                  if i["item_id"] == 6101)
+        assert [g["name"] for g in it["received"]] == ["LhÉlan"]
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM loot_history WHERE char='lhélan'")
+            conn.execute("DELETE FROM char_snapshots WHERE name='lhélan'")
+            conn.execute("DELETE FROM char_links WHERE user_email='lh@test.local'")
+            conn.execute("DELETE FROM wishlist WHERE user_email='lh@test.local'")
 
 
 def test_wishlist_owned_depends_on_target_track(monkeypatch):
