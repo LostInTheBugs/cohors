@@ -45,6 +45,7 @@ local VALID_EVENTS = {
     TRADE_SKILL_SHOW = true, TRADE_SKILL_CLOSE = true,
     PLAYER_ENTERING_WORLD = true, ZONE_CHANGED_NEW_AREA = true, PLAYER_LOGOUT = true,
     START_LOOT_ROLL = true, ENCOUNTER_LOOT_RECEIVED = true,      -- loot council (v1.13.0)
+    ENCOUNTER_START = true,                                      -- loot par boss (v1.14.0)
 }
 local function newRegion(kind)
     local r = { _kind = kind, _scripts = {}, _shown = true, _value = 0, _enabled = true }
@@ -168,31 +169,52 @@ GetInstanceInfo = function()
 end
 EJ_GetInstanceForMap = function(_mapID) return WL.jid end
 EJ_SelectInstance = function(_jid) WL.cur = "inst" end
-EJ_SelectEncounter = function(eid) WL.cur = eid end
-EJ_GetEncounterInfoByIndex = function(i, _jid)
+-- Ordre RÉEL du client : name, description, journalEncounterID, rootSectionID, link,
+-- journalInstanceID, dungeonEncounterID, instanceID (EJ_SelectEncounter attend le 3e)
+EJ_GetEncounterInfoByIndex = function(i, jid)
     local b = WL.loot[i]
     if not b then return nil end
-    return 1000 + i, b.name
+    return b.name, "Description de " .. b.name, 1000 + i, 0, "", jid, 2000 + i, 0
 end
-EJ_GetNumLoot = function()
-    if WL.cur == "inst" then return #(WL.extra or {}) end
-    local i = (type(WL.cur) == "number") and (WL.cur - 1000) or 0
-    local b = WL.loot[i]
-    return (b and #(b.items or {})) or 0
+EJ_SelectEncounter = function(eid)
+    if type(eid) ~= "number" then error("EJ_SelectEncounter : identifiant attendu") end
+    WL.cur = eid
 end
-EJ_GetLootInfoByIndex = function(j)
-    local list
+-- butin de l'instance (aucun boss choisi) = objets de TOUS les boss + objets hors boss
+local function ejList()
     if WL.cur == "inst" then
-        list = WL.extra or {}
-    else
-        local i = (type(WL.cur) == "number") and (WL.cur - 1000) or 0
-        list = (WL.loot[i] and WL.loot[i].items) or {}
+        local all = {}
+        for _, b in ipairs(WL.loot) do
+            for _, id in ipairs(b.items or {}) do all[#all + 1] = id end
+        end
+        for _, id in ipairs(WL.extra or {}) do all[#all + 1] = id end
+        return all
     end
-    local id = list[j]
-    if id then return { itemID = id } end
-    return nil
+    local i = (type(WL.cur) == "number") and (WL.cur - 1000) or 0
+    return (WL.loot[i] and WL.loot[i].items) or {}
 end
-C_EncounterJournal = { InstanceHasLoot = function(_jid) return WL.hasLoot ~= false end }
+-- filtres du journal : le butin d'une autre classe est masqué tant qu'un filtre est posé
+WL.filter = { 5, 258 }
+local function ejVisible(list)
+    if WL.filter[1] == 0 then return list end
+    local out = {}
+    for _, id in ipairs(list) do
+        if not (WL.otherClass or {})[id] then out[#out + 1] = id end
+    end
+    return out
+end
+EJ_GetLootFilter = function() return WL.filter[1], WL.filter[2] end
+EJ_SetLootFilter = function(c, sp) WL.filter = { c, sp } end
+EJ_ResetLootFilter = function() WL.filter = { 0, 0 } end
+EJ_GetNumLoot = function() return #ejVisible(ejList()) end
+C_EncounterJournal = {
+    InstanceHasLoot = function(_jid) return WL.hasLoot ~= false end,
+    GetLootInfoByIndex = function(j)
+        local id = ejVisible(ejList())[j]
+        if id then return { itemID = id } end
+        return nil
+    end,
+}
 IsSpellKnown = function(sp) return WL.known[sp] == true end
 SlashCmdList = {}
 ToggleCalendar = function() end
@@ -636,6 +658,47 @@ elseif scenario == "loot" then
     check(#tt2.lines == 0, "info-bulle : rien pour un objet sans intérêt")
     Cohors_LCEvening()
     check(chat_has("butin de la soirée : 1 objet(s)"), "« Soirée » liste le butin de la soirée")
+    -- v1.14.0 : butin par boss — hors instance et sans instance mémorisée : message clair
+    Cohors_LCBoss(0)
+    check(chat_has("par boss : entre dans le raid"), "par boss hors instance : explication")
+    WL.instance = { name = "Raid de test", itype = "raid", mapID = 900, diff = "Mythique", max = 20 }
+    WL.jid = 60
+    WL.otherClass = { [5002] = true }      -- masqué par le filtre de classe du joueur
+    WL.loot = { { name = "Boss Alpha", items = { 5001, 5003, 5004 } }, { name = "Boss Beta", items = { 5002 } },
+        { name = "Boss Gamma", items = { 9999 } } }
+    WL.filter = { 5, 258 }
+    C_ITEM_NAMES[5001] = "Casque"
+    C_ITEM_NAMES[5002] = "Heaume"
+    SlashCmdList["Cohors"]("boss")
+    local bt = ebL._text or ""
+    check(bt:find("Boss Alpha — boss 1/3", 1, true) ~= nil, "par boss : 1er boss, son vrai nom (%s)", bt)
+    check(bt:find("Description de", 1, true) == nil, "la description du boss n'est plus prise pour son nom")
+    check(bt:find("Casque : Élanisse ⭐ (BIS +2.5 %) → Héros", 1, true) ~= nil,
+        "par boss : prio, BIS et piste visée Héros (%s)", bt)
+    check(bt:find("[1 ce soir]", 1, true) ~= nil, "par boss : « déjà reçu ce soir »")
+    check(bt:find("Hÿpérion", 1, true) ~= nil, "par boss : 2e joueur qui veut le casque")
+    check(bt:find("Composant 5004", 1, true) ~= nil and bt:find("Élanisse ⭐", 1, true) ~= nil,
+        "par boss : anneau visé Mythe listé sans étiquette de piste")
+    check(bt:find("→ Mythe", 1, true) == nil, "piste Mythe (défaut) non répétée")
+    check(WL.filter[1] == 5 and WL.filter[2] == 258, "filtre du journal du joueur remis en place")
+    Cohors_LCBoss(1)
+    bt = ebL._text or ""
+    check(bt:find("Boss Beta — boss 2/3", 1, true) ~= nil and bt:find("Heaume : Hÿpérion", 1, true) ~= nil,
+        "« Boss ▶ » : boss suivant, butin d'une autre classe compris (%s)", bt)
+    Cohors_LCBoss(1)
+    bt = ebL._text or ""
+    check(bt:find("Boss Gamma — boss 3/3", 1, true) ~= nil and bt:find("Personne du groupe n'a", 1, true) ~= nil,
+        "boss sans souhait : dit clairement (%s)", bt)
+    Cohors_LCBoss(1)
+    check((ebL._text or ""):find("Boss Alpha — boss 1/3", 1, true) ~= nil, "« Boss ▶ » reboucle au 1er boss")
+    -- début de combat : boss choisi automatiquement (identifiant de rencontre du combat)
+    pcall(driver._scripts["OnEvent"], driver, "ENCOUNTER_START", 2002, "Boss Beta", 16, 20)
+    check((ebL._text or ""):find("Boss Beta — boss 2/3", 1, true) ~= nil, "ENCOUNTER_START : boss choisi tout seul")
+    check(chat_has("Boss Beta : 1 objet(s) en wishlist dans le groupe"), "ENCOUNTER_START : mot dans le chat")
+    -- sorti de l'instance : la dernière instance sert encore (préparer le prochain boss)
+    WL.instance = nil
+    Cohors_LCBoss(1)
+    check((ebL._text or ""):find("Boss Gamma — boss 3/3", 1, true) ~= nil, "hors instance : dernière instance mémorisée")
     Cohors_LCClear()
     check(Cohors_DB.lc_txt == nil and Cohors_LCSummary(5001) == nil, "« Vider » efface l'export")
     check(not chat_has("chargement INCOMPLET"), "aucune alerte de chargement partiel")
@@ -690,6 +753,8 @@ elseif scenario == "wishlist" then
         check(alertTxt:find("Lame de test", 1, true) ~= nil, "recette reconnue au nom (« Plans : … »)")
         check(alertTxt:find("(recette)", 1, true) ~= nil, "la recette est signalée comme telle")
         check(alertTxt:find("Boss Beta", 1, true) == nil, "boss sans objet souhaité absent de la liste")
+        check(alertTxt:find("Autres", 1, true) == nil, "objet d'un boss pas répété dans « Autres » (%s)", alertTxt)
+        check(alertTxt:find("Description de", 1, true) == nil, "nom du boss, pas sa description")
     end
 
     -- alerte coupée : aucun scan ; réactivée : le scan reprend
