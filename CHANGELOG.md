@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.046 - 2026-10-12
+
+### Changed
+
+- Wishlist: target track per piece — Mythe (default), Héros or Champion. A piece counts as owned
+  only when worn at that level; worn lower it shows « 298 → Mythe ». The loot council export
+  carries the target level and add-on **1.13.1** ignores a wish when the dropped item is below it.
+
 ## 2026.10.045 - 2026-10-12
 
 ### Added
