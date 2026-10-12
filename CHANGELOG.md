@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.048 - 2026-10-12
+
+### Added
+
+- Loot history: after the raid, the add-on's Loot tab → « Soirée » gives a text to paste on the
+  Calendar page (« 🎁 Importer le butin »). The site keeps who got what: « N en 30 j » next to names
+  in the add-on (add-on **1.15.0**, per account), a « 🎁 Butin de raid » card on the character sheet,
+  and « 🎁 Reçu en raid » in wishlists. Pasting the same text twice adds nothing.
+
 ## 2026.10.047 - 2026-10-12
 
 ### Added
