@@ -1596,6 +1596,37 @@ def test_readiness_for_one_character(monkeypatch):
             conn.execute("DELETE FROM char_snapshots WHERE name='fichready'")
 
 
+def test_loot_council_export(monkeypatch):
+    now = time.time()
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'lcprêtre', '2026-10-12', ?, ?)",
+                     (now, json.dumps({"class": "Prêtre", "level": 90, "ilvl": 300, "items": [
+                         {"slot": "Tête", "st": "HEAD", "ilvl": 300}, {"slot": "Doigt", "st": "FINGER_1", "ilvl": 310}],
+                         "sets": [{"id": 1, "name": "Tier", "n": 3, "of": 5, "bonus": 1}]})))
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'lcreroll', '2026-10-12', ?, ?)",
+                     (now, json.dumps({"class": "Mage", "level": 80, "ilvl": 200, "items": []})))
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('lc@test.local', 'hyjal', 'lcprêtre', 'LcPrêtre', 1, 0)")
+        conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, prio, added) VALUES ('lc@test.local', 4242, 'Casque|bizarre', 'item', 1, 0)")
+        conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, prio, added) VALUES ('lc@test.local', 77, 'Recette', 'recipe', 0, 0)")
+    try:
+        assert _plain_client("lc-member@test.local", "10.99.60.16").get("/api/loot/export").status_code == 403
+        c = _admin_client("lc-admin@test.local", "10.99.60.17")
+        r = c.get("/api/loot/export")
+        assert r.status_code == 200 and r.headers["content-type"].startswith("text/plain")
+        lines = r.text.splitlines()
+        assert lines[0] == "CohorsLC1" and lines[1].startswith("H|") and lines[1].split("|")[2] == "305"
+        u = next(l for l in lines if l.startswith("U|") and l.endswith("|LcPrêtre")).split("|")[1]
+        assert f"P|lcprêtre|Priest|{u}|3|5|HEAD=300;FINGER_1=310" in lines
+        assert not any(l.startswith("P|lcreroll|") for l in lines)          # niveau 80 : ignoré
+        assert f"W|4242|{u}|1|0" in lines and not any(l.startswith("W|77|") for l in lines)   # pas les recettes
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name IN ('lcprêtre', 'lcreroll')")
+            conn.execute("DELETE FROM char_links WHERE user_email='lc@test.local'")
+            conn.execute("DELETE FROM wishlist WHERE user_email='lc@test.local'")
+
+
 def test_compo_embed_groups_by_role_and_lists_missing_buffs():
     from app.services import raidcomp as RC
     ev = {"title": "Raid HM", "ts": 1790000000, "inv": [
