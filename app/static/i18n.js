@@ -1342,7 +1342,7 @@
   const ATTRS = ["placeholder", "title", "aria-label"];
 
   const RULES = [
-    // Historique du butin (v2026.10.048)
+    // Historique du butin (import de l’addon)
     [/^(\d+) objet\(s\) ajouté\(s\) à l'historique · (\d+) déjà connu\(s\)( · (\d+) ligne\(s\) illisible\(s\))?$/,
       (m, a, b, c, d) => `${a} item(s) added to the history · ${b} already known` + (d ? ` · ${d} unreadable line(s)` : "")],
     [/^· (\d+) ces (\d+) derniers jours$/, "· $1 in the last $2 days"],
