@@ -88,7 +88,7 @@
   .err { color: var(--err); font-size: 13px; }
   .hidden { display: none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.10.053">
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.054">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -133,11 +133,11 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.10.053"></script>
-<script src="/static/branding.js?v=2026.10.053"></script>
-<script src="/static/i18n.js?v=2026.10.053"></script>
-<script src="/static/esc.js?v=2026.10.053"></script>
-<script src="/static/common.js?v=2026.10.053"></script>
+<script src="/static/nav.js?v=2026.10.054"></script>
+<script src="/static/branding.js?v=2026.10.054"></script>
+<script src="/static/i18n.js?v=2026.10.054"></script>
+<script src="/static/esc.js?v=2026.10.054"></script>
+<script src="/static/common.js?v=2026.10.054"></script>
 <script>
 const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
   if (s < 60) return "à l'instant";
@@ -200,6 +200,12 @@ async function loadNotifs() {
     $("#nflist").innerHTML = items.length
       ? items.map(n => {
           const x = n.data || {};
+          if (n.kind === "loot") {   // butin reçu en raid qui était dans la wishlist (import des officiers)
+            return `<div class="nfr ${n.seen ? "" : "unseen"}">
+              <span>🎁</span><a href="/wishlist" style="color:var(--fg);font-weight:600;text-decoration:none">${esc(x.item || "—")}</a>
+              <span><span>reçu en raid par</span> <b>${esc(x.who || "?")}</b> — <span>dans ta wishlist : retire-le si c'est la bonne pièce</span></span>
+              <span class="meta">${ago(n.created)}</span></div>`;
+          }
           if (n.kind === "craft") {
             const CE = { new: ["📨", "Nouvelle commande de"], accepted: ["✅", "Commande acceptée par"],
                          done: ["🎁", "Commande fabriquée par"], declined: ["✖", "Commande refusée par"],
