@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.049 - 2026-10-13
+
+### Changed
+
+- Dashboard: the « 🚀 Première configuration » card disappears once all steps are done (it comes
+  back if a step is undone); the checklist stays available at `/start`.
+
 ## 2026.10.048 - 2026-10-12
 
 ### Added

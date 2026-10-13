@@ -1270,7 +1270,6 @@
  "Optionnel — jeton du bot pour les annonces de rapports et de mouvements.": "Optional — bot token for report and roster-move announcements.",
  "Crée une invitation, envoie le lien, ils s'inscrivent eux-mêmes.": "Create an invitation, send the link, they sign up themselves.",
  "Il reste des étapes pour mettre la guilde en route — ouvre la checklist.": "Some steps remain to get the guild running — open the checklist.",
- "✅ Configuration terminée — revoir la checklist.": "✅ Setup complete — review the checklist.",
  "Ouvrir la checklist →": "Open the checklist →",
  "en attente": "pending",
  "<li><b>Première configuration (administration)</b> : pour mettre la guilde en route (guilde, clés API, identité, SMTP, bot Discord, premiers membres), suis la checklist <b>🚀 Première configuration</b> — page <i>/start</i>, aussi accessible depuis le tableau de bord (carte administrateur tant que des étapes restent à faire).</li>": "<li><b>First-time setup (administration)</b>: to get the guild running (guild, API keys, identity, SMTP, Discord bot, first members), follow the <b>🚀 First-time setup</b> checklist — page <i>/start</i>, also reachable from the dashboard (admin card shown while steps remain).</li>",
@@ -1343,7 +1342,7 @@
   const ATTRS = ["placeholder", "title", "aria-label"];
 
   const RULES = [
-    // Historique du butin (v2026.10.048)
+    // Historique du butin (import de l’addon)
     [/^(\d+) objet\(s\) ajouté\(s\) à l'historique · (\d+) déjà connu\(s\)( · (\d+) ligne\(s\) illisible\(s\))?$/,
       (m, a, b, c, d) => `${a} item(s) added to the history · ${b} already known` + (d ? ` · ${d} unreadable line(s)` : "")],
     [/^· (\d+) ces (\d+) derniers jours$/, "· $1 in the last $2 days"],

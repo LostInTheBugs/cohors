@@ -55,7 +55,7 @@
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.10.048">
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.049">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -125,11 +125,11 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.10.048"></script>
-<script src="/static/branding.js?v=2026.10.048"></script>
-<script src="/static/i18n.js?v=2026.10.048"></script>
-<script src="/static/esc.js?v=2026.10.048"></script>
-<script src="/static/common.js?v=2026.10.048"></script>
+<script src="/static/nav.js?v=2026.10.049"></script>
+<script src="/static/branding.js?v=2026.10.049"></script>
+<script src="/static/i18n.js?v=2026.10.049"></script>
+<script src="/static/esc.js?v=2026.10.049"></script>
+<script src="/static/common.js?v=2026.10.049"></script>
 <script>
 const dtFmt = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
@@ -172,11 +172,13 @@ const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >=
     if (me2.role === "admin" || me2.is_admin) {
       const s = await jget("/api/setup/status");
       const done = (s.steps || []).filter((x) => x.done).length;
-      $("#setcount").textContent = done + "/" + s.total;
-      $("#setnote").textContent = done >= s.total
-        ? "✅ Configuration terminée — revoir la checklist."
-        : "Il reste des étapes pour mettre la guilde en route — ouvre la checklist.";
-      $("#setcard").classList.remove("hidden");
+      // carte affichée seulement tant qu'il reste des étapes (elle revient si une étape se défait) ;
+      // la checklist reste accessible à l'adresse /start
+      if (done < s.total) {
+        $("#setcount").textContent = done + "/" + s.total;
+        $("#setnote").textContent = "Il reste des étapes pour mettre la guilde en route — ouvre la checklist.";
+        $("#setcard").classList.remove("hidden");
+      }
     }
   } catch (e) {}
 
