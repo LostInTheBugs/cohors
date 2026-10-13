@@ -400,7 +400,7 @@
  "🤖 Le bot Discord": "🤖 The Discord bot",
  "❓ Bon à savoir (FAQ)": "❓ Good to know (FAQ)",
  "L'accès se fait uniquement sur invitation : le lien reçu par e-mail est valable 7 jours.": "Access is invitation-only: the link you receive by e-mail is valid for 7 days.",
- "Trois rôles : membre (tout l'outil), officier (gère aussi les invitations et le calendrier), administrateur (tous les droits).": "Three roles: member (full tool), officer (also handles invitations and the calendar), administrator (all rights).",
+ "Trois rôles : membre (tout l'outil), officier (gère aussi les invitations et le calendrier, et peut passer un membre en officier ou un officier en membre dans Paramètres → 👤 Comptes), administrateur (tous les droits).": "Three roles: member (the whole tool), officer (also manages invitations and the calendar, and can turn a member into an officer or an officer back into a member in Settings → 👤 Accounts), administrator (all rights).",
  "La langue (FR/EN) se choisit sur la page de connexion, puis dans ⚙️ Paramètres.": "The language (FR/EN) is chosen on the login page, then in ⚙️ Settings.",
  "Colle ton export /simc dans la zone de texte, choisis le type de simulation et lance.": "Paste your /simc export in the text box, pick the simulation type and launch.",
  "Trois types : DPS (quel est mon DPS ?), Poids des stats (quelles stats me profitent le plus ?), Comparaison d'items (quelle pièce est la meilleure ?).": "Three types: DPS (what's my damage?), Stat weights (which stats help me most?), Item comparison (which piece is best?).",
@@ -1371,6 +1371,7 @@
   "À une pièce d'un bonus de set": "One piece away from a set bonus",
   "Objectifs": "Goals",
   "🔎 Compléter : joueurs disponibles qui apportent ces buffs": "🔎 Fill in: available players who bring these buffs",
+  "En tant qu'officier, tu peux passer un membre en officier ou un officier en membre. Le reste (administrateurs, désactivation, suppression) est réservé aux administrateurs.": "As an officer, you can turn a member into an officer or an officer back into a member. The rest (administrators, deactivation, deletion) is for administrators.",
   "⚠️ Les clés API, le token Discord et le mot de passe SMTP sont chiffrés avec la clé de cette instance (secret.key ou COHORS_SECRET_KEY). Pour restaurer sur une autre instance, recopie cette clé ou ressaisis-les.": "⚠️ API keys, Discord token and SMTP password are encrypted with this instance's key (secret.key or COHORS_SECRET_KEY). To restore on another instance, copy this key or re-enter them."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
