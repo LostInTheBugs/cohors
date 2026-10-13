@@ -172,11 +172,13 @@ const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >=
     if (me2.role === "admin" || me2.is_admin) {
       const s = await jget("/api/setup/status");
       const done = (s.steps || []).filter((x) => x.done).length;
-      $("#setcount").textContent = done + "/" + s.total;
-      $("#setnote").textContent = done >= s.total
-        ? "✅ Configuration terminée — revoir la checklist."
-        : "Il reste des étapes pour mettre la guilde en route — ouvre la checklist.";
-      $("#setcard").classList.remove("hidden");
+      // carte affichée seulement tant qu'il reste des étapes (elle revient si une étape se défait) ;
+      // la checklist reste accessible à l'adresse /start
+      if (done < s.total) {
+        $("#setcount").textContent = done + "/" + s.total;
+        $("#setnote").textContent = "Il reste des étapes pour mettre la guilde en route — ouvre la checklist.";
+        $("#setcard").classList.remove("hidden");
+      }
     }
   } catch (e) {}
 
