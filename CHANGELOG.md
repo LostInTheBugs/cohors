@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.050 - 2026-10-13
+
+### Changed
+
+- Calendar: each raid is a tidy collapsible card — date, counters and warnings in the header;
+  attendees grouped by role (from the spec when no officer role is set), « no answer » folded,
+  raid buffs shown as n/total with only the missing ones; officer import tools folded into one
+  « 🛠️ Outils officiers » block.
+
 ## 2026.10.049 - 2026-10-13
 
 ### Changed
