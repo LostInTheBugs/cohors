@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.051 - 2026-10-13
+
+### Changed
+
+- Calendar: the « Préparation » column of a raid card is split into titled sections with one row
+  per item — missing raid buffs with the class that brings them, players to get ready (enchants /
+  gems, slots), one piece away from a set bonus, goals.
+
 ## 2026.10.050 - 2026-10-13
 
 ### Changed
