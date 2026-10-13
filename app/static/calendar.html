@@ -116,6 +116,21 @@
   .rline { font-size:13px; margin:2px 0 8px; }
   .rline > .meta { display:inline; }
   .rwait > summary { cursor:pointer; font-size:12.5px; color:var(--warn); padding:3px 0; }
+  .psec { margin-bottom:12px; }
+  .psec h5 { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:0 0 4px;
+             font-size:13px; font-weight:700; color:var(--fg); }
+  .psec h5 > span:first-child { white-space:nowrap; }
+  .psec h5 .meta { font-weight:400; font-size:12px; color:var(--mut); }
+  .psec h5 a.hlink { font-size:12px; }
+  .plist { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:3px 8px; }
+  .plist.one { grid-template-columns:1fr; }
+  .prow { display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:3px 8px;
+          border-radius:7px; background:#0f1520; font-size:13px; min-width:0; }
+  .prow .l { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .prow .r { color:var(--mut); font-size:12px; white-space:nowrap; }
+  .prow .w { color:var(--warn); }
+  .prow .sub { display:block; color:var(--mut); font-size:11.5px; white-space:normal; }
+  .pok { color:var(--ok); font-size:13px; }
   .ractions { grid-column:1/-1; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;
               border-top:1px dashed var(--line); padding-top:10px; }
 </style>
@@ -229,24 +244,6 @@ const ckOf = (n) => {
 };
 // Buffs et débuffs de raid (Midnight) : table fournie par /api/gcal (raid_buffs), [[libellé, [classes]], …].
 let RAID_BUFFS = [], READY = {}, TIER_NEAR = {};
-// À une pièce d'un bonus de set (1/5 → 2 pièces, 3/5 → 4 pièces) : pour attribuer une pièce de tier tombée.
-function tierHTML(names) {
-  const near = names.map(n => {
-    const k = String(n || "").toLowerCase(), t = TIER_NEAR[k] || (k.includes("-") ? TIER_NEAR[k.slice(0, k.lastIndexOf("-"))] : null);
-    return t ? `${cName(n)} <span>(${t.n}${t.of ? "/" + t.of : ""})</span>` : "";
-  }).filter(Boolean);
-  return near.length ? `<span class="meta"><span>🧥 À une pièce d'un bonus de set :</span> ${near.join(", ")}</span>` : "";
-}
-// Inscrits à préparer : enchantements / gemmes manquants sur pièces Héros / Mythe (/api/gcal → ready).
-function readyHTML(names) {
-  const bad = names.map(n => {
-    const k = String(n || "").toLowerCase(), r = READY[k] || (k.includes("-") ? READY[k.slice(0, k.lastIndexOf("-"))] : null);
-    if (!r) return "";
-    const parts = [r.e.length ? `${r.e.length} ench.` : "", r.s ? `${r.s} gemme${r.s > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
-    return `<span title="${esc(r.e.join(", "))}">${cName(n)} <span>(${parts})</span></span>`;
-  }).filter(Boolean);
-  return bad.length ? `<span class="meta" style="color:var(--warn)"><span>🩺 À préparer (${bad.length}) :</span> ${bad.join(", ")} · <a class="hlink" href="/readiness">Bilan →</a></span>` : "";
-}
 const clsOf = (n) => {
   const k = String(n || "").toLowerCase();
   return GCAL_CLS[k] || (k.includes("-") ? GCAL_CLS[k.slice(0, k.lastIndexOf("-"))] : "") || "";
@@ -343,6 +340,40 @@ function editHTML(e) {
   </div>`;
 }
 
+// Colonne « Préparation » : petites sections (buffs manquants, à préparer, set, objectifs), une ligne par élément.
+const lookup = (map, n) => { const k = String(n || "").toLowerCase(); return map[k] || (k.includes("-") ? map[k.slice(0, k.lastIndexOf("-"))] : null); };
+function prepHTML(e, okNames, bMiss, bOk) {
+  const mt = e.meta || {}, out = [];
+  if (!okNames.length) return `<div class="empty">La préparation s'affiche dès qu'il y a des inscrits.</div>`;
+  if (RAID_BUFFS.length) {
+    const rows = RAID_BUFFS.filter(([label]) => bMiss.includes(label)).map(([label, cls]) => {
+      // libellé traduit d'abord (clé complète « Buff (Classe) »), puis découpé en buff | classe
+      const m = String((window.__cohorsTr || ((x) => x))(label)).match(/^(.*) \((.*)\)$/);
+      const who = m ? `<span style="color:${CLASS_COLORS[cls[0]] || "var(--mut)"}">${esc(m[2])}</span>` : `<span>${cls.length} classes</span>`;
+      return `<div class="prow"><span class="l w">${esc(m ? m[1] : label)}</span><span class="r">${who}</span></div>`;
+    });
+    out.push(`<div class="psec"><h5><span>🧩 <span>Buffs de raid</span> ${bOk.length}/${RAID_BUFFS.length}</span>
+      ${bMiss.length ? `<span class="meta" title="🔎 Compléter : joueurs disponibles qui apportent ces buffs">${bMiss.length} manquant(s)</span>` : ""}</h5>
+      ${rows.length ? `<div class="plist">${rows.join("")}</div>` : `<div class="pok">✅ Tous les buffs sont couverts</div>`}</div>`);
+  }
+  const todo = okNames.map(n => ({ n, r: lookup(READY, n) })).filter(x => x.r)
+    .sort((a, b) => (b.r.e.length + b.r.s) - (a.r.e.length + a.r.s));
+  out.push(`<div class="psec"><h5><span>🩺 <span>À préparer</span> ${todo.length ? `(${todo.length})` : ""}</span><a class="hlink" href="/readiness">Bilan →</a></h5>
+    ${todo.length ? `<div class="plist one">${todo.slice(0, 10).map(({ n, r }) => `<div class="prow"><span class="l">${cName(n)}
+        ${r.e.length ? `<span class="sub">🪄 ${esc(r.e.join(", "))}</span>` : ""}</span>
+        <span class="r w">${[r.e.length ? `${r.e.length} ench.` : "", r.s ? `${r.s} gemme${r.s > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ")}</span></div>`).join("")}
+      ${todo.length > 10 ? `<div class="meta">+ ${todo.length - 10}</div>` : ""}</div>`
+      : `<div class="pok">✅ Enchantements et gemmes OK sur les pièces Héros / Mythe</div>`}</div>`);
+  const near = okNames.map(n => ({ n, t: lookup(TIER_NEAR, n) })).filter(x => x.t);
+  if (near.length) out.push(`<div class="psec"><h5><span>🧥 <span>À une pièce d'un bonus de set</span></span></h5>
+    <div class="plist">${near.map(({ n, t }) => `<div class="prow"><span class="l">${cName(n)}</span><span class="r">${t.n}${t.of ? "/" + t.of : ""}</span></div>`).join("")}</div></div>`);
+  const goals = [];
+  if (mt.bosses && mt.bosses.length) goals.push(`<div class="meta">⚔️ ${mt.bosses.map(esc).join(" · ")}</div>`);
+  (e.wanted || []).forEach(w => goals.push(`<div class="prow"><span class="l">🎁 ${esc(w.boss)}<span class="sub">${w.items.map(i => `${i.prio ? "⭐ " : ""}${esc(i.name)}${i.who.length ? " (" + i.who.map(cName).join(", ") + ")" : ""}`).join(" · ")}</span></span></div>`));
+  if (goals.length) out.push(`<div class="psec"><h5><span>🎯 <span>Objectifs</span></span></h5><div class="plist one">${goals.join("")}</div></div>`);
+  return out.join("");
+}
+
 function renderGcal() {
   const d = GCAL || { events: [], imported_at: 0, player: "" };
   $("#gmeta").textContent = d.imported_at
@@ -413,14 +444,7 @@ function renderGcal() {
         ? `<div class="rline" style="color:var(--warn)">⚠️ ${cName(u.n)} — <span>indispo mais a accepté le raid</span> · ${perTxt(u)}</div>`
         : `<div class="rline meta">🚫 ${cName(u.n)} · ${perTxt(u)}</div>`).join("")}
     </div>`;
-    const right = `<div class="rsec"><h4>Préparation</h4>
-      ${okNames.length && RAID_BUFFS.length ? `<div class="rline"><span title="${esc(bOk.join(" · "))}">🧩 <span>Buffs de raid</span> ${bOk.length}/${RAID_BUFFS.length}</span>
-        ${bMiss.length ? `<div>${bMiss.map(b => `<span class="pchip miss">${esc(b)}</span>`).join("")}</div>` : ` ✅`}</div>` : ""}
-      ${readyHTML(okNames) ? `<div class="rline">${readyHTML(okNames)}</div>` : ""}
-      ${tierHTML(okNames) ? `<div class="rline">${tierHTML(okNames)}</div>` : ""}
-      ${mt.bosses && mt.bosses.length ? `<div class="rline meta">⚔️ ${mt.bosses.map(esc).join(" · ")}</div>` : ""}
-      ${(e.wanted || []).map((w, wi) => `<div class="rline meta">${wi === 0 ? "🎁 Pièces voulues — " : "🎁 "}${esc(w.boss)} : ${w.items.map(i => `${i.prio ? "⭐ " : ""}${esc(i.name)}${i.who.length ? " (" + i.who.map(cName).join(", ") + ")" : ""}`).join(" · ")}</div>`).join("")}
-    </div>`;
+    const right = `<div class="rsec"><h4>Préparation</h4>${prepHTML(e, okNames, bMiss, bOk)}</div>`;
     const actions = `<div class="ractions">
       ${by.wait.length && CAN_IMP ? `<button class="small ghost" data-rel="${e.id}">📣 Relancer</button>` : ""}
       <button class="small ghost" data-fill="${esc(e.key)}" title="Joueurs disponibles pour compléter">🔎 Compléter</button>

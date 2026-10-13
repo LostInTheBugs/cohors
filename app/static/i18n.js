@@ -1364,11 +1364,22 @@
   "Inscrits à préparer (enchantements / gemmes)": "Attendees to get ready (enchants / gems)",
   "Indisponibles mais inscrits": "Unavailable but signed up",
   "Réponse forcée par un officier": "Answer set by an officer",
+  "La préparation s'affiche dès qu'il y a des inscrits.": "Readiness shows up once players sign up.",
+  "✅ Tous les buffs sont couverts": "✅ All buffs are covered",
+  "À préparer": "To get ready",
+  "✅ Enchantements et gemmes OK sur les pièces Héros / Mythe": "✅ Enchants and gems OK on Hero / Myth pieces",
+  "À une pièce d'un bonus de set": "One piece away from a set bonus",
+  "Objectifs": "Goals",
+  "🔎 Compléter : joueurs disponibles qui apportent ces buffs": "🔎 Fill in: available players who bring these buffs",
   "⚠️ Les clés API, le token Discord et le mot de passe SMTP sont chiffrés avec la clé de cette instance (secret.key ou COHORS_SECRET_KEY). Pour restaurer sur une autre instance, recopie cette clé ou ressaisis-les.": "⚠️ API keys, Discord token and SMTP password are encrypted with this instance's key (secret.key or COHORS_SECRET_KEY). To restore on another instance, copy this key or re-enter them."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
   const RULES = [
+    [/^(\d+) manquant\(s\)$/, "$1 missing"],
+    [/^(\d+) ench\.( · (\d+) gemmes?)?$/, (m, a, b, c) => `${a} ench.` + (c ? ` · ${c} gem${c > 1 ? "s" : ""}` : "")],
+    [/^(\d+) gemmes?$/, (m, a) => `${a} gem${a > 1 ? "s" : ""}`],
+    [/^(\d+) classes$/, "$1 classes"],
     [/^dans (\d+) jours$/, "in $1 days"],
     // Historique du butin (import de l’addon)
     [/^(\d+) objet\(s\) ajouté\(s\) à l'historique · (\d+) déjà connu\(s\)( · (\d+) ligne\(s\) illisible\(s\))?$/,
