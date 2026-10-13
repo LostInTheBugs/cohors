@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.052 - 2026-10-13
+
+### Changed
+
+- Accounts: officers can now open Settings → 👤 Comptes and switch a member to officer or an officer
+  back to member (administrators and the administrator role stay out of their reach; e-mail
+  addresses are hidden from officers). Every role change asks for confirmation.
+
 ## 2026.10.051 - 2026-10-13
 
 ### Changed

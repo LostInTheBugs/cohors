@@ -109,7 +109,7 @@
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.10.051">
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.052">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -217,6 +217,7 @@
     <div id="sec-comptes" class="hidden">
       <div class="card">
         <h2>Comptes</h2>
+        <p class="sub hidden" id="users-off" style="margin:4px 0 12px">En tant qu'officier, tu peux passer un membre en officier ou un officier en membre. Le reste (administrateurs, désactivation, suppression) est réservé aux administrateurs.</p>
         <div id="users"><div class="empty">Chargement…</div></div>
       </div>
     </div>
@@ -497,11 +498,11 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.10.051"></script>
-<script src="/static/branding.js?v=2026.10.051"></script>
-<script src="/static/i18n.js?v=2026.10.051"></script>
-<script src="/static/esc.js?v=2026.10.051"></script>
-<script src="/static/common.js?v=2026.10.051"></script>
+<script src="/static/nav.js?v=2026.10.052"></script>
+<script src="/static/branding.js?v=2026.10.052"></script>
+<script src="/static/i18n.js?v=2026.10.052"></script>
+<script src="/static/esc.js?v=2026.10.052"></script>
+<script src="/static/common.js?v=2026.10.052"></script>
 <script>
 const jget = async (u) => { const r = await fetch(u); const j = await r.json().catch(() => ({}));
   if (!r.ok) { const err = new Error(j.detail || "Erreur API"); err.status = r.status; throw err; } return j; };
@@ -679,29 +680,33 @@ function charInfo(u) {
 async function loadUsers() {
   const d = await api("GET", "/api/admin/users");
   const box = $("#users");
+  const asAdmin = d.viewer === "admin";
+  $("#users-off").classList.toggle("hidden", asAdmin);
   box.innerHTML = d.users.map(u => {
     const roleBadge = u.role === "admin" ? '<span class="badge b-admin">Administrateur</span> '
                     : u.role === "officer" ? '<span class="badge b-officer">Officier</span> '
                     : '<span class="badge">Membre</span> ';
-    const isSelf = !!(ME && u.email === ME.email);
+    const isSelf = !!u.is_self;
+    // officier : seulement membre ↔ officier (pas de sélecteur sur un administrateur, ni d'autre action)
+    const canRole = !isSelf && (asAdmin || u.role !== "admin");
     // Le select de rôle EST l'indicateur de rôle (pas de badge qui répète) ; sur sa propre
     // ligne : ni select ni actions — l'API refuse toute auto-modification de toute façon.
-    const badges = (isSelf ? roleBadge : "") + (u.active ? '' : '<span class="badge b-off">Désactivé</span>');
+    const badges = (canRole ? "" : roleBadge) + (u.active ? '' : '<span class="badge b-off">Désactivé</span>');
     const btnActive = `<button class="small ghost" data-active="${u.id}" data-val="${u.active ? 0 : 1}">${u.active ? "Désactiver" : "Réactiver"}</button>`;
     const btnReset = `<button class="small ghost" data-reset="${u.id}">Lien de réinitialisation</button>`;
     const btnDel = `<button class="small danger" data-del="${u.id}" data-name="${esc(u.name)}">Supprimer</button>`;
-    const roleSel = (!isSelf && IM_ADMIN)
+    const roleSel = canRole
       ? `<select class="rolesel r-${esc(u.role)}" data-role="${u.id}" title="Rôle du compte">
            <option value="member"${u.role === "member" ? " selected" : ""}>Membre</option>
            <option value="officer"${u.role === "officer" ? " selected" : ""}>Officier</option>
-           <option value="admin"${u.role === "admin" ? " selected" : ""}>Administrateur</option>
+           ${asAdmin ? `<option value="admin"${u.role === "admin" ? " selected" : ""}>Administrateur</option>` : ""}
          </select>`
       : "";
-    const uacts = isSelf ? "" : `${roleSel}${btnActive}${btnReset}${btnDel}`;
+    const uacts = isSelf ? "" : (asAdmin ? `${roleSel}${btnActive}${btnReset}${btnDel}` : roleSel);
     return `<div class="item ucard">
       <span class="name">${esc(u.name || u.email)} ${badges}</span>
       <span class="uacts">${uacts}</span>
-      <span class="meta">${esc(u.email)} · créé le ${onDate(u.created)} · dernière connexion ${ago(u.last_login)} · ${u.sims_count} sim(s)${charInfo(u)}</span>
+      <span class="meta">${u.email ? esc(u.email) + " · " : ""}créé le ${onDate(u.created)} · dernière connexion ${ago(u.last_login)} · ${u.sims_count} sim(s)${charInfo(u)}</span>
     </div>`;
   }).join("");
   box.querySelectorAll("[data-active]").forEach(b => b.addEventListener("click", async () => {
@@ -717,6 +722,9 @@ async function loadUsers() {
     await api("DELETE", "/api/admin/users/" + b.dataset.del); toast("Compte supprimé"); loadUsers();
   }));
   box.querySelectorAll("[data-role]").forEach(s => s.addEventListener("change", async () => {
+    const nm = s.closest(".ucard").querySelector(".name").textContent.trim();
+    const lab = { member: "Membre", officer: "Officier", admin: "Administrateur" }[s.value] || s.value;
+    if (!confirm(`Passer « ${nm} » en ${lab} ?`)) { loadUsers(); return; }
     try {
       await api("POST", `/api/admin/users/${s.dataset.role}/role`, { role: s.value });
       toast("Rôle mis à jour ✓");
@@ -735,7 +743,7 @@ document.querySelectorAll(".smenu .sbtn").forEach((b) => b.addEventListener("cli
   showSec(b.dataset.sec);
   document.querySelectorAll(".smenu .sbtn").forEach((o) => o.classList.toggle("on", o === b));
   if (b.dataset.sec === "sec-invitations") loadInvites();
-  if (b.dataset.sec === "sec-comptes" && IM_ADMIN) loadUsers();
+  if (b.dataset.sec === "sec-comptes") loadUsers();
   if (b.dataset.sec === "sec-maj" && IM_ADMIN) loadUpdates();
   if (b.dataset.sec === "sec-bot") loadBot();
   if (b.dataset.sec === "sec-identite") loadBrand();
@@ -1347,8 +1355,8 @@ $("#bi-reset").addEventListener("click", async () => {
   if (staff) {
     $("#smenu-adm").classList.remove("hidden");
     $("#sbtn-invitations").classList.remove("hidden");
+    $("#sbtn-comptes").classList.remove("hidden");     // officiers : rôles membre ↔ officier
     if (IM_ADMIN) {
-      $("#sbtn-comptes").classList.remove("hidden");
       $("#sbtn-bot").classList.remove("hidden");
       $("#sbtn-api").classList.remove("hidden");
       $("#sbtn-guilde").classList.remove("hidden");
@@ -1359,7 +1367,8 @@ $("#bi-reset").addEventListener("click", async () => {
       $("#sbtn-maj").classList.remove("hidden");
     }
     loadInvites();
-    if (IM_ADMIN) { loadUsers(); loadBot(); loadBrand(); loadApiKeys(); loadGuild(); loadJobs(); loadMail(); loadUpdates(); }
+    loadUsers();
+    if (IM_ADMIN) { loadBot(); loadBrand(); loadApiKeys(); loadGuild(); loadJobs(); loadMail(); loadUpdates(); }
     openFromHash();
   }
 })();

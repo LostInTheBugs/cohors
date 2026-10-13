@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app import mailer
-from app.core.auth import _require_admin, _require_officer
+from app.core.auth import _require_admin, _require_officer, _user_role
 from app.core.brand import _brand_identity
 from app.core.config import INVITE_TTL_DAYS, PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
@@ -33,7 +33,10 @@ def _invite_link(token: str) -> str:
 
 @router.get("/api/admin/users")
 def admin_users(request: Request):
-    _require_admin(request)
+    """Liste des comptes : complète pour les administrateurs ; les officiers la voient pour gérer les
+    rôles membre ↔ officier, sans les adresses e-mail."""
+    me_row = _require_officer(request)
+    is_admin = _user_role(me_row) == "admin"
     with _db_lock, _db() as conn:
         rows = conn.execute(
             """SELECT u.id, u.email, u.name, u.is_admin, u.role, u.active, u.created, u.last_login,
@@ -42,7 +45,14 @@ def admin_users(request: Request):
                       (SELECT COUNT(*) FROM char_links c WHERE c.user_email = u.email) AS chars_count
                FROM users u ORDER BY u.created""",
         ).fetchall()
-    return {"users": [dict(r) for r in rows]}
+    users = []
+    for r in rows:
+        u = dict(r)
+        u["is_self"] = u["id"] == me_row["id"]
+        if not is_admin:
+            u["email"] = ""
+        users.append(u)
+    return {"users": users, "viewer": "admin" if is_admin else "officer"}
 
 
 @router.post("/api/admin/users/{uid}/active")
@@ -96,16 +106,21 @@ class RoleRequest(BaseModel):
 
 @router.post("/api/admin/users/{uid}/role")
 def admin_set_role(uid: int, payload: RoleRequest, request: Request):
-    """Change le rôle d'un compte (réservé aux administrateurs)."""
-    me_row = _require_admin(request)
+    """Change le rôle d'un compte. Administrateurs : tous les rôles. Officiers : seulement membre ↔
+    officier, jamais un administrateur ni vers administrateur."""
+    me_row = _require_officer(request)
+    is_admin = _user_role(me_row) == "admin"
     role = payload.role.strip().lower()
     if role not in ("member", "officer", "admin"):
         raise HTTPException(400, "Rôle inconnu (membre, officier ou administrateur).")
     if uid == me_row["id"]:
         raise HTTPException(400, "Impossible de modifier ton propre rôle.")
     with _db_lock, _db() as conn:
-        if conn.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone() is None:
+        target = conn.execute("SELECT id, role, is_admin FROM users WHERE id=?", (uid,)).fetchone()
+        if target is None:
             raise HTTPException(404, "Compte inconnu")
+        if not is_admin and (role == "admin" or _user_role(target) == "admin"):
+            raise HTTPException(403, "Un officier peut seulement passer un membre en officier, ou un officier en membre.")
         conn.execute(
             "UPDATE users SET role=?, is_admin=? WHERE id=?",
             (role, 1 if role == "admin" else 0, uid),

@@ -1627,6 +1627,40 @@ def test_loot_council_export(monkeypatch):
             conn.execute("DELETE FROM wishlist WHERE user_email='lc@test.local'")
 
 
+def test_officer_can_switch_member_officer_only():
+    _make_user("ro-off@test.local", is_admin=0, role="officer")
+    _make_user("ro-mem@test.local", is_admin=0, role="member")
+    _make_user("ro-adm@test.local", is_admin=1, role="admin")
+    c = TestClient(M.app)
+    assert c.post("/api/login", json={"email": "ro-off@test.local", "password": "test-pw-123"},
+                  headers={"X-Forwarded-For": "10.99.60.41"}).status_code == 200
+    with M._db_lock, M._db() as conn:
+        ids = {r["email"]: r["id"] for r in conn.execute(
+            "SELECT id, email FROM users WHERE email LIKE 'ro-%@test.local'").fetchall()}
+    try:
+        d = c.get("/api/admin/users").json()
+        assert d["viewer"] == "officer" and all(u["email"] == "" for u in d["users"])
+        assert next(u for u in d["users"] if u["id"] == ids["ro-off@test.local"])["is_self"] is True
+        assert c.post(f"/api/admin/users/{ids['ro-mem@test.local']}/role", json={"role": "officer"}).status_code == 200
+        assert c.post(f"/api/admin/users/{ids['ro-mem@test.local']}/role", json={"role": "member"}).status_code == 200
+        assert c.post(f"/api/admin/users/{ids['ro-mem@test.local']}/role", json={"role": "admin"}).status_code == 403
+        assert c.post(f"/api/admin/users/{ids['ro-adm@test.local']}/role", json={"role": "member"}).status_code == 403
+        assert c.post(f"/api/admin/users/{ids['ro-off@test.local']}/role", json={"role": "member"}).status_code == 400
+        assert c.post(f"/api/admin/users/{ids['ro-mem@test.local']}/active", json={"active": False}).status_code == 403
+        with M._db_lock, M._db() as conn:
+            roles = {r["email"]: (r["role"], r["is_admin"]) for r in conn.execute(
+                "SELECT email, role, is_admin FROM users WHERE email LIKE 'ro-%@test.local'").fetchall()}
+        assert roles == {"ro-off@test.local": ("officer", 0), "ro-mem@test.local": ("member", 0),
+                         "ro-adm@test.local": ("admin", 1)}
+        m = _plain_client("ro-mem2@test.local", "10.99.60.42")
+        assert m.get("/api/admin/users").status_code == 403
+        a = _admin_client("ro-adm2@test.local", "10.99.60.43").get("/api/admin/users").json()
+        assert a["viewer"] == "admin" and any(u["email"] == "ro-mem@test.local" for u in a["users"])
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM users WHERE email LIKE 'ro-%@test.local'")
+
+
 def test_gcal_spec_roles_from_last_snapshot():
     with M._db_lock, M._db() as conn:
         conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'gcaltank', '2026-10-13', ?, ?)",
