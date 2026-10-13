@@ -200,6 +200,12 @@ async function loadNotifs() {
     $("#nflist").innerHTML = items.length
       ? items.map(n => {
           const x = n.data || {};
+          if (n.kind === "loot") {   // butin reçu en raid qui était dans la wishlist (import des officiers)
+            return `<div class="nfr ${n.seen ? "" : "unseen"}">
+              <span>🎁</span><a href="/wishlist" style="color:var(--fg);font-weight:600;text-decoration:none">${esc(x.item || "—")}</a>
+              <span><span>reçu en raid par</span> <b>${esc(x.who || "?")}</b> — <span>dans ta wishlist : retire-le si c'est la bonne pièce</span></span>
+              <span class="meta">${ago(n.created)}</span></div>`;
+          }
           if (n.kind === "craft") {
             const CE = { new: ["📨", "Nouvelle commande de"], accepted: ["✅", "Commande acceptée par"],
                          done: ["🎁", "Commande fabriquée par"], declined: ["✖", "Commande refusée par"],

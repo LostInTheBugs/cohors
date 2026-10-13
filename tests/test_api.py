@@ -1738,6 +1738,10 @@ def test_loot_history_import_counts_and_views(monkeypatch):
         assert c.post("/api/loot/history", json={"text": "bonjour"}).status_code == 400
         r = c.post("/api/loot/history", json={"text": text}).json()
         assert (r["added"], r["known"], r["bad"]) == (2, 1, 2)
+        assert r["wished"] == 1 and r["posted"] is False and "new" not in r     # 6101 était dans sa wishlist
+        with M._db_lock, M._db() as conn:
+            nf = conn.execute("SELECT data FROM notifs WHERE email='lh@test.local' AND kind='loot'").fetchall()
+        assert len(nf) == 1 and json.loads(nf[0]["data"])["item_id"] == 6101
         r = c.post("/api/loot/history", json={"text": text}).json()          # recoller : rien de neuf
         assert (r["added"], r["known"]) == (0, 3)
         lines = c.get("/api/loot/export").text.splitlines()
@@ -1751,9 +1755,33 @@ def test_loot_history_import_counts_and_views(monkeypatch):
     finally:
         with M._db_lock, M._db() as conn:
             conn.execute("DELETE FROM loot_history WHERE char='lhélan'")
+            conn.execute("DELETE FROM notifs WHERE email='lh@test.local'")
             conn.execute("DELETE FROM char_snapshots WHERE name='lhélan'")
             conn.execute("DELETE FROM char_links WHERE user_email='lh@test.local'")
             conn.execute("DELETE FROM wishlist WHERE user_email='lh@test.local'")
+
+
+def test_loot_history_posts_new_loot_on_discord(monkeypatch):
+    from app import discord_bot
+    from app.routers import loot_council as LC
+    sent = []
+    monkeypatch.setattr(LC, "_bot_config", lambda: {"enabled": True, "token": "t", "channel_id": "c"})
+    monkeypatch.setattr(discord_bot, "send", lambda token, channel, embeds=None, **k: sent.append(embeds))
+    now = int(time.time())
+    text = f"CohorsLOOT1\nL|{now - 600}|6201|LhPost|3001|Bottes du test"
+    try:
+        c = _admin_client("lhp-admin@test.local", "10.99.60.61")
+        r = c.post("/api/loot/history", json={"text": text}).json()
+        assert r["posted"] is True and len(sent) == 1
+        emb = sent[0][0]
+        assert emb["title"].startswith("🎁 Butin du raid") and "**LhPost** · Bottes du test" in emb["fields"][0]["value"]
+        r = c.post("/api/loot/history", json={"text": text}).json()      # rien de nouveau : pas de message
+        assert r["added"] == 0 and r["posted"] is False and len(sent) == 1
+        r = c.post("/api/loot/history", json={"text": text.replace("6201", "6202"), "discord": False}).json()
+        assert r["added"] == 1 and r["posted"] is False and len(sent) == 1
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM loot_history WHERE char='lhpost'")
 
 
 def test_wishlist_owned_depends_on_target_track(monkeypatch):

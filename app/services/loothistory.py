@@ -12,6 +12,7 @@ site: name without realm, lower case.
 """
 from __future__ import annotations
 
+import json
 import time
 
 from app.core.db import _db, _db_lock
@@ -56,17 +57,66 @@ def parse(text: str):
     return rows, bad
 
 
+LH_POST_MAX = 30          # lignes au plus dans le message Discord
+
+
 def import_text(text: str, by: str) -> dict:
+    """Importe le texte de l'addon. Les objets NOUVEAUX qui étaient dans la wishlist du compte qui les
+    a reçus valent une notification au joueur (« retire-le de ta wishlist ? »). Renvoie aussi les
+    nouvelles lignes (`new`, avec `wish` / `prio`) pour le message Discord."""
     rows, bad = parse(text)
-    added = 0
+    new = []
+    now = time.time()
     with _db_lock, _db() as conn:
         for r in rows:
             cur = conn.execute(
                 "INSERT OR IGNORE INTO loot_history (at, item_id, char, name, item_name, encounter, added_by, added) "
                 "VALUES (?,?,?,?,?,?,?,?)",
-                (r["at"], r["item_id"], r["char"], r["name"], r["item_name"], r["encounter"], by, time.time()))
-            added += cur.rowcount or 0
-    return {"ok": True, "added": added, "known": len(rows) - added, "bad": bad}
+                (r["at"], r["item_id"], r["char"], r["name"], r["item_name"], r["encounter"], by, now))
+            if cur.rowcount:
+                new.append(dict(r))
+        owner = {str(x["name"] or "").strip().lower(): x["user_email"] for x in conn.execute(
+            "SELECT name, user_email FROM char_links").fetchall()}
+        wish = {(x["user_email"], int(x["item_id"])): bool(x["prio"]) for x in conn.execute(
+            "SELECT user_email, item_id, prio FROM wishlist WHERE item_id > 0 AND (kind IS NULL OR kind='item')").fetchall()}
+        for r in new:
+            email = owner.get(r["char"])
+            r["wish"] = email is not None and (email, r["item_id"]) in wish
+            r["prio"] = bool(r["wish"] and wish[(email, r["item_id"])])
+            if r["wish"]:
+                conn.execute("INSERT INTO notifs (email, kind, data, created) VALUES (?,?,?,?)",
+                             (email, "loot", json.dumps({"item": r["item_name"], "item_id": r["item_id"],
+                                                         "who": r["name"], "at": r["at"]}, ensure_ascii=False), now))
+    return {"ok": True, "added": len(new), "known": len(rows) - len(new), "bad": bad,
+            "wished": sum(1 for r in new if r["wish"]), "new": new}
+
+
+def loot_embed(new: list, guild: str = "la guilde", link: str = "", color: int = 0xDFA55A) -> dict:
+    """Embed Discord du butin importé : une ligne par objet, ⭐ / 🎯 quand il était en wishlist."""
+    rows = sorted(new, key=lambda r: (r["at"], r["name"].lower()))
+    days = sorted({time.strftime("%d/%m", time.localtime(r["at"])) for r in rows})
+    lines = []
+    for r in rows[:LH_POST_MAX]:
+        tag = " — ⭐ prio wishlist" if r.get("prio") else (" — 🎯 wishlist" if r.get("wish") else "")
+        lines.append(f"**{r['name']}** · {r['item_name'] or ('objet ' + str(r['item_id']))}{tag}")
+    if len(rows) > LH_POST_MAX:
+        lines.append(f"_… et {len(rows) - LH_POST_MAX} autre(s)._")
+    fields, cur = [], ""
+    for ln in lines:                       # champs Discord : 1 024 caractères au plus
+        if cur and len(cur) + 1 + len(ln) > 1024:
+            fields.append(cur)
+            cur = ""
+        cur = (cur + "\n" + ln) if cur else ln[:1024]
+    if cur:
+        fields.append(cur)
+    nwish = sum(1 for r in rows if r.get("wish"))
+    desc = f"{len(rows)} objet(s) reçu(s)" + (f", dont {nwish} en wishlist 🎯" if nwish else "") + "."
+    if link:
+        desc += f"\n👉 [Calendrier et historique]({link})"
+    return {"title": "🎁 Butin du raid" + (f" — {', '.join(days)}" if days else ""), "description": desc,
+            "color": color,
+            "fields": [{"name": "Qui a reçu quoi" if i == 0 else "\u200b", "value": v} for i, v in enumerate(fields[:5])],
+            "footer": {"text": f"{guild} · noté par l'addon Cohors"}}
 
 
 def counts(conn, days: int = LH_DAYS) -> dict:

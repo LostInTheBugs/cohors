@@ -183,6 +183,7 @@
         <div class="row">
           <textarea id="lhtext" rows="2" placeholder="Après le raid : colle ici le butin noté par l'addon (onglet Loot → « Soirée »)"></textarea>
           <button class="small ghost" id="lhbtn" title="Historique du butin : « a eu N objets ces 30 jours » dans l'export loot, sur la fiche personnage et dans les wishlists">🎁 Importer le butin</button>
+          <label class="meta" style="display:inline-flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="lhdisc" checked> Publier sur Discord</label>
         </div>
         <div id="lhmsg" class="meta"></div>
       </div>
@@ -589,8 +590,10 @@ $("#lhbtn").addEventListener("click", async () => {
   const t = $("#lhtext").value.trim();
   if (!t) { setMsg("#lhmsg", "Colle le texte de l'addon (onglet Loot → « Soirée »)", false); return; }
   try {
-    const r = await jpost("POST", "/api/loot/history", { text: t });
-    setMsg("#lhmsg", `${r.added} objet(s) ajouté(s) à l'historique · ${r.known} déjà connu(s)` + (r.bad ? ` · ${r.bad} ligne(s) illisible(s)` : ""), true);
+    const r = await jpost("POST", "/api/loot/history", { text: t, discord: $("#lhdisc").checked });
+    setMsg("#lhmsg", `${r.added} objet(s) ajouté(s) à l'historique · ${r.known} déjà connu(s)` + (r.bad ? ` · ${r.bad} ligne(s) illisible(s)` : "")
+      + (r.wished ? ` · ${r.wished} en wishlist (joueurs prévenus)` : "")
+      + (r.posted ? " · publié sur Discord ✓" : r.post_error && $("#lhdisc").checked && r.added ? ` · Discord : ${r.post_error}` : ""), true);
     $("#lhtext").value = "";
   } catch (e) { setMsg("#lhmsg", "Erreur : " + e.message, false); }
 });

@@ -1336,7 +1336,7 @@
   "🎁 Importer le butin": "🎁 Import loot",
   "Colle le texte de l'addon (onglet Loot → « Soirée »)": "Paste the add-on's text (Loot tab → « Evening »)",
   "🎁 Butin de raid": "🎁 Raid loot",
-  "🎁 Historique du butin (officiers) : après le raid, onglet Loot de l'addon → « Soirée » met dans le champ tout le butin noté (qui a reçu quoi) ; colle-le sur la page Calendrier → « 🎁 Importer le butin ». Le site garde l'historique : « N en 30 j » à côté des noms dans l'addon (export loot suivant, par compte), carte 🎁 Butin de raid sur la fiche personnage, et « 🎁 Reçu en raid » dans ta wishlist. Recoller le même texte ne crée pas de doublon.": "🎁 Loot history (officers): after the raid, the add-on's Loot tab → « Evening » puts all the noted loot (who got what) in the field; paste it on the Calendar page → « 🎁 Import loot ». The site keeps the history: « N in 30 d » next to names in the add-on (next loot export, per account), a 🎁 Raid loot card on the character sheet, and « 🎁 Received in raid » in your wishlist. Pasting the same text again creates no duplicate.",
+  "🎁 Historique du butin (officiers) : après le raid, onglet Loot de l'addon → « Soirée » met dans le champ tout le butin noté (qui a reçu quoi) ; colle-le sur la page Calendrier → « 🎁 Importer le butin ». Le site garde l'historique : « N en 30 j » à côté des noms dans l'addon (export loot suivant, par compte), carte 🎁 Butin de raid sur la fiche personnage, et « 🎁 Reçu en raid » dans ta wishlist. Recoller le même texte ne crée pas de doublon. À l'import, le butin nouveau est publié dans le salon Discord du bot (case « Publier sur Discord »), et un joueur qui reçoit un objet de sa wishlist est prévenu (🔔 notifications) pour le retirer.": "🎁 Loot history (officers): after the raid, the add-on's Loot tab → « Evening » puts all the noted loot (who got what) in the field; paste it on the Calendar page → « 🎁 Import loot ». The site keeps the history: « N in 30 d » next to names in the add-on (next loot export, per account), a 🎁 Raid loot card on the character sheet, and « 🎁 Received in raid » in your wishlist. Pasting the same text again creates no duplicate. On import, the new loot is posted in the bot's Discord channel (« Post on Discord » box), and a player who receives an item from their wishlist is notified (🔔 notifications) to remove it.",
   "🛠️ Outils officiers — importer le calendrier, loot council, butin": "🛠️ Officer tools — import the calendar, loot council, loot",
   "📥 Importer le calendrier du jeu": "📥 Import the in-game calendar",
   "En jeu : /cohors → « Exporter » → colle la chaîne ci-dessous (ou importe le fichier SavedVariables/Cohors.lua). Addon : page 🛡️ Guilde.": "In game: /cohors → « Export » → paste the string below (or import the SavedVariables/Cohors.lua file). Add-on: 🛡️ Guild page.",
@@ -1379,6 +1379,9 @@
   "Soirs manqués": "Missed evenings",
   "✅ Tous les inscrits étaient là.": "✅ Everyone who signed up was there.",
   "A accepté le raid dans le calendrier du jeu mais n'apparaît pas dans le log du soir. Venir sur un autre personnage de son compte compte comme présent ; une réponse forcée par un officier prime.": "Accepted the raid in the in-game calendar but is not in the evening's log. Coming on another character of the same account counts as present; an answer set by an officer wins.",
+  "Publier sur Discord": "Post on Discord",
+  "reçu en raid par": "received in raid by",
+  "dans ta wishlist : retire-le si c'est la bonne pièce": "on your wishlist: remove it if it's the right piece",
   "⚠️ Les clés API, le token Discord et le mot de passe SMTP sont chiffrés avec la clé de cette instance (secret.key ou COHORS_SECRET_KEY). Pour restaurer sur une autre instance, recopie cette clé ou ressaisis-les.": "⚠️ API keys, Discord token and SMTP password are encrypted with this instance's key (secret.key or COHORS_SECRET_KEY). To restore on another instance, copy this key or re-enter them."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
@@ -1391,8 +1394,9 @@
     [/^(\d+) classes$/, "$1 classes"],
     [/^dans (\d+) jours$/, "in $1 days"],
     // Historique du butin (import de l’addon)
-    [/^(\d+) objet\(s\) ajouté\(s\) à l'historique · (\d+) déjà connu\(s\)( · (\d+) ligne\(s\) illisible\(s\))?$/,
-      (m, a, b, c, d) => `${a} item(s) added to the history · ${b} already known` + (d ? ` · ${d} unreadable line(s)` : "")],
+    [/^(\d+) objet\(s\) ajouté\(s\) à l'historique · (\d+) déjà connu\(s\)( · (\d+) ligne\(s\) illisible\(s\))?( · (\d+) en wishlist \(joueurs prévenus\))?( · publié sur Discord ✓| · Discord : (.*))?$/,
+      (m, a, b, c, d, e, f, g, h) => `${a} item(s) added to the history · ${b} already known` + (d ? ` · ${d} unreadable line(s)` : "")
+        + (f ? ` · ${f} on wishlists (players notified)` : "") + (g ? (h != null ? ` · Discord: ${h}` : " · posted on Discord ✓") : "")],
     [/^· (\d+) ces (\d+) derniers jours$/, "· $1 in the last $2 days"],
     [/^🎁 Reçu en raid : (.+) — retire-la \(🗑\) si c'est la bonne pièce\.$/, "🎁 Received in raid: $1 — remove it (🗑) if it's the right piece."],
     [/^Relevé Blizzard : /g, "Blizzard data: "],
