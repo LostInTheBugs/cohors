@@ -15,6 +15,7 @@ from app.core.config import PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR, SPEC_ROLE, _int_any, _lua_unescape, _pick, _snap_day
 from app.services.bot import _bot_config
+from app.services.noshow import event_key as _gcal_key, remember_events
 from app.services.raidcomp import compo_embed, fill_candidates, raid_buffs
 from app.services.readiness import _collect as _ready_collect, tier_near, todo_by_name
 from app.services.wishlist import _bis_by_user
@@ -62,19 +63,6 @@ def _gcal_parse(text: str) -> dict:
     if not isinstance(data, dict) or not isinstance(data.get("events"), list):
         raise HTTPException(400, "Données inattendues (aucun événement).")
     return data
-
-
-def _gcal_key(e: dict) -> str:
-    """Clé stable d'un événement du calendrier in-game (id Blizzard, sinon horodatage)."""
-    try:
-        if e.get("id"):
-            return "id:" + str(int(e["id"]))
-    except (TypeError, ValueError):
-        pass
-    try:
-        return "ts:" + str(int(float(e.get("ts") or 0)))
-    except (TypeError, ValueError):
-        return "ts:0"
 
 
 @router.get("/api/gcal")
@@ -326,6 +314,7 @@ def api_gcal_import(payload: GcalImportRequest, request: Request):
             "ON CONFLICT(id) DO UPDATE SET ts=excluded.ts, player=excluded.player, data=excluded.data",
             (time.time(), str(data.get("player") or "")[:60], blob),
         )
+        remember_events(conn, events)
     return {"ok": True, "events": len(events), "responses": responses}
 
 
