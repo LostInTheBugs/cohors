@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.053 - 2026-10-13
+
+### Added
+
+- Attendance: « 🚫 Inscrits absents » on the Raids page — players who accepted a raid in the in-game
+  calendar but are not in that evening's Warcraft Logs report (another character of the same account
+  counts as present; officer overrides win). Past calendar events are now kept at each import.
+
 ## 2026.10.052 - 2026-10-13
 
 ### Changed
