@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.054 - 2026-10-13
+
+### Added
+
+- Loot history import: the new loot is posted in the bot's Discord channel (« 🎁 Butin du raid », with
+  wishlist tags; « Publier sur Discord » box), and players who received an item from their wishlist get
+  a notification suggesting to remove it.
+
 ## 2026.10.053 - 2026-10-13
 
 ### Added
