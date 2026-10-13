@@ -550,6 +550,21 @@ def _init_db() -> None:
             """
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_loot_history_char ON loot_history(char, at)")
+        # v2026.10.053 — historique des événements du calendrier in-game : l'addon n'exporte que les
+        # événements à venir, on garde la dernière version connue de chacun pour le croiser avec les
+        # logs (inscrits absents). Une ligne par événement (clé id:/ts: de gcal_meta).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gcal_history (
+                event_key TEXT PRIMARY KEY,
+                ts        REAL NOT NULL DEFAULT 0,
+                title     TEXT NOT NULL DEFAULT '',
+                inv       TEXT NOT NULL DEFAULT '[]',
+                updated   REAL NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_gcal_history_ts ON gcal_history(ts)")
         for _stmt in (
             "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",

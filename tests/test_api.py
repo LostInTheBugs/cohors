@@ -1661,6 +1661,44 @@ def test_officer_can_switch_member_officer_only():
             conn.execute("DELETE FROM users WHERE email LIKE 'ro-%@test.local'")
 
 
+def test_calendar_noshows_cross_calendar_and_logs():
+    from app.core.util import _snap_day
+    from app.services.noshow import calendar_noshows
+    ts = time.time() - 2 * 86400
+    ev = {"id": 990001, "title": "Raid test", "ts": ts, "inv": [
+        {"n": "NsVenu-Hyjal", "s": 1}, {"n": "NsAbsent", "s": 1}, {"n": "NsRefus", "s": 2},
+        {"n": "NsMain", "s": 3}, {"n": "NsForce", "s": 0}]}
+    old = {"id": 990002, "title": "Raid sans log", "ts": ts - 86400, "inv": [{"n": "NsAbsent", "s": 1}]}
+    with M._db_lock, M._db() as conn:
+        for nm in ("nsmain", "nsalt"):
+            conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                         " VALUES ('ns@test.local', 'hyjal', ?, ?, 0, 0)", (nm, nm))
+    try:
+        c = _admin_client("ns-off@test.local", "10.99.60.51")
+        assert c.post("/api/gcal/import", json={"payload": json.dumps({"events": [ev, old]})}).status_code == 200
+        with M._db_lock, M._db() as conn:      # réponse forcée par un officier : NsForce présent
+            conn.execute("INSERT OR REPLACE INTO gcal_meta (event_key, data, updated, updated_by) VALUES (?,?,0,'')",
+                         ("id:990001", json.dumps({"ovr": {"NsForce": "ok"}})))
+        # un nouvel import sans ces événements (passés) ne les efface pas de l'historique
+        assert c.post("/api/gcal/import", json={"payload": json.dumps({"events": []})}).status_code == 200
+        evenings = [{"day": _snap_day(ts), "players": ["NsVenu", "NsAlt", "Inconnu"]}]
+        with M._db_lock, M._db() as conn:
+            r = calendar_noshows(conn, evenings, ts - 5 * 86400)
+        rows = {x["key"]: x for x in r["rows"]}
+        assert r["matched"] == 1 and r["unlogged"] == 1
+        assert rows["nsvenu"]["noshow"] == 0 and rows["nsvenu"]["came"] == 1
+        assert rows["nsmain"]["noshow"] == 0                                   # venu sur son autre perso
+        assert rows["nsabsent"]["noshow"] == 1 and rows["nsabsent"]["days"] == [_snap_day(ts)]
+        assert rows["nsforce"]["noshow"] == 1 and "nsrefus" not in rows
+        assert r["rows"][0]["noshow"] == 1
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM gcal_history WHERE event_key IN ('id:990001', 'id:990002')")
+            conn.execute("DELETE FROM gcal_meta WHERE event_key='id:990001'")
+            conn.execute("DELETE FROM char_links WHERE user_email='ns@test.local'")
+            conn.execute("DELETE FROM gcal_import WHERE id=1")
+
+
 def test_gcal_spec_roles_from_last_snapshot():
     with M._db_lock, M._db() as conn:
         conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'gcaltank', '2026-10-13', ?, ?)",

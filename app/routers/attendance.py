@@ -10,6 +10,7 @@ from app import bnet, wcl
 from app.core.auth import _require_user, _user_locale
 from app.core.db import _db, _db_lock
 from app.core.util import CLASS_KEY_FR, _snap_day
+from app.services.noshow import calendar_noshows
 
 router = APIRouter()
 
@@ -105,7 +106,15 @@ def api_attendance(request: Request, days: int = 30, refresh: int = 0):
             "last_day": d["last_day"], "guest": key not in roster,
         })
     rows.sort(key=lambda r: (-r["nights"], r["name"].lower()))
-    data = {"days": days, "built": now, "total": total,
+    # inscrits absents : ✅ au calendrier in-game mais absents du log du même soir
+    with _db_lock, _db() as conn:
+        noshow = calendar_noshows(conn, evenings, cutoff)
+    for ns in noshow["rows"]:
+        mem = roster.get(ns["key"]) or {}
+        ns["realm"] = mem.get("realm") or bnet.GUILD_REALM
+        ns["class"], ns["class_en"] = cls_by_name.get(ns["key"]), cls_en_by_name.get(ns["key"])
+        ns["class_key"] = CLASS_KEY_FR.get(cls_by_name.get(ns["key"]) or "")
+    data = {"days": days, "built": now, "total": total, "noshow": noshow,
             "evenings": [{k: v for k, v in e.items() if k != "players"} for e in evenings],
             "rows": rows}
     _ATT_CACHE.update({"ts": now, "days": days, "data": data})

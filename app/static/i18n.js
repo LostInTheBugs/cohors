@@ -1372,11 +1372,19 @@
   "Objectifs": "Goals",
   "🔎 Compléter : joueurs disponibles qui apportent ces buffs": "🔎 Fill in: available players who bring these buffs",
   "En tant qu'officier, tu peux passer un membre en officier ou un officier en membre. Le reste (administrateurs, désactivation, suppression) est réservé aux administrateurs.": "As an officer, you can turn a member into an officer or an officer back into a member. The rest (administrators, deactivation, deletion) is for administrators.",
+  "🚫 « Inscrits absents » (sous l'assiduité) : les joueurs qui avaient accepté le raid dans le calendrier du jeu mais n'apparaissent pas dans le log Warcraft Logs du soir — nombre d'absences sur le nombre de raids acceptés et dates manquées. Venir sur un autre personnage de son compte compte comme présent ; une réponse forcée par un officier prime. Il faut que le calendrier ait été importé avant le raid.": "🚫 « Signed up but absent » (under attendance): players who accepted the raid in the in-game calendar but are not in that evening's Warcraft Logs report — absences out of raids accepted, and the missed dates. Coming on another character of the same account counts as present; an answer set by an officer wins. The calendar must have been imported before the raid.",
+  "🚫 Inscrits absents": "🚫 Signed up but absent",
+  "aucun raid du calendrier à croiser avec les logs pour le moment (il faut un import du calendrier avant le raid, puis le log du soir).": "no calendar raid to match with the logs yet (the calendar must be imported before the raid, then the evening's log uploaded).",
+  "Absent / inscrit": "Absent / signed up",
+  "Soirs manqués": "Missed evenings",
+  "✅ Tous les inscrits étaient là.": "✅ Everyone who signed up was there.",
+  "A accepté le raid dans le calendrier du jeu mais n'apparaît pas dans le log du soir. Venir sur un autre personnage de son compte compte comme présent ; une réponse forcée par un officier prime.": "Accepted the raid in the in-game calendar but is not in the evening's log. Coming on another character of the same account counts as present; an answer set by an officer wins.",
   "⚠️ Les clés API, le token Discord et le mot de passe SMTP sont chiffrés avec la clé de cette instance (secret.key ou COHORS_SECRET_KEY). Pour restaurer sur une autre instance, recopie cette clé ou ressaisis-les.": "⚠️ API keys, Discord token and SMTP password are encrypted with this instance's key (secret.key or COHORS_SECRET_KEY). To restore on another instance, copy this key or re-enter them."
 };
   const ATTRS = ["placeholder", "title", "aria-label"];
 
   const RULES = [
+    [/^(\d+) raid\(s\) du calendrier croisé\(s\) avec les logs( · (\d+) sans log)?$/, (m, a, b, c) => `${a} calendar raid(s) matched with the logs` + (c ? ` · ${c} without a log` : "")],
     [/^(\d+) manquant\(s\)$/, "$1 missing"],
     [/^(\d+) ench\.( · (\d+) gemmes?)?$/, (m, a, b, c) => `${a} ench.` + (c ? ` · ${c} gem${c > 1 ? "s" : ""}` : "")],
     [/^(\d+) gemmes?$/, (m, a) => `${a} gem${a > 1 ? "s" : ""}`],
