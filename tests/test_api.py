@@ -1627,6 +1627,20 @@ def test_loot_council_export(monkeypatch):
             conn.execute("DELETE FROM wishlist WHERE user_email='lc@test.local'")
 
 
+def test_gcal_spec_roles_from_last_snapshot():
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'gcaltank', '2026-10-13', ?, ?)",
+                     (time.time(), json.dumps({"class": "Guerrier", "spec": "Protection", "level": 90})))
+        conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'gcalnospec', '2026-10-13', ?, ?)",
+                     (time.time(), json.dumps({"class": "Mage", "level": 90})))
+    try:
+        d = _admin_client("gcal-roles@test.local", "10.99.60.31").get("/api/gcal").json()
+        assert d["spec_roles"].get("gcaltank") == "tank" and "gcalnospec" not in d["spec_roles"]
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_snapshots WHERE name IN ('gcaltank', 'gcalnospec')")
+
+
 def test_loot_history_import_counts_and_views(monkeypatch):
     from app import bnet as B
     now = int(time.time())

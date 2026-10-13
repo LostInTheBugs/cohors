@@ -101,7 +101,7 @@ def api_gcal_get(request: Request):
             "SELECT user_email, display, name FROM char_links WHERE is_main=1").fetchall()}
         class_rows = conn.execute(
             "SELECT name, json_extract(data, '$.class') AS cfr, "
-            "json_extract(data, '$.class_en') AS cen FROM char_snapshots "
+            "json_extract(data, '$.class_en') AS cen, json_extract(data, '$.spec') AS spec FROM char_snapshots "
             "WHERE id IN (SELECT MAX(id) FROM char_snapshots GROUP BY name)").fetchall()
     by_email: dict = {}
     for urow in unavails:
@@ -219,10 +219,14 @@ def api_gcal_get(request: Request):
     en_loc = _user_locale(request).startswith("en")
     classes: dict = {}
     class_keys: dict = {}   # clé de classe indépendante de la langue (couverture des buffs de raid)
+    spec_roles: dict = {}   # rôle déduit de la spé du dernier relevé (l'officier peut le changer : meta.roles)
     for cr in class_rows:
         nmk = str(cr["name"] or "").strip().lower()
         if not nmk or nmk in classes:
             continue
+        sr = SPEC_ROLE.get(cr["spec"] or "")
+        if sr:
+            spec_roles[nmk] = sr
         cname = (cr["cen"] if en_loc else cr["cfr"]) or cr["cfr"] or ""
         if cname:
             classes[nmk] = cname
@@ -240,6 +244,7 @@ def api_gcal_get(request: Request):
             print(f"[gcal] bilan des joueurs indisponible : {exc}")
     return {"imported_at": row["ts"] if row else 0, "player": row["player"] if row else "",
             "events": events, "raid_catalog": raid_catalog, "classes": classes, "class_keys": class_keys,
+            "spec_roles": spec_roles,
             "raid_buffs": raid_buffs(en_loc), "ready": ready, "tier_near": near,
             "unavail": {"rows": urows, "counts": {"members": len(urows), "conflict": conflicts}}}
 
