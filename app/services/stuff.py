@@ -683,3 +683,131 @@ def _stuff_plausible(items: list, equipped_by_slot: dict) -> list:
             out.append(it)
     out.sort(key=lambda i: -int(i.get("ilvl") or 0))
     return out[:STUFF_MAX_CANDIDATES]
+
+
+# =====================================================================
+# v2026.10.058 — traçabilité : d'où vient chaque résultat du « Stuff conseillé »
+# (export utilisé et son âge, mode, méthode et moteur, source BIS et sa date, niveaux maximum,
+# saison) — pour qu'un joueur sache ce qu'il compare et quand la donnée devient trop vieille.
+# =====================================================================
+TRACE_EXPORT_OLD_DAYS = 7          # export de l'addon : au-delà, il manque peut-être des pièces
+TRACE_BIS_OLD_DAYS = 45            # instantané BIS : au-delà, le guide a pu changer
+TRACE_MAX_OLD_DAYS = 30            # niveaux maximum (infobulles Wowhead) : au-delà, à revérifier
+_CONTENT_EN = {"raid": "Raid", "mplus": "Mythic+", "delves": "Delves", "worldboss": "World boss", "craft": "Crafting"}
+
+
+def _bis_meta() -> dict:
+    _stuff_bis_list("", "")                       # charge / rafraîchit le cache du fichier
+    d = BIS_CACHE.get("data") or {}
+    return {"snapshot": d.get("snapshot") or "", "patch": d.get("patch") or "", "season": d.get("season") or ""}
+
+
+def _days_since(ts: float | None) -> int | None:
+    return None if not ts else max(0, int((time.time() - float(ts)) // 86400))
+
+
+def _fr_date(ts: float) -> str:
+    return time.strftime("%d/%m/%Y", time.localtime(ts))
+
+
+def stuff_trace(plan: dict, prof_name: str, prof_updated: float | None, results: dict, conn,
+                engine: str = "") -> list[dict]:
+    """Lignes de traçabilité d'un résultat : [{icon, fr, en, warn}] (affichées sous le résultat)."""
+    rows: list[dict] = []
+    mode = (plan.get("mode") or "cur")
+    contents = plan.get("content") or ["raid"]
+    contents = contents if isinstance(contents, list) else [contents]
+    c_fr = " · ".join(BIS_CONTENTS.get(c, {}).get("label_fr", c) for c in contents)
+    c_en = " · ".join(_CONTENT_EN.get(c, c) for c in contents)
+    # 1. l'export utilisé
+    age = _days_since(prof_updated)
+    if prof_updated:
+        old = age is not None and age > TRACE_EXPORT_OLD_DAYS
+        rows.append({"icon": "📄", "warn": old,
+                     "fr": f"Export « {prof_name} » du {_fr_date(prof_updated)} (il y a {age} j)"
+                           + (" — réexporte avec l'addon pour tenir compte de tes dernières pièces." if old else "."),
+                     "en": f"Export « {prof_name} » from {time.strftime('%Y-%m-%d', time.localtime(prof_updated))} ({age} d ago)"
+                           + (" — re-export with the add-on to include your latest pieces." if old else ".")})
+    # 2. le mode
+    if mode == "bis":
+        rows.append({"icon": "🎯", "warn": False,
+                     "fr": f"Mode BIS : la liste du guide de ta spé, filtrée sur {c_fr}, comparée à ce que tu possèdes. "
+                           "Ni le build ni ton équipement ne changent la liste.",
+                     "en": f"BiS mode: your spec guide's list, filtered on {c_en}, compared with what you own. "
+                           "Neither the build nor your gear change the list."})
+    elif plan.get("max_rank"):
+        n = results.get("boosted") or 0
+        rows.append({"icon": "🎯", "warn": False,
+                     "fr": f"Mode rang max : chaque pièce comptée à son niveau maximum d'amélioration ({n} pièce(s) relevée(s)) — "
+                           "ce que tu porterais une fois tout amélioré, pas ce que tu portes aujourd'hui.",
+                     "en": f"Max-rank mode: each piece counted at its maximum upgrade level ({n} piece(s) raised) — "
+                           "what you'd wear once fully upgraded, not what you wear today."})
+    else:
+        rows.append({"icon": "🎯", "warn": False,
+                     "fr": "Mode pièces actuelles : chaque pièce à son niveau actuel (améliorations déjà faites).",
+                     "en": "Current pieces mode: each piece at its current level (upgrades already done)."})
+    # 3. la méthode et le moteur
+    if mode == "bis":
+        rows.append({"icon": "⚙️", "warn": False, "fr": "Pas de simulation : liste tirée du guide.",
+                     "en": "No simulation: list taken from the guide."})
+    elif results.get("mode") == "heal":
+        src = results.get("source_fr") or ""
+        if results.get("prio_known", True) and src:
+            rows.append({"icon": "⚙️", "warn": False,
+                         "fr": f"Pas de simulation (soins) : niveau d'objet d'abord, puis priorité des stats — {src}.",
+                         "en": f"No simulation (healing): item level first, then stat priority — {src}."})
+        else:
+            rows.append({"icon": "⚙️", "warn": True,
+                         "fr": "Pas de simulation (soins) et pas de priorité des stats répertoriée : classement au niveau d'objet seulement.",
+                         "en": "No simulation (healing) and no stat priority listed: ranked by item level only."})
+    else:
+        settings = STUFF_CONTENTS.get(contents[0], {})
+        eng = engine.split(":", 1)[-1] if engine else "?"
+        build = (plan.get("loadout") or {}).get("name") or ""
+        rows.append({"icon": "⚙️", "warn": False,
+                     "fr": f"Simulation SimulationCraft ({eng}), {results.get('iterations') or STUFF_ITERATIONS} itérations, "
+                           f"{settings.get('sim_fr', '?')}" + (f", build « {build} »" if build else ", build de l'export") + ".",
+                     "en": f"SimulationCraft simulation ({eng}), {results.get('iterations') or STUFF_ITERATIONS} iterations, "
+                           f"{settings.get('sim_en', '?')}" + (f", build « {build} »" if build else ", build from the export") + "."})
+    # 4. la source BIS
+    meta = _bis_meta()
+    if mode == "bis":
+        snap = meta["snapshot"]
+        try:
+            snap_age = _days_since(time.mktime(time.strptime(snap, "%Y-%m-%d"))) if snap else None
+        except ValueError:
+            snap_age = None
+        old = snap_age is not None and snap_age > TRACE_BIS_OLD_DAYS
+        src = results.get("source_fr") or "guide Wowhead"
+        rows.append({"icon": "📚", "warn": old,
+                     "fr": f"Source : {src} — instantané embarqué du {snap or '?'}"
+                           + (f" (il y a {snap_age} j : le guide a pu changer depuis)." if old else "."),
+                     "en": f"Source: {src} — bundled snapshot from {snap or '?'}"
+                           + (f" ({snap_age} d ago: the guide may have changed since)." if old else ".")})
+    # 5. les niveaux maximum (Wowhead) : date des relevés les plus anciens
+    if mode == "bis" or plan.get("max_rank"):
+        try:
+            r = conn.execute("SELECT MIN(fetched) AS a, MAX(fetched) AS b FROM item_max_ilvl WHERE fetched > 0").fetchone()
+        except Exception:  # noqa: BLE001 — table pas encore créée
+            r = None
+        if r and r["a"]:
+            oldest = _days_since(r["a"])
+            old = oldest is not None and oldest > TRACE_MAX_OLD_DAYS
+            rows.append({"icon": "📈", "warn": old,
+                         "fr": f"Niveaux maximum lus sur les infobulles Wowhead, relevés entre le {_fr_date(r['a'])} et le {_fr_date(r['b'])}"
+                               + (" — certains datent : une nouvelle piste d'amélioration a pu sortir." if old else "."),
+                         "en": f"Maximum levels read from Wowhead tooltips, fetched between {time.strftime('%Y-%m-%d', time.localtime(r['a']))} "
+                               f"and {time.strftime('%Y-%m-%d', time.localtime(r['b']))}"
+                               + (" — some are old: a new upgrade track may be out." if old else ".")})
+    # 6. la saison
+    if meta["season"] or meta["patch"]:
+        rows.append({"icon": "🗓️", "warn": False,
+                     "fr": f"Saison : {meta['season'] or '?'} · patch {meta['patch'] or '?'}.",
+                     "en": f"Season: {(meta['season'] or '?').replace('Saison', 'Season')} · patch {meta['patch'] or '?'}."})
+    # 7. ce qui ne se compare pas
+    rows.append({"icon": "⚖️", "warn": False,
+                 "fr": "À comparer seulement avec un résultat du même mode, du même contenu et du même build : "
+                       "un écart de DPS entre deux réglages différents ne dit rien des pièces.",
+                 "en": "Only compare with a result of the same mode, content and build: "
+                       "a DPS gap between two different settings says nothing about the pieces."})
+    return rows

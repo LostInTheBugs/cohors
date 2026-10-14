@@ -8,12 +8,12 @@ import time
 from pathlib import Path
 
 from app import bnet
-from app.core.config import SIM_TIMEOUT
+from app.core.config import SIM_TIMEOUT, SIMC_IMAGE
 from app.core.db import _db, _db_lock
 from app.services.stuff import (
     HEAL_SPECS, STUFF_CONTENTS, STUFF_HEAL_PRIO, STUFF_ITERATIONS,
     _stuff_best_crafted, _stuff_bis_filter, _stuff_bis_list, _stuff_fetch_stats, _stuff_max_levels,
-    _stuff_parse_export, _stuff_plausible, _stuff_rank_heal, _stuff_sim_input,
+    _stuff_parse_export, _stuff_plausible, _stuff_rank_heal, _stuff_sim_input, stuff_trace,
 )
 from app.simclient import run_sim  # soumet au worker de simulation (socket Unix, sans docker.sock ici)
 
@@ -132,7 +132,7 @@ def _run_one(sim_id: str) -> None:
             )
 
 
-def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0: float) -> None:
+def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0: float, prof=None) -> None:
     """Mode BIS : liste des meilleures pièces du guide filtrée par contenu, possession et comparaison."""
     blk = _stuff_bis_list(parsed["cls"], parsed["spec"]) or {}
     # Filtrer le guide BIS selon les contenus cochés
@@ -181,6 +181,12 @@ def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0:
                                                      set(owned_by_id), equipped_by_id)
     results["missing"] = sum(1 for r in results["slots"] if not r["owned"] and not r["equipped"])
     results["have"] = len(results["slots"]) - results["missing"]
+    try:
+        with _db_lock, _db() as conn:
+            results["trace"] = stuff_trace(plan, prof["name"] if prof else "", prof["updated"] if prof else None,
+                                           results, conn, SIMC_IMAGE)
+    except Exception as exc:  # noqa: BLE001 — la traçabilité ne doit jamais faire échouer le calcul
+        print(f"[stuff] traçabilité : {exc}")
     wall = time.time() - t0
     with _db_lock, _db() as conn:
         conn.execute("UPDATE sims SET status='done', wall_s=?, gear=?, finished=? WHERE id=?",
@@ -196,7 +202,7 @@ def _run_stuff(row: sqlite3.Row) -> None:
     try:
         plan = json.loads(row["plan"] or "{}")
         with _db_lock, _db() as conn:
-            prof = conn.execute("SELECT id, name, input FROM profiles WHERE id=?",
+            prof = conn.execute("SELECT id, name, input, updated FROM profiles WHERE id=?",
                                 (plan.get("profile_id"),)).fetchone()
         if prof is None:
             raise RuntimeError("Profil introuvable (il a peut-être été supprimé).")
@@ -226,7 +232,7 @@ def _run_stuff(row: sqlite3.Row) -> None:
             with _db_lock, _db() as conn:
                 boosted, examples = _stuff_max_levels(items, conn)
         if (plan.get("mode") or "cur") == "bis":
-            _run_stuff_bis(sim_id, parsed, items, plan, t0)
+            _run_stuff_bis(sim_id, parsed, items, plan, t0, prof)
             return
         stats, dropped, crashed = _stuff_fetch_stats(items, parsed["cls"], parsed["spec"], workdir)
         for it in items:
@@ -284,6 +290,13 @@ def _run_stuff(row: sqlite3.Row) -> None:
         if crashed:
             results["crashed"] = [c.get("name") or "?" for c in crashed]
         results["loadout"] = (plan.get("loadout") or {}).get("name") or ""
+        if is_heal:
+            results["source_fr"] = results.get("source_fr") or prio.get("source_fr") or ""
+        try:
+            with _db_lock, _db() as conn:
+                results["trace"] = stuff_trace(plan, prof["name"], prof["updated"], results, conn, SIMC_IMAGE)
+        except Exception as exc:  # noqa: BLE001 — la traçabilité ne doit jamais faire échouer le calcul
+            print(f"[stuff] traçabilité : {exc}")
         wall = time.time() - t0
         with _db_lock, _db() as conn:
             conn.execute(

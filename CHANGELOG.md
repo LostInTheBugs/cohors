@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.058 - 2026-10-14
+
+### Added
+
+- Stuff conseillé: « 🔎 D'où viennent ces résultats » under every result — the export used and its age,
+  the mode, the method (SimulationCraft version and settings, healer stat priority or BiS guide), the
+  dates of the BiS snapshot and of the maximum levels, the season; it turns orange when data is old.
+
 ## 2026.10.057 - 2026-10-14
 
 ### Fixed
