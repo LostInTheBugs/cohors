@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.061 - 2026-10-14
+
+### Fixed
+
+- Add-on **1.16.1**: a wishlist or loot export pasted in game was refused (« aucune ligne valide »):
+  the game doubles every « | » of a pasted text; the add-on now reads it correctly. The site's loot
+  history import accepts such text too.
+
 ## 2026.10.060 - 2026-10-14
 
 ### Changed

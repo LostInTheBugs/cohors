@@ -35,6 +35,8 @@ end
 local M = { t = 100000.0, hardware = false }  -- temps virtuel + « clic » simulé (événement matériel)
 local barValues = {}                    -- valeurs prises par la barre de progression
 local frames = {}
+-- Coller dans un champ du jeu double chaque « | » (GetText renvoie « || ») : paste() le reproduit
+local function paste(eb, txt) eb:SetText((tostring(txt):gsub("|", "||"))) end
 local fonts = {}          -- FontStrings créées (textes affichés : accueil, étapes, aide du champ)
 local function font_has(sub)
     for _, f in ipairs(fonts) do
@@ -605,7 +607,7 @@ elseif scenario == "loot" then
     ebL:SetText("pas un export")
     Cohors_LCImport()
     check(chat_has("import loot refusé"), "export invalide refusé")
-    ebL:SetText(table.concat({
+    paste(ebL, table.concat({      -- collé comme en jeu : « | » doublés
         "CohorsLC1",
         "H|1790000000|305|Ma Guilde",
         "U|u1|Élanisse",
@@ -733,7 +735,7 @@ elseif scenario == "wishlist" then
     check(wlEbF ~= nil, "champ partagé présent dans le panneau")
 
     -- import valide : une pièce + une recette
-    wlEbF:SetText("CohorsWL1\n111|item|Épaule de test\n-42|recipe|Lame de test\n")
+    paste(wlEbF, "CohorsWL1\n111|item|Épaule de test\n-42|recipe|Lame de test\n")   -- « | » doublés comme en jeu
     Cohors_WLImport()
     check(#(Cohors_DB.wl or {}) == 2, "2 objets importés (trouvés : %d)", #(Cohors_DB.wl or {}))
     check(Cohors_DB.wl[1] and Cohors_DB.wl[1].n == "Épaule de test"

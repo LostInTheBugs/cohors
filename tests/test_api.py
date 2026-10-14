@@ -2405,3 +2405,13 @@ def test_mail_get_env_configured(monkeypatch):
     assert data["configured"] is True
     assert data["source"] == "env"
     assert data["effective"]["host"] == "env.smtp.exemple.fr"
+
+
+def test_loot_history_accepts_doubled_pipes():
+    """Un texte passé par un champ du jeu a ses « | » doublés : il doit se lire pareil."""
+    import time as _t
+    from app.services import loothistory
+    at = int(_t.time()) - 60
+    rows, bad = loothistory.parse(f"CohorsLOOT1\nL||{at}||5001||Élanisse-Hyjal||3001||Casque\n")
+    assert bad == 0 and len(rows) == 1
+    assert rows[0]["item_id"] == 5001 and rows[0]["char"] == "élanisse" and rows[0]["item_name"] == "Casque"

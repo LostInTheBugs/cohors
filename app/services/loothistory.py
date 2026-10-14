@@ -33,7 +33,8 @@ def _clean(s, n=80) -> str:
 
 def parse(text: str):
     """→ (lignes valides, nombre de lignes illisibles) ; ValueError si ce n'est pas un export."""
-    lines = [ln.strip() for ln in str(text or "").splitlines() if ln.strip()]
+    # un texte passé par un champ du jeu peut avoir ses « | » doublés
+    lines = [ln.strip() for ln in str(text or "").replace("||", "|").splitlines() if ln.strip()]
     if not lines or lines[0] != LH_FORMAT:
         raise ValueError(f"en-tête « {LH_FORMAT} » introuvable — colle tout le texte de l'addon (onglet Loot → « Soirée »)")
     now = time.time()
