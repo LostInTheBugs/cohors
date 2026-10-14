@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.056 - 2026-10-14
+
+### Added
+
+- Administration: Settings → 📈 Utilisation — how many members opened each page over 7 / 30 days, pages
+  never opened, and where accounts stand (linked characters, main, wishlist, add-on). Only « this
+  account opened this page that day » is stored, erased after 90 days.
+
 ## 2026.10.055 - 2026-10-14
 
 ### Added

@@ -13,6 +13,7 @@ from app.core.brand import _brand_identity
 from app.core.config import INVITE_TTL_DAYS, PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
 from app.services.accounts import change_email
+from app.services.usage import report as usage_report
 
 router = APIRouter()
 
@@ -99,6 +100,14 @@ def admin_reset_link(uid: int, request: Request):
             (token, u["email"], f"réinitialisation — {u['name']}", now, now + INVITE_TTL_DAYS * 86400),
         )
     return {"link": _invite_link(token), "expires_in_days": INVITE_TTL_DAYS}
+
+
+@router.get("/api/admin/usage")
+def admin_usage(request: Request):
+    """Administrateurs : membres actifs, pages ouvertes (7 / 30 jours), parcours d'accueil."""
+    _require_admin(request)
+    with _db_lock, _db() as conn:
+        return usage_report(conn)
 
 
 class EmailRequest(BaseModel):

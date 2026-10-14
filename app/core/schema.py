@@ -568,6 +568,17 @@ def _init_db() -> None:
         # v2026.10.055 — accueil d'un nouveau membre : étapes cochées à la main (addon) / carte masquée.
         if "onboard" not in {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}:
             conn.execute("ALTER TABLE users ADD COLUMN onboard TEXT NOT NULL DEFAULT ''")
+        # v2026.10.056 — usage des pages (administration) : qui a ouvert quelle page tel jour, rien de plus.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS page_usage (
+                day     TEXT NOT NULL,
+                page    TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                PRIMARY KEY (day, page, user_id)
+            )
+            """
+        )
         for _stmt in (
             "ALTER TABLE craft_recipes ADD COLUMN expansion TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE craft_recipes ADD COLUMN exp_rank INTEGER NOT NULL DEFAULT 0",
