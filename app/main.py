@@ -395,9 +395,13 @@ def me(request: Request):
 def invite_info(token: str):
     with _db_lock, _db() as conn:
         inv = conn.execute("SELECT * FROM invites WHERE token=?", (token,)).fetchone()
+        reset = bool(inv is not None and inv["email"] and conn.execute(
+            "SELECT 1 AS x FROM users WHERE email=?", (inv["email"],)).fetchone())
     if inv is None or inv["used"] is not None or inv["expires"] < time.time():
         return {"valid": False}
-    return {"valid": True, "email": inv["email"], "note": inv["note"]}
+    # reset : lien de réinitialisation d'un compte existant (adresse fixe) ; sinon l'adresse proposée
+    # par l'invitation peut être corrigée par le nouveau membre
+    return {"valid": True, "email": inv["email"], "note": inv["note"], "reset": reset}
 
 
 @app.post("/api/register")
@@ -407,12 +411,15 @@ def register(payload: RegisterRequest, request: Request, response: Response):
         inv = conn.execute("SELECT * FROM invites WHERE token=?", (payload.token,)).fetchone()
         if inv is None or inv["used"] is not None or inv["expires"] < now:
             raise HTTPException(400, "Lien d'invitation invalide ou expiré.")
-        email = (inv["email"] or payload.email or "").strip().lower()
+        inv_email = (inv["email"] or "").strip().lower()
+        reset = bool(inv_email and conn.execute("SELECT 1 AS x FROM users WHERE email=?", (inv_email,)).fetchone())
+        # lien de réinitialisation : l'adresse du compte ; invitation : l'adresse saisie (corrigeable)
+        email = inv_email if reset else (payload.email or inv_email or "").strip().lower()
         if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
             raise HTTPException(400, "Adresse e-mail invalide.")
         existing = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         if existing is not None:
-            if not inv["email"]:
+            if not reset:
                 raise HTTPException(400, "Un compte existe déjà avec cet e-mail — connecte-toi, ou demande un lien de réinitialisation.")
             name = payload.name.strip()[:60] or existing["name"] or email.split("@")[0]
             conn.execute("UPDATE users SET pwd=?, name=?, active=1 WHERE id=?",

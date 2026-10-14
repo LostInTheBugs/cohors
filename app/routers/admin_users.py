@@ -12,6 +12,7 @@ from app.core.auth import _require_admin, _require_officer, _user_role
 from app.core.brand import _brand_identity
 from app.core.config import INVITE_TTL_DAYS, PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
+from app.services.accounts import change_email
 
 router = APIRouter()
 
@@ -98,6 +99,24 @@ def admin_reset_link(uid: int, request: Request):
             (token, u["email"], f"réinitialisation — {u['name']}", now, now + INVITE_TTL_DAYS * 86400),
         )
     return {"link": _invite_link(token), "expires_in_days": INVITE_TTL_DAYS}
+
+
+class EmailRequest(BaseModel):
+    email: str = Field(..., max_length=200)
+
+
+@router.post("/api/admin/users/{uid}/email")
+def admin_set_email(uid: int, payload: EmailRequest, request: Request):
+    """Corrige l'adresse e-mail d'un compte (administrateurs) ; reportée partout où elle sert de clé."""
+    _require_admin(request)
+    try:
+        with _db_lock, _db() as conn:
+            _old, new = change_email(conn, uid, payload.email)
+    except LookupError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True, "email": new}
 
 
 class RoleRequest(BaseModel):

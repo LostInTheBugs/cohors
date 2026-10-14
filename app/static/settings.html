@@ -133,7 +133,7 @@
     <aside class="smenu" id="smenu">
       <button class="sbtn on" type="button" data-sec="sec-profil">👤 Profil</button>
       <button class="sbtn" type="button" data-sec="sec-vocal">🎧 Vocal (TeamSpeak)</button>
-      <button class="sbtn" type="button" data-sec="sec-pw">🔒 Mot de passe</button>
+      <button class="sbtn" type="button" data-sec="sec-pw">🔒 E-mail &amp; mot de passe</button>
       <div class="stitle hidden" id="smenu-adm">🛡️ Administration</div>
       <button class="sbtn hidden" type="button" data-sec="sec-invitations" id="sbtn-invitations">✉️ Invitations</button>
       <button class="sbtn hidden" type="button" data-sec="sec-comptes" id="sbtn-comptes">👤 Comptes</button>
@@ -180,6 +180,16 @@
   </div>
 
 <div id="sec-pw" class="hidden">
+<div class="card">
+    <h2>✉️ Adresse e-mail</h2>
+    <p class="note" style="margin-top:0">Adresse actuelle : <b id="em-cur">—</b> — elle sert à te connecter et à recevoir les invitations et liens de réinitialisation.</p>
+    <div class="row">
+      <input type="email" id="em-new" placeholder="Nouvelle adresse e-mail" autocomplete="email">
+      <input type="password" id="em-pw" placeholder="Ton mot de passe (confirmation)" autocomplete="current-password">
+      <button id="em-save">Changer l'adresse</button>
+    </div>
+    <p class="note"><span id="em-msg"></span></p>
+  </div>
 <div class="card">
     <h2>🔒 Mot de passe</h2>
     <div class="row">
@@ -588,6 +598,19 @@ $("#voice-save").addEventListener("click", async () => {
   $("#voice-save").disabled = false;
 });
 
+$("#em-save").addEventListener("click", async () => {
+  const em = $("#em-new").value.trim(), pw = $("#em-pw").value;
+  if (!em || !pw) { setMsg("#em-msg", "Indique la nouvelle adresse et ton mot de passe.", false); return; }
+  $("#em-save").disabled = true;
+  try {
+    const r = await jpost("/api/me/email", { email: em, password: pw });
+    $("#em-cur").textContent = r.email; if (ME) ME.email = r.email;
+    $("#em-new").value = ""; $("#em-pw").value = "";
+    setMsg("#em-msg", "Adresse modifiée ✓ — utilise-la pour te connecter désormais.", true);
+  } catch (e) { setMsg("#em-msg", e.message, false); }
+  $("#em-save").disabled = false;
+});
+
 $("#pw-save").addEventListener("click", async () => {
   const cur = $("#pw-cur").value, nw = $("#pw-new").value, nw2 = $("#pw-new2").value;
   if (!cur || !nw || !nw2) { setMsg("#pw-msg", "Remplis tous les champs.", false); return; }
@@ -694,6 +717,7 @@ async function loadUsers() {
     const badges = (canRole ? "" : roleBadge) + (u.active ? '' : '<span class="badge b-off">Désactivé</span>');
     const btnActive = `<button class="small ghost" data-active="${u.id}" data-val="${u.active ? 0 : 1}">${u.active ? "Désactiver" : "Réactiver"}</button>`;
     const btnReset = `<button class="small ghost" data-reset="${u.id}">Lien de réinitialisation</button>`;
+    const btnMail = `<button class="small ghost" data-mail="${u.id}" data-cur="${esc(u.email)}" title="Corriger l'adresse e-mail du compte">✉️ E-mail</button>`;
     const btnDel = `<button class="small danger" data-del="${u.id}" data-name="${esc(u.name)}">Supprimer</button>`;
     const roleSel = canRole
       ? `<select class="rolesel r-${esc(u.role)}" data-role="${u.id}" title="Rôle du compte">
@@ -702,7 +726,7 @@ async function loadUsers() {
            ${asAdmin ? `<option value="admin"${u.role === "admin" ? " selected" : ""}>Administrateur</option>` : ""}
          </select>`
       : "";
-    const uacts = isSelf ? "" : (asAdmin ? `${roleSel}${btnActive}${btnReset}${btnDel}` : roleSel);
+    const uacts = isSelf ? "" : (asAdmin ? `${roleSel}${btnMail}${btnActive}${btnReset}${btnDel}` : roleSel);
     return `<div class="item ucard">
       <span class="name">${esc(u.name || u.email)} ${badges}</span>
       <span class="uacts">${uacts}</span>
@@ -712,6 +736,13 @@ async function loadUsers() {
   box.querySelectorAll("[data-active]").forEach(b => b.addEventListener("click", async () => {
     await api("POST", `/api/admin/users/${b.dataset.active}/active`, { active: b.dataset.val === "1" });
     toast("Compte mis à jour"); loadUsers();
+  }));
+  box.querySelectorAll("[data-mail]").forEach(b => b.addEventListener("click", async () => {
+    const nv = prompt("Nouvelle adresse e-mail du compte :", b.dataset.cur || "");
+    if (!nv || nv.trim() === b.dataset.cur) return;
+    try { await api("POST", `/api/admin/users/${b.dataset.mail}/email`, { email: nv.trim() }); toast("Adresse modifiée ✓"); }
+    catch (e) {}
+    loadUsers();
   }));
   box.querySelectorAll("[data-reset]").forEach(b => b.addEventListener("click", async () => {
     const d2 = await api("POST", `/api/admin/users/${b.dataset.reset}/reset-link`);
@@ -1340,6 +1371,7 @@ $("#bi-reset").addEventListener("click", async () => {
     me = await jget("/api/me");
     $("#who").textContent = me.name || me.email;
     $("#name").value = me.name || "";
+    $("#em-cur").textContent = me.email || "—";
     $("#voice-nick").value = me.voice_nick_raw || "";
     $("#voice-nick").placeholder = "Par défaut : " + (me.voice_default || "…");
     let lang = "";

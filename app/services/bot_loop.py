@@ -9,6 +9,7 @@ from app import bnet, discord_bot, wcl
 from app.core.brand import _brand_identity
 from app.core.config import PUBLIC_BASE_URL
 from app.core.db import _db, _db_lock
+from app.services.accounts import onboarding_counts
 from app.services.bot import _bot_config, _bot_save
 from app.services.jobs import _job_int, _job_status_set
 from app.services.progression import _progression_data
@@ -79,6 +80,21 @@ def _weekly_recap_embed() -> dict | None:
             fields.append({"name": "🩺 Préparation", "value": txt[:1024]})
     except Exception as exc:  # noqa: BLE001
         print(f"[bot] récap préparation: {exc}")
+    try:                                   # relance douce : comptes à compléter (sans nommer personne)
+        with _db_lock, _db() as conn:
+            oc = onboarding_counts(conn)
+        if oc["no_chars"] or oc["no_wishlist"]:
+            parts = []
+            if oc["no_chars"]:
+                parts.append(f"🪪 {oc['no_chars']} compte(s) sans personnage lié")
+            if oc["no_wishlist"]:
+                parts.append(f"🎯 {oc['no_wishlist']} sans wishlist")
+            txt = " · ".join(parts) + " — le tableau de bord guide en 3 étapes (personnages, wishlist, addon)."
+            if PUBLIC_BASE_URL:
+                txt += f"\n👉 [Tableau de bord]({PUBLIC_BASE_URL}/dashboard)"
+            fields.append({"name": "👋 Comptes à compléter", "value": txt[:1024]})
+    except Exception as exc:  # noqa: BLE001
+        print(f"[bot] récap comptes: {exc}")
     if not fields:
         return None
     return discord_bot.weekly_embed(fields, f"{PUBLIC_BASE_URL}/rankings" if PUBLIC_BASE_URL else "",
