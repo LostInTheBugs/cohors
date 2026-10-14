@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.055 - 2026-10-14
+
+### Added
+
+- Dashboard: a 3-step welcome guide for members (link characters and pick a main, fill in the wishlist,
+  install the add-on); the weekly Discord recap counts the accounts still to complete.
+- E-mail change: by the member (Settings → 🔒 E-mail & mot de passe, password required) or by an
+  administrator (👤 Comptes → ✉️ E-mail); the address is updated everywhere it is used.
+
+### Changed
+
+- Invitation page: new wording, and the suggested address can be corrected when creating the account.
+
 ## 2026.10.054 - 2026-10-13
 
 ### Added
