@@ -10,7 +10,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.16.0"
+local ADDON_VER = "1.16.1"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -73,6 +73,13 @@ end
 
 -- découpe un texte en lignes d'au plus w caractères : un EditBox du jeu ne fait PAS de retour
 -- automatique, une longue ligne serait coupée à droite sans aucun signe visible (vécu 20/09).
+-- Texte COLLÉ dans un champ du jeu : le client y double chaque « | » (caractère d'échappement des
+-- codes couleur et liens), GetText() renvoie donc « 123||item||Nom » (vécu 14/10 : « aucune ligne
+-- valide » sur un export correct). On remet les « | » simples avant de lire un export.
+local function unpipe(s)
+    return (tostring(s or ""):gsub("||", "|"))
+end
+
 local function wrapTxt(t, w)
     local out, cur = {}, ""
     for word in tostring(t):gmatch("%S+") do
@@ -1475,7 +1482,7 @@ end
 
 local function wlParse(txt)
     local out, bad, n = {}, 0, 0
-    for line in tostring(txt or ""):gmatch("[^\r\n]+") do
+    for line in unpipe(txt):gmatch("[^\r\n]+") do
         local trimmed = line:match("^%s*(.-)%s*$")
         if n == 0 then
             if trimmed ~= "CohorsWL1" then
@@ -1893,7 +1900,7 @@ end
 local function lcParse(txt)
     local d = { users = {}, players = {}, wants = {}, track = 0, at = 0 }
     local n, bad = 0, 0
-    for line in tostring(txt or ""):gmatch("[^\r\n]+") do
+    for line in unpipe(txt):gmatch("[^\r\n]+") do
         local t = line:match("^%s*(.-)%s*$")
         if n == 0 then
             if t ~= "CohorsLC1" then
