@@ -146,6 +146,10 @@ def _access_token() -> str:
                 payload = json.load(resp)
         except urllib.error.HTTPError as exc:
             raise WclError(exc.code, "Authentification Warcraft Logs refusée (clés invalides ?).") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:   # réseau coupé, DNS, délai dépassé
+            raise WclError(503, "Warcraft Logs injoignable (réseau ou service indisponible) — réessaie dans un moment.") from exc
+        except ValueError as exc:                                         # réponse illisible (pas du JSON)
+            raise WclError(502, "Réponse illisible de Warcraft Logs.") from exc
         _token["value"] = payload["access_token"]
         _token["expires"] = time.time() + int(payload.get("expires_in", 3600))
         return _token["value"]
@@ -166,6 +170,10 @@ def _gql(query: str, variables: dict | None = None) -> dict:
             payload = json.load(resp)
     except urllib.error.HTTPError as exc:
         raise WclError(exc.code if exc.code in (400, 404) else 502, "Erreur de l'API Warcraft Logs.") from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:       # réseau coupé, DNS, délai dépassé
+        raise WclError(503, "Warcraft Logs injoignable (réseau ou service indisponible) — réessaie dans un moment.") from exc
+    except ValueError as exc:                                             # réponse illisible (pas du JSON)
+        raise WclError(502, "Réponse illisible de Warcraft Logs.") from exc
     if payload.get("errors"):
         msg = str(((payload["errors"] or [{}])[0] or {}).get("message", "erreur GraphQL"))[:200]
         raise WclError(502, f"Warcraft Logs : {msg}")

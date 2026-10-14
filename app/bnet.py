@@ -155,6 +155,10 @@ def _access_token() -> str:
                 payload = json.load(resp)
         except urllib.error.HTTPError as exc:
             raise BnetError(exc.code, "Authentification Battle.net refusée (clés invalides ?).") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:   # réseau coupé, DNS, délai dépassé
+            raise BnetError(503, "Battle.net injoignable (réseau ou service indisponible) — réessaie dans un moment.") from exc
+        except ValueError as exc:                                         # réponse illisible (pas du JSON)
+            raise BnetError(502, "Réponse illisible de Battle.net.") from exc
         _token["value"] = payload["access_token"]
         _token["expires"] = time.time() + int(payload.get("expires_in", 3600))
         return _token["value"]
@@ -172,6 +176,10 @@ def _get(path: str, params: dict | None = None, not_found: str = "Personnage int
         if exc.code == 404:
             raise BnetError(404, not_found) from exc
         raise BnetError(exc.code, "Erreur de l'API Battle.net.") from exc
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:       # réseau coupé, DNS, délai dépassé
+        raise BnetError(503, "Battle.net injoignable (réseau ou service indisponible) — réessaie dans un moment.") from exc
+    except ValueError as exc:                                             # réponse illisible (pas du JSON)
+        raise BnetError(502, "Réponse illisible de Battle.net.") from exc
 
 
 def _cached(key: str, force: bool) -> dict | None:
