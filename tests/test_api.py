@@ -636,6 +636,64 @@ spec=feral
     assert plan["mode"] == "max"
 
 
+def test_stuff_trace_lines_and_warnings():
+    """Traçabilité du Stuff conseillé : export et son âge, mode, méthode / moteur, source BIS datée,
+    niveaux maximum, saison ; les données trop vieilles sont signalées (warn)."""
+    from app.services.stuff import stuff_trace
+    now = time.time()
+    with M._db_lock, M._db() as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS item_max_ilvl (item_id INTEGER PRIMARY KEY, ilvl INTEGER NOT NULL,"
+                     " label TEXT NOT NULL DEFAULT '', fetched REAL NOT NULL DEFAULT 0)")
+        conn.execute("DELETE FROM item_max_ilvl")
+        conn.execute("INSERT INTO item_max_ilvl (item_id, ilvl, label, fetched) VALUES (1, 330, 'Myth 6/6', ?)", (now - 40 * 86400,))
+        sim = stuff_trace({"mode": "cur", "content": "raid", "loadout": {"name": "Raid ST"}}, "Flavia", now - 2 * 86400,
+                          {"mode": "sim", "iterations": 800}, conn, "simulationcraftorg/simc:1210-2026-10-04-2d54d82")
+        old = stuff_trace({"mode": "max", "max_rank": True, "content": "mplus"}, "Flavia", now - 20 * 86400,
+                          {"mode": "sim", "boosted": 3}, conn, "simc:x")
+        bis = stuff_trace({"mode": "bis", "content": ["raid", "craft"]}, "Flavia", now,
+                          {"mode": "bis", "source_fr": "Guide Wowhead BiS — test"}, conn)
+        heal = stuff_trace({"mode": "cur", "content": "raid"}, "Soin", now, {"mode": "heal", "prio_known": False}, conn)
+        conn.execute("DELETE FROM item_max_ilvl")
+    txt = lambda rows: " | ".join(r["fr"] for r in rows)  # noqa: E731
+    assert "Export « Flavia »" in txt(sim) and "il y a 2 j" in txt(sim) and not sim[0]["warn"]
+    assert "1210-2026-10-04-2d54d82" in txt(sim) and "800 itérations" in txt(sim) and "build « Raid ST »" in txt(sim)
+    assert "combat de 5 min" in txt(sim) and "Niveaux maximum" not in txt(sim)
+    assert old[0]["warn"] and "réexporte" in old[0]["fr"]                       # export de 20 jours
+    assert any("rang max" in r["fr"] and "3 pièce(s)" in r["fr"] for r in old)
+    assert any(r["icon"] == "📈" and r["warn"] for r in old)                     # niveaux max relevés il y a 40 j
+    assert "Mode BIS" in txt(bis) and "Raid · Artisanat" in txt(bis) and "Guide Wowhead BiS — test" in txt(bis)
+    assert any(r["icon"] == "📚" for r in bis) and any(r["icon"] == "🗓️" for r in bis)
+    assert any(r["icon"] == "⚙️" and r["warn"] and "niveau d'objet seulement" in r["fr"] for r in heal)
+    assert all(r["en"] and r["fr"] for r in sim + old + bis + heal)
+    assert sim[-1]["icon"] == "⚖️"
+
+
+def test_stuff_bis_result_carries_trace(monkeypatch):
+    """Un calcul BIS terminé enregistre la traçabilité dans son résultat (export daté, source)."""
+    from app.services import sims as S
+    _make_user("trace@test.local")
+    c = TestClient(M.app)
+    assert c.post("/api/login", json={"email": "trace@test.local", "password": "test-pw-123"},
+                  headers={"X-Forwarded-For": "10.99.50.9"}).status_code == 200
+    simc = 'druid="TraceFeral"\nlevel=90\nspec=feral\n### Gear from Bags\n# head=,id=100001\n'
+    pid = c.post("/api/profiles", json={"name": "Trace", "input": simc}).json()["id"]
+    monkeypatch.setattr(S, "_stuff_bis_list", lambda cls, spec: {"source_label_fr": "Guide test", "updated_fr": "01/10/2026",
+                                                                "slots": []})
+    monkeypatch.setattr(S, "_stuff_max_levels", lambda items, conn: (0, []))
+    r = c.post("/api/stuff", json={"profile_id": pid, "bis": True, "bis_content": ["raid"]})
+    assert r.status_code == 200, r.text
+    sid = r.json()["id"]
+    with M._db_lock, M._db() as conn:
+        row = conn.execute("SELECT * FROM sims WHERE id=?", (sid,)).fetchone()
+    S._run_stuff(row)
+    with M._db_lock, M._db() as conn:
+        row = conn.execute("SELECT status, gear, error FROM sims WHERE id=?", (sid,)).fetchone()
+    assert row["status"] == "done", row["error"]
+    trace = json.loads(row["gear"])["trace"]
+    assert trace[0]["icon"] == "📄" and "Export « Trace »" in trace[0]["fr"]
+    assert any("Guide test" in t["fr"] for t in trace)
+
+
 def test_applier_failure_clears_running_and_sets_at(tmp_path):
     """L'applicateur en échec simulé : running repasse à '' et at est renseigné."""
     import shutil as _sh

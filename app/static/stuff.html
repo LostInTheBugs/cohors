@@ -78,6 +78,11 @@
   .hidden { display: none !important; }
   .src { font-size: 12.5px; }
   .src a { color: var(--acc2); }
+  .trace { margin-top:12px; border:1px dashed var(--line); border-radius:10px; padding:8px 12px; font-size:13px; }
+  .trace summary { cursor:pointer; color:var(--mut); font-weight:600; }
+  .trace ul { margin:8px 0 2px 0; padding-left:4px; list-style:none; }
+  .trace li { padding:3px 0; color:var(--mut); }
+  .trace li.msg-warn { color:var(--warn); }
 </style>
 <link rel="stylesheet" href="/static/theme.css?v=2026.10.057">
 </head>
@@ -168,6 +173,7 @@
     <div class="gwrap"><table class="gtable hidden" id="restable"></table></div>
     <p class="gsum" id="ressum"></p>
     <p class="src" id="ressrc"></p>
+    <div class="trace hidden" id="restrace"></div>
     <div id="rescraft"></div>
   </div>
 
@@ -342,8 +348,21 @@ function renderCrafted(cr, en) {
     }).join("")).join("") + "</table></div>";
 }
 
+// 🔎 Traçabilité : d'où vient ce résultat (export, mode, méthode, source et dates) — renvoyée par le serveur
+function renderTrace(st) {
+  const box = $("#restrace");
+  const rows = (st && st.trace) || [];
+  if (!rows.length) { box.innerHTML = ""; box.classList.add("hidden"); return; }
+  const en = document.documentElement.lang === "en";
+  const warn = rows.some(r => r.warn);
+  box.innerHTML = `<details${warn ? " open" : ""}><summary>🔎 <span>D'où viennent ces résultats</span>${warn ? ` <span class="msg-warn">— <span>à vérifier</span></span>` : ""}</summary>
+    <ul>${rows.map(r => `<li class="${r.warn ? "msg-warn" : ""}">${r.icon} ${esc(en ? (r.en || r.fr) : r.fr)}</li>`).join("")}</ul></details>`;
+  box.classList.remove("hidden");
+}
+
 function render(d) {
   const st = d.stuff;
+  renderTrace(st);
   const card = $("#rescard"), meta = $("#resmeta"), table = $("#restable"), sum = $("#ressum"), src = $("#ressrc");
   card.classList.remove("hidden");
   sum.innerHTML = ""; src.innerHTML = ""; $("#rescraft").innerHTML = "";
