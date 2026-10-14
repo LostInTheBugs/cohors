@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.060 - 2026-10-14
+
+### Changed
+
+- Add-on **1.16.0**, easier to use:
+  - the window opens on a new « Accueil » tab: one line per feature (wishlist, loot, calendar,
+    recipes) shows where you stand, in green (ready), orange (to do) or grey (optional or officers
+    only), with a button to the matching tab;
+  - each tab starts with numbered steps (what to copy on the site, where to paste it, which button
+    to click), and the empty field says what to paste;
+  - buttons with explicit names (« Importer la liste », « Boss suivant », « Fin de soirée »,
+    « Lire le calendrier », « Lire mes recettes », « Recommencer », « Diagnostic »); recipes have
+    their own « Métiers » tab;
+  - each tab keeps its own field content (the wishlist text no longer shows up in the calendar tab);
+  - the active tab is highlighted instead of greyed out; the whole field area can be clicked;
+  - symbols the game fonts do not draw (⭐, →, ▶, emojis) replaced by words, e.g. « (prio, BIS
+    +2.5 %, visé Héros) ».
+- Help and site texts use the new add-on button names.
+
 ## 2026.10.059 - 2026-10-14
 
 ### Fixed
