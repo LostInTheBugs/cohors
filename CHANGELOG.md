@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.059 - 2026-10-14
+
+### Fixed
+
+- Stuff conseillé: a full simulation queue no longer accepts new calculations (same limit as the other
+  simulations).
+- The site no longer waits while maximum item levels are fetched from Wowhead (the fetch was made
+  while holding the database lock).
+
+### Changed
+
+- Maximum item levels older than 30 days are re-read automatically (at most 40 per calculation).
+
 ## 2026.10.058 - 2026-10-14
 
 ### Added

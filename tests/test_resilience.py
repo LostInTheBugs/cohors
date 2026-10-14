@@ -185,3 +185,83 @@ def test_no_server_error_when_blizzard_or_wcl_fail(kind, monkeypatch):
         wcl.set_credentials(None, None)
         bnet.set_guild_info()
         wcl.set_guild_info()
+
+
+# ------------------------------------------------------------------ file de simulations saturée
+def test_full_queue_answers_503_for_every_kind_and_429_per_member():
+    """File commune pleine : /api/sim et /api/stuff refusent proprement (503) ; au-delà de la limite par
+    joueur, 429 — jamais d'erreur serveur, et la file ne dépasse pas QUEUE_MAX."""
+    from app.core.config import PER_USER_ACTIVE, QUEUE_MAX
+    c = _admin("queue-user@test.local", "10.99.71.1")
+    simc = 'druid="QueueFeral"\nlevel=90\nspec=feral\n### Gear from Bags\n# head=,id=100001\n'
+    pid = c.post("/api/profiles", json={"name": "File", "input": simc}).json()["id"]
+    now = __import__("time").time()
+    with M._db_lock, M._db() as conn:                      # compléter la file jusqu'à QUEUE_MAX
+        base = conn.execute("SELECT COUNT(*) FROM sims WHERE status IN ('queued','running')").fetchone()[0]
+        for i in range(max(0, QUEUE_MAX - base)):
+            conn.execute("INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file, user_email,"
+                         " user_name, kind) VALUES (?,?,?,?,?, 'queued', ?, '', ?, 'x', 'dps')",
+                         (f"qfull{i:03d}", now, "10.0.0.9", "file", 100, f"h{i}", f"autre{i}@test.local"))
+    try:
+        r = c.post("/api/stuff", json={"profile_id": pid, "content": "raid", "mode": "cur"})
+        assert r.status_code == 503 and "file est pleine" in r.json()["detail"]
+        r = c.post("/api/stuff", json={"profile_id": pid, "bis": True, "bis_content": ["raid"]})
+        assert r.status_code in (400, 503)          # 400 si pas de liste BIS pour la spé de test, jamais 500
+        r = c.post("/api/sim", json={"input": simc + "# filler line for minimum length", "iterations": 1000})
+        assert r.status_code in (400, 429, 503), r.text      # refus propre (limite IP, joueur ou file), jamais 500
+        with M._db_lock, M._db() as conn:
+            n = conn.execute("SELECT COUNT(*) FROM sims WHERE status IN ('queued','running')").fetchone()[0]
+        assert n == max(QUEUE_MAX, base)                   # rien n'a été ajouté à une file pleine
+        # file libérée, mais le joueur a déjà PER_USER_ACTIVE calculs en attente : 429
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM sims WHERE id LIKE 'qfull%'")
+            conn.execute("UPDATE sims SET status='failed' WHERE status IN ('queued','running')")   # file libérée
+            for i in range(PER_USER_ACTIVE):
+                conn.execute("INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,"
+                             " user_email, user_name, kind) VALUES (?,?,?,?,?, 'queued', ?, '', ?, 'x', 'stuff')",
+                             (f"qmine{i}", now, "10.0.0.8", "moi", 100, f"m{i}", "queue-user@test.local"))
+        r = c.post("/api/stuff", json={"profile_id": pid, "content": "raid", "mode": "cur"})
+        assert r.status_code == 429
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM sims WHERE id LIKE 'qfull%' OR id LIKE 'qmine%' OR user_email='queue-user@test.local'")
+
+
+# ------------------------------------------------------------------ niveaux maximum (Wowhead)
+def test_max_levels_refresh_stale_entries_without_holding_the_db_lock(monkeypatch):
+    from app.services import stuff as ST
+    import time as _t
+    calls = []
+
+    def fake(iid):
+        assert not M._db_lock.locked(), "appel réseau fait en tenant le verrou de la base"
+        calls.append(iid)
+        return None if iid == 3 else {"ilvl": 340, "label": "Mythe 6/6"}
+    monkeypatch.setattr(ST, "_stuff_wh_version", fake)
+    now = _t.time()
+    with M._db_lock, M._db() as conn:
+        ST._maxlvl_table(conn)
+        conn.execute("DELETE FROM item_max_ilvl")
+        conn.execute("INSERT INTO item_max_ilvl VALUES (1, 330, 'Mythe 6/6', ?)", (now - 2 * 86400,))     # récent
+        conn.execute("INSERT INTO item_max_ilvl VALUES (2, 330, 'Mythe 6/6', ?)", (now - 60 * 86400,))    # périmé
+        conn.execute("INSERT INTO item_max_ilvl VALUES (3, 325, 'Héros 6/6', ?)", (now - 90 * 86400,))    # périmé, relecture en échec
+    items = [{"opts": f",id={i}", "ilvl": 300, "name": f"P{i}"} for i in (1, 2, 3, 4)]                    # 4 : inconnu
+    try:
+        changed, _ex = ST._stuff_max_levels(items)
+        assert sorted(calls) == [2, 3, 4]                     # le récent n'est pas relu
+        by = {int(it["opts"].split("id=")[1].split(",")[0]): it for it in items}
+        assert by[1]["max_ilvl"] == 330 and by[2]["max_ilvl"] == 340 and by[4]["max_ilvl"] == 340
+        assert by[3]["max_ilvl"] == 325                       # échec de relecture : l'ancienne valeur reste
+        with M._db_lock, M._db() as conn:
+            f = {r["item_id"]: r["fetched"] for r in conn.execute("SELECT item_id, fetched FROM item_max_ilvl")}
+        assert f[2] > now - 60 and f[3] < now - 80 * 86400
+        # plafond de relectures par appel : les plus anciennes d'abord
+        calls.clear()
+        monkeypatch.setattr(ST, "MAXLVL_REFRESH_BATCH", 1)
+        with M._db_lock, M._db() as conn:
+            conn.execute("UPDATE item_max_ilvl SET fetched=? WHERE item_id=1", (now - 40 * 86400,))
+        ST._stuff_max_levels([{"opts": f",id={i}", "ilvl": 300} for i in (1, 3)])
+        assert calls == [3]
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM item_max_ilvl")

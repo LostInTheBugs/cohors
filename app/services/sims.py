@@ -140,43 +140,44 @@ def _run_stuff_bis(sim_id: str, parsed: dict, items: list[dict], plan: dict, t0:
     if isinstance(contents, str):
         contents = [contents]
     blk = _stuff_bis_filter(blk, contents)
-    with _db_lock, _db() as conn:
-        loc = "fr_FR"
-        loc_en = "en_US"
-        results = {"mode": "bis", "source": blk.get("source_url", ""),
-                   "source_fr": blk.get("source_label_fr", ""),
-                   "updated_fr": blk.get("updated_fr", ""), "slots": [],
-                   "content": contents}
-        owned_by_id, equipped_by_id = {}, set()
-        for it in items:
-            m = re.search(r"id=(\d+)", it.get("opts") or "")
-            if not m:
-                continue
-            owned_by_id[int(m.group(1))] = it
-            if it.get("equipped"):
-                equipped_by_id.add(int(m.group(1)))
-        cur_by_slot = {it["slot"]: it for it in items if it.get("equipped")}
-        need_stats = []
-        for e in blk.get("slots") or []:
-            row = {"slot": e.get("slot"), "id": e.get("id"),
-                   "src_fr": e.get("src_fr", ""), "src_en": e.get("src_en", "")}
-            cur = cur_by_slot.get(e.get("slot"))
-            row["current"] = ({"name": cur.get("name"), "ilvl": cur.get("ilvl")} if cur else None)
-            row["equipped"] = int(e.get("id") or 0) in equipped_by_id
-            row["owned"] = int(e.get("id") or 0) in owned_by_id
-            if row["owned"] and not row["equipped"]:
-                row["bag_ilvl"] = (owned_by_id[int(e.get("id"))] or {}).get("ilvl")
-            try:
-                row["name_fr"] = bnet.item(int(e.get("id")), locale=loc).get("name") or ""
-                row["name_en"] = bnet.item(int(e.get("id")), locale=loc_en).get("name") or ""
-            except Exception:  # noqa: BLE001
-                row["name_fr"], row["name_en"] = "", ""
-            need_stats.append({"opts": f',id={int(e.get("id"))}', "ilvl": 0})
-            results["slots"].append(row)
-        _stuff_max_levels(need_stats, conn)
-        for row, st in zip(results["slots"], need_stats):
-            row["max_ilvl"] = st.get("max_ilvl")
-        if "craft" in contents:
+    # pas de verrou de la base pendant les appels réseau (noms Blizzard, niveaux maximum Wowhead)
+    loc = "fr_FR"
+    loc_en = "en_US"
+    results = {"mode": "bis", "source": blk.get("source_url", ""),
+               "source_fr": blk.get("source_label_fr", ""),
+               "updated_fr": blk.get("updated_fr", ""), "slots": [],
+               "content": contents}
+    owned_by_id, equipped_by_id = {}, set()
+    for it in items:
+        m = re.search(r"id=(\d+)", it.get("opts") or "")
+        if not m:
+            continue
+        owned_by_id[int(m.group(1))] = it
+        if it.get("equipped"):
+            equipped_by_id.add(int(m.group(1)))
+    cur_by_slot = {it["slot"]: it for it in items if it.get("equipped")}
+    need_stats = []
+    for e in blk.get("slots") or []:
+        row = {"slot": e.get("slot"), "id": e.get("id"),
+               "src_fr": e.get("src_fr", ""), "src_en": e.get("src_en", "")}
+        cur = cur_by_slot.get(e.get("slot"))
+        row["current"] = ({"name": cur.get("name"), "ilvl": cur.get("ilvl")} if cur else None)
+        row["equipped"] = int(e.get("id") or 0) in equipped_by_id
+        row["owned"] = int(e.get("id") or 0) in owned_by_id
+        if row["owned"] and not row["equipped"]:
+            row["bag_ilvl"] = (owned_by_id[int(e.get("id"))] or {}).get("ilvl")
+        try:
+            row["name_fr"] = bnet.item(int(e.get("id")), locale=loc).get("name") or ""
+            row["name_en"] = bnet.item(int(e.get("id")), locale=loc_en).get("name") or ""
+        except Exception:  # noqa: BLE001
+            row["name_fr"], row["name_en"] = "", ""
+        need_stats.append({"opts": f',id={int(e.get("id"))}', "ilvl": 0})
+        results["slots"].append(row)
+    _stuff_max_levels(need_stats)
+    for row, st in zip(results["slots"], need_stats):
+        row["max_ilvl"] = st.get("max_ilvl")
+    if "craft" in contents:
+        with _db_lock, _db() as conn:
             results["crafted"] = _stuff_best_crafted(conn, parsed["cls"], parsed["spec"], contents,
                                                      set(owned_by_id), equipped_by_id)
     results["missing"] = sum(1 for r in results["slots"] if not r["owned"] and not r["equipped"])
@@ -229,8 +230,7 @@ def _run_stuff(row: sqlite3.Row) -> None:
             items.append(d)
         boosted, examples = 0, []
         if plan.get("max_rank"):
-            with _db_lock, _db() as conn:
-                boosted, examples = _stuff_max_levels(items, conn)
+            boosted, examples = _stuff_max_levels(items)     # appels Wowhead hors verrou de la base
         if (plan.get("mode") or "cur") == "bis":
             _run_stuff_bis(sim_id, parsed, items, plan, t0, prof)
             return
