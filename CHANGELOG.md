@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.057 - 2026-10-14
+
+### Fixed
+
+- When Blizzard or Warcraft Logs cannot be reached (network down, DNS, timeout), character equipment,
+  item sheets and attendance answered with a server error; they now show a clear « injoignable »
+  message.
+
+### Added
+
+- Robustness tests: migration of a database from the oldest version in the history (fake data,
+  `tools/make-old-db.py`), and every page / API checked while the external APIs are down, refuse the
+  keys or rate-limit.
+
 ## 2026.10.056 - 2026-10-14
 
 ### Added
