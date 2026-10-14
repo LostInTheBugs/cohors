@@ -679,7 +679,7 @@ def test_stuff_bis_result_carries_trace(monkeypatch):
     pid = c.post("/api/profiles", json={"name": "Trace", "input": simc}).json()["id"]
     monkeypatch.setattr(S, "_stuff_bis_list", lambda cls, spec: {"source_label_fr": "Guide test", "updated_fr": "01/10/2026",
                                                                 "slots": []})
-    monkeypatch.setattr(S, "_stuff_max_levels", lambda items, conn: (0, []))
+    monkeypatch.setattr(S, "_stuff_max_levels", lambda items, conn=None: (0, []))
     r = c.post("/api/stuff", json={"profile_id": pid, "bis": True, "bis_content": ["raid"]})
     assert r.status_code == 200, r.text
     sid = r.json()["id"]

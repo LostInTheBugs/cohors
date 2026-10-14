@@ -9,6 +9,7 @@ from pathlib import Path
 
 import httpx
 
+from app.core.db import _db, _db_lock
 from app.simclient import run_sim
 
 logger = logging.getLogger(__name__)
@@ -420,30 +421,49 @@ def _stuff_wh_version(iid: int) -> dict | None:
     return out
 
 
-def _stuff_max_levels(items: list[dict], conn) -> tuple[int, list[str]]:
-    """Complète chaque pièce avec son niveau maximum (cache en base). Renvoie (nb modifiés, exemples)."""
+MAXLVL_TTL_DAYS = 30           # un niveau maximum relevé il y a plus longtemps est relu (nouvelle piste ?)
+MAXLVL_REFRESH_BATCH = 40      # au plus N relectures d'entrées périmées par calcul (on étale les appels)
+
+
+def _maxlvl_table(conn) -> None:
     conn.execute(
         """CREATE TABLE IF NOT EXISTS item_max_ilvl (
                item_id   INTEGER PRIMARY KEY,
                ilvl      INTEGER NOT NULL,
                label     TEXT NOT NULL DEFAULT '',
                fetched   REAL NOT NULL DEFAULT 0)""")
+
+
+def _stuff_max_levels(items: list[dict], conn=None) -> tuple[int, list[str]]:
+    """Complète chaque pièce avec son niveau maximum (cache en base). Renvoie (nb modifiés, exemples).
+
+    Les pièces inconnues sont lues sur Wowhead ; celles relevées il y a plus de MAXLVL_TTL_DAYS jours
+    sont relues (MAXLVL_REFRESH_BATCH au plus par appel, les plus anciennes d'abord) — en cas d'échec,
+    l'ancienne valeur reste. Les appels réseau se font SANS tenir le verrou de la base : `conn` est
+    ignoré (gardé pour compatibilité), la fonction ouvre ses propres connexions courtes."""
     ids = sorted({int(re.search(r"id=(\d+)", it.get("opts") or "").group(1))
                   for it in items if re.search(r"id=(\d+)", it.get("opts") or "")})
-    known = {r["item_id"]: {"ilvl": r["ilvl"], "label": r["label"]}
-             for r in conn.execute("SELECT * FROM item_max_ilvl").fetchall()}
+    with _db_lock, _db() as c:
+        _maxlvl_table(c)
+        rows = c.execute("SELECT * FROM item_max_ilvl").fetchall()
+    known = {r["item_id"]: {"ilvl": r["ilvl"], "label": r["label"]} for r in rows}
+    fetched_at = {r["item_id"]: r["fetched"] or 0 for r in rows}
+    limit = time.time() - MAXLVL_TTL_DAYS * 86400
     missing = [i for i in ids if i not in known]
-    if missing:
+    stale = sorted((i for i in ids if i in known and fetched_at[i] < limit), key=lambda i: fetched_at[i])
+    todo = missing + stale[:MAXLVL_REFRESH_BATCH]
+    if todo:
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=8) as pool:
-            results = list(pool.map(_stuff_wh_version, missing))
-        for iid, res in zip(missing, results):
-            if res:
-                conn.execute(
-                    "INSERT OR REPLACE INTO item_max_ilvl (item_id, ilvl, label, fetched) VALUES (?,?,?,?)",
-                    (iid, res["ilvl"], res["label"], time.time()))
-                known[iid] = {"ilvl": res["ilvl"], "label": res["label"]}
-        conn.commit()
+            results = list(pool.map(_stuff_wh_version, todo))
+        now = time.time()
+        with _db_lock, _db() as c:
+            for iid, res in zip(todo, results):
+                if res:
+                    c.execute(
+                        "INSERT OR REPLACE INTO item_max_ilvl (item_id, ilvl, label, fetched) VALUES (?,?,?,?)",
+                        (iid, res["ilvl"], res["label"], now))
+                    known[iid] = {"ilvl": res["ilvl"], "label": res["label"]}
     changed, examples = 0, []
     for it in items:
         m = re.search(r"id=(\d+)", it.get("opts") or "")
@@ -795,10 +815,10 @@ def stuff_trace(plan: dict, prof_name: str, prof_updated: float | None, results:
             old = oldest is not None and oldest > TRACE_MAX_OLD_DAYS
             rows.append({"icon": "📈", "warn": old,
                          "fr": f"Niveaux maximum lus sur les infobulles Wowhead, relevés entre le {_fr_date(r['a'])} et le {_fr_date(r['b'])}"
-                               + (" — certains datent : une nouvelle piste d'amélioration a pu sortir." if old else "."),
+                               + (" — certains datent : ils sont relus automatiquement au fil des calculs (une nouvelle piste a pu sortir)." if old else "."),
                          "en": f"Maximum levels read from Wowhead tooltips, fetched between {time.strftime('%Y-%m-%d', time.localtime(r['a']))} "
                                f"and {time.strftime('%Y-%m-%d', time.localtime(r['b']))}"
-                               + (" — some are old: a new upgrade track may be out." if old else ".")})
+                               + (" — some are old: they are re-read automatically over the next calculations (a new track may be out)." if old else ".")})
     # 6. la saison
     if meta["season"] or meta["patch"]:
         rows.append({"icon": "🗓️", "warn": False,

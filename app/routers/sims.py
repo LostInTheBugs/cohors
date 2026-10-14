@@ -240,6 +240,18 @@ class StuffRequest(BaseModel):
         return v
 
 
+def _stuff_queue_check(conn, email: str) -> None:
+    """Avant d'ajouter un « Stuff conseillé » (dans le même verrou que l'insertion) : limite par joueur
+    (429) et taille de la file commune (503), comme pour les autres simulations."""
+    active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
+                          (email,)).fetchone()["c"]
+    if active >= PER_USER_ACTIVE:
+        raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
+    queue_len = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE status IN ('queued','running')").fetchone()["c"]
+    if queue_len >= QUEUE_MAX:
+        raise HTTPException(503, "La file est pleine, réessaie dans quelques minutes.")
+
+
 @router.post("/api/stuff")
 def submit_stuff(payload: StuffRequest, request: Request):
     """« Stuff conseillé » : que porter, avec ce qu'on possède, pour un ou plusieurs contenus."""
@@ -272,14 +284,10 @@ def submit_stuff(payload: StuffRequest, request: Request):
             raise HTTPException(400, f"Contenu invalide : {payload.content}")
         sim_contents = [payload.content]
 
-    with _db_lock, _db() as conn:
-        active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
-                              (user["email"],)).fetchone()["c"]
-
     # BIS : une seule simulation combinée (tous les contenus cochés fusionnés)
     if payload.bis:
-        if active >= PER_USER_ACTIVE:
-            raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
+        with _db_lock, _db() as conn:
+            _stuff_queue_check(conn, user["email"])        # réponse rapide avant de préparer le calcul
         if _stuff_bis_list(parsed["cls"], parsed["spec"]) is None:
             raise HTTPException(400, "Liste BIS pas encore disponible pour cette spécialisation.")
         bis_contents = payload.bis_content if payload.bis_content else ["raid"]
@@ -298,6 +306,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
                 "spec": parsed["spec"], "loadout": loadout or {}, "content": valid_bis,
                 "mode": "bis", "max_rank": False, "bis": True}
         with _db_lock, _db() as conn:
+            _stuff_queue_check(conn, user["email"])        # re-vérifié avec l'insertion (même verrou)
             conn.execute(
                 """INSERT INTO sims (id, created, ip, label, iterations, status, input_hash, input_file,
                                      user_email, user_name, kind, plan)
@@ -314,10 +323,7 @@ def submit_stuff(payload: StuffRequest, request: Request):
     sim_ids = []
     for c in sim_contents:
         with _db_lock, _db() as conn:
-            active = conn.execute("SELECT COUNT(*) AS c FROM sims WHERE user_email=? AND status IN ('queued','running')",
-                                  (user["email"],)).fetchone()["c"]
-            if active >= PER_USER_ACTIVE:
-                raise HTTPException(429, f"Tu as déjà {active} calcul(s) en attente — patiente un peu.")
+            _stuff_queue_check(conn, user["email"])
             sim_id = uuid.uuid4().hex[:20]
             sim_dir = REPORTS_DIR / sim_id
             sim_dir.mkdir(parents=True, exist_ok=True)
