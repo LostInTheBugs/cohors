@@ -10,7 +10,7 @@
 -- Le moteur avance image par image (OnUpdate), jamais par minuteurs : même si
 -- une étape échoue, la collecte se termine et écrit son rapport.
 local ADDON_NAME = ...
-local ADDON_VER = "1.15.0"
+local ADDON_VER = "1.16.0"
 local WINDOW_DAYS = 21
 local MAX_EVENTS = 40
 local MONTH_WAIT = 1.0          -- attente de chargement avant lecture d'un mois
@@ -280,10 +280,12 @@ finishCollect = function()
         msg("aucun événement trouvé. Ouvre le calendrier du jeu (touche C) pour vérifier, puis /cohors. "
             .. "(rapport enregistré : /reload puis envoie le fichier Cohors.lua)")
     else
-        msg(("%d raid(s) collecté(s), %d réponse(s). · /cohors export pour la chaîne à coller sur le site.")
+        msg(("%d raid(s) lu(s), %d réponse(s) — la chaîne à coller sur le site est dans l'onglet Calendrier (ou /cohors export).")
             :format(#results, nresp))
     end
     progressUpdate(("calendrier — terminé : %d raid(s), %d réponse(s)"):format(#results, nresp), 1, true)
+    -- fenêtre ouverte : on montre l'onglet Calendrier, où la chaîne attend d'être copiée
+    if ui and ui:IsShown() and panelShow then pcall(panelShow, "collecter") end
     if Cohors_Refresh then Cohors_Refresh() end
 end
 
@@ -1039,7 +1041,7 @@ local function recFinish(note)
     L[#L + 1] = tostring(Cohors_DB.trace or "?")
     Cohors_DB.rec_diag = table.concat(L, "\n")
     Cohors_DB.rec_diag_at = time()
-    msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/Cohors.lua au site (Préparation de raid, bouton importer).")
+    msg(("%d recette(s) exportée(s)%s — tape /reload PUIS envoie le fichier WTF/Account/<compte>/SavedVariables/Cohors.lua au site (Moi > Mes recettes, importer le fichier) — facultatif, le site les lit aussi depuis Blizzard.")
         :format(total, note and (" (" .. tostring(note) .. ")") or ""))
     if #apiNames > 0 then
         msg("! API recettes en échec : " .. table.concat(apiNames, ", ") .. " — détail via /cohors diag.")
@@ -1420,7 +1422,7 @@ end
 -- entrant dans une instance quand un objet de la liste y tombe : les boss sont
 -- retrouvés via le Journal d'aventure du client (rien à maintenir côté addon
 -- quand un raid change — le client sait où ça tombe).
-local wlAlertBtn, wlField, panelTab = nil, nil, "collecter"
+local wlAlertBtn, wlField, panelTab = nil, nil, "home"
 local wlAlertWin, wlAlertTxt, wlAlertScroll
 local wlItems, wlRecipes
 local wlLastMap, wlLastAt = nil, 0
@@ -1464,7 +1466,7 @@ end
 
 local function wlStatusText()
     local n = wlCount()
-    if n == 0 then return "Aucun objet importé — colle l'export du site puis clique « Importer »." end
+    if n == 0 then return "Aucun objet importé — colle l'export du site puis clique « Importer la liste »." end
     local bad = tonumber(Cohors_DB.wl_bad) or 0
     return ("%d objet(s) — importé le %s%s"):format(n,
         Cohors_DB.wl_at and dateStr(Cohors_DB.wl_at) or "?",
@@ -1510,7 +1512,7 @@ local function wlImport()
     Cohors_DB.wl_error = nil
     wlBuildCache()
     if wlField then
-        wlField:SetText(("Import reussi : %d objet(s)%s dans l'addon.\nL'alerte te preveniendra en entrant dans un raid ou un donjon.")
+        wlField:SetText(("Import réussi : %d objet(s)%s dans l'addon.\nL'alerte te préviendra en entrant dans un raid ou un donjon.")
             :format(#list, (bad or 0) > 0 and (", " .. tostring(bad) .. " ligne(s) ignoree(s),") or ""))
     end
     if panelRefreshStatus then panelRefreshStatus() end
@@ -1719,7 +1721,7 @@ local function wlBuildAlertWin()
         end
         local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         title:SetPoint("TOPLEFT", 18, -12)
-        title:SetText("📍 Cohors — wishlist")
+        title:SetText("Cohors — wishlist")
         local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
         close:SetPoint("TOPRIGHT", -6, -6)
         local bg = CreateFrame("Frame", nil, frame)
@@ -1782,7 +1784,7 @@ local function wlShow(inst, res)
         end
     end
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "Objet obtenu ? Retire-le de ta wishlist sur le site (🎯 Ma wishlist)."
+    lines[#lines + 1] = "Objet obtenu ? Retire-le de ta wishlist sur le site (Moi > Ma wishlist)."
     Cohors_DB.wl_last = ("%s — %d objet(s)"):format(tostring(res.name or "?"), total)
     Cohors_DB.wl_last_at = time()
     if not wlBuildAlertWin() then
@@ -2037,11 +2039,15 @@ local function lcWantList(d, iid, ilvl, group, tonight, withTrack)
         local below = ilvl and (w.m or 0) > 0 and ilvl < w.m
         if (who or group == nil) and not below then
             local nm = who and ((group and group[who]) or d.players[who].n) or d.users[w.u] or w.u
-            local s = nm .. (w.p and " ⭐" or "") .. ((w.b or 0) > 0 and (" (BIS +" .. w.b .. " %)") or "")
+            -- notes entre parenthèses, sans symbole : les polices du jeu n'affichent ni ⭐ ni →
+            local notes = {}
+            if w.p then notes[#notes + 1] = "|cffffd100prio|r" end
+            if (w.b or 0) > 0 then notes[#notes + 1] = "BIS +" .. w.b .. " %" end
             if withTrack then
                 local tl = lcTrackLabel(d, w.m)
-                if tl ~= "" and tl ~= "Mythe" then s = s .. " → " .. tl end
+                if tl ~= "" and tl ~= "Mythe" then notes[#notes + 1] = "visé " .. tl end
             end
+            local s = nm .. (#notes > 0 and (" (" .. table.concat(notes, ", ") .. ")") or "")
             if who then s = s .. lcTag(d, who, tonight) end
             wl[#wl + 1] = { s = s, p = w.p, b = w.b or 0 }
         end
@@ -2144,7 +2150,7 @@ end
 
 local function lcStatusText()
     local d = lcGet()
-    if not d then return "Aucun export loot — colle l'export du site (Calendrier → « Export loot ») puis « Importer »." end
+    if not d then return "Aucun export loot — colle l'export du site (Calendrier > « Export loot ») puis « Importer l'export »." end
     local np, nw = 0, 0
     for _ in pairs(d.players) do np = np + 1 end
     for _ in pairs(d.wants) do nw = nw + 1 end
@@ -2164,7 +2170,7 @@ local function lcImport()
     local nw = 0
     for _ in pairs(d.wants) do nw = nw + 1 end
     if wlField then
-        wlField:SetText(("Import reussi : %d joueur(s), %d objet(s) en wishlist.\nSurvole un objet (ou attends un jet de butin) pour voir qui en a besoin.")
+        wlField:SetText(("Import réussi : %d joueur(s), %d objet(s) en wishlist.\nSurvole un objet (ou attends un jet de butin) pour voir qui en a besoin.")
             :format(np, nw))
     end
     if panelRefreshStatus then panelRefreshStatus() end
@@ -2214,7 +2220,7 @@ local function lcEvening()
         if wlField.SetHeight then wlField:SetHeight(math.max(12, nl * 13 + 8)) end
         if wlField.HighlightText then wlField:HighlightText() end
         if wlField.SetFocus then wlField:SetFocus() end
-        msg(("historique : %d objet(s) dans le champ — Ctrl+C puis colle-le sur le site (Calendrier → « Importer le butin »).")
+        msg(("historique : %d objet(s) dans le champ — Ctrl+C puis colle-le sur le site (Calendrier > « Importer le butin »).")
             :format(n))
     end
 end
@@ -2306,7 +2312,7 @@ local function lcBossLines(d, list, idx)
         lines[#lines + 1] = "(butin pas encore chargé par le jeu — reclique dans un instant)"
     end
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "« Boss ▶ » : boss suivant · choix automatique au début de chaque combat."
+    lines[#lines + 1] = "Le boss change tout seul à chaque pull · « Boss suivant » pour préparer le prochain."
     return lines, n
 end
 
@@ -2325,7 +2331,7 @@ end
 local function lcShowBoss(step)
     local d = lcGet()
     if not d then
-        msg("par boss : importe d'abord l'export loot du site (Calendrier → « Export loot »).")
+        msg("par boss : importe d'abord l'export loot du site (Calendrier > « Export loot »).")
         return
     end
     local list, why = lcInstanceBosses()
@@ -2392,7 +2398,7 @@ buildPanel = function()
             frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
         end
         ui = frame
-        ui:SetSize(500, 392)
+        ui:SetSize(580, 500)
         ui:SetPoint("CENTER")
         ui:SetFrameStrata("DIALOG")
         ui:SetMovable(true)
@@ -2412,43 +2418,101 @@ buildPanel = function()
         ui:Hide()
 
         local title = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        title:SetPoint("TOPLEFT", 22, -12)
-        title:SetText("Cohors — Compagnon de guilde")
-        local verTxt = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        verTxt:SetPoint("TOPRIGHT", -22, -17)
-        verTxt:SetText("v" .. ADDON_VER)
+        title:SetPoint("TOPLEFT", 18, -14)
+        title:SetText("Cohors — compagnon de guilde")
+        local verTxt = ui:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        verTxt:SetPoint("TOPRIGHT", -20, -18)
+        verTxt:SetText("addon v" .. ADDON_VER)
 
-        -- Menu (onglets) + champ PARTAGÉ : la wishlist s'importe ici, et la chaîne du
-        -- calendrier apparaît dans ce même champ dès la fin de la collecte (plus de bouton
-        -- « Exporter » à cliquer).
+        -- v1.16.0 : la fenêtre s'ouvre sur un ACCUEIL qui dit où on en est (vert = prêt,
+        -- orange = à faire, gris = facultatif / officiers) ; chaque onglet commence par des
+        -- étapes numérotées, et le champ vide dit ce qu'il faut y coller. Pas d'emoji ni de
+        -- flèche dans le texte affiché : les polices du jeu ne les dessinent pas.
+        local GOLD, GREEN, ORANGE, GREY = "|cffffd100", "|cff40ff40", "|cffffa040", "|cff9d9d9d"
         local menuBtns, groupBtns = {}, {}
-        local intro = ui:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        intro:SetPoint("TOPLEFT", 22, -88)
-        intro:SetWidth(456)
-        intro:SetJustifyH("LEFT")
-        local introTxt = {
-            collecter = "Collecte tes données puis copie le texte vers le site — il apparaît ici dès la fin.",
-            wishlist = "Colle l'export du site ici puis clique « Importer » (page Ma wishlist → Export pour l'addon).",
-            loot = "Officiers : colle l'export loot du site (Calendrier → « Export loot ») puis « Importer ». « Boss ▶ » : qui veut quoi sur chaque boss.",
-            outils = "Utilitaires : réinitialiser la collecte, écrire un rapport de diagnostic.",
+        local fieldMem = {}               -- texte du champ partagé, mémorisé PAR onglet
+        local TABS = {
+            home = { field = false },
+            wishlist = { field = true,
+                steps = {
+                    "Sois prévenu en entrant dans un raid ou un donjon quand un boss donne un objet de ta wishlist.",
+                    "Sur le site : Moi > Ma wishlist > « Export pour l'addon » (le texte est copié).",
+                    "Clique dans le cadre ci-dessous, puis colle avec Ctrl+V.",
+                    "Clique « Importer la liste ». À refaire quand tu changes ta liste sur le site.",
+                },
+                hint = "Clique ici puis colle l'export de ta wishlist (Ctrl+V)" },
+            loot = { field = true,
+                steps = {
+                    "Officiers : qui veut quoi pendant le raid, et l'historique du butin pour le site.",
+                    "Avant le raid : site > Calendrier > Outils officiers > « Export loot (addon) », colle-le ici puis « Importer l'export ».",
+                    "Pendant : survole un objet ou attends un jet. Au pull, le butin du boss s'affiche ici tout seul.",
+                    "Après : « Fin de soirée », puis Ctrl+C et colle sur le site (Calendrier > « Importer le butin »).",
+                },
+                hint = "Clique ici puis colle l'export loot du site (Ctrl+V)" },
+            collecter = { field = true,
+                steps = {
+                    "Officiers : envoyer au site les raids du calendrier de guilde et les réponses des joueurs.",
+                    "Clique « Lire le calendrier » et attends la fin (le calendrier du jeu s'ouvre un instant).",
+                    "La chaîne apparaît dans le cadre : clique dedans, Ctrl+A puis Ctrl+C.",
+                    "Sur le site : Calendrier > Outils officiers > « Importer la chaîne », colle et valide.",
+                },
+                hint = "La chaîne à copier apparaîtra ici après « Lire le calendrier »." },
+            metiers = { field = false,
+                steps = {
+                    "Facultatif : le site lit déjà tes recettes chez Blizzard (tous les quelques jours). Ceci sert à une mise à jour immédiate.",
+                    "Clique « Lire mes recettes » et suis les consignes dans le chat, métier par métier.",
+                    "Tape /reload : le jeu écrit alors le fichier SavedVariables\\Cohors.lua.",
+                    "Sur le site : Moi > Mes recettes > importe ce fichier (dossier WTF\\Account\\<compte>).",
+                } },
+            outils = { field = false,
+                steps = {
+                    "À utiliser seulement en cas de souci.",
+                    "« Recommencer » : arrête une lecture du calendrier bloquée ou à moitié faite.",
+                    "« Diagnostic » : écrit un rapport dans SavedVariables\\Cohors.lua (après /reload) à envoyer au développeur.",
+                    "Commandes : /cohors (cette fenêtre) · /cohors wishlist · /cohors ici · /cohors boss · /cohors loot",
+                } },
         }
+        local function stepsText(tab)
+            local st = TABS[tab] and TABS[tab].steps
+            if not st then return "" end
+            local out = { st[1] }
+            for i = 2, #st do out[#out + 1] = GOLD .. (i - 1) .. ".|r " .. st[i] end
+            return table.concat(out, "\n")
+        end
+
         local statusDefault = function()
             if panelTab == "wishlist" then return wlStatusText() end
             if panelTab == "loot" and Cohors_LCStatus then return Cohors_LCStatus() end
-            if panelTab == "outils" then return "prêt (v" .. ADDON_VER .. ")" end
-            if Cohors_DB.export then
-                return ("calendrier : chaîne prête (%s) — Ctrl+A puis Ctrl+C pour la copier.")
-                    :format(Cohors_DB.export_at and dateStr(Cohors_DB.export_at) or "?")
+            if panelTab == "collecter" then
+                if Cohors_DB.export then
+                    return ("calendrier lu le %s — chaîne prête dans le cadre.")
+                        :format(Cohors_DB.export_at and dateStr(Cohors_DB.export_at) or "?")
+                end
+                return "calendrier pas encore lu."
             end
-            return "prêt (v" .. ADDON_VER .. ") — clique « Calendrier » pour collecter."
+            if panelTab == "metiers" then
+                if Cohors_DB.recipes then
+                    return ("%s recette(s) lue(s) le %s."):format(tostring(Cohors_DB.recipes_total or 0),
+                        dateStr(Cohors_DB.recipes_at or 0))
+                end
+                return "recettes pas encore lues (facultatif)."
+            end
+            return "Survole un bouton pour savoir ce qu'il fait."
         end
 
+        local steps = ui:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        steps:SetPoint("TOPLEFT", 22, -78)
+        steps:SetWidth(536)
+        steps:SetJustifyH("LEFT")
+        if steps.SetSpacing then steps:SetSpacing(3) end
+
+        -- Champ partagé (wishlist, loot, calendrier), sous les étapes
         local ebBg = CreateFrame("Frame", nil, ui)
-        ebBg:SetPoint("TOPLEFT", 18, -118)
-        ebBg:SetPoint("BOTTOMRIGHT", -18, 96)
+        ebBg:SetPoint("TOPLEFT", steps, "BOTTOMLEFT", -4, -10)
+        ebBg:SetPoint("BOTTOMRIGHT", ui, "BOTTOMRIGHT", -18, 92)
         local bgTx = ebBg:CreateTexture(nil, "BACKGROUND")
         bgTx:SetAllPoints(true)
-        bgTx:SetColorTexture(0, 0, 0, 0.45)    -- champ visible (avant : grand vide transparent)
+        bgTx:SetColorTexture(0, 0, 0, 0.5)
 
         -- Un EditBox du jeu ne rogne PAS son texte : au-delà de sa zone il le dessine par-dessus
         -- les boutons et hors du cadre (vécu 20/09). On le place donc dans un ScrollFrame à
@@ -2460,7 +2524,7 @@ buildPanel = function()
         eb:SetMultiLine(true)
         eb:SetAutoFocus(false)
         eb:SetFontObject(ChatFontNormal)
-        eb:SetWidth(424)
+        eb:SetWidth(504)
         eb:SetHeight(12)
         eb:SetTextInsets(2, 2, 2, 2)
         eb:SetText("")
@@ -2473,35 +2537,70 @@ buildPanel = function()
         end)
         scrollBar = sf
         wlField = eb                     -- le champ partagé sert aussi à coller la wishlist
+        -- tout le cadre est cliquable (avant : il fallait viser la 1re ligne du champ)
+        if ebBg.EnableMouse then ebBg:EnableMouse(true) end
+        ebBg:SetScript("OnMouseDown", function() if eb.SetFocus then eb:SetFocus() end end)
+
+        -- Aide grisée dans le champ vide : ce qu'il faut y coller
+        local hint = ebBg:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+        hint:SetPoint("TOPLEFT", 12, -12)
+        hint:SetWidth(480)
+        hint:SetJustifyH("LEFT")
+        local hasFocus = false
+        local function hintRefresh()
+            local t = TABS[panelTab] and TABS[panelTab].hint
+            if t and not hasFocus and (eb:GetText() or "") == "" then
+                hint:SetText(t)
+                hint:Show()
+            else
+                hint:Hide()
+            end
+        end
+        eb:SetScript("OnTextChanged", function() pcall(hintRefresh) end)
+        eb:SetScript("OnEditFocusGained", function() hasFocus = true; pcall(hintRefresh) end)
+        eb:SetScript("OnEditFocusLost", function() hasFocus = false; pcall(hintRefresh) end)
+
+        local function fieldSet(txt)
+            txt = tostring(txt or "")
+            eb:SetText(txt)
+            local nl = 1
+            for l in (txt .. "\n"):gmatch("(.-)\n") do nl = nl + math.max(1, math.ceil(#l / 70)) end
+            if eb.SetHeight then eb:SetHeight(math.max(12, nl * 13 + 8)) end
+            if scrollBar and scrollBar.ScrollBar and scrollBar.ScrollBar.SetValue then
+                scrollBar.ScrollBar:SetValue(0)
+            end
+        end
 
         statusText = ui:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        statusText:SetPoint("BOTTOMLEFT", 22, 20)
-        statusText:SetWidth(356)
+        statusText:SetPoint("BOTTOMLEFT", 22, 22)
+        statusText:SetWidth(440)
         statusText:SetJustifyH("LEFT")
 
-        local function mkButton(text, x, y, w, fn, tip, group)
-            local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
-            b:SetSize(w, 24)
-            b:SetPoint("BOTTOMLEFT", x, y)
-            b:SetText(text)
-            if tip then
-                b:SetScript("OnEnter", function(self)
-                    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-                    GameTooltip:AddLine(text)
-                    GameTooltip:AddLine(tip, 1, 1, 1, true)
-                    GameTooltip:Show()
-                end)
-                b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            end
-            b:SetScript("OnClick", function()
-                dtrace("clic « " .. text .. " »")
-                local ok, err = pcall(fn)
-                if not ok then
-                    local t = tostring(err)
-                    Cohors_DB.last_error = "clic " .. text .. " : " .. t
-                    msg("ERREUR (clic « " .. text .. " ») — " .. t)
-                end
+        local function tipFor(b, text, tip)
+            b:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                GameTooltip:AddLine(text)
+                GameTooltip:AddLine(tip, 1, 1, 1, true)
+                GameTooltip:Show()
             end)
+            b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
+        local function safeClick(label, fn)
+            dtrace("clic « " .. label .. " »")
+            local ok, err = pcall(fn)
+            if not ok then
+                local t = tostring(err)
+                Cohors_DB.last_error = "clic " .. label .. " : " .. t
+                msg("ERREUR (clic « " .. label .. " ») — " .. t)
+            end
+        end
+        local function mkButton(text, x, y, w, fn, tip, group, parent)
+            local b = CreateFrame("Button", nil, parent or ui, "UIPanelButtonTemplate")
+            b:SetSize(w, 24)
+            if not parent then b:SetPoint("BOTTOMLEFT", x, y) end
+            b:SetText(text)
+            if tip then tipFor(b, text, tip) end
+            b:SetScript("OnClick", function() safeClick(b:GetText() or text, fn) end)
             if group then
                 groupBtns[group] = groupBtns[group] or {}
                 groupBtns[group][#groupBtns[group] + 1] = b
@@ -2509,24 +2608,112 @@ buildPanel = function()
             return b
         end
 
+        -- ------------------------------------------------------------- accueil
+        local home = CreateFrame("Frame", nil, ui)
+        home:SetPoint("TOPLEFT", 18, -74)
+        home:SetPoint("BOTTOMRIGHT", -18, 92)
+        local homeIntro = home:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        homeIntro:SetPoint("TOPLEFT", 4, -4)
+        homeIntro:SetWidth(536)
+        homeIntro:SetJustifyH("LEFT")
+        homeIntro:SetText("Où en es-tu ? " .. GREEN .. "Vert|r = prêt · " .. ORANGE .. "orange|r = à faire · "
+            .. GREY .. "gris|r = facultatif ou réservé aux officiers. « Ouvrir » explique la marche à suivre.")
+        local homeRows = {}
+        local function mkRow(i, label, tab)
+            local y = -34 - (i - 1) * 76
+            local bg = home:CreateTexture(nil, "BACKGROUND")
+            bg:SetPoint("TOPLEFT", 0, y + 6)
+            bg:SetSize(544, 66)
+            bg:SetColorTexture(0, 0, 0, 0.35)
+            local t = home:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            t:SetPoint("TOPLEFT", 10, y - 2)
+            t:SetText(label)
+            local st = home:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            st:SetPoint("TOPLEFT", 10, y - 22)
+            st:SetWidth(400)
+            st:SetJustifyH("LEFT")
+            local b = mkButton("Ouvrir", 0, 0, 104, function() panelShow(tab) end, nil, nil, home)
+            b:SetPoint("TOPRIGHT", home, "TOPRIGHT", -10, y - 12)
+            homeRows[tab] = { st = st, b = b }
+        end
+        mkRow(1, "Ma wishlist", "wishlist")
+        mkRow(2, "Loot (officiers)", "loot")
+        mkRow(3, "Calendrier des raids (officiers)", "collecter")
+        mkRow(4, "Mes recettes (facultatif)", "metiers")
+
+        local function ago(t)
+            local d = math.floor((time() - (tonumber(t) or 0)) / 86400)
+            if d <= 0 then return "aujourd'hui" end
+            if d == 1 then return "hier" end
+            return "il y a " .. d .. " jours"
+        end
+        local function homeRefresh()
+            -- wishlist
+            local r, n = homeRows.wishlist, wlCount()
+            if n == 0 then
+                r.st:SetText(ORANGE .. "Pas encore importée|r — l'addon ne peut pas te prévenir en raid.")
+                r.b:SetText("Commencer")
+            else
+                local old = Cohors_DB.wl_at and (time() - Cohors_DB.wl_at) > 14 * 86400
+                r.st:SetText((old and ORANGE or GREEN) .. n .. " objet(s)|r, importée " .. ago(Cohors_DB.wl_at)
+                    .. " · alerte en raid : " .. (Cohors_DB.wl_alert == false and "non" or "oui")
+                    .. (old and "\nRéimporte-la si tu as changé ta liste sur le site." or ""))
+                r.b:SetText("Ouvrir")
+            end
+            -- loot
+            r = homeRows.loot
+            local d = lcGet()
+            local tonight = 0
+            for _, e in ipairs(Cohors_DB.lc_log or {}) do
+                if (e.t or 0) >= time() - LC_TONIGHT then tonight = tonight + 1 end
+            end
+            if not d then
+                r.st:SetText(GREY .. "Rien d'importé.|r Avant un raid, importe l'export loot du site.")
+            else
+                local np, nw = 0, 0
+                for _ in pairs(d.players) do np = np + 1 end
+                for _ in pairs(d.wants) do nw = nw + 1 end
+                local old = d.at > 0 and (time() - d.at) > 3 * 86400
+                r.st:SetText((old and ORANGE or GREEN) .. "Export " .. (d.at > 0 and ago(d.at) or "?") .. "|r · "
+                    .. np .. " joueur(s) · " .. nw .. " objet(s) voulus"
+                    .. (tonight > 0 and (" · " .. tonight .. " butin(s) noté(s) ce soir") or "")
+                    .. (old and "\nAvant le raid, réimporte l'export du jour." or ""))
+            end
+            -- calendrier
+            r = homeRows.collecter
+            if Cohors_DB.export then
+                r.st:SetText(GREEN .. "Lu " .. ago(Cohors_DB.export_at) .. "|r — chaîne prête à copier vers le site.")
+            else
+                r.st:SetText(GREY .. "Pas encore lu.|r Un officier le lit pour remplir le calendrier du site.")
+            end
+            -- recettes
+            r = homeRows.metiers
+            if Cohors_DB.recipes then
+                r.st:SetText(GREEN .. tostring(Cohors_DB.recipes_total or 0) .. " recette(s)|r lue(s) "
+                    .. ago(Cohors_DB.recipes_at) .. ".")
+            else
+                r.st:SetText(GREY .. "Pas lues ici|r — le site les récupère déjà chez Blizzard.")
+            end
+        end
+
         -- Le champ reçoit la CHAÎNE À COPIER (rien d'autre) : un texte propre se colle tel quel
-        -- sur le site. Le résumé détaillé (qui n'a pas répondu) part dans le chat.
+        -- sur le site. Le résumé détaillé (qui n'a pas répondu) part dans le chat. Si on est sur un
+        -- autre onglet, la chaîne attend dans l'onglet Calendrier.
         showSummary = function()
             if Cohors_DB.export then
-                eb:SetText(Cohors_DB.export)
-                local nl = 1
-                for _ in eb:GetText():gmatch("\n") do nl = nl + 1 end
-                if eb.SetHeight then eb:SetHeight(math.max(12, nl * 13 + 8)) end
-                if scrollBar and scrollBar.ScrollBar and scrollBar.ScrollBar.SetValue then
-                    scrollBar.ScrollBar:SetValue(0)
+                if panelTab == "collecter" then
+                    fieldSet(Cohors_DB.export)
+                else
+                    fieldMem.collecter = Cohors_DB.export
                 end
             end
             if statusText then statusText:SetText(statusDefault()) end
+            if panelTab == "home" then pcall(homeRefresh) end
         end
         showDetails = function()
             local nresp = 0
             for _, e in ipairs(results) do nresp = nresp + #(e.invites or {}) end
-            msg(("collecte : %d événement(s) · %d réponse(s)."):format(#results, nresp))
+            msg(("calendrier : %d événement(s) · %d réponse(s)."):format(#results, nresp))
             for _, e in ipairs(results) do
                 local c = { ok = 0, maybe = 0, no = 0, wait = 0 }
                 local waiting = {}
@@ -2547,15 +2734,29 @@ buildPanel = function()
                     end
                 end
             end
-            msg("chaîne prête dans le champ — Ctrl+A puis Ctrl+C pour la copier vers le site.")
+            msg("chaîne prête dans le cadre (onglet Calendrier) — Ctrl+A puis Ctrl+C pour la copier vers le site.")
         end
 
         panelShow = function(tab)
             tab = tab or panelTab
-            if introTxt[tab] == nil then tab = "collecter" end
+            if TABS[tab] == nil then tab = "home" end
+            local prev = panelTab
+            if prev ~= tab then
+                if TABS[prev] and TABS[prev].field then fieldMem[prev] = eb:GetText() end
+                if TABS[tab].field then
+                    if tab == "collecter" and (fieldMem.collecter or "") == "" and Cohors_DB.export then
+                        fieldMem.collecter = Cohors_DB.export
+                    end
+                    fieldSet(fieldMem[tab] or "")
+                end
+            elseif tab == "collecter" and (eb:GetText() or "") == "" and Cohors_DB.export then
+                fieldSet(Cohors_DB.export)
+            end
             panelTab = tab
             Cohors_DB.panel_tab = tab
-            intro:SetText(introTxt[tab])
+            steps:SetText(stepsText(tab))
+            if tab == "home" then home:Show() else home:Hide() end
+            if TABS[tab].field then ebBg:Show() else ebBg:Hide(); if eb.ClearFocus then eb:ClearFocus() end end
             for k, list in pairs(groupBtns) do
                 for _, b in ipairs(list) do
                     if k == tab then
@@ -2565,27 +2766,27 @@ buildPanel = function()
                     end
                 end
             end
-            for k, b in pairs(menuBtns) do
+            for k, b in pairs(menuBtns) do     -- onglet actif : surligné (pas grisé : grisé = indisponible)
                 if k == tab then
-                    if b.Disable then b:Disable() end     -- onglet actif grisé
+                    if b.LockHighlight then b:LockHighlight() end
                 else
-                    if b.Enable then b:Enable() end
+                    if b.UnlockHighlight then b:UnlockHighlight() end
                 end
             end
-            if tab == "collecter" and Cohors_DB.export and eb and (eb:GetText() or "") == "" then
-                showSummary()
-            elseif statusText then
-                statusText:SetText(statusDefault())
-            end
+            if tab == "home" then pcall(homeRefresh) end
+            pcall(hintRefresh)
+            if statusText then statusText:SetText(statusDefault()) end
         end
         panelRefreshStatus = function()
             if statusText then statusText:SetText(statusDefault()) end
+            if panelTab == "home" then pcall(homeRefresh) end
+            pcall(hintRefresh)
         end
 
-        local function mkMenu(label, key, x)
+        local function mkMenu(label, key, x, w)
             local b = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
-            b:SetSize(108, 24)
-            b:SetPoint("TOPLEFT", x, -58)
+            b:SetSize(w, 24)
+            b:SetPoint("TOPLEFT", x, -42)
             b:SetText(label)
             b:SetScript("OnClick", function()
                 dtrace("menu « " .. label .. " »")
@@ -2598,48 +2799,52 @@ buildPanel = function()
             menuBtns[key] = b
             return b
         end
-        mkMenu("Collecter", "collecter", 22)
-        mkMenu("Wishlist", "wishlist", 134)
-        mkMenu("Loot", "loot", 246)
-        mkMenu("Outils", "outils", 358)
+        mkMenu("Accueil", "home", 12, 84)
+        mkMenu("Wishlist", "wishlist", 100, 84)
+        mkMenu("Loot (officiers)", "loot", 188, 116)
+        mkMenu("Calendrier", "collecter", 308, 92)
+        mkMenu("Métiers", "metiers", 404, 84)
+        mkMenu("Outils", "outils", 492, 76)
 
-        -- Onglet Collecter
-        mkButton("Calendrier", 22, 54, 108, function()
-            if statusText then statusText:SetText("collecte du calendrier en cours…") end
-            Cohors_Collect()
-        end, "Collecte le calendrier de raids — la chaîne apparaît ici dès la fin.", "collecter")
-        mkButton("Recettes", 140, 54, 108, function() Cohors_Recipes() end,
-            "Lit tes recettes d'artisanat (l'addon te guide, métier par métier).", "collecter")
-        -- Onglet Wishlist
-        mkButton("Importer", 22, 54, 108, function() Cohors_WLImport() end,
-            "Lit le texte collé dans le champ et enregistre ta liste.", "wishlist")
-        wlAlertBtn = mkButton("Alerte : " .. (Cohors_DB.wl_alert == false and "non" or "oui"), 140, 54, 108,
+        -- Wishlist
+        mkButton("Importer la liste", 18, 56, 128, function() Cohors_WLImport() end,
+            "Lit le texte collé dans le cadre et enregistre ta liste dans l'addon.", "wishlist")
+        wlAlertBtn = mkButton("Alerte : " .. (Cohors_DB.wl_alert == false and "non" or "oui"), 150, 56, 128,
             function() Cohors_WLToggleAlert() end,
-            "Active ou coupe l'alerte en entrant dans un raid ou un donjon.", "wishlist")
-        mkButton("Vérifier ici", 258, 54, 108, function() Cohors_WLZoneCheck(true) end,
-            "Relance la recherche d'objets de ta wishlist dans l'instance où tu es.", "wishlist")
-        mkButton("Vider", 376, 54, 108, function() Cohors_WLClear() end,
-            "Efface la liste de l'addon (le site n'est pas touché).", "wishlist")
-        -- Onglet Loot (officiers)
-        mkButton("Importer", 22, 54, 108, function() Cohors_LCImport() end,
-            "Lit l'export loot collé dans le champ (qui veut quoi, iLvl portés, sets).", "loot")
-        mkButton("Soirée", 140, 54, 108, function() Cohors_LCEvening() end,
-            "Qui a reçu quoi ce soir (chat) + le texte à coller sur le site (Calendrier → « Importer le butin ») pour l'historique.", "loot")
-        mkButton("Vider", 258, 54, 108, function() Cohors_LCClear() end,
+            "Active ou coupe la fenêtre d'alerte en entrant dans un raid ou un donjon.", "wishlist")
+        mkButton("Vérifier ici", 282, 56, 128, function() Cohors_WLZoneCheck(true) end,
+            "Cherche maintenant les objets de ta wishlist dans l'instance où tu es.", "wishlist")
+        mkButton("Effacer la liste", 414, 56, 128, function() Cohors_WLClear() end,
+            "Efface la liste de l'addon (rien n'est effacé sur le site).", "wishlist")
+        -- Loot (officiers)
+        mkButton("Importer l'export", 18, 56, 128, function() Cohors_LCImport() end,
+            "Lit l'export loot collé dans le cadre (qui veut quoi, iLvl portés, sets).", "loot")
+        mkButton("Boss suivant", 150, 56, 128, function() Cohors_LCBoss(1) end,
+            "Affiche le butin du boss suivant de l'instance et qui l'a en wishlist. Au pull, le boss est choisi tout seul.", "loot")
+        mkButton("Fin de soirée", 282, 56, 128, function() Cohors_LCEvening() end,
+            "Liste dans le chat qui a reçu quoi ce soir, et met dans le cadre le texte à coller sur le site (Calendrier > « Importer le butin »).", "loot")
+        mkButton("Effacer", 414, 56, 128, function() Cohors_LCClear() end,
             "Efface l'export loot de l'addon.", "loot")
-        mkButton("Boss ▶", 376, 54, 108, function() Cohors_LCBoss(1) end,
-            "Butin du boss suivant de l'instance et qui l'a en wishlist (choisi tout seul au début de chaque combat).", "loot")
-        -- Onglet Outils
-        mkButton("Réinitialiser", 22, 54, 108, function() Cohors_Reset() end,
-            "Efface la collecte en cours et sa dernière sauvegarde.", "outils")
-        mkButton("Diag", 140, 54, 108, function()
+        -- Calendrier
+        mkButton("Lire le calendrier", 18, 56, 150, function()
+            if statusText then statusText:SetText("lecture du calendrier en cours…") end
+            Cohors_Collect()
+        end, "Lit les raids du calendrier de guilde et les réponses — la chaîne apparaît dans le cadre à la fin.", "collecter")
+        -- Métiers
+        mkButton("Lire mes recettes", 18, 56, 150, function() Cohors_Recipes() end,
+            "Lit tes recettes d'artisanat ; l'addon te guide dans le chat, métier par métier.", "metiers")
+        -- Outils
+        mkButton("Recommencer", 18, 56, 128, function() Cohors_Reset() end,
+            "Arrête une lecture du calendrier en cours ou bloquée.", "outils")
+        mkButton("Diagnostic", 150, 56, 128, function()
             dumpDiag(true)
-        end, "Écrit un rapport de diagnostic dans le fichier Cohors.lua.", "outils")
+        end, "Écrit un rapport de diagnostic dans le fichier Cohors.lua (après /reload).", "outils")
         -- Toujours visible
-        mkButton("Fermer", 392, 16, 90, function() ui:Hide() end,
-            "Ferme la fenêtre. Tape /cohors pour la rouvrir.")
+        mkButton("Fermer", 472, 16, 90, function() ui:Hide() end,
+            "Ferme la fenêtre. Tape /cohors (ou clique l'icône de la mini-carte) pour la rouvrir.")
 
-        panelShow(Cohors_DB.panel_tab)
+        panelTab = "home"
+        panelShow("home")
     end)
     if not okB then
         Cohors_DB.ui_error = tostring(errB)
@@ -2660,7 +2865,7 @@ function Cohors_TogglePanel()
         ui:Hide()
     else
         ui:Show()
-        if panelShow then pcall(panelShow, Cohors_DB.panel_tab) end
+        if panelShow then pcall(panelShow, "home") end      -- toujours l'accueil : où en est-on ?
     end
 end
 
@@ -2739,7 +2944,8 @@ SlashCmdList["Cohors"] = function(arg)
         if arg == "" then
             buildPanel()
             if ui then ui:Show() end
-            msg(("v%s · dossier « %s » (TOC %s) — menu : « Collecter » (calendrier, recettes) · « Wishlist » (import, alerte) · « Loot » (officiers) · « Outils ».")
+            if panelShow then pcall(panelShow, "home") end
+            msg(("v%s · dossier « %s » (TOC %s) — l'onglet Accueil montre où tu en es ; chaque onglet explique ses étapes.")
                 :format(ADDON_VER, tostring(ADDON_NAME or "?"), tostring(tocVersion())))
             if Cohors_DB.export and showSummary then pcall(showSummary) end
         elseif arg == "collect" then
@@ -2751,13 +2957,14 @@ SlashCmdList["Cohors"] = function(arg)
             buildPanel()
             if ui and eb and Cohors_DB.export then
                 ui:Show()
+                if panelShow then pcall(panelShow, "collecter") end
                 eb:SetText(Cohors_DB.export)
                 eb:HighlightText()
                 eb:SetFocus()
             elseif Cohors_DB.export then
                 msg("pas de fenêtre — utilise /cohors diag puis envoie le fichier.")
             else
-                msg("aucune donnée — /cohors collect d'abord.")
+                msg("aucune donnée — onglet Calendrier > « Lire le calendrier » (ou /cohors collect) d'abord.")
             end
         elseif arg == "diag" then
             dumpDiag(true)

@@ -35,6 +35,12 @@ end
 local M = { t = 100000.0, hardware = false }  -- temps virtuel + « clic » simulé (événement matériel)
 local barValues = {}                    -- valeurs prises par la barre de progression
 local frames = {}
+local fonts = {}          -- FontStrings créées (textes affichés : accueil, étapes, aide du champ)
+local function font_has(sub)
+    for _, f in ipairs(fonts) do
+        if (f._text or ""):find(sub, 1, true) then return f end
+    end
+end
 
 -- Événements VALIDES dans le client : une inscription d'un nom inconnu lève une erreur qui
 -- INTERROMPT le chargement du fichier en jeu (vécu : TRADE_SKILL_UPDATE en v1.8.0 → addon à
@@ -55,7 +61,8 @@ local function newRegion(kind)
         "SetMultiLine", "SetStatusBarTexture", "SetMinMaxValues", "SetBackdrop", "SetJustifyH",
         "SetWordWrap", "SetAlpha", "SetScale", "SetHeight", "ClearAllPoints", "SetHighlightTexture",
         "SetScrollChild", "EnableMouseWheel", "SetTexture", "SetAllPoints", "SetColorTexture",
-        "StartMoving", "StopMovingOrSizing", "HighlightText", "SetFocus", "ClearFocus" }) do
+        "StartMoving", "StopMovingOrSizing", "HighlightText", "SetFocus", "ClearFocus",
+        "SetSpacing", "LockHighlight", "UnlockHighlight" }) do
         r[m] = noop
     end
     r.RegisterEvent = function(self, ev)
@@ -83,7 +90,11 @@ local function newRegion(kind)
     r.SetChecked = function(self, v) self._checked = v and true or false end
     r.GetChecked = function(self) return self._checked == true end
     r.GetValue = function(self) return self._value end
-    r.CreateFontString = function() return newRegion("fontstring") end
+    r.CreateFontString = function()
+        local f = newRegion("fontstring")
+        fonts[#fonts + 1] = f
+        return f
+    end
     r.CreateTexture = function() return newRegion("texture") end
     return r
 end
@@ -622,7 +633,8 @@ elseif scenario == "loot" then
     C_ITEM_FACTS[5004] = { equip = "INVTYPE_FINGER", class = 4, sub = 0, ilvl = 300 }
     local L = Cohors_LCSummary(5001, "|Hitem:5001|h[Casque]|h") or {}
     local all = table.concat(L, "\n")
-    check(all:find("Élanisse ⭐ (BIS +2.5 %)", 1, true) ~= nil, "wishlist : prio et BIS (%s)", all)
+    check(all:find("Élanisse (|cffffd100prio|r, BIS +2.5 %)", 1, true) ~= nil, "wishlist : prio et BIS (%s)", all)
+    check(all:find("⭐", 1, true) == nil and all:find("→", 1, true) == nil, "aucun symbole que la police du jeu ignore")
     check(all:find("Hÿpérion", 1, true) ~= nil, "wishlist : 2e compte sous le nom de son perso présent")
     check(all:find("Élanisse", 1, true) < all:find("Hÿpérion", 1, true), "prio classée en premier")
     check(all:find("Hypérïon +65", 1, true) ~= nil, "gain d'iLvl : tissu pour un mage (+65)")
@@ -678,13 +690,14 @@ elseif scenario == "loot" then
     local bt = ebL._text or ""
     check(bt:find("Boss Alpha — boss 1/3", 1, true) ~= nil, "par boss : 1er boss, son vrai nom (%s)", bt)
     check(bt:find("Description de", 1, true) == nil, "la description du boss n'est plus prise pour son nom")
-    check(bt:find("Casque : Élanisse ⭐ (BIS +2.5 %) → Héros", 1, true) ~= nil,
+    check(bt:find("Casque : Élanisse (|cffffd100prio|r, BIS +2.5 %, visé Héros)", 1, true) ~= nil,
         "par boss : prio, BIS et piste visée Héros (%s)", bt)
     check(bt:find("[1 ce soir · 2 en 30 j]", 1, true) ~= nil, "par boss : « déjà reçu ce soir » + 30 jours")
     check(bt:find("Hÿpérion", 1, true) ~= nil, "par boss : 2e joueur qui veut le casque")
-    check(bt:find("Composant 5004", 1, true) ~= nil and bt:find("Élanisse ⭐", 1, true) ~= nil,
+    check(bt:find("Composant 5004", 1, true) ~= nil and bt:find("Élanisse (|cffffd100prio|r", 1, true) ~= nil,
         "par boss : anneau visé Mythe listé sans étiquette de piste")
-    check(bt:find("→ Mythe", 1, true) == nil, "piste Mythe (défaut) non répétée")
+    check(bt:find("visé Mythe", 1, true) == nil, "piste Mythe (défaut) non répétée")
+    check(bt:find("▶", 1, true) == nil and bt:find("→", 1, true) == nil, "par boss : aucun symbole que la police du jeu ignore")
     check(WL.filter[1] == 5 and WL.filter[2] == 258, "filtre du journal du joueur remis en place")
     Cohors_LCBoss(1)
     bt = ebL._text or ""
@@ -793,23 +806,44 @@ elseif scenario == "wishlist" then
     check(chat_has("tu n'es pas dans une instance"), "« /cohors ici » hors instance : message clair")
 
     -- menu par onglets : les bons boutons selon l'onglet, et bascule de l'alerte
+    -- v1.16.0 : « /cohors » ouvre l'ACCUEIL (état de chaque fonction, bouton par ligne)
     SlashCmdList["Cohors"]("")
-    local bWl, bAlert, bCal, bImp, bMenuCol
+    local bWl, bAlert, bCal, bImp, bMenuCol, bOpen, bMenuHome
     for _, fr in ipairs(frames) do
         if fr._text == "Wishlist" then bWl = fr end
         if fr._text == "Alerte : oui" or fr._text == "Alerte : non" then bAlert = fr end
-        if fr._text == "Calendrier" then bCal = fr end
-        if fr._text == "Importer" and not bImp then bImp = fr end   -- 1er « Importer » = onglet Wishlist
-        if fr._text == "Collecter" then bMenuCol = fr end
+        if fr._text == "Lire le calendrier" then bCal = fr end
+        if fr._text == "Importer la liste" then bImp = fr end
+        if fr._text == "Calendrier" then bMenuCol = fr end
+        if fr._text == "Accueil" then bMenuHome = fr end
+        if (fr._text == "Ouvrir" or fr._text == "Commencer") and not bOpen then bOpen = fr end  -- 1re ligne = wishlist
     end
-    check(bWl ~= nil, "bouton de menu « Wishlist » sur le panneau principal")
+    check(bWl ~= nil and bMenuHome ~= nil, "onglets « Accueil » et « Wishlist » sur le panneau principal")
     check(bAlert ~= nil, "bouton « Alerte » sur le panneau principal")
-    check(bImp ~= nil and bImp:IsShown() and bCal ~= nil and not bCal:IsShown(),
-        "onglet Wishlist : « Importer » visible, les boutons du calendrier masqués")
+    check(bOpen ~= nil, "accueil : bouton « Ouvrir » / « Commencer » par ligne")
+    local fw = font_has("objet(s)|r, importée aujourd'hui")
+    check(fw ~= nil and fw._text:find("alerte en raid : ", 1, true) ~= nil,
+        "accueil : état de la wishlist visible (%s)", fw and fw._text or "absent")
+    check(font_has("Pas encore lu.") ~= nil, "accueil : calendrier pas encore lu, dit clairement")
+    check(font_has("|cff9d9d9dRien d'importé.") ~= nil, "accueil : loot (officiers) en gris quand rien n'est importé")
+    check(bImp ~= nil and not bImp:IsShown() and bCal ~= nil and not bCal:IsShown(),
+        "accueil : aucun bouton d'onglet visible")
+    if bOpen and bOpen._scripts["OnClick"] then
+        pcall(bOpen._scripts["OnClick"], bOpen, "LeftButton", false)
+        check(bImp:IsShown() and not bCal:IsShown(),
+            "accueil > ligne wishlist : « Importer la liste » visible, les boutons du calendrier masqués")
+        check(font_has("Sur le site : Moi > Ma wishlist") ~= nil, "onglet Wishlist : étapes numérotées affichées")
+    end
+    wlEbF:SetText("texte en cours")
     if bMenuCol and bMenuCol._scripts["OnClick"] then
         pcall(bMenuCol._scripts["OnClick"], bMenuCol, "LeftButton", false)
         check(bCal ~= nil and bCal:IsShown() and bImp ~= nil and not bImp:IsShown(),
-            "clic menu « Collecter » : les boutons du calendrier remplacent ceux de la wishlist")
+            "clic onglet « Calendrier » : les boutons du calendrier remplacent ceux de la wishlist")
+        check(wlEbF:GetText() == "", "onglet Calendrier : le texte de l'onglet Wishlist n'y est pas")
+        check(font_has("Lire le calendrier") ~= nil and font_has("La chaîne à copier apparaîtra ici") ~= nil,
+            "étapes du calendrier + aide grisée du champ")
+        pcall(bWl._scripts["OnClick"], bWl, "LeftButton", false)
+        check(wlEbF:GetText() == "texte en cours", "retour sur Wishlist : le texte collé est retrouvé")
     end
     if bAlert and bAlert._scripts["OnClick"] then
         local t0 = bAlert:GetText()
