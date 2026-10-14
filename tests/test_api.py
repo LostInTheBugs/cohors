@@ -1699,6 +1699,113 @@ def test_calendar_noshows_cross_calendar_and_logs():
             conn.execute("DELETE FROM gcal_import WHERE id=1")
 
 
+def test_email_columns_are_all_listed():
+    """Toute colonne qui porte l'e-mail d'un compte doit être dans EMAIL_COLUMNS (changement d'adresse)."""
+    from app.services.accounts import EMAIL_COLUMNS
+    listed = set(EMAIL_COLUMNS) | {("users", "email"), ("invites", "email")}
+    with M._db_lock, M._db() as conn:
+        tables = [r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+        found = {(t, c["name"]) for t in tables for c in conn.execute(f"PRAGMA table_info({t})").fetchall()
+                 if "email" in c["name"] or c["name"] in ("requester", "updated_by", "added_by", "created_by")}
+    assert found <= listed, found - listed
+
+
+def test_change_email_self_and_admin():
+    _make_user("em-old@test.local")
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                     " VALUES ('em-old@test.local', 'hyjal', 'emchar', 'Emchar', 1, 0)")
+        conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, prio, added) VALUES ('em-old@test.local', 8101, 'X', 'item', 0, 0)")
+        conn.execute("INSERT INTO wishlist (user_email, item_id, name, kind, prio, added) VALUES ('em-new@test.local', 8101, 'reste', 'item', 0, 0)")
+    _make_user("em-taken@test.local")
+    try:
+        c = TestClient(M.app)
+        assert c.post("/api/login", json={"email": "em-old@test.local", "password": "test-pw-123"},
+                      headers={"X-Forwarded-For": "10.99.60.71"}).status_code == 200
+        assert c.post("/api/me/email", json={"email": "em-new@test.local", "password": "faux"}).status_code == 400
+        assert c.post("/api/me/email", json={"email": "pas-une-adresse", "password": "test-pw-123"}).status_code == 400
+        assert c.post("/api/me/email", json={"email": "EM-TAKEN@test.local", "password": "test-pw-123"}).status_code == 400
+        r = c.post("/api/me/email", json={"email": " EM-New@Test.local ", "password": "test-pw-123"})
+        assert r.status_code == 200 and r.json()["email"] == "em-new@test.local"
+        assert c.get("/api/me").json()["email"] == "em-new@test.local"          # la session continue
+        with M._db_lock, M._db() as conn:
+            assert conn.execute("SELECT COUNT(*) AS n FROM char_links WHERE user_email='em-new@test.local'").fetchone()["n"] == 1
+            w = conn.execute("SELECT name FROM wishlist WHERE user_email='em-new@test.local'").fetchall()
+            assert [x["name"] for x in w] == ["X"]                             # le reste orphelin est écrasé
+            assert conn.execute("SELECT COUNT(*) AS n FROM wishlist WHERE user_email='em-old@test.local'").fetchone()["n"] == 0
+            uid = conn.execute("SELECT id FROM users WHERE email='em-new@test.local'").fetchone()["id"]
+        c2 = TestClient(M.app)
+        assert c2.post("/api/login", json={"email": "em-new@test.local", "password": "test-pw-123"},
+                       headers={"X-Forwarded-For": "10.99.60.72"}).status_code == 200
+        # administrateur : corrige l'adresse ; officier : refusé
+        _make_user("em-off@test.local", role="officer")
+        co = TestClient(M.app)
+        co.post("/api/login", json={"email": "em-off@test.local", "password": "test-pw-123"}, headers={"X-Forwarded-For": "10.99.60.73"})
+        assert co.post(f"/api/admin/users/{uid}/email", json={"email": "em-x@test.local"}).status_code == 403
+        a = _admin_client("em-adm@test.local", "10.99.60.74")
+        assert a.post(f"/api/admin/users/{uid}/email", json={"email": "em-final@test.local"}).status_code == 200
+        assert a.post("/api/admin/users/999999/email", json={"email": "em-z@test.local"}).status_code == 404
+        with M._db_lock, M._db() as conn:
+            assert conn.execute("SELECT user_email FROM char_links WHERE name='emchar'").fetchone()["user_email"] == "em-final@test.local"
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM users WHERE email LIKE 'em-%@test.local'")
+            conn.execute("DELETE FROM char_links WHERE name='emchar'")
+            conn.execute("DELETE FROM wishlist WHERE item_id=8101")
+
+
+def test_invite_email_can_be_corrected_but_not_a_reset_link():
+    now = time.time()
+    _make_user("inv-exist@test.local")
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO invites (token, email, note, created, expires) VALUES ('tok-inv-1', 'inv-typo@test.local', '', ?, ?)", (now, now + 3600))
+        conn.execute("INSERT INTO invites (token, email, note, created, expires) VALUES ('tok-inv-2', 'inv-exist@test.local', '', ?, ?)", (now, now + 3600))
+    try:
+        c = TestClient(M.app)
+        i1 = c.get("/api/invite/tok-inv-1").json()
+        assert i1["valid"] and i1["reset"] is False
+        assert c.get("/api/invite/tok-inv-2").json()["reset"] is True
+        r = c.post("/api/register", json={"token": "tok-inv-1", "name": "Nouveau", "email": "inv-good@test.local",
+                                          "password": "test-pw-456"}, headers={"X-Forwarded-For": "10.99.60.75"})
+        assert r.status_code == 200
+        r = TestClient(M.app).post("/api/register", json={"token": "tok-inv-2", "name": "", "email": "autre@test.local",
+                                                          "password": "test-pw-789"}, headers={"X-Forwarded-For": "10.99.60.76"})
+        assert r.status_code == 200
+        with M._db_lock, M._db() as conn:
+            assert conn.execute("SELECT 1 FROM users WHERE email='inv-good@test.local'").fetchone()
+            assert not conn.execute("SELECT 1 FROM users WHERE email IN ('inv-typo@test.local', 'autre@test.local')").fetchone()
+        assert TestClient(M.app).post("/api/login", json={"email": "inv-exist@test.local", "password": "test-pw-789"},
+                                      headers={"X-Forwarded-For": "10.99.60.77"}).status_code == 200
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM users WHERE email IN ('inv-good@test.local', 'inv-exist@test.local')")
+            conn.execute("DELETE FROM invites WHERE token IN ('tok-inv-1', 'tok-inv-2')")
+
+
+def test_onboarding_steps_and_counts():
+    from app.services.accounts import onboarding_counts
+    c = _plain_client("ob-new@test.local", "10.99.60.78")
+    try:
+        o = c.get("/api/me/onboarding").json()
+        assert (o["done"], o["total"], o["hidden"]) == (0, 3, False)
+        with M._db_lock, M._db() as conn:
+            before = onboarding_counts(conn)
+            conn.execute("INSERT INTO char_links (user_email, realm, name, display, is_main, created)"
+                         " VALUES ('ob-new@test.local', 'hyjal', 'obchar', 'Obchar', 0, 0)")
+        o = c.get("/api/me/onboarding").json()
+        assert o["steps"][0] == {"key": "chars", "done": False, "n": 1}       # lié mais pas de main
+        with M._db_lock, M._db() as conn:
+            conn.execute("UPDATE char_links SET is_main=1 WHERE name='obchar'")
+            after = onboarding_counts(conn)
+        assert after["no_chars"] == before["no_chars"] - 1 and after["no_wishlist"] == before["no_wishlist"] + 1
+        o = c.post("/api/me/onboarding", json={"addon": True}).json()
+        assert o["done"] == 2 and o["steps"][2]["done"] is True
+        assert c.post("/api/me/onboarding", json={"hide": True}).json()["hidden"] is True
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM char_links WHERE name='obchar'")
+
+
 def test_gcal_spec_roles_from_last_snapshot():
     with M._db_lock, M._db() as conn:
         conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'gcaltank', '2026-10-13', ?, ?)",

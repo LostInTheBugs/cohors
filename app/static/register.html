@@ -40,7 +40,7 @@
   .langrow a { color:var(--mut); text-decoration:none; margin:0 5px; }
   .langrow a.on { color:var(--acc2); font-weight:700; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.10.054">
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.055">
 </head>
 <body>
 <div class="wrap">
@@ -55,7 +55,7 @@
   </div>
 
   <div id="form" class="hidden">
-    <p class="sub" id="who">Crée ton compte pour accéder aux simulations.</p>
+    <p class="sub" id="who">Crée ton compte pour rejoindre l'espace de la guilde : calendrier des raids, préparation des personnages, wishlist et loot, artisanat, simulations.</p>
     <div class="card">
       <label for="name">Nom / perso</label>
       <input type="text" id="name" maxlength="60" placeholder="ex. Thrall — war fury">
@@ -75,8 +75,8 @@
 
   <footer>Moteur : SimulationCraft · Données de jeu fournies par Blizzard Entertainment · Outil non affilié</footer>
 </div>
-<script src="/static/i18n.js?v=2026.10.054"></script>
-<script src="/static/common.js?v=2026.10.054"></script>
+<script src="/static/i18n.js?v=2026.10.055"></script>
+<script src="/static/common.js?v=2026.10.055"></script>
 <script>
 const token = location.pathname.split("/").filter(Boolean).pop();
 function show(id) { for (const x of ["loading", "invalid", "form"]) $("#" + x).classList.toggle("hidden", x !== id); }
@@ -85,9 +85,12 @@ function show(id) { for (const x of ["loading", "invalid", "form"]) $("#" + x).c
     const r = await fetch(`/api/invite/${encodeURIComponent(token)}`);
     const d = await r.json();
     if (!d.valid) { show("invalid"); return; }
-    if (d.email) {
+    if (d.email && d.reset) {
       $("#email").value = d.email; $("#email").readOnly = true;
-      $("#who").textContent = `Invitation pour ${d.email} — choisis ton mot de passe pour activer ton compte.`;
+      $("#who").textContent = `Réinitialisation du compte ${d.email} — choisis ton nouveau mot de passe.`;
+    } else if (d.email) {
+      $("#email").value = d.email;        // l'adresse de l'invitation peut être corrigée
+      $("#who").textContent = `Invitation pour ${d.email} — vérifie ton adresse (tu peux la corriger) et choisis ton mot de passe. Ensuite, le tableau de bord te guide en 3 étapes.`;
     }
     show("form");
   } catch (e) { show("invalid"); }
@@ -120,6 +123,6 @@ document.querySelectorAll(".langrow a").forEach(a => {
     location.reload(); });
 });
 </script>
-<script src="/static/branding.js?v=2026.10.054"></script>
+<script src="/static/branding.js?v=2026.10.055"></script>
 </body>
 </html>

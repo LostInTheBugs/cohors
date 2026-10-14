@@ -54,8 +54,17 @@
   .empty { color:var(--mut); font-size:14px; padding:6px 2px; }
   footer { color:var(--mut); font-size:12.5px; border-top:1px solid var(--line); margin-top:8px; padding-top:12px; }
   .hidden { display:none !important; }
+  /* guide d'accueil (3 étapes) */
+  .wcbar { height:6px; border-radius:99px; background:var(--line); overflow:hidden; margin:2px 0 10px; }
+  .wcbar i { display:block; height:100%; width:0; background:var(--ok); transition:width .3s; }
+  .wcstep { display:flex; gap:10px; align-items:flex-start; padding:7px 0; border-top:1px solid var(--line); }
+  .wcstep .ic { width:22px; text-align:center; font-size:15px; }
+  .wcstep .bd { flex:1; min-width:0; }
+  .wcstep .bd b { color:var(--fg); }
+  .wcstep.done .bd b { color:var(--ok); }
+  .wcstep .act { margin-top:3px; font-size:13.5px; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.10.054">
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.055">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -76,16 +85,11 @@
   <nav class="tabs" id="navmain"></nav>
 
   <div class="grid">
-    <div class="card hidden" id="linkcard" style="border-color:var(--acc2)">
-      <h2>🪪 Lie tes personnages</h2>
-      <p class="note">Tu n'as encore lié aucun personnage à ton compte. Ça prend une minute et ça débloque plusieurs fonctions :</p>
-      <ul class="note" style="margin:6px 0 8px 18px;padding:0">
-        <li>recevoir des commandes d'artisanat (📨 Demander sur la fiche d'un objet) ;</li>
-        <li>apparaître sous ton main dans les wishlists et le calendrier ;</li>
-        <li>tes rerolls ne sont pas proposés en double pour compléter un raid ;</li>
-        <li>tes statistiques et tes recettes dans 🙋 Moi.</li>
-      </ul>
-      <p class="note"><a class="hlink" href="/mespersos">Lier mes personnages →</a></p>
+    <div class="card hidden" id="welcomecard" style="border-color:var(--acc2);grid-column:1/-1">
+      <h2>👋 Bienvenue — 3 étapes pour bien démarrer <span class="note" id="wc-count"></span></h2>
+      <div class="wcbar"><i id="wc-bar"></i></div>
+      <div id="wc-steps"></div>
+      <p class="note" style="margin-top:8px"><a class="hlink" href="#" id="wc-hide">Masquer ce guide</a></p>
     </div>
     <div class="card hidden" id="readycard" style="border-color:var(--warn)">
       <h2>🩺 Prépare tes personnages</h2>
@@ -125,12 +129,47 @@
 
   <footer><span id="ver"></span> · Moteur : SimulationCraft · Outil non affilié à Blizzard Entertainment</footer>
 </div>
-<script src="/static/nav.js?v=2026.10.054"></script>
-<script src="/static/branding.js?v=2026.10.054"></script>
-<script src="/static/i18n.js?v=2026.10.054"></script>
-<script src="/static/esc.js?v=2026.10.054"></script>
-<script src="/static/common.js?v=2026.10.054"></script>
+<script src="/static/nav.js?v=2026.10.055"></script>
+<script src="/static/branding.js?v=2026.10.055"></script>
+<script src="/static/i18n.js?v=2026.10.055"></script>
+<script src="/static/esc.js?v=2026.10.055"></script>
+<script src="/static/common.js?v=2026.10.055"></script>
 <script>
+// ---- 👋 Guide d'accueil : personnages + main, wishlist, addon (/api/me/onboarding) ----
+async function loadWelcome() {
+  let o;
+  try { o = await jget("/api/me/onboarding"); } catch (e) { return; }
+  const card = $("#welcomecard");
+  if (o.hidden || o.done >= o.total) { card.classList.add("hidden"); return; }
+  const st = Object.fromEntries(o.steps.map(x => [x.key, x]));
+  const step = (k, ic, title, txt, act) => {
+    const d = st[k] && st[k].done;
+    return `<div class="wcstep${d ? " done" : ""}"><span class="ic">${d ? "✅" : ic}</span>
+      <div class="bd"><b>${title}</b><div class="note">${txt}</div>${d ? "" : `<div class="act">${act}</div>`}</div></div>`;
+  };
+  const nc = (st.chars || {}).n || 0;
+  $("#wc-steps").innerHTML =
+    step("chars", "🪪", "Lie tes personnages et choisis ton main",
+      nc ? `<span>${nc} personnage(s) lié(s) — il reste à choisir ton main (⭐).</span>`
+         : "Tes rerolls restent groupés sous ton main : wishlist, calendrier, commandes d'artisanat, préparation.",
+      `<a class="hlink" href="/mespersos">Lier →</a>`)
+    + step("wishlist", "🎯", "Remplis ta wishlist",
+      "Les pièces que tu vises (Mythe par défaut) : les officiers les voient au moment du loot et tu es prévenu quand tu en reçois une.",
+      `<a class="hlink" href="/wishlist">Ma wishlist →</a>`)
+    + step("addon", "🧩", "Installe l'addon Cohors",
+      "Il importe le calendrier des raids, t'alerte en instance des boss qui ont une pièce de ta wishlist et exporte tes recettes.",
+      `<a class="hlink" href="/api/addon">⬇️ Télécharger</a> · <a class="hlink" href="#" id="wc-addon">C'est fait</a>`);
+  $("#wc-count").textContent = `· ${o.done}/${o.total}`;
+  $("#wc-bar").style.width = Math.round(100 * o.done / o.total) + "%";
+  card.classList.remove("hidden");
+  const post = async (body) => {
+    try { await fetch("/api/me/onboarding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); } catch (e) {}
+    loadWelcome();
+  };
+  const ad = $("#wc-addon");
+  if (ad) ad.addEventListener("click", (ev) => { ev.preventDefault(); post({ addon: true }); });
+  $("#wc-hide").onclick = (ev) => { ev.preventDefault(); post({ hide: true }); };
+}
 const dtFmt = (ms) => new Date(ms).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const ago = (ts) => { if (!ts) return "—"; const s = Math.floor(Date.now() / 1000 - ts);
   if (s < 60) return "à l'instant";
@@ -156,8 +195,8 @@ const parseColor = (p) => p == null ? "var(--mut)" : p >= 100 ? "#e5cc80" : p >=
   // première configuration — carte réservée aux administrateurs
   try {
     const me2 = await jget("/api/me");
-    if (me2.chars === 0) $("#linkcard").classList.remove("hidden");
-    else {
+    loadWelcome();
+    if (me2.chars > 0) {
       const rd = await jget("/api/readiness/mine").catch(() => null);
       if (rd && rd.chars && rd.chars.length) {
         $("#readylist").innerHTML = rd.chars.map((c) => `<div style="margin:6px 0;font-size:13.5px">
