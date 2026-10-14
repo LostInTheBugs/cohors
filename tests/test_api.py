@@ -1806,6 +1806,40 @@ def test_onboarding_steps_and_counts():
             conn.execute("DELETE FROM char_links WHERE name='obchar'")
 
 
+def test_page_usage_counts_members_per_page_and_day():
+    from app.services import usage as U
+    assert U.page_key("/char/hyjal/flavia") == "/char" and U.page_key("/dashboard") == "/dashboard"
+    assert U.page_key("/api/me") is None and U.page_key("/static/x.js") is None and U.page_key("/inconnue") is None
+    assert U.page_key("/") == "/" and U.page_key("/invite/abc") is None
+    with M._db_lock, M._db() as conn:
+        conn.execute("DELETE FROM page_usage")
+    U._SEEN.clear()
+    m = _plain_client("us-mem@test.local", "10.99.60.81")
+    try:
+        for _ in range(3):
+            assert m.get("/dashboard").status_code == 200
+        m.get("/calendar")
+        m.get("/api/me")
+        assert m.get("/api/admin/usage").status_code == 403
+        a = _admin_client("us-adm@test.local", "10.99.60.82")
+        a.get("/dashboard")
+        d = a.get("/api/admin/usage").json()
+        pages = {p["page"]: p for p in d["pages"]}
+        assert pages["/dashboard"]["u7"] == 2 and pages["/dashboard"]["d30"] == 2     # 3 vues = 1 jour-membre
+        assert pages["/calendar"]["u30"] == 1 and "/api" not in pages
+        assert d["active7"] == 2 and d["funnel"]["accounts"] >= 2
+        assert any(u["page"] == "/readiness" for u in d["unused"])
+        with M._db_lock, M._db() as conn:                       # anonyme : rien n'est noté
+            n0 = conn.execute("SELECT COUNT(*) AS n FROM page_usage").fetchone()["n"]
+        TestClient(M.app).get("/help")
+        with M._db_lock, M._db() as conn:
+            assert conn.execute("SELECT COUNT(*) AS n FROM page_usage").fetchone()["n"] == n0
+    finally:
+        with M._db_lock, M._db() as conn:
+            conn.execute("DELETE FROM page_usage")
+        U._SEEN.clear()
+
+
 def test_gcal_spec_roles_from_last_snapshot():
     with M._db_lock, M._db() as conn:
         conn.execute("INSERT INTO char_snapshots (realm, name, day, ts, data) VALUES ('hyjal', 'gcaltank', '2026-10-13', ?, ?)",

@@ -108,6 +108,11 @@
     .smenu .sbtn { width:auto; border-color:var(--line); }
     .smenu .stitle { width:100%; margin:6px 0 0; }
   }
+  table.ustab { width:100%; border-collapse:collapse; }
+  table.ustab th, table.ustab td { padding:5px 8px; border-bottom:1px solid var(--line); text-align:left; font-size:13.5px; }
+  table.ustab th { color:var(--mut); font-weight:600; font-size:11.5px; text-transform:uppercase; }
+  .usbar { display:block; height:6px; border-radius:99px; background:var(--line); overflow:hidden; }
+  .usbar i { display:block; height:100%; background:var(--acc2); }
 </style>
 <link rel="stylesheet" href="/static/theme.css?v=2026.10.055">
 </head>
@@ -144,6 +149,7 @@
       <button class="sbtn hidden" type="button" data-sec="sec-mail" id="sbtn-mail">✉️ E-mail (SMTP)</button>
       <button class="sbtn hidden" type="button" data-sec="sec-identite" id="sbtn-identite">🎨 Identité</button>
       <button class="sbtn hidden" type="button" data-sec="sec-sauvegarde" id="sbtn-sauvegarde">💾 Sauvegarde</button>
+      <button class="sbtn hidden" type="button" data-sec="sec-usage" id="sbtn-usage">📈 Utilisation</button>
       <button class="sbtn hidden" type="button" data-sec="sec-maj" id="sbtn-maj">⬆️ Mises à jour</button>
     </aside>
     <div class="spanel">
@@ -373,6 +379,14 @@
       </div>
     </div>
 
+    <div id="sec-usage" class="hidden">
+      <div class="card">
+        <h2>📈 Utilisation <span class="badge" id="us-since"></span></h2>
+        <p class="sub" style="margin:4px 0 12px">Qui ouvre quelles pages — le nombre de membres par page et par jour, rien de plus (ni heure, ni parcours, ni service externe ; effacé après 90 jours).</p>
+        <div id="us-funnel" class="row" style="gap:6px;margin-bottom:12px"></div>
+        <div id="us-pages"><div class="empty">Chargement…</div></div>
+      </div>
+    </div>
     <div id="sec-maj" class="hidden">
       <div class="card">
         <h2>⬆️ Mises à jour de l'application</h2>
@@ -764,6 +778,31 @@ async function loadUsers() {
   }));
 }
 
+// ---- 📈 Utilisation (administrateurs) : membres actifs, pages, parcours d'accueil ----
+async function loadUsage() {
+  let d;
+  try { d = await api("GET", "/api/admin/usage"); } catch (e) { return; }
+  $("#us-since").textContent = d.since ? `depuis le ${d.since.slice(8, 10)}/${d.since.slice(5, 7)}` : "pas encore de données";
+  const f = d.funnel || {}, pct = (n) => f.accounts ? Math.round(100 * n / f.accounts) + " %" : "—";
+  const pill = (lab, n, title) => `<span class="badge" title="${esc(title)}"><span>${lab}</span> <b>${n}</b></span>`;
+  $("#us-funnel").innerHTML = [
+    pill("👥 Actifs 7 j", d.active7, "Membres qui ont ouvert au moins une page ces 7 derniers jours"),
+    pill("Actifs 30 j", d.active30, "Membres qui ont ouvert au moins une page ces 30 derniers jours"),
+    pill("Comptes", f.accounts, "Comptes actifs"),
+    pill("🪪 Persos liés", `${f.chars} (${pct(f.chars)})`, "Comptes avec au moins un personnage lié"),
+    pill("⭐ Main", `${f.main} (${pct(f.main)})`, "Comptes qui ont choisi leur main"),
+    pill("🎯 Wishlist", `${f.wishlist} (${pct(f.wishlist)})`, "Comptes avec au moins un objet en wishlist"),
+    pill("🧩 Addon", `${f.addon} (${pct(f.addon)})`, "Comptes qui ont déclaré l'addon installé (guide d'accueil)"),
+  ].join("");
+  const pages = d.pages || [];
+  const max = Math.max(1, ...pages.map(p => p.u30));
+  $("#us-pages").innerHTML = (pages.length ? `<table class="ustab"><thead><tr><th>Page</th><th title="Membres différents ces 7 derniers jours">7 j</th><th title="Membres différents ces 30 derniers jours">30 j</th><th title="Jours-membres sur 30 jours (un membre qui revient 5 jours compte 5)">Visites</th><th></th></tr></thead>
+    <tbody>${pages.map(p => `<tr><td>${esc(p.label)}</td><td><b>${p.u7}</b></td><td>${p.u30}</td><td class="meta">${p.d30}</td>
+      <td style="width:35%"><span class="usbar"><i style="width:${Math.round(100 * p.u30 / max)}%"></i></span></td></tr>`).join("")}</tbody></table>`
+    : `<div class="empty">Pas encore de données — elles arrivent dès que des membres ouvrent des pages.</div>`)
+    + ((d.unused || []).length ? `<p class="note" style="margin-top:10px"><span>Jamais ouvertes sur la période :</span> ${d.unused.map(u => esc(u.label)).join(" · ")}</p>` : "");
+}
+
 // ---- Menu à gauche : sections de Paramètres (v2026.09.113) ----
 function showSec(id) {
   document.querySelectorAll("#sec-profil, #sec-vocal, #sec-pw, #adm > div[id^=sec-]").forEach((d) => {
@@ -776,6 +815,7 @@ document.querySelectorAll(".smenu .sbtn").forEach((b) => b.addEventListener("cli
   if (b.dataset.sec === "sec-invitations") loadInvites();
   if (b.dataset.sec === "sec-comptes") loadUsers();
   if (b.dataset.sec === "sec-maj" && IM_ADMIN) loadUpdates();
+  if (b.dataset.sec === "sec-usage" && IM_ADMIN) loadUsage();
   if (b.dataset.sec === "sec-bot") loadBot();
   if (b.dataset.sec === "sec-identite") loadBrand();
   if (b.dataset.sec === "sec-guilde") loadGuild();
@@ -1397,6 +1437,7 @@ $("#bi-reset").addEventListener("click", async () => {
       $("#sbtn-mail").classList.remove("hidden");
       $("#sbtn-identite").classList.remove("hidden");
       $("#sbtn-maj").classList.remove("hidden");
+      $("#sbtn-usage").classList.remove("hidden");
     }
     loadInvites();
     loadUsers();

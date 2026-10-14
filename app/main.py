@@ -737,6 +737,8 @@ def health():
 # Portail vocal (sous-domaine dédié : VOICE_PUBLIC_HOST) — réservé aux membres — app/routers/voice.py
 # ---------------------------------------------------------------------------
 from app.routers.voice import VoiceGateMiddleware  # noqa: E402  (app/routers/voice.py)
+from app.services.usage import record as _usage_record  # noqa: E402
+from starlette.concurrency import run_in_threadpool  # noqa: E402
 
 app.add_middleware(VoiceGateMiddleware)
 
@@ -765,6 +767,21 @@ async def _security_headers(request: Request, call_next):
     resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
     return resp
+
+
+@app.middleware("http")
+async def _page_usage(request: Request, call_next):
+    """Usage des pages (administration) : une ligne par jour, page et compte — pages HTML seulement."""
+    response = await call_next(request)
+    if (request.method == "GET" and response.status_code == 200
+            and response.headers.get("content-type", "").startswith("text/html")):
+        token = request.cookies.get(SESSION_COOKIE)
+        if token:
+            try:
+                await run_in_threadpool(_usage_record, token, request.url.path)
+            except Exception as exc:  # noqa: BLE001 — la page s'affiche quoi qu'il arrive
+                print(f"[usage] {exc}")
+    return response
 
 
 @app.middleware("http")
