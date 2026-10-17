@@ -123,3 +123,47 @@ def test_prune_jobs_cleans_ghost_cancelled_ids(tmp_path, monkeypatch):
     w._prune_jobs()
     assert "ghost" not in w.CANCELLED
     assert "vivant" in w.CANCELLED
+
+
+def test_sim_containers_are_labelled_and_cleanup_spares_foreign(monkeypatch):
+    """Le ménage au démarrage ne touche QUE les conteneurs Cohors (label, ou ancien nom exact
+    sim-<16 hex> + image SimC) — jamais un conteneur étranger nommé « sim-… » (revue 17/10)."""
+    for m in [m for m in sys.modules if m in ("worker", "worker.simrun")]:
+        sys.modules.pop(m, None)
+    simrun = importlib.import_module("worker.simrun")
+
+    class R:
+        def __init__(self, stdout=""):
+            self.stdout, self.returncode = stdout, 0
+
+    removed: list[str] = []
+
+    def fake_run(cmd, **kw):
+        if cmd[:3] == ["docker", "ps", "-a"] and cmd[4].startswith("label="):
+            return R("sim-0123456789abcdef\n")
+        if cmd[:3] == ["docker", "ps", "-a"]:
+            return R("sim-backup\tpostgres:16\n"
+                     "sim-worker\t" + simrun.IMAGE + "\n"                     # nom non conforme
+                     "sim-fedcba9876543210\tsimulationcraftorg/simc:old-tag\n"  # ancien, sans label
+                     "sim-aaaaaaaaaaaaaaaa\tnginx:latest\n")                   # bon nom, autre image
+        if cmd[:3] == ["docker", "rm", "-f"]:
+            removed.append(cmd[3])
+        return R()
+
+    monkeypatch.setattr(simrun.subprocess, "run", fake_run)
+    assert sorted(simrun.cleanup_orphans()) == ["sim-0123456789abcdef", "sim-fedcba9876543210"]
+    assert sorted(removed) == ["sim-0123456789abcdef", "sim-fedcba9876543210"]
+
+    captured: list[list[str]] = []
+
+    def fake_run2(cmd, **kw):
+        captured.append(cmd)
+        return R("")
+
+    monkeypatch.setattr(simrun.subprocess, "run", fake_run2)
+    try:
+        simrun.run_sim(container_profile="profiles/x.simc", iterations=10, container_name="sim-x", timeout=5)
+    except Exception:  # noqa: BLE001  (pas de vrai docker : seul l'appel compte)
+        pass
+    run_cmd = next(c for c in captured if c[:2] == ["docker", "run"])
+    assert "--label" in run_cmd and run_cmd[run_cmd.index("--label") + 1] == simrun.SIM_LABEL

@@ -29,8 +29,10 @@ npm install --no-save eslint@9 globals@15        # once
 node tools/lint-js.mjs                           # undeclared variables, const/let used before definition
 ```
 
-The suite covers the stdlib-only security helpers (`app/security.py`: password hashing,
-SimulationCraft profile guard) and repository consistency (VERSION/CHANGELOG/i18n/add-on).
+The suite covers the API (`tests/test_api.py`: FastAPI TestClient on a throwaway SQLite
+database, including role guards), the stdlib-only security helpers (`app/security.py`: password
+hashing, SimulationCraft profile guard), the simulation worker, and repository consistency
+(VERSION/CHANGELOG/i18n/add-on).
 CI runs it on every push and pull request.
 
 ## Repository conventions

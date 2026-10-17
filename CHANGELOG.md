@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.062 - 2026-10-17
+
+### Fixed
+
+- Simulation worker: the startup clean-up of leftover simulation containers could remove an
+  unrelated container on a shared Docker host, as long as its name started with `sim-`. Every
+  simulation container now carries the `cohors.sim=1` label and only labelled containers are
+  cleaned up (plus, for the upgrade, unlabelled ones from older releases that match both the exact
+  `sim-<job id>` name and the SimulationCraft image).
+
+### Security
+
+- Password check: the scrypt cost parameters read back from a stored hash are now bounded
+  (n between 2^10 and 2^15 and a power of two, r ≤ 8, p ≤ 4, explicit memory cap), so a corrupted
+  hash can no longer make a login attempt use excessive memory or CPU.
+
+### Docs
+
+- README project structure and CONTRIBUTING now describe the current layout (`app/routers/`,
+  `app/services/`) and the API test suite.
+
 ## 2026.10.061 - 2026-10-14
 
 ### Fixed
