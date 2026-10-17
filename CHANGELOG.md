@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.064 - 2026-10-17
+
+### Security
+
+- Content-Security-Policy: `script-src` no longer allows arbitrary inline code. It lists the
+  sha256 hash of every page's embedded `<script>` block, computed at startup from the served
+  files (`app/core/csp.py`): a script injected into a page (for example through a missed
+  escape in dynamic HTML) or an inline `on…=` handler is now refused by the browser. Hashes
+  rather than nonces, so the pages the service worker keeps for offline use stay valid.
+- SimulationCraft reports (`/reports/<id>/report.html`) are served in a CSP `sandbox`: their
+  scripts run with an opaque origin that cannot read the site's cookies or call its API.
+- The voice portal (third-party HTML relayed on its own host) keeps the previous policy.
+- Styles still allow inline (`style=` attributes throughout the UI).
+
+### Changed
+
+- Top Stuff page: the 🎯 / ⭐ wishlist buttons use a delegated listener instead of
+  inline `onclick` (same behaviour).
+
+### Tests
+
+- Every embedded script of every page is hashed in the served CSP, `script-src` has no
+  `'unsafe-inline'`, no page produces an inline event handler, reports are sandboxed and the
+  voice portal keeps its policy. Also checked in a real browser: all 30 pages load with no CSP
+  violation or JS error, and an injected handler / script is blocked.
+
 ## 2026.10.063 - 2026-10-17
 
 ### Security

@@ -166,12 +166,16 @@ step links to the matching Settings section and turns green once it is done.
   proxy — exposed directly, the header becomes client-controlled again.
 - **Security headers** — every response carries a Content-Security-Policy (no external scripts or
   objects, framing restricted to the app and the configured voice host), `X-Content-Type-Options`,
-  `X-Frame-Options` and `Referrer-Policy`. `script-src` still allows inline code since the UI is
-  built from per-page scripts; nonce-based tightening is planned with the front-end refactor.
+  `X-Frame-Options` and `Referrer-Policy`. `script-src` does **not** allow arbitrary inline code:
+  it lists the sha256 hash of each page's embedded `<script>` block, computed at startup from the
+  served files (`app/core/csp.py`), so an injected script or `on…=` attribute is refused by the
+  browser. Styles still allow inline. Two exceptions with their own policy: the voice portal
+  (third-party HTML, legacy policy) and SimulationCraft reports (served in a CSP `sandbox`, with
+  an opaque origin that cannot reach the site's cookies or API).
 - **HTML escaping** — a single shared helper (`app/static/esc.js`) is loaded by every page that
   renders dynamic content.
 - **Shared reports** — `/reports/<id>/report.html` links are public by design (share them in
-  Discord), with random non-enumerable ids.
+  Discord), with random non-enumerable ids; they are sandboxed (see above).
 
 ## WoW add-on (Cohors)
 
@@ -349,7 +353,7 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
 
 ## Version
 
-Current version: `2026.10.063` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Current version: `2026.10.064` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
 Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.149` is the 149th build of September 2026;
 corrections add a `-cN` suffix (`2026.09.149-c2`).
 
