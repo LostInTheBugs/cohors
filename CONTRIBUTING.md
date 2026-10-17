@@ -35,6 +35,27 @@ hashing, SimulationCraft profile guard), the simulation worker, and repository c
 (VERSION/CHANGELOG/i18n/add-on).
 CI runs it on every push and pull request.
 
+## Dependencies
+
+- `requirements.txt` lists the direct dependencies with version ranges; `requirements.lock`
+  pins every package (direct and transitive) to an exact version with hashes. The app image
+  and CI install **only** the lock, with `pip install --require-hashes`, so a rebuild gets
+  exactly what was tested.
+- After changing `requirements.txt`, or to pick up updates (security fixes included),
+  regenerate the lock and run the tests:
+
+  ```bash
+  pip install uv
+  uv pip compile requirements.txt --generate-hashes --universal --python-version 3.12 -o requirements.lock
+  python -m pytest -q
+  ```
+
+  `tests/test_repo.py` fails if the lock is missing a direct dependency, pins it outside its
+  range, or has an entry without hashes.
+- GitHub Actions are pinned to a full commit SHA, with the release tag as a comment
+  (`uses: actions/checkout@<sha> # v5.1.0`). Dependabot (`.github/dependabot.yml`) opens a
+  weekly PR to bump them; never replace a SHA with a tag (a test checks this).
+
 ## Repository conventions
 
 - **Everything on GitHub is in English** (README, CHANGELOG, commit messages, issues, PRs) —

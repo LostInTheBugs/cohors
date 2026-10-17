@@ -367,3 +367,43 @@ def test_bump_simc_inconsistent_tags_exits():
                 assert e.code == 1
     finally:
         tmp.cleanup()
+
+
+def _norm(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def test_requirements_lock_covers_requirements_and_is_hashed():
+    """requirements.lock (installé par le Dockerfile et la CI avec --require-hashes) doit épingler
+    chaque dépendance directe de requirements.txt, dans sa plage, avec des empreintes.
+    S'il échoue : régénérer le lock (commande dans CONTRIBUTING.md)."""
+    try:
+        from packaging.specifiers import SpecifierSet
+    except ImportError:  # pragma: no cover — packaging vendored dans pip
+        from pip._vendor.packaging.specifiers import SpecifierSet
+    lock = (ROOT / "requirements.lock").read_text(encoding="utf-8")
+    pinned = {_norm(m.group(1)): m.group(2)
+              for m in re.finditer(r"^([A-Za-z0-9._-]+)==([^\s;\\]+)", lock, re.M)}
+    blocks = re.split(r"\n(?=[A-Za-z0-9])", lock.split("\n", 2)[-1])
+    for b in blocks:
+        if re.match(r"[A-Za-z0-9]", b):
+            assert "--hash=sha256:" in b, f"entrée sans empreinte : {b.splitlines()[0]}"
+    for line in (ROOT / "requirements.txt").read_text().splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        m = re.match(r"([A-Za-z0-9._-]+)(.*)", line)
+        name, spec = _norm(m.group(1)), m.group(2).strip()
+        assert name in pinned, f"{name} absent de requirements.lock"
+        assert SpecifierSet(spec).contains(pinned[name]), f"{name}=={pinned[name]} hors de « {spec} »"
+
+
+def test_workflow_actions_pinned_by_sha():
+    """Chaîne d'approvisionnement : toute action tierce est épinglée sur un SHA de commit
+    (+ commentaire de version, tenu à jour par Dependabot), jamais sur un tag mobile."""
+    for wf in sorted((ROOT / ".github/workflows").glob("*.yml")):
+        for m in re.finditer(r"uses:\s*(\S+)", wf.read_text(encoding="utf-8")):
+            ref = m.group(1)
+            if ref.startswith("./"):
+                continue
+            assert re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40}", ref), f"{wf.name}: {ref} non épinglé"

@@ -10,8 +10,10 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
-COPY requirements.txt VERSION ./
-RUN pip install --no-cache-dir -r requirements.txt
+# requirements.lock : versions exactes + empreintes (généré depuis requirements.txt, voir
+# CONTRIBUTING.md) — une reconstruction installe exactement ce qui a été testé.
+COPY requirements.lock VERSION ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 
 COPY app ./app
 COPY shared ./shared

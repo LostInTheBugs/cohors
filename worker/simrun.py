@@ -81,7 +81,7 @@ def _orphan_names() -> list[str]:
     out = subprocess.run(["docker", "ps", "-a", "--filter", "label=" + SIM_LABEL,
                           "--format", "{{.Names}}"], capture_output=True, text=True, timeout=30)
     names.update(n.strip() for n in (out.stdout or "").splitlines() if n.strip())
-    # Compatibilité : conteneurs créés avant le label (versions ≤ 2026.10.062). On exige le
+    # Compatibilité : conteneurs créés avant le label (versions ≤ 2026.10.063). On exige le
     # nom EXACT sim-<16 hex> ET l'image SimulationCraft — à retirer d'ici quelques versions.
     out = subprocess.run(["docker", "ps", "-a", "--filter", "name=" + CONTAINER_PREFIX,
                           "--format", "{{.Names}}\t{{.Image}}"],
