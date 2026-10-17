@@ -17,6 +17,12 @@ from shared.simvalidate import check_profile  # noqa: F401  (re-export)
 # ---------------------------------------------------------------------------
 
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
+# Bornes acceptées À LA VÉRIFICATION : n/r/p sont relus depuis le hash stocké, une valeur
+# corrompue ne doit pas pouvoir faire exploser la mémoire/le CPU d'une tentative de connexion.
+# Marge pour un futur relèvement du coût (n=2^15) sans casser les hashs existants.
+_SCRYPT_N_MIN, _SCRYPT_N_MAX = 2 ** 10, 2 ** 15
+_SCRYPT_R_MAX, _SCRYPT_P_MAX = 8, 4
+_SCRYPT_MAXMEM = 64 * 1024 * 1024
 
 
 def hash_password(password: str) -> str:
@@ -30,8 +36,15 @@ def verify_password(password: str, stored: str) -> bool:
         algo, n, r, p, salt_hex, dk_hex = stored.split("$")
         if algo != "scrypt":
             return False
+        n_i, r_i, p_i = int(n), int(r), int(p)
+        if not (_SCRYPT_N_MIN <= n_i <= _SCRYPT_N_MAX and n_i & (n_i - 1) == 0):
+            return False
+        if not (1 <= r_i <= _SCRYPT_R_MAX and 1 <= p_i <= _SCRYPT_P_MAX):
+            return False
+        if len(salt_hex) > 128 or len(dk_hex) != 64:
+            return False
         dk = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt_hex),
-                            n=int(n), r=int(r), p=int(p), dklen=32)
+                            n=n_i, r=r_i, p=p_i, dklen=32, maxmem=_SCRYPT_MAXMEM)
         return hmac.compare_digest(dk.hex(), dk_hex)
     except Exception:  # noqa: BLE001
         return False

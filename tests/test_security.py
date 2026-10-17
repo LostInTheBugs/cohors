@@ -60,3 +60,14 @@ def test_profile_guard_accepts_real_export_sample():
         "max_time=300\n"
     )
     assert check_profile(sample) is None
+
+
+def test_password_rejects_out_of_bounds_scrypt_params():
+    """n/r/p sont relus depuis le hash stocké : une valeur corrompue est refusée sans calcul."""
+    good = hash_password("pw")
+    _algo, _n, _r, _p, salt, dk = good.split("$")
+    for n, r, p in [(2 ** 20, 8, 1), (3000, 8, 1), (2 ** 14, 64, 1), (2 ** 14, 8, 50),
+                    (2 ** 14, 0, 1), (2 ** 14, 8, 0), (2 ** 9, 8, 1)]:
+        assert not verify_password("pw", f"scrypt${n}${r}${p}${salt}${dk}")
+    assert not verify_password("pw", f"scrypt$16384$8$1${salt}${dk[:-2]}")
+    assert verify_password("pw", good)

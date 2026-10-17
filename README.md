@@ -264,7 +264,9 @@ account (invitation endpoints accept officers).
 ## Project structure
 
 ```
-app/main.py               FastAPI app (auth, admin, sim queue, pages, APIs)
+app/main.py               FastAPI app setup: startup/migrations, middleware (security headers), router wiring
+app/routers/              HTTP routes, one module per area (raids, wishlist, sims, admin_*, …)
+app/services/             Business logic used by the routers (loot, wishlist, sims, bot, updates, …)
 app/core/                 Shared config, SQLite helper, sessions and role guards
 app/security.py           Password hashing (scrypt) + XFF handling (profile guard re-exported)
 app/simclient.py          Simulation worker client (Unix socket)
@@ -276,10 +278,12 @@ app/static/               29 pages (FR) + i18n.js FR/EN engine, esc.js, branding
 app/data/bis.json         Embedded BiS lists (Wowhead guide snapshots, 40 specs)
 tools/refresh-bis.md      How the embedded BiS snapshot is refreshed (procedure + script)
 addon/Cohors/             In-game add-on (guild calendar + professions export)
-worker/simrun.py          SimulationCraft engine wrapper (official Docker image, sandboxed)
+worker/simrun.py          SimulationCraft engine wrapper (official Docker image, sandboxed,
+                          containers labelled `cohors.sim=1` — only those are ever cleaned up)
 worker/simworker.py       Job worker — the ONLY component holding the Docker socket
 shared/simvalidate.py     Job validation, copied into both images (app + worker)
-tests/                    pytest suite (security helpers + repo consistency, run by CI)
+tests/                    pytest suite, run by CI: API tests (TestClient on a throwaway SQLite DB),
+                          security helpers, worker, resilience and repo consistency
 Dockerfile                App image (non-root, no Docker socket, no Docker CLI)
 worker/Dockerfile         Worker image (Python + Docker CLI)
 docker-compose.yml        Deployment: app + worker (Docker socket in the worker only)
@@ -343,7 +347,7 @@ python3 worker/simrun.py --profile ./my-export.simc --iterations 10000 --outdir 
 
 ## Version
 
-Current version: `2026.10.061` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
+Current version: `2026.10.062` (see [releases](https://github.com/LostInTheBugs/cohors/releases)).
 Versions follow CalVer `YEAR.MONTH.BUILD` — `2026.09.149` is the 149th build of September 2026;
 corrections add a `-cN` suffix (`2026.09.149-c2`).
 

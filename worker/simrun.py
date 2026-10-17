@@ -30,7 +30,9 @@ Each simulation runs in a hardened container: no network, read-only root filesys
 no-new-privileges, `--rm`, and a name derived from the job id (`sim-<id>`). On
 timeout the container is killed EXPLICITLY (`docker kill`) — killing the docker
 client alone leaves the container running. cleanup_orphans() removes leftover
-`sim-*` containers at startup. SimulationCraft honours a few options written
+simulation containers at startup — only those carrying the `cohors.sim=1` label (plus
+unlabelled ones from older releases that match both the exact `sim-<16 hex>` name and the
+SimulationCraft image), never an unrelated container that merely starts with `sim-`. SimulationCraft honours a few options written
 INSIDE a profile file (`input=` reads files, `output=` writes files — verified
 against the official image), so profile text is validated before it is written
 (see shared/simvalidate.py; the worker re-checks everything itself).
@@ -56,23 +58,53 @@ DPS_RE = re.compile(r"DPS=([0-9.]+)\s+DPS-Error=([0-9.]+)/([0-9.]+)%")
 SF_WEIGHTS_RE = re.compile(r"Weights\s*:\s*(.+)")
 SF_ITEM_RE = re.compile(r"(\w+)=([0-9.]+)\(([0-9.]+)\)")
 
-# Préfixe des conteneurs de simulation : permet le ménage des orphelins au démarrage.
+# Préfixe des conteneurs de simulation (nom = sim-<id de job>).
 CONTAINER_PREFIX = "sim-"
+# Label posé sur CHAQUE conteneur de simulation : c'est lui, et non le préfixe du nom,
+# qui autorise le ménage des orphelins (un hôte Docker partagé peut héberger d'autres
+# conteneurs « sim-… » qui ne nous appartiennent pas).
+SIM_LABEL = "cohors.sim=1"
+# Nom exact d'un conteneur Cohors (id de job = uuid4().hex[:16], voir simworker.py).
+_SIM_NAME_RE = re.compile(r"^sim-[0-9a-f]{16}$")
+
+
+def _image_repo(image: str) -> str:
+    """`simulationcraftorg/simc:tag` → `simulationcraftorg/simc` (digest/tag retirés)."""
+    image = image.split("@", 1)[0]
+    head, _, tail = image.rpartition(":")
+    return head if head and "/" not in tail else image
+
+
+def _orphan_names() -> list[str]:
+    """Noms des conteneurs de simulation Cohors restants (labellisés, ou anciens non labellisés)."""
+    names: set[str] = set()
+    out = subprocess.run(["docker", "ps", "-a", "--filter", "label=" + SIM_LABEL,
+                          "--format", "{{.Names}}"], capture_output=True, text=True, timeout=30)
+    names.update(n.strip() for n in (out.stdout or "").splitlines() if n.strip())
+    # Compatibilité : conteneurs créés avant le label (versions ≤ 2026.10.062). On exige le
+    # nom EXACT sim-<16 hex> ET l'image SimulationCraft — à retirer d'ici quelques versions.
+    out = subprocess.run(["docker", "ps", "-a", "--filter", "name=" + CONTAINER_PREFIX,
+                          "--format", "{{.Names}}\t{{.Image}}"],
+                         capture_output=True, text=True, timeout=30)
+    repo = _image_repo(IMAGE)
+    for line in (out.stdout or "").splitlines():
+        name, _, image = line.strip().partition("\t")
+        if _SIM_NAME_RE.match(name) and _image_repo(image) == repo:
+            names.add(name)
+    return sorted(names)
 
 
 def cleanup_orphans() -> list[str]:
-    """Supprime les conteneurs `sim-*` restants d'une exécution précédente.
+    """Supprime les conteneurs de simulation Cohors restants d'une exécution précédente.
 
     Si le worker est tué pendant une simulation, le client docker disparaît mais
     le conteneur de simulation continue de tourner : on fait le ménage AVANT
     d'accepter de nouveaux jobs (le worker ne démarre jamais deux fois).
     """
     try:
-        out = subprocess.run(["docker", "ps", "-a", "--filter", "name=" + CONTAINER_PREFIX,
-                              "--format", "{{.Names}}"], capture_output=True, text=True, timeout=30)
+        names = _orphan_names()
     except Exception:  # noqa: BLE001
         return []
-    names = [n.strip() for n in (out.stdout or "").splitlines() if n.strip().startswith(CONTAINER_PREFIX)]
     killed: list[str] = []
     for n in names:
         try:
@@ -234,7 +266,7 @@ def run_sim(
     outdir = Path(outdir) if outdir else Path(tempfile.mkdtemp(prefix="simc-"))
     outdir.mkdir(parents=True, exist_ok=True)
 
-    cmd = ["docker", "run", "--rm"]
+    cmd = ["docker", "run", "--rm", "--label", SIM_LABEL]
     if container_name:
         cmd += ["--name", container_name]
     cmd += [
