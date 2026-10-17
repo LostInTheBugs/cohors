@@ -21,7 +21,11 @@ pip install pytest
 python -m pytest -q
 ```
 
-The pages hold most of their JavaScript inline; two checks cover it (both run in CI):
+The pages hold most of their JavaScript inline. The Content-Security-Policy allows each page's
+embedded `<script>` block by its hash (recomputed at startup, nothing to update by hand), but it
+**refuses inline event handlers**: never write `onclick="…"` (or any `on…=` attribute), in the HTML
+or in HTML built from JavaScript — use `addEventListener` / a delegated listener instead
+(`tests/test_api.py` checks this). Two checks cover the scripts themselves (both run in CI):
 
 ```bash
 python3 tools/check-inline-js.py                 # syntax (node --check)

@@ -743,26 +743,23 @@ from starlette.concurrency import run_in_threadpool  # noqa: E402
 app.add_middleware(VoiceGateMiddleware)
 
 
-def _build_csp() -> str:
-    # frame-src doit autoriser le client vocal embarqué (autre origine) s'il est configuré.
-    voice = os.environ.get("VOICE_PUBLIC_HOST", "").strip()
-    frame_src = "'self'" + (f" https://{voice}" if voice else "")
-    # script-src garde 'unsafe-inline' (l'interface est faite de scripts embarqués dans les pages) :
-    # le passage à des nonces fait partie du chantier découpage/refonte front. En l'état, la CSP
-    # bloque déjà les scripts/objets d'origine externe, le cadrage tiers et le base-uri détourné.
-    return ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; "
-            f"frame-src {frame_src}; object-src 'none'; base-uri 'self'; form-action 'self'; "
-            "frame-ancestors 'self'; worker-src 'self'")
+from app.core.csp import page_csp as _page_csp, voice_csp as _voice_csp  # noqa: E402
+from app.routers.voice import VOICE_HEADER as _VOICE_HEADER  # noqa: E402
 
-
-_CSP = _build_csp()
+# CSP : empreintes sha256 des scripts embarqués des pages (plus de 'unsafe-inline' pour les
+# scripts), calculées au démarrage — voir app/core/csp.py. frame-src autorise le client vocal
+# embarqué (autre origine) s'il est configuré.
+_VOICE_HOST = os.environ.get("VOICE_PUBLIC_HOST", "").strip()
+_CSP = _page_csp(STATIC_DIR, _VOICE_HOST)
+_CSP_VOICE = _voice_csp(_VOICE_HOST)
 
 
 @app.middleware("http")
 async def _security_headers(request: Request, call_next):
     resp = await call_next(request)
-    resp.headers.setdefault("Content-Security-Policy", _CSP)
+    # Le portail vocal relaie le HTML d'une application tierce : il garde l'ancienne politique.
+    voice = bool(request.headers.get(_VOICE_HEADER))
+    resp.headers.setdefault("Content-Security-Policy", _CSP_VOICE if voice else _CSP)
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     resp.headers.setdefault("Referrer-Policy", "same-origin")

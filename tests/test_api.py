@@ -2415,3 +2415,66 @@ def test_loot_history_accepts_doubled_pipes():
     rows, bad = loothistory.parse(f"CohorsLOOT1\nL||{at}||5001||Élanisse-Hyjal||3001||Casque\n")
     assert bad == 0 and len(rows) == 1
     assert rows[0]["item_id"] == 5001 and rows[0]["char"] == "élanisse" and rows[0]["item_name"] == "Casque"
+
+
+# --- CSP : empreintes des scripts embarqués (2026.10.064, suivi de revue externe du 17/10) -------
+
+def _script_src(csp):
+    part = next(p for p in csp.split(";") if p.strip().startswith("script-src"))
+    return part.split()[1:]
+
+
+def test_csp_pages_hash_every_inline_script_and_drop_unsafe_inline():
+    """Chaque bloc <script> embarqué de chaque page a son empreinte dans la CSP servie ; plus de
+    'unsafe-inline' pour les scripts (un script injecté serait bloqué par le navigateur)."""
+    import base64
+    import hashlib
+    import re
+    from app.core.csp import _INLINE_SCRIPT_RE
+    r = client.get("/login")
+    csp = r.headers["content-security-policy"]
+    src = _script_src(csp)
+    assert "'unsafe-inline'" not in src and "'self'" in src
+    pages = sorted((SRC_DIR / "app/static").glob("*.html"))
+    assert len(pages) > 20
+    for page in pages:
+        html = page.read_text(encoding="utf-8")
+        for m in _INLINE_SCRIPT_RE.finditer(html):
+            h = "'sha256-" + base64.b64encode(hashlib.sha256(m.group(1).encode()).digest()).decode() + "'"
+            assert h in src, f"{page.name} : bloc <script> sans empreinte dans la CSP"
+    # La même politique couvre les API et les fichiers statiques.
+    assert client.get("/api/health").headers["content-security-policy"] == csp
+    assert re.search(r"style-src 'self' 'unsafe-inline'", csp)
+
+
+def test_csp_no_inline_event_handlers_in_pages():
+    """Les attributs on…= (onclick, onerror…) sont bloqués par la CSP : aucune page ne doit en
+    produire, ni dans son HTML ni dans le HTML qu'elle construit en JavaScript."""
+    import re
+    rx = re.compile(r"""[\s"'`](on[a-z]{3,})\s*=\s*["'`$\\]""")
+    for f in sorted((SRC_DIR / "app/static").glob("*.html")) + sorted((SRC_DIR / "app/static").glob("*.js")):
+        if f.name == "sw.js":
+            continue
+        hits = rx.findall(f.read_text(encoding="utf-8"))
+        assert not hits, f"{f.name} : gestionnaire inline {hits} — utiliser addEventListener"
+
+
+def test_csp_voice_portal_keeps_legacy_policy():
+    from app.routers.voice import VOICE_HEADER
+    # Vhost vocal : requête réécrite vers /__voice… ; sans session → redirection (pas de relais).
+    r = TestClient(M.app).get("/", headers={VOICE_HEADER: "1"}, follow_redirects=False)
+    assert r.status_code in (302, 303, 307, 404), r.status_code
+    assert "'unsafe-inline'" in _script_src(r.headers["content-security-policy"])
+
+
+def test_csp_simc_report_is_sandboxed(tmp_path):
+    """Rapport SimC (scripts embarqués par SimC) : bac à sable, origine opaque."""
+    rep = tmp_path / "report.html"
+    rep.write_text("<html><script>1</script></html>", encoding="utf-8")
+    with M._db_lock, M._db() as conn:
+        conn.execute("INSERT INTO sims (id, created, ip, iterations, status, input_hash, input_file, report_html) "
+                     "VALUES ('csp-report-test', 0, '127.0.0.1', 1, 'done', 'h', 'f', ?)", (str(rep),))
+    r = client.get("/reports/csp-report-test/report.html")
+    assert r.status_code == 200
+    csp = r.headers["content-security-policy"]
+    assert csp.startswith("sandbox allow-scripts") and "allow-same-origin" not in csp

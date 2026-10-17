@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app import bnet
 from app.core.auth import _client_ip, _require_user, _user_locale
+from app.core.csp import REPORT_CSP
 from app.core.config import (
     DEFAULT_ITERATIONS, ITER_CHOICES, MAX_INPUT_CHARS, PER_IP_ACTIVE, PER_IP_COOLDOWN_S, PER_USER_ACTIVE,
     QUEUE_MAX, REPORTS_DIR, VERSION,
@@ -446,7 +447,9 @@ def report_html(sim_id: str):
         r = conn.execute("SELECT report_html FROM sims WHERE id=?", (sim_id,)).fetchone()
     if r is None or not r["report_html"] or not Path(r["report_html"]).exists():
         raise HTTPException(404, "Rapport introuvable")
-    return FileResponse(r["report_html"], media_type="text/html")
+    # Rapport produit par SimC (scripts embarqués) : bac à sable, voir app/core/csp.py.
+    return FileResponse(r["report_html"], media_type="text/html",
+                        headers={"Content-Security-Policy": REPORT_CSP})
 
 
 @router.get("/reports/{sim_id}/report.json")

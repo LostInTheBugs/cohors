@@ -99,7 +99,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .hidden { display: none !important; }
 </style>
-<link rel="stylesheet" href="/static/theme.css?v=2026.10.063">
+<link rel="stylesheet" href="/static/theme.css?v=2026.10.064">
 </head>
 <body class="wb">
 <div class="wrap">
@@ -166,11 +166,11 @@
   </footer>
 </div>
 
-<script src="/static/nav.js?v=2026.10.063"></script>
-<script src="/static/branding.js?v=2026.10.063"></script>
-<script src="/static/i18n.js?v=2026.10.063"></script>
-<script src="/static/esc.js?v=2026.10.063"></script>
-<script src="/static/common.js?v=2026.10.063"></script>
+<script src="/static/nav.js?v=2026.10.064"></script>
+<script src="/static/branding.js?v=2026.10.064"></script>
+<script src="/static/i18n.js?v=2026.10.064"></script>
+<script src="/static/esc.js?v=2026.10.064"></script>
+<script src="/static/common.js?v=2026.10.064"></script>
 <script>
 const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now()/1000 - ts);
   if (s < 60) return "à l'instant"; if (s < 3600) return `il y a ${Math.floor(s/60)} min`;
@@ -276,8 +276,8 @@ function gearTable(d) {
     const best = (i === 0 && dl > 0.05) ? " gbest" : "";
     const icon = g.icon ? `<img class="gicon" src="${esc(g.icon)}" alt="">` : `<span class="gicon"></span>`;
     const err = g.err_pct != null ? ` <small>± ${g.err_pct.toFixed(2)} %</small>` : "";
-    const wid = g.item_id ? ` <button class="wbtn" onclick="addWish(${g.item_id}, this)" title="Ajouter à ma wishlist" style="background:transparent;border:0;cursor:pointer;font-size:14px;padding:0 2px;vertical-align:-1px">🎯</button>` : "";
-    const pbtn = g.item_id ? ` <button class="wbtn" onclick="addWish(${g.item_id}, this, 1)" title="Ajouter en priorité (BIS)" style="background:transparent;border:0;cursor:pointer;font-size:14px;padding:0 2px;vertical-align:-1px">⭐</button>` : "";
+    const wid = g.item_id ? ` <button class="wbtn" data-wish="${g.item_id}" title="Ajouter à ma wishlist" style="background:transparent;border:0;cursor:pointer;font-size:14px;padding:0 2px;vertical-align:-1px">🎯</button>` : "";
+    const pbtn = g.item_id ? ` <button class="wbtn" data-wish="${g.item_id}" data-prio="1" title="Ajouter en priorité (BIS)" style="background:transparent;border:0;cursor:pointer;font-size:14px;padding:0 2px;vertical-align:-1px">⭐</button>` : "";
     rows.push(`<tr class="${best}">
       <td>${icon}</td>
       <td class="gname ${q}">${esc(g.name)}${wid}${pbtn}</td>
@@ -294,6 +294,12 @@ function gearTable(d) {
     : "";
   $("#result-card").classList.remove("hidden");
 }
+
+// Boutons 🎯 / ⭐ du tableau : un seul écouteur délégué (la CSP bloque les gestionnaires inline dans le HTML).
+document.addEventListener("click", (ev) => {
+  const btn = ev.target.closest && ev.target.closest("button.wbtn[data-wish]");
+  if (btn && !btn.disabled) addWish(btn.dataset.wish, btn, btn.dataset.prio === "1");
+});
 
 async function addWish(id, btn, prio) {
   btn.disabled = true;
