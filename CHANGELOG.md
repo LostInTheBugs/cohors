@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026.10.063 - 2026-10-17
+
+### Security
+
+- Reproducible builds: new `requirements.lock` pins every Python package (direct and
+  transitive) to an exact version with hashes; the app image and CI install it with
+  `pip install --require-hashes`. `requirements.txt` keeps the direct dependencies and their
+  ranges; the refresh procedure is in CONTRIBUTING.
+- Supply chain: every GitHub Action in the workflows (tests, image, release) is pinned to a full
+  commit SHA instead of a moving tag, with Dependabot proposing weekly bumps.
+- Repository tests check that the lock covers `requirements.txt` within its ranges, that every
+  entry is hashed, and that no workflow uses an unpinned action.
+
 ## 2026.10.062 - 2026-10-17
 
 ### Fixed
